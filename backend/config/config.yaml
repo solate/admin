@@ -7,12 +7,25 @@ app:
 server:
   mode: "debug"  # debug, release, test
 
+# 日志配置
+log:
+  level: "debug"  # debug, info, warn, error
+  format: "json"  # json, console
+
+# 限流配置
+rate_limit:
+  enabled: true
+  requests_per_second: 100
+  burst: 200
+
+
+# 数据库配置
 database:
-  host: "postgres"
+  host: "127.0.0.1"
   port: 5432
   user: "root"
   password: "root"
-  dbname: "content_center"
+  dbname: "admin"
   sslmode: "disable"
   max_idle_conns: 10
   max_open_conns: 100
@@ -21,19 +34,16 @@ database:
 jwt:
   secret: "your-secret-key-change-in-production"
   expire_hours: 24
-  issuer: "content-center"
+  issuer: "admin"
 
 casbin:
   model_path: "config/casbin_model.conf"
   auto_save: true
   auto_load: false
 
-log:
-  level: "debug"  # debug, info, warn, error
-  format: "json"  # json, console
 
 redis:
-  host: "redis"
+  host: "127.0.0.1"
   port: 6379
   password: "123456"  # 如果Redis没有设置密码，留空即可
   db: 0
