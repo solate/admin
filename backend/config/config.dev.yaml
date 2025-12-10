@@ -1,0 +1,25 @@
+# 开发环境配置
+app:
+  env: "dev"
+
+server:
+  mode: "debug"
+
+log:
+  level: "debug"
+  format: "json"
+
+# 限流配置
+rate_limit:
+  enabled: false
+  requests_per_second: 100
+  burst: 200
+
+database:
+  host: "127.0.0.1"
+  port: 5432
+  user: "root"
+  password: "root"
+  dbname: "content_center"
+
+

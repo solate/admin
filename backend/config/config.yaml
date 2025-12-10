@@ -14,7 +14,7 @@ log:
 
 # 限流配置
 rate_limit:
-  enabled: true
+  enabled: false
   requests_per_second: 100
   burst: 200
 
@@ -25,32 +25,11 @@ database:
   port: 5432
   user: "root"
   password: "root"
-  dbname: "admin"
+  dbname: "admin_db"
   sslmode: "disable"
   max_idle_conns: 10
   max_open_conns: 100
   conn_max_lifetime: 3600  # seconds
 
-jwt:
-  secret: "your-secret-key-change-in-production"
-  expire_hours: 24
-  issuer: "admin"
-
-casbin:
-  model_path: "config/casbin_model.conf"
-  auto_save: true
-  auto_load: false
 
 
-redis:
-  host: "127.0.0.1"
-  port: 6379
-  password: "123456"  # 如果Redis没有设置密码，留空即可
-  db: 0
-  type: "node"  # node 或 cluster
-  pool_size: 10
-  min_idle_conns: 5
-  max_retries: 3
-  dial_timeout: 5  # seconds
-  read_timeout: 3  # seconds
-  write_timeout: 3  # seconds

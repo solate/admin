@@ -1,9 +1,8 @@
 package middleware
 
 import (
-    "admin/internal/dto"
-    "admin/pkg/errors"
-	"fmt"
+	"admin/pkg/errors"
+	"admin/pkg/response"
 	"net/http"
 	"runtime/debug"
 
@@ -27,15 +26,15 @@ func Recovery() gin.HandlerFunc {
 					Str("stack", stack).
 					Msg("Panic Recovered")
 
-				// 打印到标准输出便于调试
-				fmt.Printf("\n=== PANIC ===\n")
-				fmt.Printf("Error: %v\n", err)
-				fmt.Printf("Path: %s\n", c.Request.URL.Path)
-				fmt.Printf("Stack:\n%s\n", stack)
-				fmt.Printf("=============\n\n")
+				// // 打印到标准输出便于调试
+				// fmt.Printf("\n=== PANIC ===\n")
+				// fmt.Printf("Error: %v\n", err)
+				// fmt.Printf("Path: %s\n", c.Request.URL.Path)
+				// fmt.Printf("Stack:\n%s\n", stack)
+				// fmt.Printf("=============\n\n")
 
 				// 返回错误响应
-				dto.Error(c, http.StatusInternalServerError, errors.ErrInternal)
+				response.Error(c, http.StatusInternalServerError, errors.ErrInternal)
 				c.Abort()
 			}
 		}()

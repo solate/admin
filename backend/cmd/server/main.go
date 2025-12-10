@@ -1,0 +1,200 @@
+package main
+
+import (
+	"admin/internal/handler"
+	"admin/internal/router"
+	"admin/pkg/config"
+	"admin/pkg/database"
+	"admin/pkg/logger"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/casbin/casbin/v2"
+	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
+)
+
+// @title 管理后台 API
+// @version 1.0
+// @description 管理后台 API 文档
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@example.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /
+
+// @securityDefinitions.apikey Bearer
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
+// App 应用实例，包含所有需要的组件
+type App struct {
+	cfg      *config.Config
+	db       *gorm.DB
+	enforcer *casbin.Enforcer
+	router   *gin.Engine
+}
+
+func main() {
+	// 初始化应用
+	app, err := initApp()
+	if err != nil {
+		fmt.Printf("Failed to initialize app: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 启动服务器
+	go startServer(app)
+
+	// 等待关闭信号
+	waitForShutdown()
+
+	// 清理资源
+	cleanup(app)
+}
+
+// initApp 初始化应用的所有组件
+func initApp() (*App, error) {
+	app := &App{}
+
+	// 1. 加载配置 (必须最先加载，其他组件依赖配置)
+	cfg, err := loadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+	app.cfg = cfg
+
+	// 2. 初始化日志 (使用配置中的日志设置)
+	if err := initLogger(cfg); err != nil {
+		return nil, fmt.Errorf("failed to init logger: %w", err)
+	}
+
+	log.Info().
+		Str("app", cfg.App.Name).
+		Str("env", cfg.App.Env).
+		Int("port", cfg.App.Port).
+		Msg("Starting Admin Backend")
+
+	// 3. 连接数据库
+	db, err := initDatabase(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init database: %w", err)
+	}
+	app.db = db
+
+	// 4. 初始化路由
+	router := initRouter(cfg, app.enforcer)
+	app.router = router
+
+	log.Info().Msg("Application initialized successfully")
+	return app, nil
+}
+
+// loadConfig 加载配置文件
+func loadConfig() (*config.Config, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// initLogger 初始化日志系统（使用配置文件中的设置）
+func initLogger(cfg *config.Config) error {
+	logger.Init(logger.Config{
+		Level:  cfg.Log.Level,
+		Format: cfg.Log.Format,
+	})
+	log.Info().
+		Str("level", cfg.Log.Level).
+		Str("format", cfg.Log.Format).
+		Msg("Logger initialized")
+	return nil
+}
+
+// initDatabase 初始化数据库连接
+func initDatabase(cfg *config.Config) (*gorm.DB, error) {
+	db, err := database.Connect(database.Config{
+		DSN:             cfg.Database.GetDSN(),
+		MaxIdleConns:    cfg.Database.MaxIdleConns,
+		MaxOpenConns:    cfg.Database.MaxOpenConns,
+		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+		LogLevel:        cfg.Log.Level,
+	})
+	if err != nil {
+		return nil, err
+	}
+	log.Info().
+		Str("host", cfg.Database.Host).
+		Int("port", cfg.Database.Port).
+		Str("dbname", cfg.Database.DBName).
+		Msg("Database connected")
+	return db, nil
+}
+
+// Handlers 处理器层容器
+// initRouter 初始化路由
+func initRouter(cfg *config.Config, enforcer *casbin.Enforcer) *gin.Engine {
+	gin.SetMode(cfg.Server.Mode)
+
+	r := gin.New()
+
+	routerCfg := &router.Config{
+		HealthHandler: handler.NewHealthHandler(),
+		AppConfig:     cfg,
+	}
+
+	router.Setup(r, routerCfg)
+
+	log.Info().
+		Str("mode", cfg.Server.Mode).
+		Msg("Router initialized")
+	return r
+}
+
+// initRouter 初始化路由
+// 移除业务路由版本，保留简化版本
+
+// startServer 启动HTTP服务器
+func startServer(app *App) {
+	addr := fmt.Sprintf(":%d", app.cfg.App.Port)
+	log.Info().
+		Str("addr", addr).
+		Str("env", app.cfg.App.Env).
+		Msg("Server starting")
+
+	if err := app.router.Run(addr); err != nil {
+		log.Fatal().Err(err).Msg("Failed to start server")
+	}
+}
+
+// waitForShutdown 等待关闭信号
+func waitForShutdown() {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Info().Msg("Shutting down server...")
+}
+
+// cleanup 清理资源
+func cleanup(app *App) {
+	// 关闭数据库连接
+	if app.db != nil {
+		if err := database.Close(); err != nil {
+			log.Error().Err(err).Msg("Failed to close database")
+		} else {
+			log.Info().Msg("Database connection closed")
+		}
+	}
+
+	log.Info().Msg("Server stopped gracefully")
+}
