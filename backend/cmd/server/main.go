@@ -127,7 +127,7 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 		DSN:             cfg.Database.GetDSN(),
 		MaxIdleConns:    cfg.Database.MaxIdleConns,
 		MaxOpenConns:    cfg.Database.MaxOpenConns,
-		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
+		ConnMaxLifetime: cfg.Database.GetConnMaxLifetime(),
 		LogLevel:        cfg.Log.Level,
 	})
 	if err != nil {

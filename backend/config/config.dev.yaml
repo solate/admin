@@ -18,8 +18,8 @@ rate_limit:
 database:
   host: "127.0.0.1"
   port: 5432
-  user: "root"
-  password: "root"
-  dbname: "content_center"
+  user: "postgres"
+  password: "postgres"
+  dbname: "admin_db"
 
 

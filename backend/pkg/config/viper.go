@@ -110,9 +110,6 @@ func validateConfig(cfg *Config) error {
 	if cfg.Database.DBName == "" {
 		return fmt.Errorf("database.dbname is required")
 	}
-	if cfg.JWT.Secret == "" {
-		return fmt.Errorf("jwt.secret is required")
-	}
 
 	// 生产环境额外检查
 	if cfg.App.Env == "prod" {
@@ -138,11 +135,6 @@ func (c *DatabaseConfig) GetDSN() string {
 // GetConnMaxLifetime 获取连接最大生命周期
 func (c *DatabaseConfig) GetConnMaxLifetime() time.Duration {
 	return time.Duration(c.ConnMaxLifetime) * time.Second
-}
-
-// GetExpireDuration 获取JWT过期时间
-func (c *JWTConfig) GetExpireDuration() time.Duration {
-	return time.Duration(c.ExpireHours) * time.Hour
 }
 
 // GetDialTimeout 获取Redis连接超时时间

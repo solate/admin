@@ -23,8 +23,8 @@ rate_limit:
 database:
   host: "127.0.0.1"
   port: 5432
-  user: "root"
-  password: "root"
+  user: "postgres"
+  password: "postgres"
   dbname: "admin_db"
   sslmode: "disable"
   max_idle_conns: 10

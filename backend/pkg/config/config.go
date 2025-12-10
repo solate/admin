@@ -6,8 +6,6 @@ type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Redis    RedisConfig    `mapstructure:"redis"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Casbin   CasbinConfig   `mapstructure:"casbin"`
 	Log      LogConfig      `mapstructure:"log"`
 }
 
@@ -21,6 +19,11 @@ type ServerConfig struct {
 	Mode string `mapstructure:"mode"`
 }
 
+type LogConfig struct {
+	Level  string `mapstructure:"level"`
+	Format string `mapstructure:"format"`
+}
+
 type DatabaseConfig struct {
 	Host            string `mapstructure:"host"`
 	Port            int    `mapstructure:"port"`
@@ -31,23 +34,6 @@ type DatabaseConfig struct {
 	MaxIdleConns    int    `mapstructure:"max_idle_conns"`
 	MaxOpenConns    int    `mapstructure:"max_open_conns"`
 	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"`
-}
-
-type JWTConfig struct {
-	Secret      string `mapstructure:"secret"`
-	ExpireHours int    `mapstructure:"expire_hours"`
-	Issuer      string `mapstructure:"issuer"`
-}
-
-type CasbinConfig struct {
-	ModelPath string `mapstructure:"model_path"`
-	AutoSave  bool   `mapstructure:"auto_save"`
-	AutoLoad  bool   `mapstructure:"auto_load"`
-}
-
-type LogConfig struct {
-    Level    string `mapstructure:"level"`
-    Format   string `mapstructure:"format"`
 }
 
 type RedisConfig struct {
