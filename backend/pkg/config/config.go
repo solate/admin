@@ -46,10 +46,8 @@ type CasbinConfig struct {
 }
 
 type LogConfig struct {
-	Level    string `mapstructure:"level"`
-	Format   string `mapstructure:"format"`
-	Output   string `mapstructure:"output"`
-	FilePath string `mapstructure:"file_path"`
+    Level    string `mapstructure:"level"`
+    Format   string `mapstructure:"format"`
 }
 
 type RedisConfig struct {

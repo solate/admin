@@ -31,11 +31,6 @@ casbin:
 log:
   level: "debug"  # debug, info, warn, error
   format: "json"  # json, console
-  output: "stdout"  # stdout, file
-  file_path: "static/logs/app.log"
-  max_size: 100  # MB
-  max_backups: 7
-  max_age: 30  # days
 
 redis:
   host: "redis"
@@ -49,4 +44,3 @@ redis:
   dial_timeout: 5  # seconds
   read_timeout: 3  # seconds
   write_timeout: 3  # seconds
-
