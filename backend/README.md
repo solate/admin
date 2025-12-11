@@ -83,7 +83,7 @@ export DB_HOST=localhost
 export DB_PORT=5432
 export DB_USER=root
 export DB_PASSWORD=root
-export DB_NAME=content_center
+export DB_NAME=admin_db
 ```
 
 生成代码说明：
