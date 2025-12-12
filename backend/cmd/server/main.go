@@ -6,6 +6,7 @@ import (
 	"admin/pkg/config"
 	"admin/pkg/database"
 	"admin/pkg/logger"
+	"admin/pkg/xredis"
 	"fmt"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -42,6 +44,7 @@ type App struct {
 	db       *gorm.DB
 	enforcer *casbin.Enforcer
 	router   *gin.Engine
+	redis    redis.UniversalClient
 }
 
 func main() {
@@ -73,16 +76,16 @@ func initApp() (*App, error) {
 	}
 	app.cfg = cfg
 
-	// 2. 初始化日志 (使用配置中的日志设置)
-	if err := initLogger(cfg); err != nil {
-		return nil, fmt.Errorf("failed to init logger: %w", err)
-	}
-
 	log.Info().
 		Str("app", cfg.App.Name).
 		Str("env", cfg.App.Env).
 		Int("port", cfg.App.Port).
 		Msg("Starting Admin Backend")
+
+	// 2. 初始化日志 (使用配置中的日志设置)
+	if err := initLogger(cfg); err != nil {
+		return nil, fmt.Errorf("failed to init logger: %w", err)
+	}
 
 	// 3. 连接数据库
 	db, err := initDatabase(cfg)
@@ -91,7 +94,14 @@ func initApp() (*App, error) {
 	}
 	app.db = db
 
-	// 4. 初始化路由
+	// 4. 连接Redis（全局）
+	redisClient, err := initRedis(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init redis: %w", err)
+	}
+	app.redis = redisClient
+
+	// 5. 初始化路由
 	router := initRouter(cfg, app.enforcer)
 	app.router = router
 
@@ -139,6 +149,34 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 		Str("dbname", cfg.Database.DBName).
 		Msg("Database connected")
 	return db, nil
+}
+
+// initRedis 初始化全局Redis连接
+func initRedis(cfg *config.Config) (redis.UniversalClient, error) {
+	c := xredis.Config{
+		Host:         cfg.Redis.Host,
+		Port:         cfg.Redis.Port,
+		Password:     cfg.Redis.Password,
+		DB:           cfg.Redis.DB,
+		Type:         cfg.Redis.Type,
+		PoolSize:     cfg.Redis.PoolSize,
+		MinIdleConns: cfg.Redis.MinIdleConns,
+		MaxRetries:   cfg.Redis.MaxRetries,
+		DialTimeout:  cfg.Redis.GetDialTimeout(),
+		ReadTimeout:  cfg.Redis.GetReadTimeout(),
+		WriteTimeout: cfg.Redis.GetWriteTimeout(),
+	}
+
+	redisClient, err := xredis.Connect(c)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info().
+		Str("addr", cfg.Redis.GetAddr()).
+		Int("db", cfg.Redis.DB).
+		Msg("Redis connected")
+	return redisClient, nil
 }
 
 // Handlers 处理器层容器
@@ -193,6 +231,15 @@ func cleanup(app *App) {
 			log.Error().Err(err).Msg("Failed to close database")
 		} else {
 			log.Info().Msg("Database connection closed")
+		}
+	}
+
+	// 关闭Redis连接
+	if app.redis != nil {
+		if err := xredis.Close(); err != nil {
+			log.Error().Err(err).Msg("Failed to close redis")
+		} else {
+			log.Info().Msg("Redis connection closed")
 		}
 	}
 
