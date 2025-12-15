@@ -101,7 +101,7 @@ func TestRefreshToken(t *testing.T) {
 		t.Fatalf("GenerateTokenPair returned error: %v", err)
 	}
 
-	newPair, err := RefreshToken(pair.RefreshToken, cfg)
+	newPair, err := refreshTokenPair(pair.RefreshToken, cfg)
 	if err != nil {
 		t.Fatalf("RefreshToken returned error: %v", err)
 	}

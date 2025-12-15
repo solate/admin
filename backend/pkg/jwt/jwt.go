@@ -10,7 +10,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// 自定义Claims结构体
+// Claims 自定义声明
+// 说明：
+// - TokenID 为会话唯一标识（access/refresh 均携带），用于黑名单与会话管理
 type Claims struct {
 	TenantID string `json:"tenant_id"`
 	UserID   string `json:"user_id"`
@@ -27,12 +29,24 @@ type TokenPair struct {
 
 type JWTConfig struct {
 	AccessSecret  []byte // access token密钥
-	AccessExpire  int64  // access token过期时间
+	AccessExpire  int64  // access token过期时间（秒）
 	RefreshSecret []byte // refresh token密钥
-	RefreshExpire int64  // refresh token过期时间
+	RefreshExpire int64  // refresh token过期时间（秒）
+	Issuer        string // 发行者（可选）
 }
 
-// 生成token对 (access + refresh)
+// 公开错误变量用于中间件与业务层识别
+// 说明：
+// - ErrTokenExpired 直接引用第三方库的过期错误，便于 errors.Is 判断
+// - ErrTokenBlacklisted 表示令牌已被撤销（命中黑名单）
+var (
+	ErrTokenExpired     = jwt.ErrTokenExpired
+	ErrTokenBlacklisted = errors.New("token blacklisted")
+)
+
+// GenerateTokenPair 生成令牌对（access + refresh）
+// 注意：
+// - 使用随机 TokenID 作为会话标识，便于后续刷新和撤销
 func GenerateTokenPair(tenantID, userID, roleID string, config *JWTConfig) (*TokenPair, error) {
 
 	// 生成refresh token的唯一ID
@@ -57,11 +71,15 @@ func GenerateTokenPair(tenantID, userID, roleID string, config *JWTConfig) (*Tok
 	}, nil
 }
 
+// VerifyToken 验证任意 token（去除 Bearer 前缀，校验签名与过期）
 func VerifyToken(tokenString string, secret []byte) (*Claims, error) {
 	return verifyToken(tokenString, secret)
 }
 
-func RefreshToken(tokenString string, config *JWTConfig) (*TokenPair, error) {
+// refreshTokenPair 根据 refresh token 生成新的令牌对（无状态工具）
+// 说明：
+// - 仅适用于不依赖存储的场景；在有状态场景下应使用 JWTManager.RefreshToken
+func refreshTokenPair(tokenString string, config *JWTConfig) (*TokenPair, error) {
 	claims, err := verifyToken(tokenString, config.RefreshSecret)
 	if err != nil {
 		return nil, err
@@ -74,7 +92,7 @@ func RefreshToken(tokenString string, config *JWTConfig) (*TokenPair, error) {
 	return tokenPair, nil
 }
 
-// 生成单个Token
+// generateToken 生成单个 token（带 Claims）
 func generateToken(tenantID, userID, roleID, tokenID string, expire int64, secret []byte) (string, error) {
 	now := time.Now()
 	claims := &Claims{
@@ -85,6 +103,7 @@ func generateToken(tenantID, userID, roleID, tokenID string, expire int64, secre
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(expire) * time.Second)),
 			IssuedAt:  jwt.NewNumericDate(now),
+			Issuer:    "", // 由调用方在构造 JWTConfig 时填充
 		},
 	}
 
@@ -92,7 +111,7 @@ func generateToken(tenantID, userID, roleID, tokenID string, expire int64, secre
 	return token.SignedString(secret)
 }
 
-// 验证token
+// verifyToken 验证 token（签名算法 & 过期）
 func verifyToken(tokenString string, secret []byte) (*Claims, error) {
 	tokenString = RemoveBearerPrefix(tokenString)
 	claims := &Claims{}
@@ -113,8 +132,7 @@ func verifyToken(tokenString string, secret []byte) (*Claims, error) {
 	return nil, errors.New("invalid token")
 }
 
-// RemoveBearerPrefix 去除Bearer前缀的通用函数
-// 处理各种情况：Bearer token、Bearer  token、Bearer   token等
+// RemoveBearerPrefix 去除 Bearer 前缀的通用函数（兼容多空格）
 func RemoveBearerPrefix(tokenString string) string {
 	tokenString = strings.TrimSpace(tokenString)
 	tokenString = strings.TrimPrefix(tokenString, "Bearer")
