@@ -1,4 +1,4 @@
-package errors
+package xerr
 
 // 预定义错误
 var (

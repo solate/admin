@@ -1,7 +1,7 @@
 package response
 
 import (
-	"admin/pkg/errors"
+	"admin/pkg/xerr"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -46,7 +46,7 @@ func SuccessWithMessage(c *gin.Context, message string, data any) {
 }
 
 // Error 错误响应
-func Error(c *gin.Context, httpCode int, err *errors.AppError) {
+func Error(c *gin.Context, httpCode int, err *xerr.AppError) {
 	c.JSON(httpCode, Response{
 		Code:      err.Code,
 		Message:   err.Message,

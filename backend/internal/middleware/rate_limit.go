@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"admin/pkg/errors"
 	"admin/pkg/response"
+	"admin/pkg/xerr"
 	"net/http"
 	"sync"
 
@@ -56,7 +56,7 @@ func RateLimit(requestsPerSecond int, burst int) gin.HandlerFunc {
 
 		// 检查是否允许请求
 		if !l.Allow() {
-			response.Error(c, http.StatusTooManyRequests, errors.ErrTooManyRequests)
+			response.Error(c, http.StatusTooManyRequests, xerr.ErrTooManyRequests)
 			c.Abort()
 			return
 		}

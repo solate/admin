@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"admin/pkg/errors"
 	"admin/pkg/response"
+	"admin/pkg/xerr"
 	"net/http"
 	"runtime/debug"
 
@@ -34,7 +34,7 @@ func Recovery() gin.HandlerFunc {
 				// fmt.Printf("=============\n\n")
 
 				// 返回错误响应
-				response.Error(c, http.StatusInternalServerError, errors.ErrInternal)
+				response.Error(c, http.StatusInternalServerError, xerr.ErrInternal)
 				c.Abort()
 			}
 		}()

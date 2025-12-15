@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"admin/internal/constants"
-	apierrors "admin/pkg/errors"
 	"admin/pkg/jwt"
 	"admin/pkg/response"
+	"admin/pkg/xerr"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,7 +22,7 @@ func Auth(jwtManager *jwt.JWTManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
 		if token == "" {
-			response.Error(c, http.StatusUnauthorized, apierrors.ErrUnauthorized)
+			response.Error(c, http.StatusUnauthorized, xerr.ErrUnauthorized)
 			c.Abort()
 			return
 		}
@@ -30,7 +30,7 @@ func Auth(jwtManager *jwt.JWTManager) gin.HandlerFunc {
 		// 解析 "Bearer <token>" 格式
 		parts := strings.SplitN(token, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			response.Error(c, http.StatusUnauthorized, apierrors.ErrTokenInvalid)
+			response.Error(c, http.StatusUnauthorized, xerr.ErrTokenInvalid)
 			c.Abort()
 			return
 		}
@@ -41,11 +41,11 @@ func Auth(jwtManager *jwt.JWTManager) gin.HandlerFunc {
 		if err != nil {
 			// 错误映射：过期 / 黑名单 / 其他无效
 			if errors.Is(err, jwt.ErrTokenExpired) {
-				response.Error(c, http.StatusUnauthorized, apierrors.ErrTokenExpired)
+				response.Error(c, http.StatusUnauthorized, xerr.ErrTokenExpired)
 			} else if errors.Is(err, jwt.ErrTokenBlacklisted) {
-				response.Error(c, http.StatusUnauthorized, apierrors.ErrTokenInvalid)
+				response.Error(c, http.StatusUnauthorized, xerr.ErrTokenInvalid)
 			} else {
-				response.Error(c, http.StatusUnauthorized, apierrors.ErrTokenInvalid)
+				response.Error(c, http.StatusUnauthorized, xerr.ErrTokenInvalid)
 			}
 			c.Abort()
 			return
