@@ -31,7 +31,7 @@ func TestGenerateTokenPairAndParse(t *testing.T) {
 		t.Fatalf("GenerateTokenPair returned empty token id")
 	}
 
-	accessClaims, err := VerifyToken(pair.AccessToken, cfg.AccessSecret)
+	accessClaims, err := VerifyToken(pair.AccessToken, []byte(cfg.AccessSecret))
 	if err != nil {
 		t.Fatalf("VerifyToken(access) returned error: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestGenerateTokenPairAndParse(t *testing.T) {
 		t.Fatalf("access token token_id = %s, want %s", accessClaims.TokenID, pair.TokenID)
 	}
 
-	refreshClaims, err := VerifyToken(pair.RefreshToken, cfg.RefreshSecret)
+	refreshClaims, err := VerifyToken(pair.RefreshToken, []byte(cfg.RefreshSecret))
 	if err != nil {
 		t.Fatalf("VerifyToken(refresh) returned error: %v", err)
 	}
@@ -75,9 +75,10 @@ func TestParseTokenExpired(t *testing.T) {
 		AccessExpire:  -1,
 		RefreshSecret: secret,
 		RefreshExpire: -1,
+		Issuer:        "admin",
 	}
 
-	token, err := generateToken("tenant-1", "user-1", "role-1", "token-1", expiredCfg.AccessExpire, expiredCfg.AccessSecret)
+	token, err := generateToken("tenant-1", "user-1", "role-1", "token-1", expiredCfg.AccessExpire, secret, expiredCfg.Issuer)
 	if err != nil {
 		t.Fatalf("generateToken returned error: %v", err)
 	}
@@ -86,41 +87,10 @@ func TestParseTokenExpired(t *testing.T) {
 
 	_, err = VerifyToken(token, secret)
 	if err == nil {
-		t.Fatalf("ParseToken should have returned expiration error")
+		t.Fatalf("VerifyToken should have returned expiration error")
 	}
 	if !errors.Is(err, jwt.ErrTokenExpired) {
 		t.Fatalf("expected ErrTokenExpired, got: %v", err)
-	}
-}
-
-func TestRefreshToken(t *testing.T) {
-	cfg := testConfig()
-
-	pair, err := GenerateTokenPair("tenant-1", "user-1", "role-1", cfg)
-	if err != nil {
-		t.Fatalf("GenerateTokenPair returned error: %v", err)
-	}
-
-	newPair, err := refreshTokenPair(pair.RefreshToken, cfg)
-	if err != nil {
-		t.Fatalf("RefreshToken returned error: %v", err)
-	}
-	if newPair.AccessToken == "" || newPair.RefreshToken == "" {
-		t.Fatalf("RefreshToken returned empty tokens")
-	}
-	if newPair.TokenID == "" {
-		t.Fatalf("RefreshToken returned empty token id")
-	}
-	if newPair.TokenID == pair.TokenID {
-		t.Fatalf("RefreshToken should generate new token id, got same: %s", newPair.TokenID)
-	}
-
-	claims, err := VerifyToken(newPair.AccessToken, cfg.AccessSecret)
-	if err != nil {
-		t.Fatalf("VerifyToken on refreshed access token returned error: %v", err)
-	}
-	if claims.TokenID != newPair.TokenID {
-		t.Fatalf("refreshed access token token_id = %s, want %s", claims.TokenID, newPair.TokenID)
 	}
 }
 

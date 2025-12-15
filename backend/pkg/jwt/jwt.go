@@ -25,41 +25,51 @@ type TokenPair struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	TokenID      string `json:"token_id,omitempty"` // refresh token的唯一标识
+	// ExpiresIn    int64  `json:"expires_in"`        // access token 过期时间（秒）
 }
 
 type JWTConfig struct {
-	AccessSecret  []byte // access token密钥
+	AccessSecret  []byte // access token密钥（支持字符串格式）
 	AccessExpire  int64  // access token过期时间（秒）
-	RefreshSecret []byte // refresh token密钥
+	RefreshSecret []byte // refresh token密钥（支持字符串格式）
 	RefreshExpire int64  // refresh token过期时间（秒）
 	Issuer        string // 发行者（可选）
 }
 
 // 公开错误变量用于中间件与业务层识别
-// 说明：
-// - ErrTokenExpired 直接引用第三方库的过期错误，便于 errors.Is 判断
-// - ErrTokenBlacklisted 表示令牌已被撤销（命中黑名单）
 var (
-	ErrTokenExpired     = jwt.ErrTokenExpired
-	ErrTokenBlacklisted = errors.New("token blacklisted")
+	ErrTokenExpired      = jwt.ErrTokenExpired
+	ErrTokenBlacklisted  = errors.New("token blacklisted")
+	ErrInvalidToken      = errors.New("invalid token")
+	ErrMissingToken      = errors.New("missing token")
+	ErrInvalidClaims     = errors.New("invalid claims")
+	ErrInvalidSignMethod = errors.New("invalid signing method")
 )
 
 // GenerateTokenPair 生成令牌对（access + refresh）
 // 注意：
 // - 使用随机 TokenID 作为会话标识，便于后续刷新和撤销
+// - ExpiresIn 返回 access token 的过期时间（秒）
 func GenerateTokenPair(tenantID, userID, roleID string, config *JWTConfig) (*TokenPair, error) {
-
 	// 生成refresh token的唯一ID
 	tokenID := uuid.New().String()
 
 	// 生成 access token
-	accessToken, err := generateToken(tenantID, userID, roleID, tokenID, config.AccessExpire, config.AccessSecret)
+	accessToken, err := generateToken(
+		tenantID, userID, roleID, tokenID,
+		config.AccessExpire, config.AccessSecret,
+		config.Issuer,
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	// 生成 refresh token
-	refreshToken, err := generateToken(tenantID, userID, roleID, tokenID, config.RefreshExpire, config.RefreshSecret)
+	refreshToken, err := generateToken(
+		tenantID, userID, roleID, tokenID,
+		config.RefreshExpire, config.RefreshSecret,
+		config.Issuer,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -68,6 +78,7 @@ func GenerateTokenPair(tenantID, userID, roleID string, config *JWTConfig) (*Tok
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		TokenID:      tokenID,
+		// ExpiresIn:    config.AccessExpire,
 	}, nil
 }
 
@@ -76,24 +87,24 @@ func VerifyToken(tokenString string, secret []byte) (*Claims, error) {
 	return verifyToken(tokenString, secret)
 }
 
-// refreshTokenPair 根据 refresh token 生成新的令牌对（无状态工具）
-// 说明：
-// - 仅适用于不依赖存储的场景；在有状态场景下应使用 JWTManager.RefreshToken
-func refreshTokenPair(tokenString string, config *JWTConfig) (*TokenPair, error) {
-	claims, err := verifyToken(tokenString, config.RefreshSecret)
-	if err != nil {
-		return nil, err
-	}
-	tokenPair, err := GenerateTokenPair(claims.TenantID, claims.UserID, claims.RoleID, config)
-	if err != nil {
-		return nil, err
-	}
+// // refreshTokenPair 根据 refresh token 生成新的令牌对（无状态工具）
+// // 说明：
+// // - 仅适用于不依赖存储的场景；在有状态场景下应使用 JWTManager.RefreshToken
+// func refreshTokenPair(tokenString string, config *JWTConfig) (*TokenPair, error) {
+// 	claims, err := verifyToken(tokenString, config.RefreshSecret)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	tokenPair, err := GenerateTokenPair(claims.TenantID, claims.UserID, claims.RoleID, config)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return tokenPair, nil
-}
+// 	return tokenPair, nil
+// }
 
 // generateToken 生成单个 token（带 Claims）
-func generateToken(tenantID, userID, roleID, tokenID string, expire int64, secret []byte) (string, error) {
+func generateToken(tenantID, userID, roleID, tokenID string, expire int64, secret []byte, issuer string) (string, error) {
 	now := time.Now()
 	claims := &Claims{
 		TenantID: tenantID,
@@ -103,12 +114,17 @@ func generateToken(tenantID, userID, roleID, tokenID string, expire int64, secre
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(expire) * time.Second)),
 			IssuedAt:  jwt.NewNumericDate(now),
-			Issuer:    "", // 由调用方在构造 JWTConfig 时填充
+			NotBefore: jwt.NewNumericDate(now),
+			Issuer:    issuer,
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(secret)
+	tokenStr, err := token.SignedString(secret)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign token: %w", err)
+	}
+	return tokenStr, nil
 }
 
 // verifyToken 验证 token（签名算法 & 过期）

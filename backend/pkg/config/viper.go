@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/spf13/viper"
 )
@@ -124,35 +123,4 @@ func validateConfig(cfg *Config) error {
 // Get 获取全局配置
 func Get() *Config {
 	return globalConfig
-}
-
-// GetDSN 获取数据库连接字符串
-func (c *DatabaseConfig) GetDSN() string {
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.User, c.Password, c.DBName, c.SSLMode)
-}
-
-// GetConnMaxLifetime 获取连接最大生命周期
-func (c *DatabaseConfig) GetConnMaxLifetime() time.Duration {
-	return time.Duration(c.ConnMaxLifetime) * time.Second
-}
-
-// GetDialTimeout 获取Redis连接超时时间
-func (c *RedisConfig) GetDialTimeout() time.Duration {
-	return time.Duration(c.DialTimeout) * time.Second
-}
-
-// GetReadTimeout 获取Redis读超时时间
-func (c *RedisConfig) GetReadTimeout() time.Duration {
-	return time.Duration(c.ReadTimeout) * time.Second
-}
-
-// GetWriteTimeout 获取Redis写超时时间
-func (c *RedisConfig) GetWriteTimeout() time.Duration {
-	return time.Duration(c.WriteTimeout) * time.Second
-}
-
-// GetAddr 获取Redis地址
-func (c *RedisConfig) GetAddr() string {
-	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }

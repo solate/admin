@@ -5,6 +5,7 @@ import (
 	"admin/internal/router"
 	"admin/pkg/config"
 	"admin/pkg/database"
+	"admin/pkg/jwt"
 	"admin/pkg/logger"
 	"admin/pkg/xredis"
 	"fmt"
@@ -42,9 +43,10 @@ import (
 type App struct {
 	cfg      *config.Config
 	db       *gorm.DB
-	enforcer *casbin.Enforcer
 	router   *gin.Engine
 	redis    redis.UniversalClient
+	jwt      *jwt.JWTManager
+	enforcer *casbin.Enforcer
 }
 
 func main() {
@@ -101,8 +103,11 @@ func initApp() (*App, error) {
 	}
 	app.redis = redisClient
 
+	// 5. jwt
+	app.jwt = initJWTManager(cfg, app.redis)
+
 	// 5. 初始化路由
-	router := initRouter(cfg, app.enforcer)
+	router := initRouter(cfg, app)
 	app.router = router
 
 	log.Info().Msg("Application initialized successfully")
@@ -153,7 +158,7 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 
 // initRedis 初始化全局Redis连接
 func initRedis(cfg *config.Config) (redis.UniversalClient, error) {
-	c := xredis.Config{
+	config := xredis.Config{
 		Host:         cfg.Redis.Host,
 		Port:         cfg.Redis.Port,
 		Password:     cfg.Redis.Password,
@@ -167,7 +172,7 @@ func initRedis(cfg *config.Config) (redis.UniversalClient, error) {
 		WriteTimeout: cfg.Redis.GetWriteTimeout(),
 	}
 
-	redisClient, err := xredis.Connect(c)
+	redisClient, err := xredis.Connect(config)
 	if err != nil {
 		return nil, err
 	}
@@ -179,9 +184,21 @@ func initRedis(cfg *config.Config) (redis.UniversalClient, error) {
 	return redisClient, nil
 }
 
+func initJWTManager(cfg *config.Config, rdb redis.UniversalClient) *jwt.JWTManager {
+	config := &jwt.JWTConfig{
+		AccessSecret:  []byte(cfg.JWT.AccessSecret),
+		AccessExpire:  cfg.JWT.AccessExpire,
+		RefreshSecret: []byte(cfg.JWT.RefreshSecret),
+		RefreshExpire: cfg.JWT.RefreshExpire,
+		Issuer:        cfg.JWT.Issuer,
+	}
+
+	return jwt.NewJWTManager(config, jwt.NewRedisStore(rdb))
+}
+
 // Handlers 处理器层容器
 // initRouter 初始化路由
-func initRouter(cfg *config.Config, enforcer *casbin.Enforcer) *gin.Engine {
+func initRouter(cfg *config.Config, app *App) *gin.Engine {
 	gin.SetMode(cfg.Server.Mode)
 
 	r := gin.New()
@@ -189,6 +206,8 @@ func initRouter(cfg *config.Config, enforcer *casbin.Enforcer) *gin.Engine {
 	routerCfg := &router.Config{
 		HealthHandler: handler.NewHealthHandler(),
 		AppConfig:     cfg,
+		JWTManager:    app.jwt,
+		Enforcer:      app.enforcer,
 	}
 
 	router.Setup(r, routerCfg)

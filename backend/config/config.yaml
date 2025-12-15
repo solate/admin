@@ -44,3 +44,11 @@ redis:
   dial_timeout: 3         # seconds
   read_timeout: 3         # seconds
   write_timeout: 3        # seconds
+
+# JWT配置
+jwt:
+  access_secret: "ngV/yUNRUCUpAzN2MUBgaYQhKNiYH1wudhWVdN/3yT4=" # access token密钥 (建议生产环境使用环境变量)
+  access_expire: 3600         # 1小时 (3600秒)
+  refresh_secret: "vO58bdcDhf8s7LqvFGStwJ70GfBnSgrc6fTsfESYhAo=" # refresh token密钥 (建议生产环境使用环境变量)
+  refresh_expire: 86400     #  7 天 refresh token过期时间，防止丢失后还可以用7天
+  issuer: "admin"            # token签发者
