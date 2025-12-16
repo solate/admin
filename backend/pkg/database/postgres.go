@@ -48,6 +48,10 @@ func Connect(cfg Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	if err := RegisterCallbacks(db); err != nil {
+		return nil, fmt.Errorf("failed to register tenant callbacks: %w", err)
+	}
+
 	globalDB = db
 	return db, nil
 }

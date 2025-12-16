@@ -36,7 +36,7 @@ func main() {
 		OutPath: "./internal/dal/query",
 		OutFile: "gen.go",
 		// ModelPkgPath:      "./internal/dal/model",
-		Mode:              gen.WithDefaultQuery | gen.WithQueryInterface | gen.WithoutContext,
+		Mode:              gen.WithDefaultQuery | gen.WithQueryInterface,
 		FieldNullable:     true,
 		FieldCoverable:    false,
 		FieldSignable:     false,
