@@ -143,8 +143,6 @@ backend/
 │   │   └── logger_test.go
 │   ├── response/
 │   │   └── response.go
-│   └── validator/
-│       └── validator.go
 ├── scripts/
 │   ├── dev-reset.sh
 │   ├── dev_schema.sql

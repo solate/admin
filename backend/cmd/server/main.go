@@ -3,6 +3,8 @@ package main
 import (
 	"admin/internal/handler"
 	"admin/internal/router"
+	"admin/internal/service"
+	"admin/pkg/casbin"
 	"admin/pkg/config"
 	"admin/pkg/database"
 	"admin/pkg/jwt"
@@ -13,7 +15,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
@@ -41,12 +42,12 @@ import (
 
 // App 应用实例，包含所有需要的组件
 type App struct {
-	cfg      *config.Config
-	db       *gorm.DB
-	router   *gin.Engine
-	redis    redis.UniversalClient
-	jwt      *jwt.JWTManager
-	enforcer *casbin.Enforcer
+	cfg           *config.Config
+	db            *gorm.DB
+	router        *gin.Engine
+	redis         redis.UniversalClient
+	jwt           *jwt.JWTManager
+	casbinService *service.CasbinService
 }
 
 func main() {
@@ -96,6 +97,8 @@ func initApp() (*App, error) {
 	}
 	app.db = db
 
+	// Run migrations placeholder
+
 	// 4. 连接Redis（全局）
 	redisClient, err := initRedis(cfg)
 	if err != nil {
@@ -106,7 +109,18 @@ func initApp() (*App, error) {
 	// 5. jwt
 	app.jwt = initJWTManager(cfg, app.redis)
 
-	// 5. 初始化路由
+	// 6. 初始化 Casbin Service
+	casbinService, err := service.InitCasbinService(app.db, casbin.DefaultModel())
+	if err != nil {
+		return nil, fmt.Errorf("failed to init casbin: %w", err)
+	}
+	app.casbinService = casbinService
+
+	// Seed initial policies for admin (user-1)
+	app.casbinService.AddPolicy("user-1", "tenant-1", "/api/v1/policy/add", "POST")
+	app.casbinService.AddPolicy("user-1", "tenant-1", "/api/v1/policy/role/add", "POST")
+
+	// 7. 初始化路由
 	router := initRouter(cfg, app)
 	app.router = router
 
@@ -205,9 +219,11 @@ func initRouter(cfg *config.Config, app *App) *gin.Engine {
 
 	routerCfg := &router.Config{
 		HealthHandler: handler.NewHealthHandler(),
+		AuthHandler:   handler.NewAuthHandler(cfg, app.jwt),
+		PolicyHandler: handler.NewPolicyHandler(app.casbinService),
 		AppConfig:     cfg,
 		JWTManager:    app.jwt,
-		Enforcer:      app.enforcer,
+		CasbinService: app.casbinService,
 	}
 
 	router.Setup(r, routerCfg)
