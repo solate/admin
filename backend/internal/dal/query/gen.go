@@ -16,79 +16,54 @@ import (
 )
 
 var (
-	Q              = new(Query)
-	CasbinRule     *casbinRule
-	GroupRole      *groupRole
-	GroupUser      *groupUser
-	Permission     *permission
-	Role           *role
-	RolePermission *rolePermission
-	Tenant         *tenant
-	User           *user
-	UserGroup      *userGroup
-	UserTenant     *userTenant
+	Q          = new(Query)
+	CasbinRule *casbinRule
+	Permission *permission
+	Role       *role
+	Tenant     *tenant
+	User       *user
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	CasbinRule = &Q.CasbinRule
-	GroupRole = &Q.GroupRole
-	GroupUser = &Q.GroupUser
 	Permission = &Q.Permission
 	Role = &Q.Role
-	RolePermission = &Q.RolePermission
 	Tenant = &Q.Tenant
 	User = &Q.User
-	UserGroup = &Q.UserGroup
-	UserTenant = &Q.UserTenant
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:             db,
-		CasbinRule:     newCasbinRule(db, opts...),
-		GroupRole:      newGroupRole(db, opts...),
-		GroupUser:      newGroupUser(db, opts...),
-		Permission:     newPermission(db, opts...),
-		Role:           newRole(db, opts...),
-		RolePermission: newRolePermission(db, opts...),
-		Tenant:         newTenant(db, opts...),
-		User:           newUser(db, opts...),
-		UserGroup:      newUserGroup(db, opts...),
-		UserTenant:     newUserTenant(db, opts...),
+		db:         db,
+		CasbinRule: newCasbinRule(db, opts...),
+		Permission: newPermission(db, opts...),
+		Role:       newRole(db, opts...),
+		Tenant:     newTenant(db, opts...),
+		User:       newUser(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	CasbinRule     casbinRule
-	GroupRole      groupRole
-	GroupUser      groupUser
-	Permission     permission
-	Role           role
-	RolePermission rolePermission
-	Tenant         tenant
-	User           user
-	UserGroup      userGroup
-	UserTenant     userTenant
+	CasbinRule casbinRule
+	Permission permission
+	Role       role
+	Tenant     tenant
+	User       user
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:             db,
-		CasbinRule:     q.CasbinRule.clone(db),
-		GroupRole:      q.GroupRole.clone(db),
-		GroupUser:      q.GroupUser.clone(db),
-		Permission:     q.Permission.clone(db),
-		Role:           q.Role.clone(db),
-		RolePermission: q.RolePermission.clone(db),
-		Tenant:         q.Tenant.clone(db),
-		User:           q.User.clone(db),
-		UserGroup:      q.UserGroup.clone(db),
-		UserTenant:     q.UserTenant.clone(db),
+		db:         db,
+		CasbinRule: q.CasbinRule.clone(db),
+		Permission: q.Permission.clone(db),
+		Role:       q.Role.clone(db),
+		Tenant:     q.Tenant.clone(db),
+		User:       q.User.clone(db),
 	}
 }
 
@@ -102,45 +77,30 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:             db,
-		CasbinRule:     q.CasbinRule.replaceDB(db),
-		GroupRole:      q.GroupRole.replaceDB(db),
-		GroupUser:      q.GroupUser.replaceDB(db),
-		Permission:     q.Permission.replaceDB(db),
-		Role:           q.Role.replaceDB(db),
-		RolePermission: q.RolePermission.replaceDB(db),
-		Tenant:         q.Tenant.replaceDB(db),
-		User:           q.User.replaceDB(db),
-		UserGroup:      q.UserGroup.replaceDB(db),
-		UserTenant:     q.UserTenant.replaceDB(db),
+		db:         db,
+		CasbinRule: q.CasbinRule.replaceDB(db),
+		Permission: q.Permission.replaceDB(db),
+		Role:       q.Role.replaceDB(db),
+		Tenant:     q.Tenant.replaceDB(db),
+		User:       q.User.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	CasbinRule     ICasbinRuleDo
-	GroupRole      IGroupRoleDo
-	GroupUser      IGroupUserDo
-	Permission     IPermissionDo
-	Role           IRoleDo
-	RolePermission IRolePermissionDo
-	Tenant         ITenantDo
-	User           IUserDo
-	UserGroup      IUserGroupDo
-	UserTenant     IUserTenantDo
+	CasbinRule ICasbinRuleDo
+	Permission IPermissionDo
+	Role       IRoleDo
+	Tenant     ITenantDo
+	User       IUserDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		CasbinRule:     q.CasbinRule.WithContext(ctx),
-		GroupRole:      q.GroupRole.WithContext(ctx),
-		GroupUser:      q.GroupUser.WithContext(ctx),
-		Permission:     q.Permission.WithContext(ctx),
-		Role:           q.Role.WithContext(ctx),
-		RolePermission: q.RolePermission.WithContext(ctx),
-		Tenant:         q.Tenant.WithContext(ctx),
-		User:           q.User.WithContext(ctx),
-		UserGroup:      q.UserGroup.WithContext(ctx),
-		UserTenant:     q.UserTenant.WithContext(ctx),
+		CasbinRule: q.CasbinRule.WithContext(ctx),
+		Permission: q.Permission.WithContext(ctx),
+		Role:       q.Role.WithContext(ctx),
+		Tenant:     q.Tenant.WithContext(ctx),
+		User:       q.User.WithContext(ctx),
 	}
 }
 

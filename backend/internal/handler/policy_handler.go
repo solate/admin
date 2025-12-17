@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"admin/internal/constants"
 	"admin/internal/service"
+	"admin/pkg/constants"
 	"admin/pkg/response"
 	"admin/pkg/xerr"
 	"net/http"

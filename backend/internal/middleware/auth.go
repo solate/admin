@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"admin/internal/constants"
+	"admin/pkg/constants"
 	"admin/pkg/database"
 	"admin/pkg/jwt"
 	"admin/pkg/response"

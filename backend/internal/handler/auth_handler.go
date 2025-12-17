@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"admin/internal/constants"
 	"admin/pkg/config"
+	"admin/pkg/constants"
 	"admin/pkg/jwt"
 
 	"github.com/gin-gonic/gin"

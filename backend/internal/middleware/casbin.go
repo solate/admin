@@ -3,8 +3,8 @@ package middleware
 import (
 	"net/http"
 
-	"admin/internal/constants"
 	"admin/pkg/casbin"
+	"admin/pkg/constants"
 	"admin/pkg/response"
 	"admin/pkg/xerr"
 
