@@ -29,7 +29,6 @@ func Setup(r *gin.Engine, cfg *Config) {
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recovery())
 	r.Use(middleware.CORS())
-	r.Use(middleware.TenantContext())
 
 	// if cfg.AppConfig.RateLimit.Enabled {
 	//     r.Use(middleware.RateLimit(

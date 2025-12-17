@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"admin/internal/constants"
+	"admin/pkg/database"
 	"admin/pkg/jwt"
 	"admin/pkg/response"
 	"admin/pkg/xerr"
@@ -57,6 +58,12 @@ func Auth(jwtManager *jwt.JWTManager) gin.HandlerFunc {
 		c.Set(constants.CtxRoleID, claims.RoleID)
 		c.Set(constants.CtxClaims, claims)
 		c.Set(constants.CtxTokenID, claims.TokenID)
+
+		// 注入 GORM Scope 所需的 TenantID 到 request.Context
+		if claims.TenantID != "" {
+			ctx := database.WithTenantID(c.Request.Context(), claims.TenantID)
+			c.Request = c.Request.WithContext(ctx)
+		}
 
 		c.Next()
 	}
