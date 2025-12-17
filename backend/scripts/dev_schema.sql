@@ -223,19 +223,24 @@ COMMENT ON COLUMN group_users.created_at IS '创建时间戳';
 -- ========================================
 CREATE TABLE casbin_rules (
     id SERIAL PRIMARY KEY,
-    ptype VARCHAR(100),
-    v0 VARCHAR(100),
-    v1 VARCHAR(100),
-    v2 VARCHAR(100),
-    v3 VARCHAR(100),
-    v4 VARCHAR(100),
-    v5 VARCHAR(100)
+    ptype VARCHAR(255),
+    v0 VARCHAR(255),
+    v1 VARCHAR(255),
+    v2 VARCHAR(255),
+    v3 VARCHAR(255),
+    v4 VARCHAR(255),
+    v5 VARCHAR(255)
 );
+-- 必要的基础索引
 CREATE INDEX idx_casbin_ptype ON casbin_rules(ptype);
 CREATE INDEX idx_casbin_v0 ON casbin_rules(v0);
 CREATE INDEX idx_casbin_v1 ON casbin_rules(v1);
 CREATE INDEX idx_casbin_v2 ON casbin_rules(v2);
 CREATE INDEX idx_casbin_v3 ON casbin_rules(v3);
+-- 针对您模型的核心复合索引
+CREATE INDEX idx_casbin_g_lookup ON casbin_rules(ptype, v0, v2) WHERE ptype = 'g';  -- 角色分配查询
+CREATE INDEX idx_casbin_p_match ON casbin_rules(ptype, v1, v2, v3) WHERE ptype = 'p';  -- 策略匹配
+
 
 COMMENT ON TABLE casbin_rules IS 'Casbin权限策略表 (支持 RBAC with Domains)';
 COMMENT ON COLUMN casbin_rules.id IS '主键ID';
