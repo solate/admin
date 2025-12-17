@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	tenantIDKey        = "tenant_id"
-	skipTenantCheckKey = "skip_tenant_check"
+	tenantIDKey         = "tenant_id"
+	skipTenantCheckKey  = "skip_tenant_check"
 )
 
 var (

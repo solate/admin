@@ -9,6 +9,7 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gen"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
@@ -32,17 +33,19 @@ func main() {
 	}
 
 	// 3. 创建生成器（保持你的配置，但修正路径）
-	g := gen.NewGenerator(gen.Config{
-		OutPath: "./internal/dal/query",
-		OutFile: "gen.go",
-		// ModelPkgPath:      "./internal/dal/model",
+	genCfg := gen.Config{
+		OutPath:           "./internal/dal/query",
+		OutFile:           "gen.go",
+		ModelPkgPath:      "./internal/dal/model",
 		Mode:              gen.WithDefaultQuery | gen.WithQueryInterface,
 		FieldNullable:     true,
 		FieldCoverable:    false,
 		FieldSignable:     false,
 		FieldWithIndexTag: true,
 		FieldWithTypeTag:  true,
-	})
+	}
+	genCfg.WithImportPkgPath("gorm.io/plugin/soft_delete")
+	g := gen.NewGenerator(genCfg)
 
 	g.UseDB(db)
 
@@ -67,8 +70,34 @@ func main() {
 			continue
 		}
 		fmt.Printf("✅ 生成表: %s\n", table)
-		models = append(models, g.GenerateModel(table))
+
+		opts := []gen.ModelOpt{
+			gen.FieldGORMTag("created_at", func(tag field.GormTag) field.GormTag {
+				tag.Set("autoCreateTime", "milli")
+				return tag
+			}),
+			gen.FieldGORMTag("updated_at", func(tag field.GormTag) field.GormTag {
+				tag.Set("autoUpdateTime", "milli")
+				return tag
+			}),
+			gen.FieldType("deleted_at", "soft_delete.DeletedAt"),
+			gen.FieldGORMTag("deleted_at", func(tag field.GormTag) field.GormTag {
+				tag.Set("softDelete", "milli")
+				return tag
+			}),
+		}
+		models = append(models, g.GenerateModel(table, opts...))
 	}
+
+	if len(models) == 0 {
+		fmt.Fprintln(os.Stderr, "⚠️  没有找到需要生成的表!")
+		os.Exit(1)
+	}
+
+	g.ApplyBasic(models...)
+	g.Execute()
+
+	fmt.Println("✨ 代码生成成功!")
 
 	if len(models) == 0 {
 		fmt.Fprintln(os.Stderr, "⚠️  没有找到需要生成的表!")
