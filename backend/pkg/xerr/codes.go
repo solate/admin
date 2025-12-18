@@ -13,6 +13,7 @@ var (
 	ErrForbidden       = New(1004, "无权限访问")
 	ErrConflict        = New(1005, "资源冲突")
 	ErrTooManyRequests = New(1006, "请求过于频繁")
+	ErrInvalidateParam = New(1007, "参数校验错误")
 
 	// 数据库错误 2000-2099
 	ErrRecordNotFound  = New(2000, "未找到该记录")

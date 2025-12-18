@@ -2,47 +2,39 @@ package service
 
 import (
 	"admin/pkg/casbin"
-
-	"gorm.io/gorm"
 )
 
 type CasbinService struct {
-	Enforcer *casbin.Enforcer
+	enforcer *casbin.Enforcer
 }
 
-func InitCasbinService(db *gorm.DB, modelStr string) (*CasbinService, error) {
-	enf, err := casbin.NewEnforcerManager(db, modelStr)
-	if err != nil {
-		return nil, err
-	}
-	if err := enf.LoadPolicy(); err != nil {
-		return nil, err
-	}
+func NewCasbinService(enforcer *casbin.Enforcer) *CasbinService {
 	return &CasbinService{
-		Enforcer: enf,
-	}, nil
+		enforcer: enforcer,
+	}
 }
 
-func (s *CasbinService) AddPolicy(sub, dom, obj, act string) (bool, error) {
-	return s.Enforcer.AddPolicy(sub, dom, obj, act)
-}
-
-func (s *CasbinService) RemovePolicy(sub, dom, obj, act string) (bool, error) {
-	return s.Enforcer.RemovePolicy(sub, dom, obj, act)
-}
-
+// AddPolicyForTenant 为租户添加策略
 func (s *CasbinService) AddPolicyForTenant(tenantID, sub, obj, act string) (bool, error) {
-	return s.Enforcer.AddPolicy(sub, tenantID, obj, act)
+	return s.enforcer.AddPolicyForTenant(tenantID, sub, obj, act)
 }
 
-func (s *CasbinService) AddRoleForUserInTenant(userID, roleID, tenantID string) (bool, error) {
-	return s.Enforcer.AddGroupingPolicy(userID, roleID, tenantID)
+// AddRoleForUserInTenant 为用户在租户中添加角色
+func (s *CasbinService) AddRoleForUserInTenant(user, role, tenantID string) (bool, error) {
+	return s.enforcer.AddRoleForUserInDomain(user, role, tenantID)
 }
 
-func (s *CasbinService) RemoveRoleForUserInTenant(userID, roleID, tenantID string) (bool, error) {
-	return s.Enforcer.RemoveGroupingPolicy(userID, roleID, tenantID)
+// RemovePolicyForTenant 为租户移除策略
+func (s *CasbinService) RemovePolicyForTenant(tenantID, sub, obj, act string) (bool, error) {
+	return s.enforcer.RemovePolicy(sub, tenantID, obj, act)
 }
 
-func (s *CasbinService) Enforce(userID, tenantID, obj, act string) (bool, error) {
-	return s.Enforcer.Enforce(userID, tenantID, obj, act)
+// GetPoliciesForTenant 获取租户的策略列表
+func (s *CasbinService) GetPoliciesForTenant(tenantID string) ([][]string, error) {
+	return s.enforcer.GetFilteredPolicy(1, tenantID)
+}
+
+// HasPolicyForTenant 检查租户是否有特定策略
+func (s *CasbinService) HasPolicyForTenant(tenantID, sub, obj, act string) (bool, error) {
+	return s.enforcer.HasPolicy(sub, tenantID, obj, act)
 }

@@ -1,29 +1,15 @@
 package router
 
 import (
-	"admin/internal/handler"
 	"admin/internal/middleware"
-	"admin/internal/service"
-	"admin/pkg/config"
-	"admin/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// Config 路由配置
-type Config struct {
-	HealthHandler *handler.HealthHandler
-	AuthHandler   *handler.AuthHandler
-	PolicyHandler *handler.PolicyHandler
-	AppConfig     *config.Config
-	JWTManager    *jwt.JWTManager
-	CasbinService *service.CasbinService
-}
-
 // Setup 设置路由
-func Setup(r *gin.Engine, cfg *Config) {
+func Setup(r *gin.Engine, app *App) {
 
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Logger())
@@ -37,8 +23,8 @@ func Setup(r *gin.Engine, cfg *Config) {
 	//     ))
 	// }
 
-	r.GET("/health", cfg.HealthHandler.Check)
-	r.GET("/ping", cfg.HealthHandler.Ping)
+	r.GET("/health", app.Handlers.HealthHandler.Check)
+	r.GET("/ping", app.Handlers.HealthHandler.Ping)
 
 	// Swagger 文档
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -70,13 +56,13 @@ func Setup(r *gin.Engine, cfg *Config) {
 			auth.POST("/register", func(c *gin.Context) {
 				c.JSON(200, gin.H{"registered": true})
 			})
-			auth.POST("/login", cfg.AuthHandler.Login)
+			auth.POST("/login", app.Handlers.AuthHandler.Login)
 		}
 
 		// 需要认证的路由
 		authenticated := v1.Group("")
-		authenticated.Use(middleware.Auth(cfg.JWTManager))
-		authenticated.Use(middleware.CasbinMiddleware(cfg.CasbinService.Enforcer))
+		authenticated.Use(middleware.Auth(app.JWT))
+		authenticated.Use(middleware.CasbinMiddleware(app.Enforcer))
 		{
 			// 用户接口
 			user := authenticated.Group("/users")
@@ -88,8 +74,24 @@ func Setup(r *gin.Engine, cfg *Config) {
 
 			policy := authenticated.Group("/policy")
 			{
-				policy.POST("/add", cfg.PolicyHandler.AddPolicy)
-				policy.POST("/role/add", cfg.PolicyHandler.AddRole)
+				policy.POST("/add", app.Handlers.PolicyHandler.AddPolicy)
+				policy.POST("/role/add", app.Handlers.PolicyHandler.AddRole)
+			}
+
+			// 超级管理员专属接口
+			super := authenticated.Group("/super")
+			super.Use(middleware.SuperAdmin())
+			{
+				// 租户管理接口
+				tenant := super.Group("/tenants")
+				{
+					tenant.POST("", app.Handlers.TenantHandler.CreateTenant)                        // 创建租户
+					tenant.GET("", app.Handlers.TenantHandler.ListTenants)                          // 获取租户列表
+					tenant.GET("/:tenant_id", app.Handlers.TenantHandler.GetTenant)                 // 获取租户详情
+					tenant.PUT("/:tenant_id", app.Handlers.TenantHandler.UpdateTenant)              // 更新租户
+					tenant.DELETE("/:tenant_id", app.Handlers.TenantHandler.DeleteTenant)           // 删除租户
+					tenant.PUT("/:tenant_id/status", app.Handlers.TenantHandler.UpdateTenantStatus) // 更新租户状态
+				}
 			}
 		}
 

@@ -9,10 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	globalEnforcer *Enforcer
-)
-
 type Enforcer struct {
 	*casbin.Enforcer
 	adapter *gormadapter.Adapter

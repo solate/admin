@@ -4,7 +4,7 @@ const (
 	// DefaultTenant 默认租户名称
 	DefaultTenant = "default"
 	// SuperAdminRole 超级管理员角色code
-	SuperAdminRole = "super_admin"
+	SuperAdmin = "super_admin"
 )
 
 // roleType 管理员类型(1:普通用户, 2:租户管理员, 3:平台超级管理员)
