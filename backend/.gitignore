@@ -103,6 +103,7 @@ __debug_bin
 # Generated files
 /internal/dal/model/*.gen.go
 /internal/dal/query/*.gen.go
+/internal/dal/query/gen.go
 /docs/swagger.yaml
 /docs/docs.go
 /docs/swagger.json
