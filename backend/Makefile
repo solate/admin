@@ -12,9 +12,9 @@ MIGRATION_DIR := ./migrations
 # 数据库配置（可通过环境变量覆盖）
 DB_HOST ?= localhost
 DB_PORT ?= 5432
-DB_USER ?= root
-DB_PASSWORD ?= root
-DB_NAME ?= content_center
+DB_USER ?= postgres
+DB_PASSWORD ?= postgres
+DB_NAME ?= admin_db
 
 # 数据库连接字符串
 DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
