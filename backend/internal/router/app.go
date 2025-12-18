@@ -31,14 +31,12 @@ type App struct {
 // Services 服务层容器
 type Services struct {
 	TenantService *service.TenantService
-	CasbinService *service.CasbinService
 }
 
 // Handlers 处理器层容器
 type Handlers struct {
 	HealthHandler *handler.HealthHandler
 	AuthHandler   *handler.AuthHandler
-	PolicyHandler *handler.PolicyHandler
 	TenantHandler *handler.TenantHandler
 }
 
@@ -198,26 +196,6 @@ func (a *App) initCasbin() error {
 	return nil
 }
 
-// initServices 初始化服务层
-func (a *App) initServices() error {
-	a.Services = &Services{
-		TenantService: service.NewTenantService(a.DB),
-		CasbinService: service.NewCasbinService(a.Enforcer),
-	}
-	return nil
-}
-
-// initHandlers 初始化处理器层
-func (a *App) initHandlers() error {
-	a.Handlers = &Handlers{
-		HealthHandler: handler.NewHealthHandler(),
-		AuthHandler:   handler.NewAuthHandler(a.Config, a.JWT),
-		PolicyHandler: handler.NewPolicyHandler(a.Services.CasbinService), // Will be nil for now
-		TenantHandler: handler.NewTenantHandler(a.Services.TenantService),
-	}
-	return nil
-}
-
 // initRouter 初始化路由
 func (s *App) initRouter() error {
 	gin.SetMode(s.Config.Server.Mode)
@@ -247,6 +225,26 @@ func (s *App) Close() error {
 	}
 	if err := xredis.Close(); err != nil {
 		return err
+	}
+	return nil
+}
+
+// initServices 初始化服务层
+func (a *App) initServices() error {
+	a.Services = &Services{
+		TenantService: service.NewTenantService(a.DB),
+		// CasbinService: service.NewCasbinService(a.Enforcer),
+	}
+	return nil
+}
+
+// initHandlers 初始化处理器层
+func (a *App) initHandlers() error {
+	a.Handlers = &Handlers{
+		HealthHandler: handler.NewHealthHandler(),
+		// AuthHandler:   handler.NewAuthHandler(a.Config, a.JWT),
+		// PolicyHandler: handler.NewPolicyHandler(a.Services.CasbinService), // Will be nil for now
+		// TenantHandler: handler.NewTenantHandler(a.Services.TenantService),
 	}
 	return nil
 }

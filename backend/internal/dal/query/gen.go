@@ -17,7 +17,6 @@ import (
 
 var (
 	Q          = new(Query)
-	CasbinRule *casbinRule
 	Permission *permission
 	Role       *role
 	Tenant     *tenant
@@ -26,7 +25,6 @@ var (
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
-	CasbinRule = &Q.CasbinRule
 	Permission = &Q.Permission
 	Role = &Q.Role
 	Tenant = &Q.Tenant
@@ -36,7 +34,6 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:         db,
-		CasbinRule: newCasbinRule(db, opts...),
 		Permission: newPermission(db, opts...),
 		Role:       newRole(db, opts...),
 		Tenant:     newTenant(db, opts...),
@@ -47,7 +44,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 type Query struct {
 	db *gorm.DB
 
-	CasbinRule casbinRule
 	Permission permission
 	Role       role
 	Tenant     tenant
@@ -59,7 +55,6 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:         db,
-		CasbinRule: q.CasbinRule.clone(db),
 		Permission: q.Permission.clone(db),
 		Role:       q.Role.clone(db),
 		Tenant:     q.Tenant.clone(db),
@@ -78,7 +73,6 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:         db,
-		CasbinRule: q.CasbinRule.replaceDB(db),
 		Permission: q.Permission.replaceDB(db),
 		Role:       q.Role.replaceDB(db),
 		Tenant:     q.Tenant.replaceDB(db),
@@ -87,7 +81,6 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 }
 
 type queryCtx struct {
-	CasbinRule ICasbinRuleDo
 	Permission IPermissionDo
 	Role       IRoleDo
 	Tenant     ITenantDo
@@ -96,7 +89,6 @@ type queryCtx struct {
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		CasbinRule: q.CasbinRule.WithContext(ctx),
 		Permission: q.Permission.WithContext(ctx),
 		Role:       q.Role.WithContext(ctx),
 		Tenant:     q.Tenant.WithContext(ctx),

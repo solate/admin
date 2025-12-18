@@ -14,6 +14,7 @@ require (
 	github.com/spf13/viper v1.18.2
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
+	golang.org/x/crypto v0.46.0
 	golang.org/x/time v0.12.0
 	gorm.io/driver/postgres v1.5.9
 	gorm.io/gen v0.3.27
@@ -92,7 +93,6 @@ require (
 	go.uber.org/mock v0.6.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/arch v0.23.0 // indirect
-	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/net v0.47.0 // indirect

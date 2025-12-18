@@ -6,15 +6,14 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/schema"
 )
 
 const (
-	tenantIDKey         = "tenant_id"
-	skipTenantCheckKey  = "skip_tenant_check"
+	tenantIDKey        = "tenant_id"
+	skipTenantCheckKey = "skip_tenant_check"
 )
 
 var (
@@ -47,37 +46,51 @@ func RegisterCallbacks(db *gorm.DB) error {
 }
 
 func tenantCreateCallback(db *gorm.DB) {
-	if shouldSkipTenantCheck(db) {
-		log.Warn().Str("table", db.Statement.Table).Msg("tenant check skipped for create")
-		return
+
+	// 如果有 tenant_id 列，直接返回
+	if hasTenantColumn(db) { // 通过表中有没有租户ID 来判断是否需要
+
+		// 如果跳过租户检查，直接返回
+		if shouldSkipTenantCheck(db) {
+			return
+		}
+
+		// 获取tenantID 并设置到DB中
+		tenantID, ok := getTenantID(db)
+		if !ok {
+			db.AddError(ErrMissingTenantID)
+			return
+		}
+		setTenantID(db, tenantID)
+
 	}
-	tenantID, ok := getTenantID(db)
-	if !ok {
-		db.AddError(ErrMissingTenantID)
-		return
-	}
-	if !hasTenantColumn(db) {
-		return
-	}
-	setTenantID(db, tenantID)
+
+	// 如果没有tenant_id 列，直接返回
+	return
+
 }
 
 func tenantQueryCallback(db *gorm.DB) {
-	if shouldSkipTenantCheck(db) {
-		log.Warn().Str("table", db.Statement.Table).Msg("tenant check skipped for query/update/delete")
+
+	if hasTenantColumn(db) {
+		// 如果跳过租户检查，直接返回
+		if shouldSkipTenantCheck(db) {
+			return
+		}
+		tenantID, ok := getTenantID(db)
+		if !ok {
+			db.AddError(ErrMissingTenantID)
+			return
+		}
+		db.Statement.AddClause(clause.Where{Exprs: []clause.Expression{
+			clause.Eq{Column: clause.Column{Name: "tenant_id"}, Value: tenantID},
+		}})
+
 		return
 	}
-	tenantID, ok := getTenantID(db)
-	if !ok {
-		db.AddError(ErrMissingTenantID)
-		return
-	}
-	if !hasTenantColumn(db) || hasTenantCondition(db) {
-		return
-	}
-	db.Statement.AddClause(clause.Where{Exprs: []clause.Expression{
-		clause.Eq{Column: clause.Column{Name: "tenant_id"}, Value: tenantID},
-	}})
+
+	// 如果没有tenant_id 列，直接返回
+	return
 }
 
 func getTenantID(db *gorm.DB) (string, bool) {

@@ -72,11 +72,11 @@ func Setup(r *gin.Engine, app *App) {
 				})
 			}
 
-			policy := authenticated.Group("/policy")
-			{
-				policy.POST("/add", app.Handlers.PolicyHandler.AddPolicy)
-				policy.POST("/role/add", app.Handlers.PolicyHandler.AddRole)
-			}
+			// policy := authenticated.Group("/policy")
+			// {
+			// 	policy.POST("/add", app.Handlers.PolicyHandler.AddPolicy)
+			// 	policy.POST("/role/add", app.Handlers.PolicyHandler.AddRole)
+			// }
 
 			// 超级管理员专属接口
 			super := authenticated.Group("/super")

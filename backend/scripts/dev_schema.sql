@@ -146,45 +146,45 @@ COMMENT ON COLUMN permissions.created_at IS '创建时间戳';
 COMMENT ON COLUMN permissions.updated_at IS '更新时间戳';
 
 
--- ========================================
--- 5. Casbin 策略表 (Casbin Rules)
--- 用于 Casbin RBAC 模型持久化
--- 支持带租户的 RBAC 模型 (RBAC with Domains)
--- 模型定义:
--- [request_definition]
--- r = sub, dom, obj, act
--- [policy_definition]
--- p = sub, dom, obj, act
--- [role_definition]
--- g = _, _, _
--- ========================================
-CREATE TABLE casbin_rules (
-    id SERIAL PRIMARY KEY,
-    ptype VARCHAR(255), -- 策略类型: p (policy定义), g (group角色继承)
-    v0 VARCHAR(255),    -- sub (Subject): 用户ID / 角色ID
-    v1 VARCHAR(255),    -- dom (Domain): 租户ID (p策略) / role (角色ID) (g策略)
-    v2 VARCHAR(255),    -- obj (Object): 资源标识 (p策略) / dom (租户ID) (g策略)
-    v3 VARCHAR(255),    -- act (Action): 操作 (GET/POST/read/write)
-    v4 VARCHAR(255),
-    v5 VARCHAR(255)
-);
--- 索引优化查询性能
-CREATE INDEX idx_casbin_ptype ON casbin_rules(ptype);
-CREATE INDEX idx_casbin_v0 ON casbin_rules(v0);
-CREATE INDEX idx_casbin_v1 ON casbin_rules(v1);
-CREATE INDEX idx_casbin_v2 ON casbin_rules(v2);
-CREATE INDEX idx_casbin_v3 ON casbin_rules(v3);
--- 针对 RBAC with Domain 模型的特定查询优化
-CREATE INDEX idx_casbin_g_lookup ON casbin_rules(ptype, v0, v2) WHERE ptype = 'g';  -- g策略查询: g, user, domain -> 找角色
-CREATE INDEX idx_casbin_p_match ON casbin_rules(ptype, v1, v2, v3) WHERE ptype = 'p';  -- p策略匹配: p, domain, resource, action -> 找策略
+-- -- ========================================
+-- -- 5. Casbin 策略表 (Casbin Rules)
+-- -- 用于 Casbin RBAC 模型持久化
+-- -- 支持带租户的 RBAC 模型 (RBAC with Domains)
+-- -- 模型定义:
+-- -- [request_definition]
+-- -- r = sub, dom, obj, act
+-- -- [policy_definition]
+-- -- p = sub, dom, obj, act
+-- -- [role_definition]
+-- -- g = _, _, _
+-- -- ========================================
+-- CREATE TABLE casbin_rule (
+--     id SERIAL PRIMARY KEY,
+--     ptype VARCHAR(255), -- 策略类型: p (policy定义), g (group角色继承)
+--     v0 VARCHAR(255),    -- sub (Subject): 用户ID / 角色ID
+--     v1 VARCHAR(255),    -- dom (Domain): 租户ID (p策略) / role (角色ID) (g策略)
+--     v2 VARCHAR(255),    -- obj (Object): 资源标识 (p策略) / dom (租户ID) (g策略)
+--     v3 VARCHAR(255),    -- act (Action): 操作 (GET/POST/read/write)
+--     v4 VARCHAR(255),
+--     v5 VARCHAR(255)
+-- );
+-- -- 索引优化查询性能
+-- CREATE INDEX idx_casbin_ptype ON casbin_rules(ptype);
+-- CREATE INDEX idx_casbin_v0 ON casbin_rules(v0);
+-- CREATE INDEX idx_casbin_v1 ON casbin_rules(v1);
+-- CREATE INDEX idx_casbin_v2 ON casbin_rules(v2);
+-- CREATE INDEX idx_casbin_v3 ON casbin_rules(v3);
+-- -- 针对 RBAC with Domain 模型的特定查询优化
+-- CREATE INDEX idx_casbin_g_lookup ON casbin_rules(ptype, v0, v2) WHERE ptype = 'g';  -- g策略查询: g, user, domain -> 找角色
+-- CREATE INDEX idx_casbin_p_match ON casbin_rules(ptype, v1, v2, v3) WHERE ptype = 'p';  -- p策略匹配: p, domain, resource, action -> 找策略
 
 
-COMMENT ON TABLE casbin_rules IS 'Casbin权限策略表 (RBAC with Domains)';
-COMMENT ON COLUMN casbin_rules.id IS '主键自增ID';
-COMMENT ON COLUMN casbin_rules.ptype IS '策略类型(p:策略, g:角色关联)';
-COMMENT ON COLUMN casbin_rules.v0 IS 'v0: Subject (用户ID/角色ID)';
-COMMENT ON COLUMN casbin_rules.v1 IS 'v1: Domain (租户ID) / Role (角色ID)';
-COMMENT ON COLUMN casbin_rules.v2 IS 'v2: Object (资源) / Domain (租户ID)';
-COMMENT ON COLUMN casbin_rules.v3 IS 'v3: Action (操作)';
-COMMENT ON COLUMN casbin_rules.v4 IS '扩展字段';
-COMMENT ON COLUMN casbin_rules.v5 IS '扩展字段';
+-- COMMENT ON TABLE casbin_rules IS 'Casbin权限策略表 (RBAC with Domains)';
+-- COMMENT ON COLUMN casbin_rules.id IS '主键自增ID';
+-- COMMENT ON COLUMN casbin_rules.ptype IS '策略类型(p:策略, g:角色关联)';
+-- COMMENT ON COLUMN casbin_rules.v0 IS 'v0: Subject (用户ID/角色ID)';
+-- COMMENT ON COLUMN casbin_rules.v1 IS 'v1: Domain (租户ID) / Role (角色ID)';
+-- COMMENT ON COLUMN casbin_rules.v2 IS 'v2: Object (资源) / Domain (租户ID)';
+-- COMMENT ON COLUMN casbin_rules.v3 IS 'v3: Action (操作)';
+-- COMMENT ON COLUMN casbin_rules.v4 IS '扩展字段';
+-- COMMENT ON COLUMN casbin_rules.v5 IS '扩展字段';
