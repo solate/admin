@@ -10,7 +10,8 @@ r = sub, dom, obj, act # 用户, 租户, 资源, 操作
 p = sub, dom, obj, act # 角色, 租户, 资源, 操作
 
 [role_definition]
-g = _, _, _   # 用户, 角色, 租户
+g = _, _, _    # 用户-角色-租户关系 (user, role, domain)
+g2 = _, _      # 角色继承关系 (父角色, 子角色)
 
 [policy_effect]
 e = some(where (p.eft == allow))

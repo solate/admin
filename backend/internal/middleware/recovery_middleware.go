@@ -3,15 +3,14 @@ package middleware
 import (
 	"admin/pkg/response"
 	"admin/pkg/xerr"
-	"net/http"
 	"runtime/debug"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
 
-// Recovery Panic恢复中间件
-func Recovery() gin.HandlerFunc {
+// RecoveryMiddleware Panic恢复中间件
+func RecoveryMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
@@ -34,7 +33,7 @@ func Recovery() gin.HandlerFunc {
 				// fmt.Printf("=============\n\n")
 
 				// 返回错误响应
-				response.Error(c, http.StatusInternalServerError, xerr.ErrInternal)
+				response.Error(c, xerr.ErrInternal)
 				c.Abort()
 			}
 		}()

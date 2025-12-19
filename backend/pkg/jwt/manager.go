@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-type JWTManager struct {
+type Manager struct {
 	config *JWTConfig
 	store  Store
 }
@@ -15,8 +15,8 @@ type JWTManager struct {
 // 参数：
 // - config: JWT 配置信息
 // - store: token 存储后端（Redis 或其他）
-func NewJWTManager(config *JWTConfig, store Store) *JWTManager {
-	return &JWTManager{
+func NewManager(config *JWTConfig, store Store) *Manager {
+	return &Manager{
 		config: config,
 		store:  store,
 	}
@@ -24,7 +24,7 @@ func NewJWTManager(config *JWTConfig, store Store) *JWTManager {
 
 // generateUserKey 生成用户会话索引 key
 // 格式：tenantID:userID
-func (m *JWTManager) generateUserKey(tenantID, userID string) string {
+func (m *Manager) generateUserKey(tenantID, userID string) string {
 	return fmt.Sprintf("%s:%s", tenantID, userID)
 }
 
@@ -33,8 +33,8 @@ func (m *JWTManager) generateUserKey(tenantID, userID string) string {
 // - 生成新的 access token 和 refresh token
 // - 将 refresh token 存储到 store
 // - 维护用户会话索引（便于后续跨设备登出）
-func (m *JWTManager) GenerateTokenPair(ctx context.Context, tenantID, userID, roleID string) (*TokenPair, error) {
-	tokenPair, err := GenerateTokenPair(tenantID, userID, roleID, m.config)
+func (m *Manager) GenerateTokenPair(ctx context.Context, tenantID, tenantCode, userID, userName string, roleType int32, roles []string) (*TokenPair, error) {
+	tokenPair, err := GenerateTokenPair(tenantID, tenantCode, userID, userName, roleType, roles, m.config)
 	if err != nil {
 		return nil, fmt.Errorf("generate token pair failed: %w", err)
 	}
@@ -44,8 +44,8 @@ func (m *JWTManager) GenerateTokenPair(ctx context.Context, tenantID, userID, ro
 		return nil, fmt.Errorf("store refresh token failed: %w", err)
 	}
 
-	// 将会话索引到用户集合（键建议采用 tenantID:userID）
-	userKey := m.generateUserKey(tenantID, userID)
+	// 将会话索引到用户集合（键建议采用 tenantCode:userID）
+	userKey := m.generateUserKey(tenantCode, userID)
 	if err := m.store.AddUserToken(ctx, userKey, tokenPair.TokenID, m.config.RefreshExpire); err != nil {
 		return nil, fmt.Errorf("add user token index failed: %w", err)
 	}
@@ -60,7 +60,7 @@ func (m *JWTManager) GenerateTokenPair(ctx context.Context, tenantID, userID, ro
 // 返回值：
 // - Claims: token 中的声明信息
 // - error: 验证失败的错误原因
-func (m *JWTManager) VerifyAccessToken(ctx context.Context, tokenString string) (*Claims, error) {
+func (m *Manager) VerifyAccessToken(ctx context.Context, tokenString string) (*Claims, error) {
 	claims, err := VerifyToken(tokenString, []byte(m.config.AccessSecret))
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (m *JWTManager) VerifyAccessToken(ctx context.Context, tokenString string) 
 // - 从 store 中取出存储的 refresh token 进行匹配
 // - 撤销旧 tokenID（加入黑名单），生成新的 token 对
 // - 更新用户会话索引
-func (m *JWTManager) RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
+func (m *Manager) RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	// 验证 refresh token
 	claims, err := VerifyToken(refreshToken, []byte(m.config.RefreshSecret))
 	if err != nil {
@@ -109,7 +109,7 @@ func (m *JWTManager) RefreshToken(ctx context.Context, refreshToken string) (*To
 	}
 
 	// 生成新的 token 对
-	tokenPair, err := GenerateTokenPair(claims.TenantID, claims.UserID, claims.RoleID, m.config)
+	tokenPair, err := GenerateTokenPair(claims.TenantID, claims.TenantCode, claims.UserID, claims.UserName, claims.RoleType, claims.Roles, m.config)
 	if err != nil {
 		return nil, fmt.Errorf("generate new token pair failed: %w", err)
 	}
@@ -125,7 +125,7 @@ func (m *JWTManager) RefreshToken(ctx context.Context, refreshToken string) (*To
 	}
 
 	// 维护用户会话索引：移除旧 tokenID，加入新 tokenID
-	userKey := m.generateUserKey(claims.TenantID, claims.UserID)
+	userKey := m.generateUserKey(claims.TenantCode, claims.UserID)
 	if err := m.store.RemoveUserToken(ctx, userKey, claims.TokenID); err != nil {
 		return nil, fmt.Errorf("remove old user token index failed: %w", err)
 	}
@@ -140,7 +140,7 @@ func (m *JWTManager) RefreshToken(ctx context.Context, refreshToken string) (*To
 // 说明：
 // - 将 tokenID 放入黑名单（TTL 为 access token 生命周期）
 // - 删除对应的 refresh token
-func (m *JWTManager) RevokeToken(ctx context.Context, tokenID string) error {
+func (m *Manager) RevokeToken(ctx context.Context, tokenID string) error {
 	// 黑名单标记
 	if err := m.store.BlacklistToken(ctx, tokenID, m.config.AccessExpire); err != nil {
 		return fmt.Errorf("blacklist token failed: %w", err)
@@ -156,7 +156,7 @@ func (m *JWTManager) RevokeToken(ctx context.Context, tokenID string) error {
 // 说明：
 // - 读取用户会话集合，批量黑名单标记并删除 refresh token
 // - 最后逐个从集合移除 tokenID
-func (m *JWTManager) RevokeAllUserTokens(ctx context.Context, tenantID, userID string) error {
+func (m *Manager) RevokeAllUserTokens(ctx context.Context, tenantID, userID string) error {
 	userKey := m.generateUserKey(tenantID, userID)
 	tokenIDs, err := m.store.GetUserTokens(ctx, userKey)
 	if err != nil {

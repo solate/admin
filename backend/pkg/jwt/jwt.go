@@ -14,10 +14,13 @@ import (
 // 说明：
 // - TokenID 为会话唯一标识（access/refresh 均携带），用于黑名单与会话管理
 type Claims struct {
-	TenantID string `json:"tenant_id"`
-	UserID   string `json:"user_id"`
-	RoleID   string `json:"role_id"`
-	TokenID  string `json:"token_id,omitempty"` // refresh token的唯一标识
+	TenantID   string   `json:"tenant_id"`          // 租户ID
+	TenantCode string   `json:"tenant_code"`        // 租户编码
+	UserID     string   `json:"user_id"`            // 用户ID
+	UserName   string   `json:"user_name"`          // 用户名
+	RoleType   int32    `json:"role_type"`          // 角色类型(1:普通用户, 2:租户管理员, 3:平台超级管理员)
+	Roles      []string `json:"roles"`              // 角色列表
+	TokenID    string   `json:"token_id,omitempty"` // refresh token的唯一标识
 	jwt.RegisteredClaims
 }
 
@@ -25,7 +28,7 @@ type TokenPair struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	TokenID      string `json:"token_id,omitempty"` // refresh token的唯一标识
-	// ExpiresIn    int64  `json:"expires_in"`        // access token 过期时间（秒）
+	ExpiresIn    int64  `json:"expires_in"`         // access token 过期时间（秒）
 }
 
 type JWTConfig struct {
@@ -50,26 +53,18 @@ var (
 // 注意：
 // - 使用随机 TokenID 作为会话标识，便于后续刷新和撤销
 // - ExpiresIn 返回 access token 的过期时间（秒）
-func GenerateTokenPair(tenantID, userID, roleID string, config *JWTConfig) (*TokenPair, error) {
+func GenerateTokenPair(tenantID, tenantCode, userID, userName string, roleType int32, roles []string, config *JWTConfig) (*TokenPair, error) {
 	// 生成refresh token的唯一ID
 	tokenID := uuid.New().String()
 
 	// 生成 access token
-	accessToken, err := generateToken(
-		tenantID, userID, roleID, tokenID,
-		config.AccessExpire, config.AccessSecret,
-		config.Issuer,
-	)
+	accessToken, err := generateToken(tenantID, tenantCode, userID, userName, roleType, roles, tokenID, config.AccessExpire, config.AccessSecret, config.Issuer)
 	if err != nil {
 		return nil, err
 	}
 
 	// 生成 refresh token
-	refreshToken, err := generateToken(
-		tenantID, userID, roleID, tokenID,
-		config.RefreshExpire, config.RefreshSecret,
-		config.Issuer,
-	)
+	refreshToken, err := generateToken(tenantID, tenantCode, userID, userName, roleType, roles, tokenID, config.RefreshExpire, config.RefreshSecret, config.Issuer)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +73,7 @@ func GenerateTokenPair(tenantID, userID, roleID string, config *JWTConfig) (*Tok
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		TokenID:      tokenID,
-		// ExpiresIn:    config.AccessExpire,
+		ExpiresIn:    config.AccessExpire,
 	}, nil
 }
 
@@ -87,30 +82,17 @@ func VerifyToken(tokenString string, secret []byte) (*Claims, error) {
 	return verifyToken(tokenString, secret)
 }
 
-// // refreshTokenPair 根据 refresh token 生成新的令牌对（无状态工具）
-// // 说明：
-// // - 仅适用于不依赖存储的场景；在有状态场景下应使用 JWTManager.RefreshToken
-// func refreshTokenPair(tokenString string, config *JWTConfig) (*TokenPair, error) {
-// 	claims, err := verifyToken(tokenString, config.RefreshSecret)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	tokenPair, err := GenerateTokenPair(claims.TenantID, claims.UserID, claims.RoleID, config)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return tokenPair, nil
-// }
-
 // generateToken 生成单个 token（带 Claims）
-func generateToken(tenantID, userID, roleID, tokenID string, expire int64, secret []byte, issuer string) (string, error) {
+func generateToken(tenantID, tenantCode, userID, userName string, roleType int32, roles []string, tokenID string, expire int64, secret []byte, issuer string) (string, error) {
 	now := time.Now()
 	claims := &Claims{
-		TenantID: tenantID,
-		UserID:   userID,
-		RoleID:   roleID,
-		TokenID:  tokenID,
+		TenantID:   tenantID,
+		TenantCode: tenantCode,
+		UserID:     userID,
+		UserName:   userName,
+		RoleType:   roleType,
+		Roles:      roles,
+		TokenID:    tokenID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(expire) * time.Second)),
 			IssuedAt:  jwt.NewNumericDate(now),

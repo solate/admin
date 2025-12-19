@@ -2,7 +2,11 @@ package router
 
 import (
 	"admin/internal/middleware"
+	filesystem "admin/static"
+	"fmt"
+	"net/http"
 
+	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -11,17 +15,17 @@ import (
 // Setup 设置路由
 func Setup(r *gin.Engine, app *App) {
 
-	r.Use(middleware.RequestID())
-	r.Use(middleware.Logger())
-	r.Use(middleware.Recovery())
-	r.Use(middleware.CORS())
+	r.Use(middleware.RequestIDMiddleware())
+	r.Use(middleware.LoggerMiddleware())
+	r.Use(middleware.RecoveryMiddleware())
+	r.Use(middleware.CORSMiddleware())
 
-	// if cfg.AppConfig.RateLimit.Enabled {
-	//     r.Use(middleware.RateLimit(
-	//         cfg.AppConfig.RateLimit.RequestsPerSecond,
-	//         cfg.AppConfig.RateLimit.Burst,
-	//     ))
-	// }
+	if app.Config.RateLimit.Enabled {
+		r.Use(middleware.RateLimitMiddleware(
+			app.Config.RateLimit.RequestsPerSecond,
+			app.Config.RateLimit.Burst,
+		))
+	}
 
 	r.GET("/health", app.Handlers.HealthHandler.Check)
 	r.GET("/ping", app.Handlers.HealthHandler.Ping)
@@ -34,36 +38,27 @@ func Setup(r *gin.Engine, app *App) {
 	{
 
 		// 公开接口（无需认证）
-		public := v1.Group("/public")
+		public := v1.Group("")
 		{
+			auth := public.Group("/auth")
+			{
 
-			// 设备查询证书公钥
-			public.GET("/test", func(c *gin.Context) {
-				c.JSON(200, gin.H{"message": "ok"})
-			})
-		}
+				auth.GET("/captcha", app.Handlers.CaptchaHandler.Get)   // 获取验证码
+				auth.POST("/login", app.Handlers.AuthHandler.Login)     // 用户登录
+				auth.POST("/refresh", app.Handlers.AuthHandler.Refresh) // 刷新令牌
+				// auth.POST("/register", func(c *gin.Context) {
+				// 	c.JSON(200, gin.H{"registered": true})
+				// }) // 用户注册
+			}
 
-		auth := v1.Group("/auth")
-		{
-			// 验证码（无需认证）
-			v1.GET("/captcha", func(c *gin.Context) {
-				c.JSON(200, gin.H{"captcha": "stub"})
-			})
-			v1.POST("/captcha/verify", func(c *gin.Context) {
-				c.JSON(200, gin.H{"verified": true})
-			})
-
-			auth.POST("/register", func(c *gin.Context) {
-				c.JSON(200, gin.H{"registered": true})
-			})
-			auth.POST("/login", app.Handlers.AuthHandler.Login)
 		}
 
 		// 需要认证的路由
 		authenticated := v1.Group("")
-		authenticated.Use(middleware.Auth(app.JWT))
+		authenticated.Use(middleware.AuthMiddleware(app.JWT))
 		authenticated.Use(middleware.CasbinMiddleware(app.Enforcer))
 		{
+
 			// 用户接口
 			user := authenticated.Group("/users")
 			{
@@ -72,28 +67,53 @@ func Setup(r *gin.Engine, app *App) {
 				})
 			}
 
-			// policy := authenticated.Group("/policy")
+			// // 超级管理员专属接口
+			// super := authenticated.Group("/super")
+			// super.Use(middleware.SuperAdminMiddleware())
 			// {
-			// 	policy.POST("/add", app.Handlers.PolicyHandler.AddPolicy)
-			// 	policy.POST("/role/add", app.Handlers.PolicyHandler.AddRole)
+			// 	// 租户管理接口
+			// 	tenant := super.Group("/tenants")
+			// 	{
+			// 		tenant.POST("", app.Handlers.TenantHandler.CreateTenant)                        // 创建租户
+			// 		tenant.GET("", app.Handlers.TenantHandler.ListTenants)                          // 获取租户列表
+			// 		tenant.GET("/:tenant_id", app.Handlers.TenantHandler.GetTenant)                 // 获取租户详情
+			// 		tenant.PUT("/:tenant_id", app.Handlers.TenantHandler.UpdateTenant)              // 更新租户
+			// 		tenant.DELETE("/:tenant_id", app.Handlers.TenantHandler.DeleteTenant)           // 删除租户
+			// 		tenant.PUT("/:tenant_id/status", app.Handlers.TenantHandler.UpdateTenantStatus) // 更新租户状态
+			// 	}
 			// }
 
-			// 超级管理员专属接口
-			super := authenticated.Group("/super")
-			super.Use(middleware.SuperAdmin())
-			{
-				// 租户管理接口
-				tenant := super.Group("/tenants")
-				{
-					tenant.POST("", app.Handlers.TenantHandler.CreateTenant)                        // 创建租户
-					tenant.GET("", app.Handlers.TenantHandler.ListTenants)                          // 获取租户列表
-					tenant.GET("/:tenant_id", app.Handlers.TenantHandler.GetTenant)                 // 获取租户详情
-					tenant.PUT("/:tenant_id", app.Handlers.TenantHandler.UpdateTenant)              // 更新租户
-					tenant.DELETE("/:tenant_id", app.Handlers.TenantHandler.DeleteTenant)           // 删除租户
-					tenant.PUT("/:tenant_id/status", app.Handlers.TenantHandler.UpdateTenantStatus) // 更新租户状态
-				}
-			}
 		}
 
 	}
+
+	// 设置嵌入的前端静态文件
+	setupEmbedFrontend(r)
+
+}
+
+// setupEmbedFrontend 设置嵌入的前端静态文件
+func setupEmbedFrontend(r *gin.Engine) {
+	// 静态文件服务 - 前端资源（使用 embed.FS）
+	// 使用 gin-contrib/static 提供嵌入的前端静态文件服务
+	frontendFS, err := static.EmbedFolder(filesystem.FrontEnd, "frontend")
+	if err != nil {
+		panic(err)
+	}
+	r.Use(static.Serve("/", frontendFS))
+
+	// 处理 SPA 前端路由（NoRoute 必须在最后注册）
+	r.NoRoute(func(c *gin.Context) {
+		// path := c.Request.URL.Path
+		// API 路由返回 404 JSON
+		// if strings.HasPrefix(path, "/api") {
+		// 	c.JSON(http.StatusNotFound, gin.H{"error": "API endpoint not found"})
+		// 	return
+		// }
+		// 其他路由返回前端 index.html（SPA 路由）
+		// c.FileFromFS("/index.html", frontendFS)
+		fmt.Printf("%s doesn't exists, redirect on /\n", c.Request.URL.Path)
+		c.Redirect(http.StatusMovedPermanently, "/")
+	})
+
 }

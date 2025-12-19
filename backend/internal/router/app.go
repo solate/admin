@@ -2,7 +2,6 @@ package router
 
 import (
 	"admin/internal/handler"
-	"admin/internal/service"
 	"admin/pkg/casbin"
 	"admin/pkg/config"
 	"admin/pkg/database"
@@ -22,7 +21,7 @@ type App struct {
 	Router   *gin.Engine           // 路由
 	DB       *gorm.DB              // 数据库连接
 	Redis    redis.UniversalClient // Redis连接
-	JWT      *jwt.JWTManager       // JWT管理器
+	JWT      *jwt.Manager          // JWT管理器
 	Enforcer *casbin.Enforcer      // Casbin enforce
 	Services *Services             // 服务层容器
 	Handlers *Handlers             // 处理器层容器
@@ -30,14 +29,13 @@ type App struct {
 
 // Services 服务层容器
 type Services struct {
-	TenantService *service.TenantService
 }
 
 // Handlers 处理器层容器
 type Handlers struct {
-	HealthHandler *handler.HealthHandler
-	AuthHandler   *handler.AuthHandler
-	TenantHandler *handler.TenantHandler
+	HealthHandler  *handler.HealthHandler
+	CaptchaHandler *handler.CaptchaHandler
+	AuthHandler    *handler.AuthHandler
 }
 
 func NewApp() (*App, error) {
@@ -181,7 +179,7 @@ func (a *App) initJWT(cfg *config.Config) error {
 		Issuer:        cfg.JWT.Issuer,
 	}
 
-	a.JWT = jwt.NewJWTManager(config, jwt.NewRedisStore(a.Redis))
+	a.JWT = jwt.NewManager(config, jwt.NewRedisStore(a.Redis))
 	return nil
 }
 
@@ -230,21 +228,21 @@ func (s *App) Close() error {
 }
 
 // initServices 初始化服务层
-func (a *App) initServices() error {
-	a.Services = &Services{
-		TenantService: service.NewTenantService(a.DB),
-		// CasbinService: service.NewCasbinService(a.Enforcer),
+func (s *App) initServices() error {
+	s.Services = &Services{
+		// CasbinService: service.NewCasbinService(s.Enforcer),
 	}
 	return nil
 }
 
 // initHandlers 初始化处理器层
-func (a *App) initHandlers() error {
-	a.Handlers = &Handlers{
-		HealthHandler: handler.NewHealthHandler(),
-		// AuthHandler:   handler.NewAuthHandler(a.Config, a.JWT),
-		// PolicyHandler: handler.NewPolicyHandler(a.Services.CasbinService), // Will be nil for now
-		// TenantHandler: handler.NewTenantHandler(a.Services.TenantService),
+func (s *App) initHandlers() error {
+	s.Handlers = &Handlers{
+		HealthHandler:  handler.NewHealthHandler(),
+		CaptchaHandler: handler.NewCaptchaHandler(s.Redis),
+		// AuthHandler:   handler.NewAuthHandler(s.Config, s.JWT),
+		// PolicyHandler: handler.NewPolicyHandler(s.Services.CasbinService), // Will be nil for now
+		// TenantHandler: handler.NewTenantHandler(s.Services.TenantService),
 	}
 	return nil
 }

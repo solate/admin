@@ -3,7 +3,6 @@ package middleware
 import (
 	"admin/pkg/response"
 	"admin/pkg/xerr"
-	"net/http"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -43,8 +42,8 @@ func (rl *RateLimiter) getLimiter(key string) *rate.Limiter {
 	return limiter
 }
 
-// RateLimit 限流中间件
-func RateLimit(requestsPerSecond int, burst int) gin.HandlerFunc {
+// RateLimitMiddleware 限流中间件
+func RateLimitMiddleware(requestsPerSecond int, burst int) gin.HandlerFunc {
 	limiter := NewRateLimiter(rate.Limit(requestsPerSecond), burst)
 
 	return func(c *gin.Context) {
@@ -56,7 +55,7 @@ func RateLimit(requestsPerSecond int, burst int) gin.HandlerFunc {
 
 		// 检查是否允许请求
 		if !l.Allow() {
-			response.Error(c, http.StatusTooManyRequests, xerr.ErrTooManyRequests)
+			response.Error(c, xerr.ErrTooManyRequests)
 			c.Abort()
 			return
 		}

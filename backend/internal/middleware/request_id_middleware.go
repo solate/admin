@@ -7,8 +7,8 @@ import (
 
 const RequestIDKey = "X-Request-ID"
 
-// RequestID 请求ID中间件
-func RequestID() gin.HandlerFunc {
+// RequestIDMiddleware 请求ID中间件
+func RequestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 从header中获取请求ID，如果没有则生成
 		requestID := c.GetHeader(RequestIDKey)

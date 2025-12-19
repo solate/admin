@@ -46,29 +46,40 @@ func SuccessWithMessage(c *gin.Context, message string, data any) {
 }
 
 // Error 错误响应
-func Error(c *gin.Context, httpCode int, err *xerr.AppError) {
-	c.JSON(httpCode, Response{
-		Code:      err.Code,
-		Message:   err.Message,
-		RequestID: getRequestID(c),
-	})
+func Error(c *gin.Context, err error) {
+	c.JSON(http.StatusOK, getResponse(c, err))
 }
 
 // ErrorWithMessage 错误响应（自定义消息）
-func ErrorWithMessage(c *gin.Context, httpCode int, code int, message string) {
-	c.JSON(httpCode, Response{
+func ErrorWithMessage(c *gin.Context, code int, message string) {
+	c.JSON(http.StatusOK, Response{
 		Code:      code,
 		Message:   message,
 		RequestID: getRequestID(c),
 	})
 }
 
-// SuccessResponse 成功响应（别名，保持兼容性）
-func SuccessResponse(c *gin.Context, data any) {
-	Success(c, data)
+// ErrorWithHttpCode 错误响应（自定义HTTP状态码）
+func ErrorWithHttpCode(c *gin.Context, httpCode int, err error) {
+	c.JSON(httpCode, getResponse(c, err))
 }
 
-// ErrorResponse 错误响应（简化版，直接使用code和message）
-func ErrorResponse(c *gin.Context, httpCode int, code int, message string) {
-	ErrorWithMessage(c, httpCode, code, message)
+// getResponse 获取响应
+func getResponse(c *gin.Context, err error) Response {
+	var resp Response
+	appErr, ok := err.(*xerr.AppError) // 检查是否是 AppError 类型
+	if ok {
+		resp = Response{
+			Code:      appErr.Code,
+			Message:   appErr.Message,
+			RequestID: getRequestID(c),
+		}
+	} else {
+		resp = Response{
+			Code:      xerr.ErrInternal.Code,
+			Message:   err.Error(),
+			RequestID: getRequestID(c),
+		}
+	}
+	return resp
 }

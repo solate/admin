@@ -72,16 +72,16 @@ func main() {
 	}
 
 	tenant := model.Tenant{
-		TenantID: ids[0],
-		Code:     constants.DefaultTenant,
-		Name:     "默认租户",
-		Status:   1,
+		TenantID:   ids[0],
+		TenantCode: constants.DefaultTenant,
+		Name:       "默认租户",
+		Status:     1,
 	}
 	if err := db.Create(&tenant).Error; err != nil {
 		fmt.Fprintf(os.Stderr, "❌ 创建默认租户失败: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("✅ 默认租户创建成功 tenant_id=%s code=%s\n", tenant.TenantID, tenant.Code)
+	fmt.Printf("✅ 默认租户创建成功 tenant_id=%s code=%s name=%s\n", tenant.TenantID, tenant.TenantCode, tenant.Name)
 
 	email := "admin@example.com"
 	phone := "13800000000"

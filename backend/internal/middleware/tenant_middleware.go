@@ -9,9 +9,9 @@ package middleware
 // 	"github.com/gin-gonic/gin"
 // )
 
-// // TenantContext 从请求中提取租户 ID 并注入到上下文,
+// // TenantMiddleware 从请求中提取租户 ID 并注入到上下文,
 // // 当没有jwt 的时候，依然可以从 X-Tenant-ID 头中提取租户 ID
-// func TenantContext() gin.HandlerFunc {
+// func TenantMiddleware() gin.HandlerFunc {
 // 	return func(c *gin.Context) {
 // 		tenantID := c.GetString(constants.CtxTenantID)
 // 		if tenantID == "" {

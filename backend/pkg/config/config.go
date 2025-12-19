@@ -7,12 +7,13 @@ import (
 
 // Config 全局配置结构
 type Config struct {
-	App      AppConfig      `mapstructure:"app"`
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Log      LogConfig      `mapstructure:"log"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
+	App       AppConfig       `mapstructure:"app"`
+	Server    ServerConfig    `mapstructure:"server"`
+	Database  DatabaseConfig  `mapstructure:"database"`
+	Redis     RedisConfig     `mapstructure:"redis"`
+	Log       LogConfig       `mapstructure:"log"`
+	JWT       JWTConfig       `mapstructure:"jwt"`
+	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
 }
 
 type AppConfig struct {
@@ -28,6 +29,12 @@ type ServerConfig struct {
 type LogConfig struct {
 	Level  string `mapstructure:"level"`
 	Format string `mapstructure:"format"`
+}
+
+type RateLimitConfig struct {
+	Enabled           bool `mapstructure:"enabled"`
+	RequestsPerSecond int  `mapstructure:"requests_per_second"`
+	Burst             int  `mapstructure:"burst"`
 }
 
 type DatabaseConfig struct {

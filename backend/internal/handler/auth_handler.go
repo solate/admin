@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"admin/internal/dto"
+	"admin/internal/service"
 	"admin/pkg/config"
-	"admin/pkg/constants"
-	"admin/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,73 +11,35 @@ import (
 // AuthHandler JWT 认证处理器
 // 提供登录、刷新、登出等接口的处理函数
 type AuthHandler struct {
-	config  *config.Config
-	manager *jwt.JWTManager
+	config      *config.Config
+	authService *service.AuthService
 }
 
 // NewAuthHandler 创建认证处理器
-func NewAuthHandler(cfg *config.Config, manager *jwt.JWTManager) *AuthHandler {
+func NewAuthHandler(cfg *config.Config, authService *service.AuthService) *AuthHandler {
 	return &AuthHandler{
-		config:  cfg,
-		manager: manager,
+		config:      cfg,
+		authService: authService,
 	}
-}
-
-// LoginRequest 登录请求
-type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
-
-// LoginResponse 登录响应
-type LoginResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int64  `json:"expires_in"`
-	TokenType    string `json:"token_type"`
 }
 
 // Login 处理登录请求
 // 实际使用中应该先验证用户名和密码，这里仅作示例
 // 生成并返回 token pair
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req LoginRequest
+	var req dto.LoginRequest
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	// TODO: 验证用户名和密码
-	// 这里应该调用你的用户服务进行身份验证
-	// 演示代码假设验证通过
-	// 假设用户 admin, 角色 admin, 租户 tenant-1
+	// resp, err := h.authService.Login(c, &req)
+	// if err != nil {
+	// 	response.Error(c, err.(*xerr.AppError))
+	// 	return
+	// }
 
-	tenantID := "tenant-1"
-	userID := "user-2"
-	roleID := "user"
-	if req.Username == "admin" {
-		userID = "user-1"
-		roleID = "admin"
-	}
-
-	// 生成 token 对（demo 数据）
-	tokenPair, err := h.manager.GenerateTokenPair(
-		c.Request.Context(),
-		tenantID, // 租户 ID
-		userID,   // 用户 ID
-		roleID,   // 角色 ID
-	)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to generate token"})
-		return
-	}
-
-	c.JSON(200, LoginResponse{
-		AccessToken:  tokenPair.AccessToken,
-		RefreshToken: tokenPair.RefreshToken,
-		ExpiresIn:    h.config.JWT.AccessExpire,
-		TokenType:    "Bearer",
-	})
+	// response.Success(c, resp)
 }
 
 // RefreshRequest 刷新请求
@@ -93,41 +55,42 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	tokenPair, err := h.manager.RefreshToken(c.Request.Context(), req.RefreshToken)
-	if err != nil {
-		c.JSON(401, gin.H{"error": "invalid refresh token"})
-		return
-	}
+	// tokenPair, err := h.authService.RefreshToken(c.Request.Context(), req.RefreshToken)
+	// if err != nil {
+	// 	response.Error(c, xerr.ErrInvalidRefreshToken)
+	// 	return
+	// }
 
-	c.JSON(200, LoginResponse{
-		AccessToken:  tokenPair.AccessToken,
-		RefreshToken: tokenPair.RefreshToken,
-		ExpiresIn:    h.config.JWT.AccessExpire,
-		TokenType:    "Bearer",
-	})
+	// response.Success(c, dto.LoginResponse{
+	// 	AccessToken:  tokenPair.AccessToken,
+	// 	RefreshToken: tokenPair.RefreshToken,
+	// 	ExpiresIn:    h.config.JWT.AccessExpire,
+	// 	UserID:       tokenPair.UserID,
+	// 	TenantID:     tokenPair.TenantID,
+	// })
 }
 
 // Logout 处理登出请求
 func (h *AuthHandler) Logout(c *gin.Context) {
 	// 从上下文获取 Claims
-	claims, exists := c.Get(constants.CtxClaims)
-	if !exists {
-		c.JSON(401, gin.H{"error": "unauthorized"})
-		return
-	}
+	// claims, exists := c.Get(constants.CtxClaims)
+	// if !exists {
+	// 	response.Error(c, xerr.ErrUnauthorized)
+	// 	return
+	// }
 
-	jwtClaims, ok := claims.(*jwt.Claims)
-	if !ok {
-		c.JSON(500, gin.H{"error": "invalid claims type"})
-		return
-	}
+	// jwtClaims, ok := claims.(*jwt.Claims)
+	// if !ok {
+	// 	response.Error(c, xerr.ErrInternal)
+	// 	return
+	// }
 
-	// 撤销当前 token (加入黑名单)
-	err := h.manager.RevokeToken(c.Request.Context(), jwtClaims.TokenID)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to logout"})
-		return
-	}
+	// // 撤销当前 token (加入黑名单)
+	// err := h.authService.RevokeToken(c.Request.Context(), jwtClaims.TokenID)
+	// if err != nil {
+	// 	response.Error(c, xerr.ErrInternal)
+	// 	return
+	// }
 
 	c.JSON(200, gin.H{"message": "logged out successfully"})
 }

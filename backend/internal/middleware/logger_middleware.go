@@ -8,7 +8,7 @@ import (
 )
 
 // Logger 请求日志中间件
-func Logger() gin.HandlerFunc {
+func LoggerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 开始时间
 		start := time.Now()

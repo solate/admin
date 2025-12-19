@@ -29,4 +29,6 @@ var (
 	ErrTokenInvalid       = New(2102, "Token无效")
 	ErrUserNotFound       = New(2103, "用户不存在")
 	ErrUserExists         = New(2104, "用户已存在")
+	ErrCaptchaInvalid     = New(2105, "验证码错误")
+	ErrUserDisabled       = New(2106, "用户已禁用")
 )
