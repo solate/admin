@@ -2,6 +2,8 @@ package router
 
 import (
 	"admin/internal/handler"
+	"admin/internal/repository"
+	"admin/internal/service"
 	"admin/pkg/casbin"
 	"admin/pkg/config"
 	"admin/pkg/database"
@@ -23,12 +25,7 @@ type App struct {
 	Redis    redis.UniversalClient // Redis连接
 	JWT      *jwt.Manager          // JWT管理器
 	Enforcer *casbin.Enforcer      // Casbin enforce
-	Services *Services             // 服务层容器
 	Handlers *Handlers             // 处理器层容器
-}
-
-// Services 服务层容器
-type Services struct {
 }
 
 // Handlers 处理器层容器
@@ -70,10 +67,10 @@ func NewApp() (*App, error) {
 		return nil, fmt.Errorf("failed to init casbin: %w", err)
 	}
 
-	// 7. 初始化服务层
-	if err := app.initServices(); err != nil {
-		return nil, fmt.Errorf("failed to init services: %w", err)
-	}
+	// 7. 初始化服务层 (废弃，不再使用)
+	// if err := app.initServices(); err != nil {
+	// 	return nil, fmt.Errorf("failed to init services: %w", err)
+	// }
 
 	// 8. 初始化处理器层
 	if err := app.initHandlers(); err != nil {
@@ -227,20 +224,20 @@ func (s *App) Close() error {
 	return nil
 }
 
-// initServices 初始化服务层
-func (s *App) initServices() error {
-	s.Services = &Services{
-		// CasbinService: service.NewCasbinService(s.Enforcer),
-	}
-	return nil
-}
-
 // initHandlers 初始化处理器层
 func (s *App) initHandlers() error {
+	// 初始化仓库层
+	userRepo := repository.NewUserRepo(s.DB)
+	userTenantRoleRepo := repository.NewUserTenantRoleRepo(s.DB)
+	roleRepo := repository.NewRoleRepo(s.DB)
+
+	// 初始化认证服务
+	authService := service.NewAuthService(userRepo, userTenantRoleRepo, roleRepo, s.JWT, s.Redis, s.Config)
+
 	s.Handlers = &Handlers{
 		HealthHandler:  handler.NewHealthHandler(),
 		CaptchaHandler: handler.NewCaptchaHandler(s.Redis),
-		// AuthHandler:   handler.NewAuthHandler(s.Config, s.JWT),
+		AuthHandler:    handler.NewAuthHandler(s.Config, authService),
 		// PolicyHandler: handler.NewPolicyHandler(s.Services.CasbinService), // Will be nil for now
 		// TenantHandler: handler.NewTenantHandler(s.Services.TenantService),
 	}

@@ -4,6 +4,8 @@ import (
 	"admin/internal/dto"
 	"admin/internal/service"
 	"admin/pkg/config"
+	"admin/pkg/response"
+	"admin/pkg/xerr"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,13 +35,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// resp, err := h.authService.Login(c, &req)
-	// if err != nil {
-	// 	response.Error(c, err.(*xerr.AppError))
-	// 	return
-	// }
+	resp, err := h.authService.Login(c, &req)
+	if err != nil {
+		response.Error(c, err.(*xerr.AppError))
+		return
+	}
 
-	// response.Success(c, resp)
+	response.Success(c, resp)
 }
 
 // RefreshRequest 刷新请求
