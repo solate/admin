@@ -1,13 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"strings"
 
-	"admin/pkg/constants"
-	"admin/pkg/database"
 	"admin/pkg/jwt"
 	"admin/pkg/response"
+	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 
 	"github.com/gin-gonic/gin"
@@ -51,22 +51,31 @@ func AuthMiddleware(jwtManager *jwt.Manager) gin.HandlerFunc {
 			return
 		}
 
-		// 注入上下文，便于业务层读取用户信息
-		c.Set(constants.CtxTenantID, claims.TenantID)
-		c.Set(constants.CtxTenantCode, claims.TenantCode)
-		c.Set(constants.CtxUserID, claims.UserID)
-		c.Set(constants.CtxUserName, claims.UserName)
-		c.Set(constants.CtxRoleType, claims.RoleType)
-		c.Set(constants.CtxRoles, claims.Roles)
-		c.Set(constants.CtxClaims, claims)
-		c.Set(constants.CtxTokenID, claims.TokenID)
-
-		// 注入 GORM Scope 所需的 TenantCode 到 request.Context
-		if claims.TenantID != "" {
-			ctx := database.WithTenantID(c.Request.Context(), claims.TenantID)
-			c.Request = c.Request.WithContext(ctx)
-		}
+		// 将认证信息注入到 request.Context 中，供 service 层使用
+		// SetAuthContext 已经包含了租户ID设置，与database包使用相同的key
+		requestCtx := SetAuthContext(c.Request.Context(), claims)
+		// 更新 request 的 context
+		c.Request = c.Request.WithContext(requestCtx)
 
 		c.Next()
 	}
+}
+
+// SetAuthContext 一次性设置所有认证信息到context
+func SetAuthContext(ctx context.Context, claims *jwt.Claims) context.Context {
+	if claims == nil {
+		return ctx
+	}
+
+	// 设置租户信息
+	ctx = xcontext.SetTenantID(ctx, claims.TenantID)
+	ctx = xcontext.SetTenantCode(ctx, claims.TenantCode)
+
+	// 设置用户信息
+	ctx = xcontext.SetUserID(ctx, claims.UserID)
+	ctx = xcontext.SetUserName(ctx, claims.UserName)
+	ctx = xcontext.SetRoleType(ctx, claims.RoleType)
+	ctx = xcontext.SetRoles(ctx, claims.Roles)
+
+	return ctx
 }

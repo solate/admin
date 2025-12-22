@@ -62,9 +62,13 @@ func Setup(r *gin.Engine, app *App) {
 			// 用户接口
 			user := authenticated.Group("/users")
 			{
-				user.GET("/info", func(c *gin.Context) {
-					c.JSON(200, gin.H{"info": "user"})
-				})
+				user.POST("", app.Handlers.UserHandler.CreateUser)                              // 创建用户
+				user.GET("", app.Handlers.UserHandler.ListUsers)                                // 获取用户列表
+				user.GET("/:user_id", app.Handlers.UserHandler.GetUser)                         // 获取用户详情
+				user.PUT("/:user_id", app.Handlers.UserHandler.UpdateUser)                      // 更新用户
+				user.DELETE("/:user_id", app.Handlers.UserHandler.DeleteUser)                   // 删除用户
+				user.PUT("/:user_id/status/:status", app.Handlers.UserHandler.UpdateUserStatus) // 更新用户状态
+
 			}
 
 			// // 超级管理员专属接口

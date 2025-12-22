@@ -2,8 +2,8 @@ package common
 
 // PageRequest 分页请求
 type PageRequest struct {
-	Page     int `form:"page" json:"page" binding:"omitempty,min=1"`
-	PageSize int `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100"`
+	Page     int `form:"page" json:"page" binding:"omitempty,min=1"`                   // 当前页
+	PageSize int `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100"` // 每页数量
 }
 
 // PageResponse 分页响应

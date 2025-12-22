@@ -7,7 +7,7 @@ var (
 
 	// 通用错误 1000-1999
 	ErrInternal        = New(1000, "内部服务器错误")
-	ErrBadRequest      = New(1001, "请求参数错误")
+	ErrInvalidParams   = New(1001, "请求参数错误")
 	ErrNotFound        = New(1002, "资源不存在")
 	ErrUnauthorized    = New(1003, "未授权")
 	ErrForbidden       = New(1004, "无权限访问")

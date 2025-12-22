@@ -16,7 +16,6 @@ require (
 	github.com/spf13/viper v1.18.2
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
-	github.com/swaggo/swag v1.8.12
 	golang.org/x/crypto v0.46.0
 	golang.org/x/time v0.12.0
 	gorm.io/driver/postgres v1.5.9
@@ -90,6 +89,7 @@ require (
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	github.com/swaggo/swag v1.8.12 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.uber.org/atomic v1.10.0 // indirect

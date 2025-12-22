@@ -13,7 +13,7 @@ type TenantCreateRequest struct {
 type TenantUpdateRequest struct {
 	Name        string `json:"name" binding:"required,min=2,max=200" example:"上海分公司"` // 租户名称
 	Description string `json:"description" example:"上海地区业务运营"`                        // 租户描述
-	Status      *int   `json:"status" binding:"omitempty,oneof=1 2" example:"1"`      // 状态：1-正常，2-冻结
+	Status      int    `json:"status" binding:"omitempty,oneof=1 2" example:"1"`      // 状态：1-正常，2-冻结
 }
 
 // TenantResponse 租户响应
@@ -31,16 +31,11 @@ type TenantListRequest struct {
 	common.PageRequest `json:",inline"` // 分页请求
 	Code               string           `form:"code" example:"tenant_shanghai"`                   // 租户编码（模糊查询）
 	Name               string           `form:"name" example:"上海"`                                // 租户名称（模糊查询）
-	Status             *int             `form:"status" binding:"omitempty,oneof=1 2" example:"1"` // 状态筛选
+	Status             int              `form:"status" binding:"omitempty,oneof=1 2" example:"1"` // 状态筛选
 }
 
 // TenantListResponse 租户列表响应
 type TenantListResponse struct {
 	List                []TenantResponse `json:"list"` // 租户列表
 	common.PageResponse `json:",inline"` // 分页响应
-}
-
-// TenantStatusRequest 租户状态变更请求
-type TenantStatusRequest struct {
-	common.StatusRequest `json:",inline"` // 状态请求
 }

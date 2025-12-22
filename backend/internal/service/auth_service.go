@@ -9,8 +9,8 @@ import (
 	"admin/pkg/jwt"
 	"admin/pkg/passwordgen"
 	"admin/pkg/xerr"
+	"context"
 
-	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -35,8 +35,7 @@ func NewAuthService(userRepo *repository.UserRepo, userTenantRoleRepo *repositor
 }
 
 // Login 用户登录
-func (s *AuthService) Login(c *gin.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
-	ctx := c.Request.Context()
+func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
 
 	// 验证码校验
 	if !s.captcha.Verify(req.CaptchaID, req.Captcha) {
@@ -142,8 +141,7 @@ func (s *AuthService) Login(c *gin.Context, req *dto.LoginRequest) (*dto.LoginRe
 }
 
 // RefreshToken 刷新用户token
-func (s *AuthService) RefreshToken(c *gin.Context, refreshToken string) (*dto.RefreshResponse, error) {
-	ctx := c.Request.Context()
+func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error) {
 
 	// 调用JWT manager刷新token
 	tokenPair, err := s.jwt.VerifyRefreshToken(ctx, refreshToken)
