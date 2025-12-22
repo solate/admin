@@ -31,7 +31,7 @@ func NewAuthHandler(cfg *config.Config, authService *service.AuthService) *AuthH
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
 
@@ -53,23 +53,17 @@ type RefreshRequest struct {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req RefreshRequest
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
 
-	// tokenPair, err := h.authService.RefreshToken(c.Request.Context(), req.RefreshToken)
-	// if err != nil {
-	// 	response.Error(c, xerr.ErrInvalidRefreshToken)
-	// 	return
-	// }
+	resp, err := h.authService.RefreshToken(c, req.RefreshToken)
+	if err != nil {
+		response.Error(c, err.(*xerr.AppError))
+		return
+	}
 
-	// response.Success(c, dto.LoginResponse{
-	// 	AccessToken:  tokenPair.AccessToken,
-	// 	RefreshToken: tokenPair.RefreshToken,
-	// 	ExpiresIn:    h.config.JWT.AccessExpire,
-	// 	UserID:       tokenPair.UserID,
-	// 	TenantID:     tokenPair.TenantID,
-	// })
+	response.Success(c, resp)
 }
 
 // Logout 处理登出请求

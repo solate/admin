@@ -78,13 +78,15 @@ func (m *Manager) VerifyAccessToken(ctx context.Context, tokenString string) (*C
 	return claims, nil
 }
 
-// RefreshToken 刷新 token 对
+// VerifyRefreshToken 验证 refresh token（签名/过期/黑名单/匹配）
 // 说明：
-// - 验证 refresh token 有效性
-// - 从 store 中取出存储的 refresh token 进行匹配
-// - 撤销旧 tokenID（加入黑名单），生成新的 token 对
-// - 更新用户会话索引
-func (m *Manager) RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
+// - 先校验签名与过期；若过期将返回 ErrTokenExpired（来自第三方库）
+// - 再检查是否命中黑名单，命中则返回 ErrTokenBlacklisted
+// - 检查 refresh token 是否匹配存储值
+// 返回值：
+// - TokenPair: 刷新后的令牌对（access + refresh）
+// - error: 验证失败的错误原因
+func (m *Manager) VerifyRefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	// 验证 refresh token
 	claims, err := VerifyToken(refreshToken, []byte(m.config.RefreshSecret))
 	if err != nil {

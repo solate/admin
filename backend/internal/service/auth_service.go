@@ -140,3 +140,19 @@ func (s *AuthService) Login(c *gin.Context, req *dto.LoginRequest) (*dto.LoginRe
 		Email:        email,
 	}, nil
 }
+
+// RefreshToken 刷新用户token
+func (s *AuthService) RefreshToken(c *gin.Context, refreshToken string) (*dto.RefreshResponse, error) {
+	ctx := c.Request.Context()
+
+	// 调用JWT manager刷新token
+	tokenPair, err := s.jwt.VerifyRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return nil, xerr.Wrap(xerr.ErrTokenInvalid.Code, "刷新token失败", err)
+	}
+
+	return &dto.RefreshResponse{
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+	}, nil
+}
