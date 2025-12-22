@@ -1,0 +1,26 @@
+// 统一导出所有API
+export * from './auth'
+export * from './user'
+export * from './role'
+export * from './menu'
+export * from './permission'
+export * from './dict'
+export * from './tenant'
+export * from './factory'
+export * from './product'
+export * from './inventory'
+export * from './stats'
+
+// 导出API对象
+export { authApi } from './auth'
+export { userApi } from './user'
+export { roleApi } from './role'
+export { menuApi } from './menu'
+export { permissionApi } from './permission'
+export { dictApi } from './dict'
+export { tenantApi } from './tenant'
+export { factoryApi } from './factory'
+export { productApi } from './product'
+export { inventoryApi } from './inventory'
+export { statsApi } from './stats'
+

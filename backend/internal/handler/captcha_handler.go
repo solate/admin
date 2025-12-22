@@ -27,7 +27,7 @@ func NewCaptchaHandler(rdb redis.UniversalClient) *CaptchaHandler {
 // @Description 生成图形验证码，返回验证码ID和Base64图片数据
 // @Tags 认证
 // @Produce json
-// @Success 200 {object} dto.Response{data=dto.CaptchaResponse}
+// @Success 200 {object} response.Response{data=dto.CaptchaResponse}
 // @Failure 200 {object} response.Response
 // @Router /api/v1/captcha [get]
 func (h *CaptchaHandler) Get(c *gin.Context) {
