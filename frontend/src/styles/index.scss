@@ -400,6 +400,36 @@ html.dark .tenant-switcher {
   border: none;
   background: transparent;
 
+  // 折叠状态：隐藏激活背景和 hover 背景，只保留图标颜色变化
+  &.el-menu--collapse {
+    .el-menu-item {
+      &:hover {
+        background: transparent !important;
+      }
+
+      &.is-active {
+        background: transparent !important;
+        color: var(--primary-color);
+
+        .el-icon {
+          color: var(--primary-color);
+        }
+      }
+    }
+
+    .el-sub-menu__title:hover {
+      background: transparent !important;
+    }
+
+    .el-sub-menu.is-active > .el-sub-menu__title {
+      color: var(--primary-color);
+
+      .el-icon {
+        color: var(--primary-color);
+      }
+    }
+  }
+
   // 一级菜单项
   .el-menu-item {
     border-radius: var(--border-radius);
