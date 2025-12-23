@@ -19,16 +19,6 @@
         </div>
       </div>
 
-      <!-- 租户切换器 -->
-      <div v-if="!isCollapse" class="tenant-selector">
-        <div class="tenant-switcher" @click="showTenantDialog = true">
-          <div class="tenant-status online"></div>
-          <span class="tenant-name">{{ currentTenant }}</span>
-          <el-icon size="14" class="tenant-arrow">
-            <ArrowDown />
-          </el-icon>
-        </div>
-      </div>
 
       <!-- 菜单 -->
       <el-scrollbar class="sidebar-scrollbar">
@@ -155,13 +145,58 @@
           </el-tooltip>
 
           <!-- 通知 -->
-          <el-badge :value="unreadCount" :max="99">
-            <el-button text @click="showNotifications" class="header-action">
-              <el-icon :size="18">
-                <Bell />
-              </el-icon>
-            </el-button>
-          </el-badge>
+          <el-tooltip content="通知" placement="bottom">
+            <el-badge :value="unreadCount" :max="99" class="header-badge">
+              <el-button text @click="showNotifications" class="header-action">
+                <el-icon :size="18">
+                  <Bell />
+                </el-icon>
+              </el-button>
+            </el-badge>
+          </el-tooltip>
+
+          <!-- 租户切换器 -->
+          <div class="tenant-selector-header">
+            <el-popover
+              :width="280"
+              trigger="click"
+              placement="bottom-end"
+            >
+              <template #reference>
+                <div class="tenant-current">
+                  <div class="tenant-avatar">
+                    T
+                  </div>
+                  <span class="tenant-name">{{ currentTenant }}</span>
+                  <el-icon class="dropdown-arrow" :size="14">
+                    <ArrowDown />
+                  </el-icon>
+                </div>
+              </template>
+              <div class="tenant-popover">
+                <div class="popover-header">
+                  <span class="popover-title">切换租户</span>
+                </div>
+                <div class="popover-list">
+                  <div
+                    v-for="tenant in tenants"
+                    :key="tenant.id"
+                    class="popover-item"
+                    :class="{ active: tenant.id === currentTenantId }"
+                    @click="switchTenant(tenant)"
+                  >
+                    <div class="item-info">
+                      <div class="item-name">{{ tenant.name }}</div>
+                      <div class="item-desc">{{ tenant.description }}</div>
+                    </div>
+                    <span class="item-status" :class="tenant.status">
+                      {{ tenant.statusText }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </el-popover>
+          </div>
 
           <!-- 用户信息下拉菜单 -->
           <el-dropdown @command="handleUserCommand" class="user-dropdown">
@@ -214,27 +249,6 @@
       </el-footer>
     </el-container>
 
-    <!-- 租户切换对话框 -->
-    <el-dialog v-model="showTenantDialog" title="切换租户" width="500px">
-      <div class="tenant-list">
-        <div
-          v-for="tenant in tenants"
-          :key="tenant.id"
-          class="tenant-item"
-          :class="{ active: tenant.id === currentTenantId }"
-          @click="switchTenant(tenant)"
-        >
-          <div class="tenant-info">
-            <div class="tenant-name">{{ tenant.name }}</div>
-            <div class="tenant-desc">{{ tenant.description }}</div>
-          </div>
-          <span class="status-indicator" :class="tenant.status">
-            {{ tenant.statusText }}
-          </span>
-        </div>
-      </div>
-    </el-dialog>
-
     <!-- 通知抽屉 -->
     <el-drawer v-model="notificationVisible" title="系统通知" size="400px">
       <div class="notification-list">
@@ -272,7 +286,6 @@ const themeStore = useThemeStore()
 const isCollapse = ref(false)
 const isFullscreen = ref(false)
 const notificationVisible = ref(false)
-const showTenantDialog = ref(false)
 const searchQuery = ref('')
 const userInfo = getUserInfo()
 const isMobile = ref(window.innerWidth < 768)
@@ -368,7 +381,6 @@ function markAsRead(item: any) {
 function switchTenant(tenant: any) {
   currentTenantId.value = tenant.id
   currentTenant.value = tenant.name
-  showTenantDialog.value = false
   ElMessage.success(`已切换到租户：${tenant.name}`)
 }
 
@@ -465,11 +477,6 @@ onUnmounted(() => {
       }
     }
 
-    .tenant-selector {
-      padding: 12px;
-      border-bottom: 1px solid var(--border-base);
-    }
-
     .sidebar-scrollbar {
       flex: 1;
 
@@ -534,15 +541,74 @@ onUnmounted(() => {
         align-items: center;
         gap: 12px;
 
+        .tenant-selector-header {
+          .tenant-current {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition-base);
+
+            .tenant-avatar {
+              width: 28px;
+              height: 28px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: var(--gradient-primary);
+              border-radius: 50%;
+              color: white;
+              font-size: 13px;
+              font-weight: 600;
+            }
+
+            .tenant-name {
+              font-size: 14px;
+              font-weight: 600;
+              color: var(--text-primary);
+              line-height: 1;
+            }
+
+            .dropdown-arrow {
+              font-size: 14px;
+              color: var(--text-secondary);
+              transition: transform 0.3s;
+            }
+
+            &:hover {
+              background: var(--bg-light);
+
+              .dropdown-arrow {
+                transform: rotate(180deg);
+              }
+            }
+          }
+        }
+
         .search-box .search-input {
           width: 200px;
         }
 
         .header-action {
           color: var(--text-regular);
+          width: 36px;
+          height: 36px;
+          padding: 0;
 
           &:hover {
             color: var(--primary-color);
+          }
+        }
+
+        .header-badge {
+          :deep(.el-badge__content) {
+            font-size: 11px;
+            height: 16px;
+            line-height: 16px;
+            padding: 0 5px;
+            border: 1.5px solid var(--bg-white);
           }
         }
 
@@ -618,42 +684,84 @@ onUnmounted(() => {
   }
 }
 
-.tenant-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+// 租户选择弹出框样式
+.tenant-popover {
+  .popover-header {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-base);
+    margin-bottom: 8px;
 
-  .tenant-item {
+    .popover-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+  }
+
+  .popover-list {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-base);
-    cursor: pointer;
-    transition: var(--transition-base);
+    flex-direction: column;
+    gap: 4px;
 
-    &:hover {
-      border-color: var(--primary-color);
-      box-shadow: var(--glow-primary);
-    }
+    .popover-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: var(--transition-base);
 
-    &.active {
-      background: var(--bg-light);
-      border-color: var(--primary-color);
-    }
+      .item-info {
+        flex: 1;
 
-    .tenant-info {
-      .tenant-name {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-primary);
+        .item-name {
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--text-primary);
+          line-height: 1.4;
+        }
+
+        .item-desc {
+          font-size: 12px;
+          color: var(--text-secondary);
+          margin-top: 2px;
+        }
       }
 
-      .tenant-desc {
+      .item-status {
         font-size: 12px;
-        color: var(--text-secondary);
-        margin-top: 4px;
+        padding: 2px 8px;
+        border-radius: 4px;
+
+        &.online {
+          color: #67c23a;
+          background: rgba(103, 194, 58, 0.1);
+        }
+
+        &.warning {
+          color: #e6a23c;
+          background: rgba(230, 162, 60, 0.1);
+        }
+
+        &.offline {
+          color: #909399;
+          background: rgba(144, 147, 153, 0.1);
+        }
+      }
+
+      &:hover {
+        background: var(--bg-light);
+      }
+
+      &.active {
+        background: var(--bg-light);
+        border-radius: 6px;
+
+        .item-name {
+          color: var(--primary-color);
+          font-weight: 600;
+        }
       }
     }
   }
@@ -733,6 +841,16 @@ onUnmounted(() => {
 
         .header-right {
           gap: 8px;
+
+          .tenant-selector-header {
+            .tenant-current {
+              padding: 4px 8px;
+
+              .tenant-name {
+                font-size: 12px;
+              }
+            }
+          }
 
           .search-box {
             display: none;
