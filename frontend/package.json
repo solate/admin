@@ -12,6 +12,7 @@
     "@element-plus/icons-vue": "^2.3.2",
     "@types/echarts": "^4.9.22",
     "@types/nprogress": "^0.2.3",
+    "@vueuse/core": "^14.1.0",
     "axios": "^1.12.2",
     "dayjs": "^1.11.19",
     "echarts": "^6.0.0",

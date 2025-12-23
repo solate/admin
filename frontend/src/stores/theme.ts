@@ -1,40 +1,48 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed } from 'vue'
+import { useDark } from '@vueuse/core'
 
 export type Theme = 'light' | 'dark'
 
 export const useThemeStore = defineStore('theme', () => {
-  // 从localStorage读取主题设置，默认为light
-  const savedTheme = (localStorage.getItem('theme') || 'light') as Theme
-  const theme = ref<Theme>(savedTheme)
+  // 使用 VueUse 的 useDark - 自动处理 localStorage 和系统偏好
+  // Element Plus 官方暗黑模式使用 html.dark class
+  const isDark = useDark({
+    storageKey: 'theme',
+    valueDark: 'dark',
+    valueLight: '',
+    disableTransition: false,
+  })
 
-  // 切换主题
+  // 获取当前主题值
+  const theme = computed<Theme>(() => isDark.value ? 'dark' : 'light')
+
+  // 切换主题 - 直接修改 isDark 的值
   const toggleTheme = () => {
-    theme.value = theme.value === 'light' ? 'dark' : 'light'
+    isDark.value = !isDark.value
   }
 
   // 设置指定主题
   const setTheme = (newTheme: Theme) => {
-    theme.value = newTheme
+    isDark.value = newTheme === 'dark'
   }
 
-  // 监听主题变化，更新DOM和localStorage
-  watch(
-    theme,
-    (newTheme) => {
-      document.documentElement.setAttribute('data-theme', newTheme)
-      localStorage.setItem('theme', newTheme)
-    },
-    { immediate: true }
-  )
-
-  // 初始化主题
+  // 初始化主题 - 确保 useDark 正确应用了初始状态
   const initTheme = () => {
-    document.documentElement.setAttribute('data-theme', theme.value)
+    const htmlElement = document.documentElement
+    const currentValue = localStorage.getItem('theme') || 'light'
+
+    // 确保 HTML class 与 localStorage 同步
+    if (currentValue === 'dark' && !htmlElement.classList.contains('dark')) {
+      htmlElement.classList.add('dark')
+    } else if (currentValue !== 'dark' && htmlElement.classList.contains('dark')) {
+      htmlElement.classList.remove('dark')
+    }
   }
 
   return {
     theme,
+    isDark,
     toggleTheme,
     setTheme,
     initTheme
