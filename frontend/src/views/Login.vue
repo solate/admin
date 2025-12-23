@@ -116,28 +116,6 @@
             <el-checkbox v-model="rememberMe">记住密码</el-checkbox>
             <el-button type="text">忘记密码？</el-button>
           </div>
-
-          <el-divider>
-            <span class="divider-text">其他登录方式</span>
-          </el-divider>
-
-          <div class="social-login">
-            <el-button class="social-btn" size="large">
-              <el-icon><Position /></el-icon>
-              <span>微信登录</span>
-            </el-button>
-            <el-button class="social-btn" size="large">
-              <el-icon><Message /></el-icon>
-              <span>钉钉登录</span>
-            </el-button>
-          </div>
-
-          <div class="register-link">
-            <span>还没有账号？</span>
-            <el-button type="primary" text @click="goToRegister">
-              立即注册
-            </el-button>
-          </div>
         </el-form>
       </div>
     </div>
@@ -194,7 +172,7 @@ const rules = {
   ],
   captcha: [
     { required: true, message: '请输入验证码', trigger: 'blur' },
-    { len: 4, message: '验证码长度为 4 位', trigger: 'blur' }
+    { min: 4, max: 6, message: '验证码长度在 4 到 6 位', trigger: 'blur' }
   ]
 }
 
@@ -220,10 +198,15 @@ onMounted(() => {
 async function loadCaptcha() {
   loadingCaptcha.value = true
   try {
+    console.log('开始获取验证码...')
     const res = await authApi.getCaptcha()
+    console.log('验证码响应:', res)
     captchaId.value = res.captcha_id
-    captchaUrl.value = res.captcha_url
+    // captcha_data 已经包含完整的 data URI 前缀
+    captchaUrl.value = res.captcha_data
+    console.log('验证码图片URL:', captchaUrl.value)
   } catch (error) {
+    console.error('获取验证码失败:', error)
     ElMessage.error('获取验证码失败，请稍后重试')
   } finally {
     loadingCaptcha.value = false
@@ -250,7 +233,9 @@ async function onSubmit() {
       access_token: res.access_token,
       refresh_token: res.refresh_token,
       user_id: res.user_id,
-      user_name: res.user_name
+      email: res.email,
+      phone: res.phone,
+      tenant_id: res.tenant_id
     })
 
     // 记住用户名
@@ -272,11 +257,6 @@ async function onSubmit() {
   } finally {
     loading.value = false
   }
-}
-
-// 跳转到注册页
-function goToRegister() {
-  router.push('/register')
 }
 </script>
 
@@ -484,50 +464,6 @@ function goToRegister() {
         }
       }
 
-      .el-divider {
-        margin: 24px 0 20px;
-
-        .divider-text {
-          color: var(--text-secondary);
-          font-size: 13px;
-          padding: 0 16px;
-          background: var(--bg-white);
-        }
-      }
-
-      .social-login {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 20px;
-
-        .social-btn {
-          flex: 1;
-          height: 40px;
-          border-radius: var(--border-radius);
-          border: 1px solid var(--border-base);
-          background: var(--bg-light);
-          color: var(--text-regular);
-          transition: var(--transition-base);
-
-          &:hover {
-            background: var(--bg-page);
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-            transform: translateY(-1px);
-          }
-        }
-      }
-
-      .register-link {
-        text-align: center;
-        color: var(--text-secondary);
-        font-size: 14px;
-
-        .el-button {
-          font-weight: 500;
-          padding: 0 4px;
-        }
-      }
     }
   }
 
@@ -569,24 +505,6 @@ function goToRegister() {
       }
 
       .system-subtitle {
-        color: var(--text-secondary);
-      }
-
-      .divider-text {
-        background: rgba(30, 41, 59, 0.9);
-      }
-
-      .social-btn {
-        background: rgba(51, 65, 85, 0.5);
-        border-color: var(--border-base);
-        color: var(--text-regular);
-
-        &:hover {
-          background: rgba(71, 85, 105, 0.5);
-        }
-      }
-
-      .register-link {
         color: var(--text-secondary);
       }
     }

@@ -3,7 +3,7 @@ import http from './http'
 // 验证码响应
 export interface CaptchaResponse {
   captcha_id: string
-  captcha_url: string
+  captcha_data: string // Base64图片数据
 }
 
 // 登录请求
@@ -18,10 +18,11 @@ export interface LoginRequest {
 export interface LoginResponse {
   access_token: string
   refresh_token: string
+  expires_in: number
   user_id: string
-  user_name: string
-  phone: string
   email: string
+  phone: string
+  tenant_id: string
 }
 
 // 注册请求
@@ -71,14 +72,14 @@ export interface ActiveDevicesResponse {
 export const authApi = {
   // 获取验证码(添加时间戳防止缓存)
   getCaptcha: (): Promise<CaptchaResponse> => {
-    return http.get('/admin/v1/auth/captcha', {
+    return http.get('/api/v1/auth/captcha', {
       params: { t: Date.now() }
     })
   },
 
   // 用户登录
   login: (data: LoginRequest): Promise<LoginResponse> => {
-    return http.post('/admin/v1/auth/login', data)
+    return http.post('/api/v1/auth/login', data)
   },
 
   // 用户注册
@@ -88,12 +89,12 @@ export const authApi = {
 
   // 刷新访问令牌
   refreshToken: (data: RefreshTokenRequest): Promise<RefreshTokenResponse> => {
-    return http.post('/admin/v1/auth/refresh-token', data)
+    return http.post('/api/v1/auth/refresh', data)
   },
 
-  // 用户登出（当前设备）
+  // 用户登出
   logout: (): Promise<boolean> => {
-    return http.post('/admin/v1/auth/logout')
+    return http.post('/api/v1/auth/logout')
   },
 
   // 用户登出（所有设备）

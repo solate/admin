@@ -4,7 +4,8 @@ import { ElMessage } from 'element-plus'
 import { getAccessToken, refreshAccessToken, clearTokens } from '../utils/token'
 
 // 开发环境使用代理，生产环境使用环境变量
-const baseURL = import.meta.env.MODE === 'development' ? '/api' : (import.meta.env.VITE_API_BASE_URL || '/api')
+// 开发环境下不需要 baseURL，因为 vite 代理会自动处理 /api 前缀
+const baseURL = import.meta.env.MODE === 'development' ? '' : (import.meta.env.VITE_API_BASE_URL || '/api')
 
 const http: AxiosInstance = axios.create({
   baseURL,
@@ -57,7 +58,7 @@ http.interceptors.response.use(
     // 处理401未授权错误（token过期或无效）
     if (status === 401 && !originalRequest._retry) {
       // 如果是刷新token的请求失败了，直接跳转登录
-      if (originalRequest.url?.includes('/auth/refresh-token')) {
+      if (originalRequest.url?.includes('/api/v1/auth/refresh')) {
         clearTokens()
         ElMessage.error('登录已过期，请重新登录')
         setTimeout(() => {

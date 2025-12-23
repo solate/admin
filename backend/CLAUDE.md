@@ -188,6 +188,59 @@ go test -v ./internal/...   # 详细输出
 - 输出目录：`docs/`
 - 访问地址：`/swagger/index.html`
 
+## MCP 工具使用规范
+
+### Chrome DevTools MCP 使用原则
+
+为了避免超出 token 限制，必须遵循以下使用规范：
+
+#### 1. 优先使用文本快照
+```bash
+# 默认使用 take_snapshot 获取页面结构
+mcp__chrome-devtools__take_snapshot
+```
+- 优点：几乎不消耗 token，返回结构化文本
+- 适用于：页面调试、元素定位、文本分析
+
+#### 2. 截图必须保存到文件
+```bash
+# 使用 filePath 参数，不返回 base64 数据
+mcp__chrome-devtools__take_screenshot filePath="/tmp/screenshot.png"
+```
+- 优点：避免大量 base64 数据占用 token
+- 适用于：需要视觉验证的调试场景
+
+#### 3. 需要在对话中查看图片时
+```bash
+# 使用 JPEG 格式并降低质量
+mcp__chrome-devtools__take_screenshot format="jpeg" quality=60
+```
+- 优点：减少约 70-80% 的 token 消耗
+- 仅在：需要向用户展示页面视觉效果时使用
+
+#### 4. 浏览器实例管理
+```bash
+# 浏览器实例冲突时清理
+killall "Google Chrome" 2>/dev/null || true
+lsof -ti:9222 | xargs kill -9 2>/dev/null || true
+```
+
+### 使用决策树
+```
+需要查看页面内容？
+├─ 是 → 需要视觉效果？
+│   ├─ 否 → 使用 take_snapshot
+│   └─ 是 → 仅自己查看？
+│       ├─ 是 → filePath 保存到本地
+│       └─ 否 → 低质量 JPEG 格式
+└─ 否 → 不使用 Chrome DevTools 工具
+```
+
+### 禁止行为
+- ❌ 使用默认参数的 `take_screenshot`（返回 base64）
+- ❌ 使用 PNG 格式截图到对话中
+- ❌ 设置 quality > 70 的截图
+
 ## 必需的开发工具
 
 安装这些工具以获得完整的开发体验：

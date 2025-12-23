@@ -8,7 +8,9 @@ import { authApi } from '../api'
 const TOKEN_KEY = 'access_token'
 const REFRESH_TOKEN_KEY = 'refresh_token'
 const USER_ID_KEY = 'user_id'
-const USER_NAME_KEY = 'user_name'
+const EMAIL_KEY = 'email'
+const PHONE_KEY = 'phone'
+const TENANT_ID_KEY = 'tenant_id'
 
 // Token刷新状态管理
 let isRefreshing = false
@@ -21,12 +23,16 @@ export function saveTokens(data: {
   access_token: string
   refresh_token: string
   user_id: string
-  user_name: string
+  email: string
+  phone: string
+  tenant_id: string
 }) {
   localStorage.setItem(TOKEN_KEY, data.access_token)
   localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token)
   localStorage.setItem(USER_ID_KEY, data.user_id)
-  localStorage.setItem(USER_NAME_KEY, data.user_name)
+  localStorage.setItem(EMAIL_KEY, data.email)
+  localStorage.setItem(PHONE_KEY, data.phone)
+  localStorage.setItem(TENANT_ID_KEY, data.tenant_id)
 }
 
 /**
@@ -49,7 +55,9 @@ export function getRefreshToken(): string | null {
 export function getUserInfo() {
   return {
     user_id: localStorage.getItem(USER_ID_KEY),
-    user_name: localStorage.getItem(USER_NAME_KEY)
+    email: localStorage.getItem(EMAIL_KEY),
+    phone: localStorage.getItem(PHONE_KEY),
+    tenant_id: localStorage.getItem(TENANT_ID_KEY)
   }
 }
 
@@ -60,7 +68,9 @@ export function clearTokens() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(REFRESH_TOKEN_KEY)
   localStorage.removeItem(USER_ID_KEY)
-  localStorage.removeItem(USER_NAME_KEY)
+  localStorage.removeItem(EMAIL_KEY)
+  localStorage.removeItem(PHONE_KEY)
+  localStorage.removeItem(TENANT_ID_KEY)
 }
 
 /**
