@@ -51,3 +51,17 @@ func (r *TenantRepo) Delete(ctx context.Context, tenantID string) error {
 	_, err := r.q.Tenant.WithContext(ctx).Where(r.q.Tenant.TenantID.Eq(tenantID)).Delete()
 	return err
 }
+
+// GetByIDs 根据租户ID列表获取租户信息
+func (r *TenantRepo) GetByIDs(ctx context.Context, tenantIDs []string) (map[string]*model.Tenant, error) {
+	tenants, err := r.q.Tenant.WithContext(ctx).Where(r.q.Tenant.TenantID.In(tenantIDs...)).Find()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*model.Tenant, len(tenants))
+	for _, tenant := range tenants {
+		result[tenant.TenantID] = tenant
+	}
+	return result, nil
+}

@@ -31,10 +31,10 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 // @Security ApiKeyAuth
 // @Param request body dto.CreateUserRequest true "创建用户请求参数"
 // @Success 200 {object} response.Response{data=dto.UserResponse} "创建成功"
-// @Failure 400 {object} response.Response "请求参数错误"
-// @Failure 401 {object} response.Response "未授权访问"
-// @Failure 403 {object} response.Response "权限不足"
-// @Failure 500 {object} response.Response "服务器内部错误"
+// @Success 200 {object} response.Response "请求参数错误"
+// @Success 200 {object} response.Response "未授权访问"
+// @Success 200 {object} response.Response "权限不足"
+// @Success 200 {object} response.Response "服务器内部错误"
 // @Router /users [post]
 func (h *UserHandler) CreateUser(c *gin.Context) {
 	var req dto.CreateUserRequest
@@ -136,9 +136,9 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // @Param user_name query string false "用户名筛选"
 // @Param status query int false "状态筛选(0:禁用,1:启用)"
 // @Success 200 {object} response.Response{data=dto.ListUsersResponse} "获取成功"
-// @Failure 400 {object} response.Response "请求参数错误"
-// @Failure 401 {object} response.Response "未授权访问"
-// @Failure 500 {object} response.Response "服务器内部错误"
+// @Success 200 {object} response.Response "请求参数错误"
+// @Success 200 {object} response.Response "未授权访问"
+// @Success 200 {object} response.Response "服务器内部错误"
 // @Router /users [get]
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	var req dto.ListUsersRequest

@@ -237,7 +237,7 @@ func (s *App) initHandlers() error {
 	authService := service.NewAuthService(userRepo, userTenantRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Config)
 
 	// 初始化用户服务
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, userTenantRoleRepo, tenantRepo)
 
 	s.Handlers = &Handlers{
 		HealthHandler:  handler.NewHealthHandler(),

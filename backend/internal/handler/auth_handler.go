@@ -11,7 +11,7 @@ import (
 )
 
 // AuthHandler JWT 认证处理器
-// 提供登录、刷新、登出等接口的处理函数
+// 提供登录、选择租户、刷新、登出等接口的处理函数
 type AuthHandler struct {
 	config      *config.Config
 	authService *service.AuthService
@@ -27,15 +27,15 @@ func NewAuthHandler(cfg *config.Config, authService *service.AuthService) *AuthH
 
 // Login 处理登录请求
 // @Summary 用户登录
-// @Description 用户通过用户名、密码和验证码进行登录，成功后返回访问令牌和刷新令牌
+// @Description 用户通过用户名、密码和验证码进行登录。如果用户只有一个租户，直接返回token；如果有多个租户，返回租户列表让用户选择。
 // @Tags 认证
 // @Accept json
 // @Produce json
 // @Param request body dto.LoginRequest true "登录请求参数"
-// @Success 200 {object} response.Response{data=dto.LoginResponse} "登录成功"
-// @Failure 400 {object} response.Response "请求参数错误"
-// @Failure 401 {object} response.Response "认证失败"
-// @Failure 500 {object} response.Response "服务器内部错误"
+// @Success 200 {object} response.Response{data=dto.LoginResponse} "登录成功或需要选择租户"
+// @Success 200 {object} response.Response "请求参数错误"
+// @Success 200 {object} response.Response "认证失败"
+// @Success 200 {object} response.Response "服务器内部错误"
 // @Router /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
@@ -45,6 +45,42 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	resp, err := h.authService.Login(c.Request.Context(), &req)
+	if err != nil {
+		response.Error(c, err.(*xerr.AppError))
+		return
+	}
+
+	response.Success(c, resp)
+}
+
+// SelectTenant 选择租户并完成登录
+// @Summary 选择租户
+// @Description 当用户有多个租户时，选择要登录的租户，返回该租户的访问令牌
+// @Tags 认证
+// @Accept json
+// @Produce json
+// @Param request body dto.SelectTenantRequest true "选择租户请求参数"
+// @Success 200 {object} response.Response{data=dto.SelectTenantResponse} "选择成功"
+// @Success 200 {object} response.Response "请求参数错误"
+// @Success 200 {object} response.Response "无该租户权限"
+// @Success 200 {object} response.Response "服务器内部错误"
+// @Router /auth/select-tenant [post]
+func (h *AuthHandler) SelectTenant(c *gin.Context) {
+	var req dto.SelectTenantRequest
+	if err := c.BindJSON(&req); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	// 从上下文获取 user_id（在登录接口返回后，前端需要携带 user_id）
+	// 这里我们假设从前端传来，实际生产中可以使用临时会话 token
+	userID := c.GetHeader("X-User-ID")
+	if userID == "" {
+		response.Error(c, xerr.ErrUnauthorized)
+		return
+	}
+
+	resp, err := h.authService.SelectTenant(c.Request.Context(), userID, req.TenantID)
 	if err != nil {
 		response.Error(c, err.(*xerr.AppError))
 		return
@@ -66,9 +102,9 @@ type RefreshRequest struct {
 // @Produce json
 // @Param request body RefreshRequest true "刷新令牌请求参数"
 // @Success 200 {object} response.Response{data=dto.RefreshResponse} "刷新成功"
-// @Failure 400 {object} response.Response "请求参数错误"
-// @Failure 401 {object} response.Response "刷新令牌无效或已过期"
-// @Failure 500 {object} response.Response "服务器内部错误"
+// @Success 200 {object} response.Response "请求参数错误"
+// @Success 200 {object} response.Response "刷新令牌无效或已过期"
+// @Success 200 {object} response.Response "服务器内部错误"
 // @Router /auth/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req RefreshRequest
@@ -94,8 +130,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Success 200 {object} map[string]string "登出成功"
-// @Failure 401 {object} response.Response "未授权访问"
-// @Failure 500 {object} response.Response "服务器内部错误"
+// @Success 200 {object} response.Response "未授权访问"
+// @Success 200 {object} response.Response "服务器内部错误"
 // @Router /auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	// 从上下文获取 Claims
@@ -120,3 +156,4 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 	c.JSON(200, gin.H{"message": "logged out successfully"})
 }
+

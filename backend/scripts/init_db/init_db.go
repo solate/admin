@@ -94,29 +94,27 @@ func main() {
 		fmt.Printf("ℹ️  默认租户已存在 tenant_id=%s code=%s name=%s\n", tenant.TenantID, tenant.TenantCode, tenant.Name)
 	}
 
-	// 创建或更新默认管理员用户
+	// 创建或更新默认管理员用户（用户表与租户解耦）
 	userID := ids[1]
 	email := "admin@example.com"
 	phone := "13800000000"
 	var user model.User
 	if err := db.Where("user_name = ?", "admin").First(&user).Error; err != nil {
-		// 用户不存在，创建新用户
+		// 用户不存在，创建新用户（不再包含 TenantID 和 RoleType 字段）
 		user = model.User{
 			UserID:   userID,
-			TenantID: tenantID,
 			UserName: "admin",
 			Password: hashedPassword,
 			Name:     "默认管理员",
 			Email:    &email,
 			Phone:    &phone,
 			Status:   1,
-			RoleType: constants.RoleTypeSuperAdmin,
 		}
 		if err := db.Create(&user).Error; err != nil {
 			fmt.Fprintf(os.Stderr, "❌ 创建默认超管失败: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("✅ 默认超管创建成功 user_id=%s tenant_id=%s username=%s role_type=%d\n", user.UserID, user.TenantID, user.UserName, user.RoleType)
+		fmt.Printf("✅ 默认超管创建成功 user_id=%s username=%s\n", user.UserID, user.UserName)
 		fmt.Printf("🔑 初始密码（仅本次输出）: %s\n", rawPassword)
 	} else {
 		// 用户已存在，更新密码
@@ -125,12 +123,11 @@ func main() {
 		user.Email = &email
 		user.Phone = &phone
 		user.Status = 1
-		user.RoleType = constants.RoleTypeSuperAdmin
 		if err := db.Save(&user).Error; err != nil {
 			fmt.Fprintf(os.Stderr, "❌ 更新默认超管失败: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("ℹ️  默认超管已存在，已更新密码 user_id=%s tenant_id=%s username=%s\n", user.UserID, user.TenantID, user.UserName)
+		fmt.Printf("ℹ️  默认超管已存在，已更新密码 user_id=%s username=%s\n", user.UserID, user.UserName)
 		fmt.Printf("🔑 更新后密码（仅本次输出）: %s\n", rawPassword)
 	}
 

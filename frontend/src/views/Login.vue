@@ -36,11 +36,12 @@
           :rules="rules"
           class="login-form-inner"
           @keyup.enter="onSubmit"
+          v-if="loginStep === 'credentials'"
         >
           <el-form-item prop="username">
             <el-input
               v-model="form.username"
-              placeholder="请输入用户名 / 邮箱 / 手机号"
+              placeholder="请输入用户名"
               size="large"
               clearable
               autocomplete="username"
@@ -113,10 +114,48 @@
           </el-form-item>
 
           <div class="login-options">
-            <el-checkbox v-model="rememberMe">记住密码</el-checkbox>
+            <el-checkbox v-model="rememberMe">记住用户名</el-checkbox>
             <el-button type="text">忘记密码？</el-button>
           </div>
         </el-form>
+
+        <!-- 租户选择区域 -->
+        <div v-else-if="loginStep === 'select_tenant'" class="tenant-selector">
+          <div class="tenant-selector-header">
+            <el-icon class="selector-icon" size="40"><OfficeBuilding /></el-icon>
+            <h2>选择租户</h2>
+            <p>检测到您属于多个租户，请选择要登录的租户</p>
+          </div>
+
+          <div class="tenant-list">
+            <div
+              v-for="tenant in availableTenants"
+              :key="tenant.tenant_id"
+              class="tenant-card"
+              :class="{ 'is-loading': selectingTenant === tenant.tenant_id }"
+              @click="selectTenant(tenant)"
+            >
+              <div class="tenant-avatar">
+                <el-icon :size="28"><OfficeBuilding /></el-icon>
+              </div>
+              <div class="tenant-info">
+                <div class="tenant-name">{{ tenant.tenant_name }}</div>
+                <div class="tenant-code">{{ tenant.tenant_code }}</div>
+              </div>
+              <el-icon v-if="selectingTenant === tenant.tenant_id" class="is-loading-icon">
+                <Loading />
+              </el-icon>
+              <el-icon v-else class="arrow-icon">
+                <ArrowRight />
+              </el-icon>
+            </div>
+          </div>
+
+          <el-button text @click="backToLogin" class="back-button">
+            <el-icon><ArrowLeft /></el-icon>
+            返回登录
+          </el-button>
+        </div>
       </div>
     </div>
 
@@ -132,8 +171,10 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { useThemeStore } from '../stores/theme'
-import { authApi } from '../api'
-import { saveTokens } from '../utils/token'
+import { authApi, type TenantInfo } from '../api'
+import { saveTokens, getLastTenantId } from '../utils/token'
+
+type LoginStep = 'credentials' | 'select_tenant'
 
 interface LoginForm {
   username: string
@@ -144,6 +185,9 @@ interface LoginForm {
 const router = useRouter()
 const themeStore = useThemeStore()
 const formRef = ref<FormInstance>()
+
+// 登录步骤
+const loginStep = ref<LoginStep>('credentials')
 
 // 表单数据
 const form = ref<LoginForm>({
@@ -159,6 +203,11 @@ const loadingCaptcha = ref(false)
 const rememberMe = ref(false)
 const captchaId = ref('')
 const captchaUrl = ref('')
+
+// 租户选择相关
+const pendingUserId = ref('')
+const availableTenants = ref<TenantInfo[]>([])
+const selectingTenant = ref('')
 
 // 表单验证规则
 const rules = {
@@ -198,18 +247,58 @@ onMounted(() => {
 async function loadCaptcha() {
   loadingCaptcha.value = true
   try {
-    console.log('开始获取验证码...')
     const res = await authApi.getCaptcha()
-    console.log('验证码响应:', res)
     captchaId.value = res.captcha_id
-    // captcha_data 已经包含完整的 data URI 前缀
     captchaUrl.value = res.captcha_data
-    console.log('验证码图片URL:', captchaUrl.value)
   } catch (error) {
     console.error('获取验证码失败:', error)
     ElMessage.error('获取验证码失败，请稍后重试')
   } finally {
     loadingCaptcha.value = false
+  }
+}
+
+// 返回登录页面
+function backToLogin() {
+  loginStep.value = 'credentials'
+  pendingUserId.value = ''
+  availableTenants.value = []
+}
+
+// 选择租户
+async function selectTenant(tenant: TenantInfo) {
+  if (!pendingUserId.value) return
+
+  selectingTenant.value = tenant.tenant_id
+
+  try {
+    const res = await authApi.selectTenant(pendingUserId.value, { tenant_id: tenant.tenant_id })
+
+    // 保存token和租户信息
+    saveTokens({
+      access_token: res.access_token,
+      refresh_token: res.refresh_token,
+      user_id: pendingUserId.value,
+      current_tenant: res.current_tenant
+    })
+
+    // 记住用户名
+    if (rememberMe.value) {
+      localStorage.setItem('remember_username', form.value.username)
+    } else {
+      localStorage.removeItem('remember_username')
+    }
+
+    ElMessage.success(`登录成功！欢迎来到 ${res.current_tenant.tenant_name}`)
+
+    // 跳转到首页或重定向页面
+    const redirect = (router.currentRoute.value.query.redirect as string) || '/'
+    router.push(redirect)
+  } catch (error: any) {
+    console.error('选择租户失败:', error)
+    ElMessage.error(error.message || '选择租户失败，请重试')
+  } finally {
+    selectingTenant.value = ''
   }
 }
 
@@ -221,36 +310,53 @@ async function onSubmit() {
   loading.value = true
 
   try {
+    // 获取上次选择的租户ID
+    const lastTenantId = getLastTenantId() || undefined
+
     const res = await authApi.login({
       username: form.value.username,
       password: form.value.password,
       captcha_id: captchaId.value,
-      captcha: form.value.captcha
+      captcha: form.value.captcha,
+      last_tenant_id: lastTenantId
     })
 
-    // 保存token
-    saveTokens({
-      access_token: res.access_token,
-      refresh_token: res.refresh_token,
-      user_id: res.user_id,
-      email: res.email,
-      phone: res.phone,
-      tenant_id: res.tenant_id
-    })
-
-    // 记住用户名
-    if (rememberMe.value) {
-      localStorage.setItem('remember_username', form.value.username)
-    } else {
-      localStorage.removeItem('remember_username')
+    // 检查是否需要选择租户
+    if (res.need_select_tenant) {
+      // 显示租户选择界面
+      loginStep.value = 'select_tenant'
+      pendingUserId.value = res.user_id
+      availableTenants.value = res.tenants || []
+      ElMessage.info('请选择要登录的租户')
+      return
     }
 
-    ElMessage.success('登录成功！欢迎回来')
+    // 直接登录成功
+    if (res.access_token && res.current_tenant) {
+      saveTokens({
+        access_token: res.access_token,
+        refresh_token: res.refresh_token!,
+        user_id: res.user_id,
+        email: res.email,
+        phone: res.phone,
+        current_tenant: res.current_tenant
+      })
 
-    // 跳转到首页或重定向页面
-    const redirect = (router.currentRoute.value.query.redirect as string) || '/'
-    router.push(redirect)
-  } catch (error) {
+      // 记住用户名
+      if (rememberMe.value) {
+        localStorage.setItem('remember_username', form.value.username)
+      } else {
+        localStorage.removeItem('remember_username')
+      }
+
+      ElMessage.success('登录成功！欢迎回来')
+
+      // 跳转到首页或重定向页面
+      const redirect = (router.currentRoute.value.query.redirect as string) || '/'
+      router.push(redirect)
+    }
+  } catch (error: any) {
+    console.error('登录失败:', error)
     // 登录失败，刷新验证码
     loadCaptcha()
     form.value.captcha = ''
@@ -342,7 +448,7 @@ async function onSubmit() {
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 420px;
+    max-width: 480px;
     padding: 20px;
   }
 
@@ -463,7 +569,113 @@ async function onSubmit() {
           }
         }
       }
+    }
 
+    // 租户选择器
+    .tenant-selector {
+      .tenant-selector-header {
+        text-align: center;
+        margin-bottom: 24px;
+
+        .selector-icon {
+          color: var(--primary-color);
+          margin-bottom: 12px;
+        }
+
+        h2 {
+          font-size: 20px;
+          font-weight: 600;
+          color: var(--text-primary);
+          margin: 0 0 8px 0;
+        }
+
+        p {
+          font-size: 14px;
+          color: var(--text-secondary);
+          margin: 0;
+        }
+      }
+
+      .tenant-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+
+        .tenant-card {
+          display: flex;
+          align-items: center;
+          padding: 16px;
+          border: 1px solid var(--border-base);
+          border-radius: var(--border-radius);
+          cursor: pointer;
+          transition: var(--transition-base);
+          background: var(--bg-light);
+
+          &:hover {
+            border-color: var(--primary-color);
+            background: var(--bg-white);
+            box-shadow: var(--shadow-sm);
+            transform: translateX(4px);
+          }
+
+          &.is-loading {
+            opacity: 0.7;
+            pointer-events: none;
+          }
+
+          .tenant-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--border-radius);
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin-right: 16px;
+          }
+
+          .tenant-info {
+            flex: 1;
+
+            .tenant-name {
+              font-size: 16px;
+              font-weight: 500;
+              color: var(--text-primary);
+              margin-bottom: 4px;
+            }
+
+            .tenant-code {
+              font-size: 13px;
+              color: var(--text-secondary);
+            }
+          }
+
+          .is-loading-icon {
+            animation: rotate 1s linear infinite;
+            color: var(--primary-color);
+          }
+
+          .arrow-icon {
+            color: var(--text-placeholder);
+            transition: var(--transition-base);
+          }
+
+          &:hover .arrow-icon {
+            color: var(--primary-color);
+          }
+        }
+      }
+
+      .back-button {
+        width: 100%;
+        color: var(--text-secondary);
+
+        &:hover {
+          color: var(--primary-color);
+        }
+      }
     }
   }
 
@@ -489,6 +701,15 @@ async function onSubmit() {
   }
   50% {
     transform: translateY(-30px) rotate(5deg);
+  }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 

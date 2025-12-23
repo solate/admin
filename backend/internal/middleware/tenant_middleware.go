@@ -1,29 +1,25 @@
 package middleware
 
-// import (
-// 	"admin/pkg/database"
-// 	"context"
+import (
+	"admin/pkg/database"
 
-// 	"admin/internal/constants"
+	"github.com/gin-gonic/gin"
+)
 
-// 	"github.com/gin-gonic/gin"
-// )
-
-// // TenantMiddleware 从请求中提取租户 ID 并注入到上下文,
-// // 当没有jwt 的时候，依然可以从 X-Tenant-ID 头中提取租户 ID
-// func TenantMiddleware() gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		tenantID := c.GetString(constants.CtxTenantID)
-// 		if tenantID == "" {
-// 			tenantID = c.GetHeader("X-Tenant-ID")
-// 		}
-// 		if tenantID != "" {
-// 			// 使用 database.WithTenantID 注入，以便 GORM scopes 自动识别
-// 			ctx := database.WithTenantID(c.Request.Context(), tenantID)
-// 			// 同时保留 constants 上下文（如果需要的话，但通常 scopes 只看 database 的 key）
-// 			ctx = context.WithValue(ctx, constants.CtxTenantID, tenantID)
-// 			c.Request = c.Request.WithContext(ctx)
-// 		}
-// 		c.Next()
-// 	}
-// }
+// SkipTenantCheck 跳过租户检查的中间件
+//
+// 说明：
+// - 某些接口（如登录、注册）在处理时需要跨租户查询，此时需要跳过 GORM 的租户拦截器
+// - 该中间件会在 context 中设置跳过标记，后续的数据库查询将不再自动添加租户条件
+// - 使用场景：登录、注册、获取验证码等无需预先知道租户信息的接口
+//
+// 注意：
+// - 该中间件应谨慎使用，仅在明确需要跨租户查询的接口上使用
+// - 正常的业务接口都应该经过租户检查，确保数据隔离
+func SkipTenantCheck() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := database.SkipTenantCheck(c.Request.Context())
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
+}

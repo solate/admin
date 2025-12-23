@@ -6,23 +6,50 @@ export interface CaptchaResponse {
   captcha_data: string // Base64图片数据
 }
 
+// 租户信息
+export interface TenantInfo {
+  tenant_id: string
+  tenant_name: string
+  tenant_code: string
+  role_type: number
+}
+
 // 登录请求
 export interface LoginRequest {
   username: string
   password: string
   captcha_id: string
   captcha: string
+  last_tenant_id?: string // 上次选择的租户ID
 }
 
 // 登录响应
 export interface LoginResponse {
+  // 需要选择租户的情况
+  need_select_tenant: boolean
+  user_id: string
+  tenants?: TenantInfo[] // 用户有权限的租户列表（需要选择时返回）
+
+  // 直接登录成功的情况
+  access_token?: string
+  refresh_token?: string
+  expires_in?: number
+  current_tenant?: TenantInfo
+  phone?: string
+  email?: string
+}
+
+// 选择租户请求
+export interface SelectTenantRequest {
+  tenant_id: string
+}
+
+// 选择租户响应
+export interface SelectTenantResponse {
   access_token: string
   refresh_token: string
   expires_in: number
-  user_id: string
-  email: string
-  phone: string
-  tenant_id: string
+  current_tenant: TenantInfo
 }
 
 // 注册请求
@@ -50,6 +77,7 @@ export interface RefreshTokenRequest {
 export interface RefreshTokenResponse {
   access_token: string
   refresh_token?: string
+  current_tenant?: TenantInfo
 }
 
 // 修改密码请求
@@ -80,6 +108,15 @@ export const authApi = {
   // 用户登录
   login: (data: LoginRequest): Promise<LoginResponse> => {
     return http.post('/api/v1/auth/login', data)
+  },
+
+  // 选择租户
+  selectTenant: (userId: string, data: SelectTenantRequest): Promise<SelectTenantResponse> => {
+    return http.post('/api/v1/auth/select-tenant', data, {
+      headers: {
+        'X-User-ID': userId
+      }
+    })
   },
 
   // 用户注册

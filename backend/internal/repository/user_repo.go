@@ -3,7 +3,6 @@ package repository
 import (
 	"admin/internal/dal/model"
 	"admin/internal/dal/query"
-	"admin/pkg/database"
 	"context"
 
 	"gorm.io/gorm"
@@ -31,19 +30,10 @@ func (r *UserRepo) GetUserByID(ctx context.Context, userID string) (*model.User,
 	return r.q.User.WithContext(ctx).Where(r.q.User.UserID.Eq(userID)).First()
 }
 
-// GetUserByName 根据用户名获取用户（需要在上下文中包含租户信息）
+// GetUserByName 根据用户名获取用户（全局查询，用于登录）
 func (r *UserRepo) GetUserByName(ctx context.Context, userName string) (*model.User, error) {
+	// 用户表已与租户解耦，用户名全局唯一，直接查询即可
 	return r.q.User.WithContext(ctx).Where(r.q.User.UserName.Eq(userName)).First()
-}
-
-// GetUserByNameAndTenant 根据用户名和租户ID获取用户
-func (r *UserRepo) GetUserByNameAndTenant(ctx context.Context, userName, tenantID string) (*model.User, error) {
-	// 使用 SkipTenantCheck 来手动控制租户过滤
-	ctx = database.SkipTenantCheck(ctx)
-	return r.q.User.WithContext(ctx).Where(
-		r.q.User.UserName.Eq(userName),
-		r.q.User.TenantID.Eq(tenantID),
-	).First()
 }
 
 // UpdateUser 更新用户
@@ -84,14 +74,10 @@ func (r *UserRepo) UpdateUserStatus(ctx context.Context, userID string, status i
 	return err
 }
 
-// CheckUserExists 检查用户是否存在（在指定租户内）
-func (r *UserRepo) CheckUserExists(ctx context.Context, userName, tenantID string) (bool, error) {
-	// 使用 SkipTenantCheck 来手动控制租户过滤，确保在正确的租户内检查
-	ctx = database.SkipTenantCheck(ctx)
-	count, err := r.q.User.WithContext(ctx).Where(
-		r.q.User.UserName.Eq(userName),
-		r.q.User.TenantID.Eq(tenantID),
-	).Count()
+// CheckUserExists 检查用户是否存在（全局唯一）
+func (r *UserRepo) CheckUserExists(ctx context.Context, userName string) (bool, error) {
+	// 用户名已全局唯一
+	count, err := r.q.User.WithContext(ctx).Where(r.q.User.UserName.Eq(userName)).Count()
 	if err != nil {
 		return false, err
 	}

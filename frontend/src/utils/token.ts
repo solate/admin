@@ -1,9 +1,9 @@
 /**
  * Token 管理模块
- * 负责 access_token 和 refresh_token 的存储、获取、刷新
+ * 负责 access_token、refresh_token 和租户信息的存储、获取、刷新
  */
 
-import { authApi } from '../api'
+import { authApi, type TenantInfo } from '../api'
 
 const TOKEN_KEY = 'access_token'
 const REFRESH_TOKEN_KEY = 'refresh_token'
@@ -11,28 +11,36 @@ const USER_ID_KEY = 'user_id'
 const EMAIL_KEY = 'email'
 const PHONE_KEY = 'phone'
 const TENANT_ID_KEY = 'tenant_id'
+const TENANT_INFO_KEY = 'tenant_info' // 完整的租户信息
 
 // Token刷新状态管理
 let isRefreshing = false
 let refreshSubscribers: Array<(token: string) => void> = []
 
 /**
- * 保存token信息
+ * 保存token信息（登录成功后）
  */
 export function saveTokens(data: {
   access_token: string
   refresh_token: string
   user_id: string
-  email: string
-  phone: string
-  tenant_id: string
+  email?: string
+  phone?: string
+  current_tenant?: TenantInfo
 }) {
   localStorage.setItem(TOKEN_KEY, data.access_token)
   localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token)
   localStorage.setItem(USER_ID_KEY, data.user_id)
-  localStorage.setItem(EMAIL_KEY, data.email)
-  localStorage.setItem(PHONE_KEY, data.phone)
-  localStorage.setItem(TENANT_ID_KEY, data.tenant_id)
+  if (data.email !== undefined) {
+    localStorage.setItem(EMAIL_KEY, data.email || '')
+  }
+  if (data.phone !== undefined) {
+    localStorage.setItem(PHONE_KEY, data.phone || '')
+  }
+  if (data.current_tenant) {
+    localStorage.setItem(TENANT_ID_KEY, data.current_tenant.tenant_id)
+    localStorage.setItem(TENANT_INFO_KEY, JSON.stringify(data.current_tenant))
+  }
 }
 
 /**
@@ -47,6 +55,35 @@ export function getAccessToken(): string | null {
  */
 export function getRefreshToken(): string | null {
   return localStorage.getItem(REFRESH_TOKEN_KEY)
+}
+
+/**
+ * 获取用户ID
+ */
+export function getUserId(): string | null {
+  return localStorage.getItem(USER_ID_KEY)
+}
+
+/**
+ * 获取租户ID（上次选择的）
+ */
+export function getLastTenantId(): string | null {
+  return localStorage.getItem(TENANT_ID_KEY)
+}
+
+/**
+ * 获取租户信息
+ */
+export function getTenantInfo(): TenantInfo | null {
+  const info = localStorage.getItem(TENANT_INFO_KEY)
+  if (info) {
+    try {
+      return JSON.parse(info)
+    } catch {
+      return null
+    }
+  }
+  return null
 }
 
 /**
@@ -71,6 +108,7 @@ export function clearTokens() {
   localStorage.removeItem(EMAIL_KEY)
   localStorage.removeItem(PHONE_KEY)
   localStorage.removeItem(TENANT_ID_KEY)
+  localStorage.removeItem(TENANT_INFO_KEY)
 }
 
 /**
@@ -111,7 +149,7 @@ export function isTokenExpiringSoon(): boolean {
 
   const now = Math.floor(Date.now() / 1000)
   const timeLeft = payload.exp - now
-  
+
   // 如果剩余时间少于5分钟，认为即将过期
   return timeLeft < 300
 }
@@ -168,19 +206,25 @@ export async function refreshAccessToken(): Promise<string | null> {
 
   try {
     const response = await authApi.refreshToken({ refresh_token: refreshToken })
-    
+
     // 更新本地token
     const newAccessToken = response.access_token
     localStorage.setItem(TOKEN_KEY, newAccessToken)
-    
+
     // 如果返回了新的refresh_token，也更新它
     if (response.refresh_token) {
       localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token)
     }
 
+    // 更新租户信息
+    if (response.current_tenant) {
+      localStorage.setItem(TENANT_ID_KEY, response.current_tenant.tenant_id)
+      localStorage.setItem(TENANT_INFO_KEY, JSON.stringify(response.current_tenant))
+    }
+
     // 通知所有等待的请求
     onTokenRefreshed(newAccessToken)
-    
+
     return newAccessToken
   } catch (error) {
     console.error('刷新token失败:', error)
@@ -215,6 +259,9 @@ export default {
   saveTokens,
   getAccessToken,
   getRefreshToken,
+  getUserId,
+  getLastTenantId,
+  getTenantInfo,
   getUserInfo,
   clearTokens,
   isTokenExpired,
@@ -222,4 +269,3 @@ export default {
   refreshAccessToken,
   ensureValidToken
 }
-

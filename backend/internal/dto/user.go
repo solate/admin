@@ -8,6 +8,7 @@ import (
 // CreateUserRequest 创建用户请求
 type CreateUserRequest struct {
 	UserName string `json:"username" binding:"required"`  // 用户名
+	Name     string `json:"name" binding:"omitempty"`     // 姓名/昵称
 	Password string `json:"password" binding:"required"`  // 密码
 	Phone    string `json:"phone" binding:"omitempty"`    // 手机号
 	Email    string `json:"email" binding:"omitempty"`    // 邮箱

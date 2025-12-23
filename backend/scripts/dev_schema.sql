@@ -37,19 +37,17 @@ COMMENT ON COLUMN tenants.deleted_at IS '删除时间戳(软删除)';
 
 -- ========================================
 -- 2. 用户表 (Users)
--- 平台级用户表，支持同一手机号/邮箱在不同租户下存在（视业务需求而定）
--- 当前设计：用户名在租户内唯一
+-- 平台级用户表，与租户解耦
+-- 一个用户可以通过 user_tenant_role 表关联多个租户
 -- ========================================
 CREATE TABLE users (
     user_id VARCHAR(255) PRIMARY KEY, -- 建议统一使用UUID (VARCHAR(36))
-    user_name VARCHAR(255) NOT NULL, -- 登录账号
+    user_name VARCHAR(255) NOT NULL UNIQUE, -- 登录账号（全局唯一）
     password VARCHAR(255) NOT NULL, -- 密码 (Bcrypt加密)
     name VARCHAR(255) NOT NULL DEFAULT '', -- 真实姓名/昵称
     avatar VARCHAR(255), -- 头像URL
-    phone VARCHAR(20), -- 手机号
-    email VARCHAR(255), -- 邮箱
-    tenant_id VARCHAR(36) NOT NULL, -- [多租户核心] 所属租户ID
-    role_type INTEGER NOT NULL DEFAULT 1, -- 角色类型标识 (1:普通用户, 2:租户管理员, 3:平台超级管理员) - 用于快速权限判断
+    phone VARCHAR(20), -- 手机号（全局唯一）
+    email VARCHAR(255), -- 邮箱（全局唯一）
     status INTEGER NOT NULL DEFAULT 1, -- 状态 (1:正常, 2:冻结)
     remark TEXT,
     last_login_time BIGINT, -- 最后登录时间
@@ -58,19 +56,17 @@ CREATE TABLE users (
     deleted_at BIGINT DEFAULT 0
 );
 
--- 租户内用户名唯一约束 (实现租户间账号隔离)
-CREATE UNIQUE INDEX idx_users_tenant_username ON users(tenant_id, user_name) WHERE deleted_at = 0;
+-- 用户名唯一约束（全局唯一）
+CREATE UNIQUE INDEX idx_users_username ON users(user_name) WHERE deleted_at = 0;
 
-COMMENT ON TABLE users IS '用户表(多租户隔离)';
+COMMENT ON TABLE users IS '用户表(平台级，与租户解耦)';
 COMMENT ON COLUMN users.user_id IS '用户ID';
-COMMENT ON COLUMN users.user_name IS '用户名(登录账号)';
+COMMENT ON COLUMN users.user_name IS '用户名(登录账号，全局唯一)';
 COMMENT ON COLUMN users.password IS '加密密码';
 COMMENT ON COLUMN users.name IS '姓名/昵称';
 COMMENT ON COLUMN users.avatar IS '头像URL';
-COMMENT ON COLUMN users.phone IS '手机号';
-COMMENT ON COLUMN users.email IS '电子邮箱';
-COMMENT ON COLUMN users.tenant_id IS '所属租户ID';
-COMMENT ON COLUMN users.role_type IS '管理员类型(1:普通用户, 2:租户管理员, 3:平台超级管理员)';
+COMMENT ON COLUMN users.phone IS '手机号(全局唯一)';
+COMMENT ON COLUMN users.email IS '电子邮箱(全局唯一)';
 COMMENT ON COLUMN users.status IS '状态(1:启用, 2:禁用)';
 COMMENT ON COLUMN users.remark IS '备注信息';
 COMMENT ON COLUMN users.last_login_time IS '最后登录时间戳';
@@ -146,12 +142,17 @@ COMMENT ON COLUMN permissions.updated_at IS '更新时间戳';
 -- ========================================
 -- 5. 用户-租户-角色关联表 (User Tenant Role)
 -- 实现多租户下用户角色分配
+-- 一个用户可以在不同租户中拥有不同角色
 -- ========================================
 CREATE TABLE user_tenant_role (
     user_tenant_role_id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL, -- 用户ID
     tenant_id VARCHAR(36) NOT NULL, -- 租户ID
-    role_id VARCHAR(255) NOT NULL -- 角色ID
+    role_id VARCHAR(255) NOT NULL, -- 角色ID
+    status INTEGER NOT NULL DEFAULT 1, -- 状态 (1:正常, 2:禁用) - 用户在该租户的状态
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0
 );
 
 -- 租户内用户-角色关联唯一约束
@@ -162,6 +163,10 @@ COMMENT ON COLUMN user_tenant_role.user_tenant_role_id IS '关联ID';
 COMMENT ON COLUMN user_tenant_role.user_id IS '用户ID';
 COMMENT ON COLUMN user_tenant_role.tenant_id IS '租户ID';
 COMMENT ON COLUMN user_tenant_role.role_id IS '角色ID';
+COMMENT ON COLUMN user_tenant_role.status IS '状态(1:启用, 2:禁用)';
+COMMENT ON COLUMN user_tenant_role.created_at IS '创建时间戳';
+COMMENT ON COLUMN user_tenant_role.updated_at IS '更新时间戳';
+COMMENT ON COLUMN user_tenant_role.deleted_at IS '删除时间戳(软删除)';
 
 
 
