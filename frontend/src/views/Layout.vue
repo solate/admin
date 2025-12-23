@@ -711,6 +711,156 @@ onUnmounted(() => {
   opacity: 0;
 }
 
+// ===== 暗色主题适配 =====
+[data-theme='dark'] {
+  .admin-layout {
+    // 侧边栏容器暗色样式
+    .sidebar {
+      background: rgba(15, 23, 42, 0.95);
+      border-right-color: rgba(71, 85, 105, 0.3);
+      backdrop-filter: blur(10px);
+
+      .sidebar-header {
+        border-bottom-color: rgba(71, 85, 105, 0.3);
+        background: rgba(15, 23, 42, 0.8);
+
+        .logo-container .logo-text {
+          color: #f1f5f9;
+        }
+      }
+
+      .tenant-selector {
+        border-bottom-color: rgba(71, 85, 105, 0.3);
+      }
+    }
+
+    // 主容器暗色样式
+    .main-container {
+      // 顶部导航栏暗色样式
+      .header {
+        background: rgba(15, 23, 42, 0.95);
+        border-bottom-color: rgba(71, 85, 105, 0.3);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+
+        .header-left {
+          .collapse-btn {
+            color: #cbd5e1;
+
+            &:hover {
+              color: #42a5f5;
+              background: rgba(66, 165, 245, 0.1);
+            }
+          }
+        }
+
+        .header-right {
+          .header-action {
+            color: #cbd5e1;
+
+            &:hover {
+              color: #42a5f5;
+              background: rgba(66, 165, 245, 0.1);
+            }
+          }
+
+          .user-dropdown {
+            .user-info {
+              &:hover {
+                background: rgba(51, 65, 85, 0.5);
+              }
+
+              .user-details {
+                .user-name {
+                  color: #f1f5f9;
+                }
+
+                .user-role {
+                  color: #94a3b8;
+                }
+              }
+
+              .dropdown-icon {
+                color: #94a3b8;
+              }
+            }
+          }
+        }
+      }
+
+      // 主内容区域暗色样式
+      .main-content {
+        background: #0a0e1a;
+      }
+
+      // 页脚暗色样式
+      .footer {
+        background: rgba(15, 23, 42, 0.95);
+        border-top-color: rgba(71, 85, 105, 0.3);
+
+        .footer-content {
+          color: #94a3b8;
+        }
+      }
+    }
+  }
+}
+
+// 租户列表和通知列表暗色样式
+[data-theme='dark'] {
+  .tenant-list {
+    .tenant-item {
+      background: rgba(30, 41, 59, 0.6);
+      border-color: rgba(71, 85, 105, 0.5);
+
+      &:hover {
+        background: rgba(51, 65, 85, 0.7);
+        border-color: rgba(66, 165, 245, 0.5);
+      }
+
+      &.active {
+        background: rgba(66, 165, 245, 0.15);
+        border-color: #42a5f5;
+      }
+
+      .tenant-info {
+        .tenant-name {
+          color: #f1f5f9;
+        }
+
+        .tenant-desc {
+          color: #94a3b8;
+        }
+      }
+    }
+  }
+
+  .notification-list {
+    .notification-item {
+      background: rgba(30, 41, 59, 0.6);
+      border-color: rgba(71, 85, 105, 0.5);
+
+      &:hover {
+        background: rgba(51, 65, 85, 0.7);
+      }
+
+      .notification-content {
+        .notification-title {
+          color: #f1f5f9;
+        }
+
+        .notification-desc {
+          color: #cbd5e1;
+        }
+
+        .notification-time {
+          color: #94a3b8;
+        }
+      }
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .admin-layout {
     .sidebar {
