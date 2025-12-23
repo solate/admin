@@ -9,12 +9,12 @@
 
     <!-- 主题切换按钮 -->
     <div class="theme-toggle">
-      <el-button
-        :icon="themeStore.theme === 'light' ? 'Moon' : 'Sunny'"
-        circle
-        @click="themeStore.toggleTheme()"
-        size="large"
-      />
+      <el-button text @click="themeStore.toggleTheme()" class="theme-btn">
+        <el-icon :size="20">
+          <Moon v-if="themeStore.theme === 'light'" />
+          <Sunny v-else />
+        </el-icon>
+      </el-button>
     </div>
 
     <!-- 登录表单 -->
@@ -288,7 +288,7 @@ function goToRegister() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  background: var(--gradient-primary);
   overflow: hidden;
 
   // 背景装饰
@@ -304,30 +304,30 @@ function goToRegister() {
     .bg-shape {
       position: absolute;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.08);
-      animation: float 6s ease-in-out infinite;
+      background: rgba(255, 255, 255, 0.1);
+      animation: float 8s ease-in-out infinite;
 
       &.bg-shape-1 {
-        width: 200px;
-        height: 200px;
+        width: 300px;
+        height: 300px;
         top: 10%;
         left: 10%;
         animation-delay: 0s;
       }
 
       &.bg-shape-2 {
-        width: 150px;
-        height: 150px;
-        top: 70%;
+        width: 200px;
+        height: 200px;
+        top: 60%;
         right: 10%;
         animation-delay: 2s;
       }
 
       &.bg-shape-3 {
-        width: 100px;
-        height: 100px;
-        bottom: 10%;
-        left: 30%;
+        width: 150px;
+        height: 150px;
+        bottom: 15%;
+        left: 20%;
         animation-delay: 4s;
       }
     }
@@ -336,9 +336,25 @@ function goToRegister() {
   // 主题切换按钮
   .theme-toggle {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 24px;
+    right: 24px;
     z-index: 10;
+
+    .theme-btn {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.25);
+        color: white;
+      }
+    }
   }
 
   // 登录内容区域
@@ -346,16 +362,16 @@ function goToRegister() {
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
     padding: 20px;
   }
 
   .login-form {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-radius: 16px;
+    background: var(--bg-white);
+    backdrop-filter: blur(20px);
+    border-radius: var(--border-radius-xl);
     padding: 40px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.2);
 
     .login-header {
@@ -368,8 +384,8 @@ function goToRegister() {
         justify-content: center;
         width: 64px;
         height: 64px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 12px;
+        background: var(--gradient-primary);
+        border-radius: var(--border-radius-large);
         margin-bottom: 16px;
 
         .logo-icon {
@@ -394,20 +410,6 @@ function goToRegister() {
     .login-form-inner {
       .el-form-item {
         margin-bottom: 20px;
-
-        :deep(.el-input__wrapper) {
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-          border-radius: 4px;
-          transition: all 0.3s ease;
-
-          &:hover {
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-          }
-
-          &.is-focus {
-            box-shadow: 0 0 0 2px var(--primary-light);
-          }
-        }
       }
 
       .captcha-container {
@@ -423,18 +425,18 @@ function goToRegister() {
           width: 120px;
           height: 40px;
           cursor: pointer;
-          border-radius: 4px;
+          border-radius: var(--border-radius);
           overflow: hidden;
           border: 1px solid var(--border-base);
-          background: #f5f7fa;
+          background: var(--bg-light);
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.3s ease;
+          transition: var(--transition-base);
 
           &:hover {
-            border-color: #667eea;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            border-color: var(--primary-color);
+            box-shadow: var(--glow-primary);
           }
 
           img {
@@ -447,20 +449,19 @@ function goToRegister() {
 
       .login-button {
         width: 100%;
-        height: 40px;
+        height: 44px;
         font-size: 15px;
         font-weight: 500;
-        border-radius: 4px;
-        background-color: white;
-        color: var(--primary-color);
+        border-radius: var(--border-radius);
+        background: var(--gradient-primary);
         border: none;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        transition: all 0.3s ease;
+        box-shadow: var(--glow-primary);
+        transition: var(--transition-base);
 
         &:hover {
-          background-color: rgba(255, 255, 255, 0.9);
+          background: var(--gradient-primary-hover);
+          box-shadow: var(--glow-hover);
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         &:active {
@@ -475,8 +476,7 @@ function goToRegister() {
         margin-bottom: 20px;
 
         .el-button--text {
-          color: white;
-          font-weight: 400;
+          color: var(--primary-color);
 
           &:hover {
             opacity: 0.8;
@@ -488,10 +488,10 @@ function goToRegister() {
         margin: 24px 0 20px;
 
         .divider-text {
-          color: rgba(255, 255, 255, 0.8);
+          color: var(--text-secondary);
           font-size: 13px;
           padding: 0 16px;
-          background: rgba(255, 255, 255, 0.95);
+          background: var(--bg-white);
         }
       }
 
@@ -503,15 +503,16 @@ function goToRegister() {
         .social-btn {
           flex: 1;
           height: 40px;
-          border-radius: 4px;
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          background: rgba(255, 255, 255, 0.1);
-          color: white;
-          transition: all 0.3s ease;
+          border-radius: var(--border-radius);
+          border: 1px solid var(--border-base);
+          background: var(--bg-light);
+          color: var(--text-regular);
+          transition: var(--transition-base);
 
           &:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
+            background: var(--bg-page);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
             transform: translateY(-1px);
           }
         }
@@ -519,7 +520,7 @@ function goToRegister() {
 
       .register-link {
         text-align: center;
-        color: rgba(255, 255, 255, 0.8);
+        color: var(--text-secondary);
         font-size: 14px;
 
         .el-button {
@@ -533,9 +534,9 @@ function goToRegister() {
   // 版权信息
   .copyright {
     position: absolute;
-    bottom: 20px;
+    bottom: 24px;
     text-align: center;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.9);
     font-size: 13px;
     z-index: 1;
 
@@ -548,10 +549,47 @@ function goToRegister() {
 // 浮动动画
 @keyframes float {
   0%, 100% {
-    transform: translateY(0);
+    transform: translateY(0) rotate(0deg);
   }
   50% {
-    transform: translateY(-20px);
+    transform: translateY(-30px) rotate(5deg);
+  }
+}
+
+// 暗色主题适配
+[data-theme='dark'] {
+  .login-container {
+    .login-form {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+      .system-title {
+        color: var(--text-primary);
+      }
+
+      .system-subtitle {
+        color: var(--text-secondary);
+      }
+
+      .divider-text {
+        background: rgba(30, 41, 59, 0.9);
+      }
+
+      .social-btn {
+        background: rgba(51, 65, 85, 0.5);
+        border-color: var(--border-base);
+        color: var(--text-regular);
+
+        &:hover {
+          background: rgba(71, 85, 105, 0.5);
+        }
+      }
+
+      .register-link {
+        color: var(--text-secondary);
+      }
+    }
   }
 }
 
@@ -563,24 +601,14 @@ function goToRegister() {
     .login-form {
       padding: 30px 20px;
     }
-  }
-}
 
-// 暗色主题适配
-[data-theme='dark'] {
-  .login-container {
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    .theme-toggle {
+      top: 16px;
+      right: 16px;
 
-    .login-form {
-      background: rgba(30, 30, 30, 0.95);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-
-      .system-title {
-        color: #ecf0f1;
-      }
-
-      .system-subtitle {
-        color: #bdc3c7;
+      .theme-btn {
+        width: 40px;
+        height: 40px;
       }
     }
   }

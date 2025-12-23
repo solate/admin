@@ -124,18 +124,6 @@
         </div>
 
         <div class="header-right">
-          <!-- 系统负载热力图 -->
-          <div class="system-status">
-            <div class="system-load-chart">
-              <div
-                v-for="(load, index) in systemLoad"
-                :key="index"
-                class="load-bar"
-                :style="{ height: load + '%' }"
-              ></div>
-            </div>
-          </div>
-
           <!-- 全局搜索 -->
           <div class="search-box">
             <el-input
@@ -300,8 +288,6 @@ const tenants = ref([
   { id: 3, name: '开发租户', description: '开发环境', status: 'offline', statusText: '已停用' }
 ])
 
-const systemLoad = ref([45, 62, 38, 75, 50, 65, 42, 58, 70, 48, 55, 60, 40, 68, 52, 44, 66, 38, 72, 50])
-
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
 const breadcrumbConfig: Record<string, { title: string }> = {
@@ -417,15 +403,10 @@ function handleResize() {
   }
 }
 
-function updateSystemLoad() {
-  systemLoad.value = systemLoad.value.map(() => Math.floor(Math.random() * 50) + 30)
-}
-
 onMounted(() => {
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   window.addEventListener('resize', handleResize)
   NProgress.configure({ showSpinner: false, minimum: 0.2, easing: 'ease', speed: 500 })
-  setInterval(updateSystemLoad, 3000)
   handleResize()
 })
 
@@ -469,7 +450,7 @@ onUnmounted(() => {
           align-items: center;
           justify-content: center;
           background: var(--gradient-primary);
-          border-radius: 8px;
+          border-radius: var(--border-radius);
           color: white;
           flex-shrink: 0;
         }
@@ -531,21 +512,19 @@ onUnmounted(() => {
           }
         }
 
-        .breadcrumb {
-          :deep(.el-breadcrumb__item) {
-            .el-breadcrumb__inner {
-              color: var(--text-regular);
-              font-weight: 500;
+        .breadcrumb :deep(.el-breadcrumb__item) {
+          .el-breadcrumb__inner {
+            color: var(--text-regular);
+            font-weight: 500;
 
-              &:hover {
-                color: var(--primary-color);
-              }
+            &:hover {
+              color: var(--primary-color);
             }
+          }
 
-            &:last-child .el-breadcrumb__inner {
-              color: var(--text-primary);
-              font-weight: 600;
-            }
+          &:last-child .el-breadcrumb__inner {
+            color: var(--text-primary);
+            font-weight: 600;
           }
         }
       }
@@ -555,20 +534,8 @@ onUnmounted(() => {
         align-items: center;
         gap: 12px;
 
-        .system-status {
-          display: flex;
-          align-items: center;
-          padding: 0 8px;
-
-          .system-load-chart {
-            width: 80px;
-          }
-        }
-
-        .search-box {
-          .search-input {
-            width: 200px;
-          }
+        .search-box .search-input {
+          width: 200px;
         }
 
         .header-action {
