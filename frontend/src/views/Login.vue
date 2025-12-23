@@ -1,102 +1,222 @@
 <template>
-  <div class="login-page">
-    <el-card class="login-card">
-      <h2 class="title">后台管理系统</h2>
-      <el-form :model="form" :rules="rules" ref="formRef" label-position="top" autocomplete="off">
-        <el-form-item label="账号" prop="username">
-          <el-input 
-            v-model="form.username" 
-            placeholder="请输入账号"
-            autocomplete="username"
-            name="login_username"
-          />
-        </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input 
-            v-model="form.password" 
-            :type="showPwd ? 'text' : 'password'" 
-            placeholder="请输入密码"
-            autocomplete="current-password"
-            name="login_password"
-          >
-            <template #suffix>
-              <el-icon @click="showPwd = !showPwd" class="clickable">
-                <component :is="showPwd ? 'View' : 'Hide'" />
-              </el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item label="验证码" prop="captcha">
-          <div class="captcha-wrapper">
-            <el-input 
-              v-model="form.captcha" 
-              placeholder="请输入验证码" 
-              style="flex: 1;"
-              autocomplete="off"
-              name="login_captcha"
-            />
-            <img 
-              v-if="captchaUrl" 
-              :src="captchaUrl" 
-              @click="loadCaptcha" 
-              class="captcha-img"
-              alt="验证码"
-            />
-            <el-button v-else @click="loadCaptcha" :loading="loadingCaptcha">获取验证码</el-button>
+  <div class="login-container">
+    <!-- 背景装饰 -->
+    <div class="login-bg">
+      <div class="bg-shape bg-shape-1"></div>
+      <div class="bg-shape bg-shape-2"></div>
+      <div class="bg-shape bg-shape-3"></div>
+    </div>
+
+    <!-- 主题切换按钮 -->
+    <div class="theme-toggle">
+      <el-button
+        :icon="themeStore.theme === 'light' ? 'Moon' : 'Sunny'"
+        circle
+        @click="themeStore.toggleTheme()"
+        size="large"
+      />
+    </div>
+
+    <!-- 登录表单 -->
+    <div class="login-content">
+      <div class="login-form">
+        <!-- Logo和标题 -->
+        <div class="login-header">
+          <div class="logo-container">
+            <el-icon class="logo-icon" size="48"><Promotion /></el-icon>
           </div>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :loading="loading" @click="onSubmit" style="width: 100%;">登录</el-button>
-        </el-form-item>
-        
-        <el-form-item>
-          <el-button text @click="goToRegister" style="width: 100%;">还没有账号？去注册</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+          <h1 class="system-title">多租户管理系统</h1>
+          <p class="system-subtitle">Multi-Tenant Management System</p>
+        </div>
+
+        <!-- 表单区域 -->
+        <el-form
+          ref="formRef"
+          :model="form"
+          :rules="rules"
+          class="login-form-inner"
+          @keyup.enter="onSubmit"
+        >
+          <el-form-item prop="username">
+            <el-input
+              v-model="form.username"
+              placeholder="请输入用户名 / 邮箱 / 手机号"
+              size="large"
+              clearable
+              autocomplete="username"
+              name="login_username"
+            >
+              <template #prefix>
+                <el-icon><User /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item prop="password">
+            <el-input
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="请输入密码"
+              size="large"
+              autocomplete="current-password"
+              name="login_password"
+            >
+              <template #prefix>
+                <el-icon><Lock /></el-icon>
+              </template>
+              <template #suffix>
+                <el-icon
+                  class="password-toggle"
+                  @click="showPassword = !showPassword"
+                >
+                  <View v-if="!showPassword" />
+                  <Hide v-else />
+                </el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item prop="captcha">
+            <div class="captcha-container">
+              <el-input
+                v-model="form.captcha"
+                placeholder="请输入验证码"
+                size="large"
+                clearable
+                autocomplete="off"
+                name="login_captcha"
+              >
+                <template #prefix>
+                  <el-icon><Picture /></el-icon>
+                </template>
+              </el-input>
+              <div class="captcha-image" @click="loadCaptcha">
+                <img v-if="captchaUrl" :src="captchaUrl" alt="验证码" />
+                <el-button v-else size="large" :loading="loadingCaptcha">
+                  获取验证码
+                </el-button>
+              </div>
+            </div>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button
+              type="primary"
+              size="large"
+              class="login-button"
+              :loading="loading"
+              @click="onSubmit"
+            >
+              <span v-if="!loading">登录系统</span>
+              <span v-else>正在登录...</span>
+            </el-button>
+          </el-form-item>
+
+          <div class="login-options">
+            <el-checkbox v-model="rememberMe">记住密码</el-checkbox>
+            <el-button type="text">忘记密码？</el-button>
+          </div>
+
+          <el-divider>
+            <span class="divider-text">其他登录方式</span>
+          </el-divider>
+
+          <div class="social-login">
+            <el-button class="social-btn" size="large">
+              <el-icon><Position /></el-icon>
+              <span>微信登录</span>
+            </el-button>
+            <el-button class="social-btn" size="large">
+              <el-icon><Message /></el-icon>
+              <span>钉钉登录</span>
+            </el-button>
+          </div>
+
+          <div class="register-link">
+            <span>还没有账号？</span>
+            <el-button type="primary" text @click="goToRegister">
+              立即注册
+            </el-button>
+          </div>
+        </el-form>
+      </div>
+    </div>
+
+    <!-- 版权信息 -->
+    <div class="copyright">
+      <p>&copy; 2025 Multi-Tenant Management System. All rights reserved.</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, type FormInstance } from 'element-plus'
+import { useThemeStore } from '../stores/theme'
 import { authApi } from '../api'
 import { saveTokens } from '../utils/token'
 
-interface LoginForm { 
+interface LoginForm {
   username: string
   password: string
   captcha: string
 }
 
 const router = useRouter()
-const formRef = ref()
-const form = ref<LoginForm>({ username: '', password: '', captcha: '' })
-const showPwd = ref(false)
+const themeStore = useThemeStore()
+const formRef = ref<FormInstance>()
+
+// 表单数据
+const form = ref<LoginForm>({
+  username: '',
+  password: '',
+  captcha: ''
+})
+
+// 状态变量
+const showPassword = ref(false)
 const loading = ref(false)
 const loadingCaptcha = ref(false)
+const rememberMe = ref(false)
 const captchaId = ref('')
 const captchaUrl = ref('')
 
+// 表单验证规则
 const rules = {
-  username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  captcha: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 2, max: 50, message: '用户名长度在 2 到 50 个字符', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 50, message: '密码长度在 6 到 50 个字符', trigger: 'blur' }
+  ],
+  captcha: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { len: 4, message: '验证码长度为 4 位', trigger: 'blur' }
+  ]
 }
 
 onMounted(() => {
   loadCaptcha()
-  
-  // 如果 URL 中有 username 参数，自动填充到表单
+
+  // 如果URL中有username参数，自动填充
   const usernameParam = router.currentRoute.value.query.username as string
   if (usernameParam) {
     form.value.username = usernameParam
-    // 清除 URL 中的 username 参数
     router.replace({ path: '/login', query: {} })
+  }
+
+  // 如果有记住的用户名，自动填充
+  const savedUsername = localStorage.getItem('remember_username')
+  if (savedUsername) {
+    form.value.username = savedUsername
+    rememberMe.value = true
   }
 })
 
+// 加载验证码
 async function loadCaptcha() {
   loadingCaptcha.value = true
   try {
@@ -104,15 +224,19 @@ async function loadCaptcha() {
     captchaId.value = res.captcha_id
     captchaUrl.value = res.captcha_url
   } catch (error) {
-    ElMessage.error('获取验证码失败')
+    ElMessage.error('获取验证码失败，请稍后重试')
   } finally {
     loadingCaptcha.value = false
   }
 }
 
+// 登录提交
 async function onSubmit() {
-  await formRef.value?.validate()
+  if (!formRef.value) return
+
+  await formRef.value.validate()
   loading.value = true
+
   try {
     const res = await authApi.login({
       username: form.value.username,
@@ -120,18 +244,25 @@ async function onSubmit() {
       captcha_id: captchaId.value,
       captcha: form.value.captcha
     })
-    
-    // 使用 token 管理模块保存 token
+
+    // 保存token
     saveTokens({
       access_token: res.access_token,
       refresh_token: res.refresh_token,
       user_id: res.user_id,
       user_name: res.user_name
     })
-    
-    ElMessage.success('登录成功')
-    
-    // 检查是否有重定向参数
+
+    // 记住用户名
+    if (rememberMe.value) {
+      localStorage.setItem('remember_username', form.value.username)
+    } else {
+      localStorage.removeItem('remember_username')
+    }
+
+    ElMessage.success('登录成功！欢迎回来')
+
+    // 跳转到首页或重定向页面
     const redirect = (router.currentRoute.value.query.redirect as string) || '/'
     router.push(redirect)
   } catch (error) {
@@ -143,33 +274,315 @@ async function onSubmit() {
   }
 }
 
+// 跳转到注册页
 function goToRegister() {
   router.push('/register')
 }
 </script>
 
-<style scoped>
-.login-page {
+<style scoped lang="scss">
+.login-container {
+  position: relative;
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f5f7fa;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  overflow: hidden;
+
+  // 背景装饰
+  .login-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 0;
+
+    .bg-shape {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      animation: float 6s ease-in-out infinite;
+
+      &.bg-shape-1 {
+        width: 200px;
+        height: 200px;
+        top: 10%;
+        left: 10%;
+        animation-delay: 0s;
+      }
+
+      &.bg-shape-2 {
+        width: 150px;
+        height: 150px;
+        top: 70%;
+        right: 10%;
+        animation-delay: 2s;
+      }
+
+      &.bg-shape-3 {
+        width: 100px;
+        height: 100px;
+        bottom: 10%;
+        left: 30%;
+        animation-delay: 4s;
+      }
+    }
+  }
+
+  // 主题切换按钮
+  .theme-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 10;
+  }
+
+  // 登录内容区域
+  .login-content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+  }
+
+  .login-form {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 32px;
+
+      .logo-container {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 64px;
+        height: 64px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        margin-bottom: 16px;
+
+        .logo-icon {
+          color: white;
+        }
+      }
+
+      .system-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 8px 0;
+      }
+
+      .system-subtitle {
+        font-size: 14px;
+        color: var(--text-secondary);
+        margin: 0;
+      }
+    }
+
+    .login-form-inner {
+      .el-form-item {
+        margin-bottom: 20px;
+
+        :deep(.el-input__wrapper) {
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+          border-radius: 4px;
+          transition: all 0.3s ease;
+
+          &:hover {
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+          }
+
+          &.is-focus {
+            box-shadow: 0 0 0 2px var(--primary-light);
+          }
+        }
+      }
+
+      .captcha-container {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+
+        .el-input {
+          flex: 1;
+        }
+
+        .captcha-image {
+          width: 120px;
+          height: 40px;
+          cursor: pointer;
+          border-radius: 4px;
+          overflow: hidden;
+          border: 1px solid var(--border-base);
+          background: #f5f7fa;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+
+          &:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+          }
+
+          img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+        }
+      }
+
+      .login-button {
+        width: 100%;
+        height: 40px;
+        font-size: 15px;
+        font-weight: 500;
+        border-radius: 4px;
+        background-color: white;
+        color: var(--primary-color);
+        border: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.9);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        &:active {
+          transform: translateY(0);
+        }
+      }
+
+      .login-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+
+        .el-button--text {
+          color: white;
+          font-weight: 400;
+
+          &:hover {
+            opacity: 0.8;
+          }
+        }
+      }
+
+      .el-divider {
+        margin: 24px 0 20px;
+
+        .divider-text {
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 13px;
+          padding: 0 16px;
+          background: rgba(255, 255, 255, 0.95);
+        }
+      }
+
+      .social-login {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+
+        .social-btn {
+          flex: 1;
+          height: 40px;
+          border-radius: 4px;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          transition: all 0.3s ease;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+          }
+        }
+      }
+
+      .register-link {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 14px;
+
+        .el-button {
+          font-weight: 500;
+          padding: 0 4px;
+        }
+      }
+    }
+  }
+
+  // 版权信息
+  .copyright {
+    position: absolute;
+    bottom: 20px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    z-index: 1;
+
+    p {
+      margin: 0;
+    }
+  }
 }
-.login-card { width: 400px; }
-.title { text-align: center; margin-bottom: 16px; }
-.clickable { cursor: pointer; }
-.captcha-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+
+// 浮动动画
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
 }
-.captcha-img {
-  height: 40px;
-  cursor: pointer;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+
+// 响应式设计
+@media (max-width: 480px) {
+  .login-container {
+    padding: 20px;
+
+    .login-form {
+      padding: 30px 20px;
+    }
+  }
+}
+
+// 暗色主题适配
+[data-theme='dark'] {
+  .login-container {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+
+    .login-form {
+      background: rgba(30, 30, 30, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+
+      .system-title {
+        color: #ecf0f1;
+      }
+
+      .system-subtitle {
+        color: #bdc3c7;
+      }
+    }
+  }
 }
 </style>
-
-

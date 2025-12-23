@@ -1,0 +1,512 @@
+// ===== 全局变量 - 商务蓝主题 =====
+:root {
+  // 主题色 - 商务蓝（浅色渐变）
+  --primary-color: #3b82f6;
+  --primary-light: #60a5fa;
+  --primary-dark: #2563eb;
+  --secondary-color: #06b6d4;
+  --accent-color: #6366f1;
+
+  // 渐变色（更浅的天蓝渐变）
+  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #60a5fa 0%, #22d3ee 100%);
+  --gradient-bg: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.6) 100%);
+
+  // 状态颜色
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --info-color: #6366f1;
+
+  // 文字颜色 - 亮色主题
+  --text-primary: #1e293b;
+  --text-regular: #475569;
+  --text-secondary: #64748b;
+  --text-placeholder: #94a3b8;
+
+  // 边框颜色
+  --border-base: #e2e8f0;
+  --border-light: #f1f5f9;
+  --border-lighter: #f8fafc;
+
+  // 背景颜色 - 亮色主题
+  --bg-white: #ffffff;
+  --bg-page: #f8fafc;
+  --bg-light: #f1f5f9;
+  --bg-glass: rgba(255, 255, 255, 0.8);
+
+  // 光效
+  --glow-primary: 0 4px 12px rgba(37, 99, 235, 0.15);
+  --glow-hover: 0 6px 20px rgba(37, 99, 235, 0.25);
+
+  // 布局
+  --header-height: 64px;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --border-radius: 8px;
+  --border-radius-large: 12px;
+  --border-radius-xl: 16px;
+
+  // 阴影
+  --box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+  --box-shadow-light: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --box-shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+  --box-shadow-large: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+
+  // 过渡动画
+  --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fade: opacity 0.2s ease-in-out;
+
+  // 字体
+  --font-family-base: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-size-base: 14px;
+  --font-size-small: 12px;
+  --font-size-large: 16px;
+  --font-size-xl: 20px;
+
+  // 间距
+  --spacing-small: 8px;
+  --spacing-base: 16px;
+  --spacing-large: 24px;
+  --spacing-xl: 32px;
+}
+
+// 暗色主题
+[data-theme='dark'] {
+  --primary-color: #60a5fa;
+  --primary-light: #93c5fd;
+  --primary-dark: #3b82f6;
+
+  --gradient-primary: linear-gradient(135deg, #60a5fa 0%, #06b6d4 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #93c5fd 0%, #22d3ee 100%);
+  --gradient-bg: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.4) 100%);
+
+  // 文字颜色
+  --text-primary: #f1f5f9;
+  --text-regular: #cbd5e1;
+  --text-secondary: #94a3b8;
+  --text-placeholder: #64748b;
+
+  // 边框颜色
+  --border-base: rgba(148, 163, 184, 0.2);
+  --border-light: rgba(51, 65, 85, 0.5);
+  --border-lighter: rgba(30, 41, 59, 0.5);
+
+  // 背景颜色
+  --bg-white: rgba(30, 41, 59, 0.6);
+  --bg-page: #0f172a;
+  --bg-light: rgba(51, 65, 85, 0.5);
+  --bg-glass: rgba(30, 41, 59, 0.6);
+
+  --glow-primary: 0 4px 12px rgba(59, 130, 246, 0.25);
+  --glow-hover: 0 6px 20px rgba(59, 130, 246, 0.4);
+
+  --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --box-shadow-light: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  --box-shadow-medium: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+  --box-shadow-large: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+// ===== 全局重置 =====
+* {
+  box-sizing: border-box;
+}
+
+// Element Plus 变量覆盖
+:root {
+  --el-color-primary: var(--primary-color);
+  --el-color-success: var(--success-color);
+  --el-color-warning: var(--warning-color);
+  --el-color-danger: var(--danger-color);
+  --el-color-info: var(--info-color);
+
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-regular);
+  --el-text-color-secondary: var(--text-secondary);
+  --el-text-color-placeholder: var(--text-placeholder);
+
+  --el-border-color: var(--border-base);
+  --el-border-color-light: var(--border-light);
+  --el-border-color-lighter: var(--border-lighter);
+  --el-border-color-extra-light: var(--border-lighter);
+
+  --el-bg-color: var(--bg-white);
+  --el-bg-color-page: var(--bg-page);
+  --el-bg-color-overlay: var(--bg-light);
+
+  --el-fill-color-blank: var(--bg-white);
+  --el-fill-color-light: var(--bg-light);
+  --el-fill-color-lighter: var(--border-lighter);
+  --el-fill-color-extra-light: var(--bg-page);
+  --el-fill-color-dark: var(--border-base);
+
+  --el-box-shadow: var(--box-shadow);
+  --el-box-shadow-light: var(--box-shadow-light);
+  --el-box-shadow-base: var(--box-shadow-medium);
+  --el-box-shadow-dark: var(--box-shadow-large);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  height: 100%;
+}
+
+// ===== 滚动条 =====
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-base);
+  border-radius: 3px;
+
+  &:hover {
+    background: var(--text-secondary);
+  }
+}
+
+// ===== 通用样式类 =====
+.glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-base);
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--box-shadow-light);
+  transition: var(--transition-base);
+
+  &:hover {
+    box-shadow: var(--glow-primary);
+  }
+}
+
+.primary-button {
+  background: var(--gradient-primary);
+  border: none;
+  color: white;
+  border-radius: var(--border-radius);
+  padding: 10px 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition-base);
+  box-shadow: var(--glow-primary);
+
+  &:hover {
+    background: var(--gradient-primary-hover);
+    box-shadow: var(--glow-hover);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-base);
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  &.online {
+    color: var(--success-color);
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  &.warning {
+    color: var(--warning-color);
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  &.offline {
+    color: var(--danger-color);
+    background: rgba(239, 68, 68, 0.1);
+  }
+}
+
+.tenant-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-base);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition-base);
+  font-size: 14px;
+  color: var(--text-primary);
+
+  &:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--glow-primary);
+  }
+
+  .tenant-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success-color);
+    box-shadow: 0 0 8px var(--success-color);
+  }
+}
+
+.system-load-chart {
+  height: 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+
+  .load-bar {
+    flex: 1;
+    background: var(--gradient-primary);
+    border-radius: 1px;
+    transition: height 0.3s ease;
+    min-height: 4px;
+  }
+}
+
+// ===== Element Plus 组件优化 =====
+// 全局文本按钮样式 - 移除边框
+.el-button--text {
+  border: none !important;
+  background: transparent !important;
+
+  &:hover {
+    background: var(--bg-light) !important;
+  }
+}
+
+.el-button {
+  &.el-button--primary {
+    background: var(--gradient-primary);
+    border: none;
+
+    &:hover,
+    &:focus {
+      background: var(--gradient-primary-hover);
+    }
+  }
+}
+
+.el-card {
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--box-shadow-light);
+  border-color: var(--border-base);
+  background: var(--bg-white);
+  transition: var(--transition-base);
+
+  &:hover {
+    box-shadow: var(--glow-primary);
+  }
+
+  .el-card__header {
+    background: var(--bg-light);
+    border-bottom-color: var(--border-base);
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .el-card__body {
+    color: var(--text-regular);
+  }
+}
+
+.el-table {
+  --el-table-bg-color: var(--bg-white) !important;
+  --el-table-tr-bg-color: var(--bg-white) !important;
+  --el-table-header-bg-color: var(--bg-light) !important;
+  --el-table-border-color: var(--border-base) !important;
+  --el-table-text-color: var(--text-regular) !important;
+  --el-table-header-text-color: var(--text-primary) !important;
+  --el-table-row-hover-bg-color: var(--bg-light) !important;
+
+  border-radius: var(--border-radius);
+  overflow: hidden;
+
+  .el-table__header-wrapper th {
+    background: var(--bg-light) !important;
+    color: var(--text-primary) !important;
+    font-weight: 600;
+  }
+}
+
+.el-input {
+  .el-input__wrapper {
+    border-radius: var(--border-radius);
+    transition: var(--transition-base);
+
+    &.is-focused {
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+  }
+}
+
+.el-dialog {
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--box-shadow-large);
+}
+
+.el-drawer {
+  --el-drawer-bg-color: var(--bg-white);
+  border-radius: var(--border-radius-large) 0 0 var(--border-radius-large);
+}
+
+// ===== 动画 =====
+.fade-enter-active,
+.fade-leave-active {
+  transition: var(--transition-fade);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: var(--transition-base);
+}
+
+.slide-fade-enter-from {
+  transform: translateX(10px);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateX(-10px);
+  opacity: 0;
+}
+
+// ===== 响应式 =====
+@media (max-width: 768px) {
+  :root {
+    --sidebar-width: 100%;
+  }
+}
+
+// ===== 表格操作按钮优化 =====
+.el-table {
+  .el-table__body-wrapper {
+    .el-table__body {
+      .el-table__row {
+        .el-table__cell {
+          &:last-child {
+            .cell {
+              white-space: nowrap;
+            }
+
+            // 操作按钮样式 - 移除边框，保持一行
+            .el-button {
+              border: none !important;
+              background: transparent !important;
+              padding: 4px 8px;
+
+              & + .el-button {
+                margin-left: 4px;
+              }
+
+              &.is-text,
+              &.el-button--text {
+                &:hover {
+                  background: var(--bg-light);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// ===== 侧边栏二级菜单样式统一 =====
+.el-menu {
+  .el-sub-menu {
+    .el-sub-menu__title {
+      border-radius: var(--border-radius);
+      margin: 2px 12px;
+      height: 40px;
+      line-height: 40px;
+
+      &:hover {
+        background: var(--bg-light);
+        color: var(--primary-color);
+      }
+    }
+
+    .el-menu {
+      background: var(--bg-light);
+      padding: 4px 0;
+
+      .el-menu-item {
+        color: var(--text-secondary);
+        border-radius: var(--border-radius);
+        margin: 2px 12px;
+        padding-left: 52px !important;
+        height: 36px;
+        line-height: 36px;
+        min-width: unset;
+
+        &:hover {
+          background: rgba(59, 130, 246, 0.1);
+          color: var(--primary-color);
+        }
+
+        &.is-active {
+          background: var(--gradient-primary);
+          color: white;
+        }
+      }
+    }
+  }
+}
+
+// ===== 无障碍 =====
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
