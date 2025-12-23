@@ -231,9 +231,10 @@ func (s *App) initHandlers() error {
 	userRepo := repository.NewUserRepo(s.DB)
 	userTenantRoleRepo := repository.NewUserTenantRoleRepo(s.DB)
 	roleRepo := repository.NewRoleRepo(s.DB)
+	tenantRepo := repository.NewTenantRepo(s.DB)
 
 	// 初始化认证服务
-	authService := service.NewAuthService(userRepo, userTenantRoleRepo, roleRepo, s.JWT, s.Redis, s.Config)
+	authService := service.NewAuthService(userRepo, userTenantRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Config)
 
 	// 初始化用户服务
 	userService := service.NewUserService(userRepo)

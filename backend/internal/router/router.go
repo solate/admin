@@ -40,9 +40,11 @@ func Setup(r *gin.Engine, app *App) {
 		// 公开接口（无需认证）
 		public := v1.Group("")
 		{
+			// 登录/注册相关接口 - 需要跳过租户检查
+			// 说明：登录时需要跨租户查询用户关联的租户信息，因此使用 SkipTenantCheck 中间件
 			auth := public.Group("/auth")
+			auth.Use(middleware.SkipTenantCheck())
 			{
-
 				auth.GET("/captcha", app.Handlers.CaptchaHandler.Get)   // 获取验证码
 				auth.POST("/login", app.Handlers.AuthHandler.Login)     // 用户登录
 				auth.POST("/refresh", app.Handlers.AuthHandler.Refresh) // 刷新令牌

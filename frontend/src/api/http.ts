@@ -3,9 +3,9 @@ import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'a
 import { ElMessage } from 'element-plus'
 import { getAccessToken, refreshAccessToken, clearTokens } from '../utils/token'
 
-// 开发环境使用代理，生产环境使用环境变量
-// 开发环境下不需要 baseURL，因为 vite 代理会自动处理 /api 前缀
-const baseURL = import.meta.env.MODE === 'development' ? '' : (import.meta.env.VITE_API_BASE_URL || '/api')
+// 不需要 baseURL，因为 API 路径中已包含完整前缀（如 /api/v1/...）
+// Vite 代理（开发环境）或 Nginx（生产环境）会自动处理 /api 前缀的转发
+const baseURL = ''
 
 const http: AxiosInstance = axios.create({
   baseURL,
