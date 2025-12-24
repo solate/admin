@@ -43,7 +43,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	resp, err := h.authService.Login(c.Request.Context(), &req)
 	if err != nil {
-		response.Error(c, err.(*xerr.AppError))
+		response.Error(c, err)
 		return
 	}
 
@@ -79,7 +79,7 @@ func (h *AuthHandler) SelectTenant(c *gin.Context) {
 
 	resp, err := h.authService.SelectTenant(c.Request.Context(), userID, req.TenantID)
 	if err != nil {
-		response.Error(c, err.(*xerr.AppError))
+		response.Error(c, err)
 		return
 	}
 
@@ -112,7 +112,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 	resp, err := h.authService.RefreshToken(c.Request.Context(), req.RefreshToken)
 	if err != nil {
-		response.Error(c, err.(*xerr.AppError))
+		response.Error(c, err)
 		return
 	}
 

@@ -18,37 +18,20 @@ import (
 
 // UserService 用户服务
 type UserService struct {
-	userRepo           *repository.UserRepo
-	userTenantRoleRepo *repository.UserTenantRoleRepo
-	tenantRepo         *repository.TenantRepo
+	userRepo *repository.UserRepo
 }
 
 // NewUserService 创建用户服务
 func NewUserService(
 	userRepo *repository.UserRepo,
-	userTenantRoleRepo *repository.UserTenantRoleRepo,
-	tenantRepo *repository.TenantRepo,
 ) *UserService {
 	return &UserService{
-		userRepo:           userRepo,
-		userTenantRoleRepo: userTenantRoleRepo,
-		tenantRepo:         tenantRepo,
+		userRepo: userRepo,
 	}
 }
 
 // CreateUser 创建用户
 func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest) (*dto.UserResponse, error) {
-	// 确保有租户ID
-	tenantID := req.TenantID
-	if tenantID == "" {
-		// 从上下文中获取租户ID
-		if ctxTenantID, exists := xcontext.GetTenantID(ctx); exists {
-			tenantID = ctxTenantID
-		} else {
-			return nil, xerr.Wrap(xerr.ErrUnauthorized.Code, "缺少租户信息", nil)
-		}
-	}
-
 	// 检查用户名是否已存在（全局唯一）
 	exists, err := s.userRepo.CheckExists(ctx, req.UserName)
 	if err != nil {
@@ -114,7 +97,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 	// 注意：创建用户后，还需要通过 user_tenant_role 表关联用户和租户
 	// 这里暂时不处理，需要单独的接口来分配角色
 
-	return s.toUserResponse(ctx, user, tenantID), nil
+	return s.toUserResponse(ctx, user), nil
 }
 
 // GetUserByID 根据ID获取用户
@@ -127,13 +110,7 @@ func (s *UserService) GetUserByID(ctx context.Context, userID string) (*dto.User
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
 	}
 
-	// 从上下文获取租户ID
-	tenantID := ""
-	if ctxTenantID, exists := xcontext.GetTenantID(ctx); exists {
-		tenantID = ctxTenantID
-	}
-
-	return s.toUserResponse(ctx, user, tenantID), nil
+	return s.toUserResponse(ctx, user), nil
 }
 
 // UpdateUser 更新用户
@@ -192,13 +169,7 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 	// 记录操作日志
 	ctx = operationlog.RecordUpdate(ctx, constants.ModuleUser, "user", updatedUser.UserID, updatedUser.Name, oldUser, updatedUser)
 
-	// 从上下文获取租户ID
-	tenantID := ""
-	if ctxTenantID, exists := xcontext.GetTenantID(ctx); exists {
-		tenantID = ctxTenantID
-	}
-
-	return s.toUserResponse(ctx, updatedUser, tenantID), nil
+	return s.toUserResponse(ctx, updatedUser), nil
 }
 
 // DeleteUser 删除用户
@@ -225,48 +196,25 @@ func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 
 // ListUsers 获取用户列表
 func (s *UserService) ListUsers(ctx context.Context, req *dto.ListUsersRequest) (*dto.ListUsersResponse, error) {
-	// 设置默认分页参数
-	page := req.Page
-	if page <= 0 {
-		page = 1
-	}
-	pageSize := req.PageSize
-	if pageSize <= 0 {
-		pageSize = 10
-	}
-
-	// 计算偏移量
-	offset := (page - 1) * pageSize
-
 	// 获取用户列表和总数，支持筛选条件
-	users, total, err := s.userRepo.ListWithFilters(ctx, offset, pageSize, req.UserName, req.Status)
+	users, total, err := s.userRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.UserName, req.Status)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户列表失败", err)
-	}
-
-	// 从上下文获取租户ID
-	tenantID := ""
-	if ctxTenantID, exists := xcontext.GetTenantID(ctx); exists {
-		tenantID = ctxTenantID
 	}
 
 	// 转换为响应格式
 	userResponses := make([]*dto.UserResponse, len(users))
 	for i, user := range users {
-		userResponses[i] = s.toUserResponse(ctx, user, tenantID)
+		userResponses[i] = s.toUserResponse(ctx, user)
 	}
 
 	return &dto.ListUsersResponse{
-		List:      userResponses,
-		Page:      page,
-		PageSize:  pageSize,
-		Total:     total,
-		TotalPage: (total + int64(pageSize) - 1) / int64(pageSize), // 计算总页数
+		Response: req.ToResponse(userResponses, total),
 	}, nil
 }
 
 // UpdateUserStatus 更新用户状态
-func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, status int32) error {
+func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, status int) error {
 	// 检查用户是否存在，获取旧值用于日志
 	oldUser, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -294,8 +242,7 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, statu
 }
 
 // toUserResponse 转换为用户响应格式
-// tenantID 参数用于获取租户信息，如果为空则尝试从上下文获取
-func (s *UserService) toUserResponse(ctx context.Context, user *model.User, tenantID string) *dto.UserResponse {
+func (s *UserService) toUserResponse(ctx context.Context, user *model.User) *dto.UserResponse {
 	// 处理可能为nil的指针字段
 	var phone, email, avatar string
 	if user.Phone != nil {
@@ -313,16 +260,6 @@ func (s *UserService) toUserResponse(ctx context.Context, user *model.User, tena
 		lastLoginTime = *user.LastLoginTime
 	}
 
-	// 尝试获取租户ID
-	if tenantID == "" {
-		if ctxTenantID, exists := xcontext.GetTenantID(ctx); exists {
-			tenantID = ctxTenantID
-		}
-	}
-
-	// 默认角色类型为普通用户
-	roleType := int32(1)
-
 	return &dto.UserResponse{
 		UserID:        user.UserID,
 		UserName:      user.UserName,
@@ -331,10 +268,9 @@ func (s *UserService) toUserResponse(ctx context.Context, user *model.User, tena
 		Phone:         phone,
 		Email:         email,
 		Status:        user.Status,
-		TenantID:      tenantID,
-		RoleType:      roleType,
+		TenantID:      xcontext.GetTenantID(ctx),
 		LastLoginTime: lastLoginTime,
-		CreatedAt:     time.UnixMilli(user.CreatedAt),
-		UpdatedAt:     time.UnixMilli(user.UpdatedAt),
+		CreatedAt:     user.CreatedAt,
+		UpdatedAt:     user.UpdatedAt,
 	}
 }

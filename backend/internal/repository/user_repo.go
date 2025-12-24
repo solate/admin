@@ -69,7 +69,7 @@ func (r *UserRepo) ListWithFilters(ctx context.Context, offset, limit int, userN
 }
 
 // UpdateStatus 更新用户状态
-func (r *UserRepo) UpdateStatus(ctx context.Context, userID string, status int32) error {
+func (r *UserRepo) UpdateStatus(ctx context.Context, userID string, status int) error {
 	_, err := r.q.User.WithContext(ctx).Where(r.q.User.UserID.Eq(userID)).Update(r.q.User.Status, status)
 	return err
 }

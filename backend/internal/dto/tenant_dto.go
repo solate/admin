@@ -1,6 +1,6 @@
 package dto
 
-import "admin/pkg/common"
+import "admin/pkg/pagination"
 
 // TenantCreateRequest 创建租户请求
 type TenantCreateRequest struct {
@@ -28,7 +28,7 @@ type TenantResponse struct {
 
 // TenantListRequest 租户列表查询请求
 type TenantListRequest struct {
-	common.PageRequest `json:",inline"` // 分页请求
+	pagination.Request `json:",inline"` // 分页请求
 	Code               string           `form:"code" example:"tenant_shanghai"`                   // 租户编码（模糊查询）
 	Name               string           `form:"name" example:"上海"`                                // 租户名称（模糊查询）
 	Status             int              `form:"status" binding:"omitempty,oneof=1 2" example:"1"` // 状态筛选
@@ -36,6 +36,5 @@ type TenantListRequest struct {
 
 // TenantListResponse 租户列表响应
 type TenantListResponse struct {
-	List                []TenantResponse `json:"list"` // 租户列表
-	common.PageResponse `json:",inline"` // 分页响应
+	pagination.Response
 }

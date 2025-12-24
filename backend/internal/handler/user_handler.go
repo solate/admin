@@ -45,11 +45,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 	resp, err := h.userService.CreateUser(c.Request.Context(), &req)
 	if err != nil {
-		if appErr, ok := err.(*xerr.AppError); ok {
-			response.Error(c, appErr)
-		} else {
-			response.Error(c, err)
-		}
+		response.Error(c, err)
 		return
 	}
 
@@ -66,11 +62,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 
 	resp, err := h.userService.GetUserByID(c.Request.Context(), userID)
 	if err != nil {
-		if appErr, ok := err.(*xerr.AppError); ok {
-			response.Error(c, appErr)
-		} else {
-			response.Error(c, err)
-		}
+		response.Error(c, err)
 		return
 	}
 
@@ -93,11 +85,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 
 	resp, err := h.userService.UpdateUser(c.Request.Context(), userID, &req)
 	if err != nil {
-		if appErr, ok := err.(*xerr.AppError); ok {
-			response.Error(c, appErr)
-		} else {
-			response.Error(c, err)
-		}
+		response.Error(c, err)
 		return
 	}
 
@@ -113,11 +101,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	}
 
 	if err := h.userService.DeleteUser(c.Request.Context(), userID); err != nil {
-		if appErr, ok := err.(*xerr.AppError); ok {
-			response.Error(c, appErr)
-		} else {
-			response.Error(c, err)
-		}
+		response.Error(c, err)
 		return
 	}
 
@@ -149,11 +133,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 
 	resp, err := h.userService.ListUsers(c.Request.Context(), &req)
 	if err != nil {
-		if appErr, ok := err.(*xerr.AppError); ok {
-			response.Error(c, appErr)
-		} else {
-			response.Error(c, err)
-		}
+		response.Error(c, err)
 		return
 	}
 
@@ -174,18 +154,14 @@ func (h *UserHandler) UpdateUserStatus(c *gin.Context) {
 		return
 	}
 
-	status, err := strconv.ParseInt(statusStr, 10, 32)
+	status, err := strconv.Atoi(statusStr)
 	if err != nil {
 		response.Error(c, xerr.ErrInvalidParams)
 		return
 	}
 
-	if err := h.userService.UpdateUserStatus(c.Request.Context(), userID, int32(status)); err != nil {
-		if appErr, ok := err.(*xerr.AppError); ok {
-			response.Error(c, appErr)
-		} else {
-			response.Error(c, err)
-		}
+	if err := h.userService.UpdateUserStatus(c.Request.Context(), userID, status); err != nil {
+		response.Error(c, err)
 		return
 	}
 

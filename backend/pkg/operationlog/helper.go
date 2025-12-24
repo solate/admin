@@ -15,10 +15,8 @@ import (
 //	    Data(nil, user).
 //	    BuildToContext(ctx)
 func Record(ctx context.Context, module, operationType string) *OperationBuilder {
-	tenantID, _ := xcontext.GetTenantID(ctx)
-
 	lc := &LogContext{
-		TenantID:      tenantID,
+		TenantID:      xcontext.GetTenantID(ctx),
 		Module:        module,
 		OperationType: operationType,
 		CreatedAt:     time.Now().UnixMilli(),

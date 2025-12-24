@@ -8,8 +8,8 @@ import (
 	"admin/pkg/config"
 	"admin/pkg/database"
 	"admin/pkg/jwt"
-	"admin/pkg/operationlog"
 	"admin/pkg/logger"
+	"admin/pkg/operationlog"
 	"admin/pkg/xredis"
 	"fmt"
 
@@ -20,14 +20,14 @@ import (
 )
 
 type App struct {
-	Config    *config.Config        // 配置
-	Router    *gin.Engine           // 路由
-	DB        *gorm.DB              // 数据库连接
-	Redis     redis.UniversalClient // Redis连接
-	JWT       *jwt.Manager          // JWT管理器
-	Enforcer  *casbin.Enforcer      // Casbin enforce
-	Handlers  *Handlers             // 处理器层容器
-	OperationLogLogger *operationlog.Logger // 操作日志写入器
+	Config             *config.Config        // 配置
+	Router             *gin.Engine           // 路由
+	DB                 *gorm.DB              // 数据库连接
+	Redis              redis.UniversalClient // Redis连接
+	JWT                *jwt.Manager          // JWT管理器
+	Enforcer           *casbin.Enforcer      // Casbin enforce
+	Handlers           *Handlers             // 处理器层容器
+	OperationLogLogger *operationlog.Logger  // 操作日志写入器
 }
 
 // Handlers 处理器层容器
@@ -245,7 +245,7 @@ func (s *App) initHandlers() error {
 	authService := service.NewAuthService(userRepo, userTenantRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Config)
 
 	// 初始化用户服务
-	userService := service.NewUserService(userRepo, userTenantRoleRepo, tenantRepo)
+	userService := service.NewUserService(userRepo)
 
 	s.Handlers = &Handlers{
 		HealthHandler:  handler.NewHealthHandler(),
