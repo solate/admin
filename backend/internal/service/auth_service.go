@@ -73,7 +73,7 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 
 	// 检查用户状态
 	if user.Status != constants.StatusEnabled {
-		log.Warn().Str("user_id", user.UserID).Int32("status", user.Status).Msg("用户状态未启用")
+		log.Warn().Str("user_id", user.UserID).Int("status", int(user.Status)).Msg("用户状态未启用")
 		return nil, xerr.ErrUserDisabled
 	}
 	log.Debug().Msg("用户状态正常")

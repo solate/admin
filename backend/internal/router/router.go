@@ -75,21 +75,16 @@ func Setup(r *gin.Engine, app *App) {
 
 			}
 
-			// // 超级管理员专属接口
-			// super := authenticated.Group("/super")
-			// super.Use(middleware.SuperAdminMiddleware())
-			// {
-			// 	// 租户管理接口
-			// 	tenant := super.Group("/tenants")
-			// 	{
-			// 		tenant.POST("", app.Handlers.TenantHandler.CreateTenant)                        // 创建租户
-			// 		tenant.GET("", app.Handlers.TenantHandler.ListTenants)                          // 获取租户列表
-			// 		tenant.GET("/:tenant_id", app.Handlers.TenantHandler.GetTenant)                 // 获取租户详情
-			// 		tenant.PUT("/:tenant_id", app.Handlers.TenantHandler.UpdateTenant)              // 更新租户
-			// 		tenant.DELETE("/:tenant_id", app.Handlers.TenantHandler.DeleteTenant)           // 删除租户
-			// 		tenant.PUT("/:tenant_id/status", app.Handlers.TenantHandler.UpdateTenantStatus) // 更新租户状态
-			// 	}
-			// }
+			// 租户接口
+			tenant := authenticated.Group("/tenants")
+			{
+				tenant.POST("", app.Handlers.TenantHandler.CreateTenant)                              // 创建租户
+				tenant.GET("", app.Handlers.TenantHandler.ListTenants)                                // 获取租户列表
+				tenant.GET("/:tenant_id", app.Handlers.TenantHandler.GetTenant)                       // 获取租户详情
+				tenant.PUT("/:tenant_id", app.Handlers.TenantHandler.UpdateTenant)                    // 更新租户
+				tenant.DELETE("/:tenant_id", app.Handlers.TenantHandler.DeleteTenant)                // 删除租户
+				tenant.PUT("/:tenant_id/status/:status", app.Handlers.TenantHandler.UpdateTenantStatus) // 更新租户状态
+			}
 
 		}
 

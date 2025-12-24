@@ -1,257 +1,221 @@
 package service
 
-// import (
-// 	"admin/internal/dal/model"
-// 	"admin/internal/dal/query"
-// 	"admin/internal/dto"
-// 	"admin/pkg/common"
-// 	"context"
-// 	"errors"
-// 	"fmt"
-// 	"time"
+import (
+	"admin/internal/dal/model"
+	"admin/internal/dto"
+	"admin/internal/repository"
+	"admin/pkg/constants"
+	"admin/pkg/idgen"
+	"admin/pkg/operationlog"
+	"admin/pkg/pagination"
+	"admin/pkg/xerr"
+	"context"
+	"time"
 
-// 	"admin/pkg/xerr"
+	"gorm.io/gorm"
+)
 
-// 	"github.com/google/uuid"
-// 	"gorm.io/gorm"
-// )
+// TenantService 租户服务
+type TenantService struct {
+	tenantRepo *repository.TenantRepo
+}
 
-// type TenantService struct {
-// 	db *gorm.DB
-// }
+// NewTenantService 创建租户服务
+func NewTenantService(tenantRepo *repository.TenantRepo) *TenantService {
+	return &TenantService{
+		tenantRepo: tenantRepo,
+	}
+}
 
-// func NewTenantService(db *gorm.DB) *TenantService {
-// 	return &TenantService{
-// 		db: db,
-// 	}
-// }
+// CreateTenant 创建租户
+func (s *TenantService) CreateTenant(ctx context.Context, req *dto.TenantCreateRequest) (*dto.TenantResponse, error) {
+	// 检查租户编码是否已存在
+	exists, err := s.tenantRepo.CheckExists(ctx, req.Code)
+	if err != nil {
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "检查租户编码失败", err)
+	}
+	if exists {
+		return nil, xerr.New(xerr.ErrConflict.Code, "租户编码已存在")
+	}
 
-// // CreateTenant 创建租户
-// func (s *TenantService) CreateTenant(ctx context.Context, req *dto.TenantCreateRequest) (*dto.TenantResponse, error) {
-// 	q := query.Use(s.db)
+	// 生成租户ID
+	tenantID, err := idgen.GenerateUUID()
+	if err != nil {
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成租户ID失败", err)
+	}
 
-// 	// 检查租户编码是否已存在
-// 	exists, err := q.Tenant.WithContext(ctx).
-// 		Unscoped().
-// 		Where(q.Tenant.Code.Eq(req.Code)).
-// 		Count()
-// 	if err != nil {
-// 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "检查租户编码失败", err)
-// 	}
-// 	if exists > 0 {
-// 		return nil, xerr.ErrConflict
-// 	}
+	// 构建租户模型
+	tenant := &model.Tenant{
+		TenantID:   tenantID,
+		TenantCode: req.Code,
+		Name:       req.Name,
+		Status:     1, // 默认启用
+	}
 
-// 	// 创建租户
-// 	now := time.Now().UnixMilli()
-// 	var desc *string
-// 	if req.Description != "" {
-// 		desc = &req.Description
-// 	}
-// 	tenant := &model.Tenant{
-// 		TenantID:    uuid.New().String(),
-// 		Code:        req.Code,
-// 		Name:        req.Name,
-// 		Description: desc,
-// 		Status:      int16(1),
-// 		CreatedAt:   now,
-// 		UpdatedAt:   now,
-// 	}
+	// 设置可选描述
+	if req.Description != "" {
+		tenant.Description = &req.Description
+	}
 
-// 	err = q.Tenant.WithContext(ctx).Create(tenant)
-// 	if err != nil {
-// 		return nil, xerr.Wrap(xerr.ErrCreateError.Code, "创建租户失败", err)
-// 	}
+	// 创建租户
+	if err := s.tenantRepo.Create(ctx, tenant); err != nil {
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "创建租户失败", err)
+	}
 
-// 	return s.toTenantResponse(tenant), nil
-// }
+	// 记录操作日志
+	ctx = operationlog.RecordCreate(ctx, constants.ModuleTenant, "tenant", tenant.TenantID, tenant.Name, tenant)
 
-// // GetTenantByID 根据ID获取租户
-// func (s *TenantService) GetTenantByID(ctx context.Context, tenantID string) (*dto.TenantResponse, error) {
-// 	q := query.Use(s.db)
+	return s.toTenantResponse(tenant), nil
+}
 
-// 	tenant, err := q.Tenant.WithContext(ctx).
-// 		Where(q.Tenant.TenantID.Eq(tenantID)).
-// 		First()
-// 	if err != nil {
-// 		if errors.Is(err, gorm.ErrRecordNotFound) {
-// 			return nil, xerr.ErrNotFound
-// 		}
-// 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询租户失败", err)
-// 	}
+// GetTenantByID 根据ID获取租户
+func (s *TenantService) GetTenantByID(ctx context.Context, tenantID string) (*dto.TenantResponse, error) {
+	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, xerr.ErrNotFound
+		}
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询租户失败", err)
+	}
 
-// 	return s.toTenantResponse(tenant), nil
-// }
+	return s.toTenantResponse(tenant), nil
+}
 
-// // UpdateTenant 更新租户
-// func (s *TenantService) UpdateTenant(ctx context.Context, tenantID string, req *dto.TenantUpdateRequest) (*dto.TenantResponse, error) {
-// 	q := query.Use(s.db)
+// UpdateTenant 更新租户
+func (s *TenantService) UpdateTenant(ctx context.Context, tenantID string, req *dto.TenantUpdateRequest) (*dto.TenantResponse, error) {
+	// 检查租户是否存在
+	oldTenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, xerr.ErrNotFound
+		}
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询租户失败", err)
+	}
 
-// 	// 检查租户是否存在
-// 	_, err := q.Tenant.WithContext(ctx).
-// 		Where(q.Tenant.TenantID.Eq(tenantID)).
-// 		First()
-// 	if err != nil {
-// 		if errors.Is(err, gorm.ErrRecordNotFound) {
-// 			return nil, xerr.ErrNotFound
-// 		}
-// 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询租户失败", err)
-// 	}
+	// 准备更新数据
+	updates := make(map[string]interface{})
+	if req.Name != "" {
+		updates["name"] = req.Name
+	}
+	if req.Description != "" {
+		updates["description"] = req.Description
+	} else if req.Description == "" {
+		// 空字符串清空描述
+		updates["description"] = nil
+	}
+	if req.Status != 0 {
+		updates["status"] = int16(req.Status)
+	}
+	updates["updated_at"] = time.Now().UnixMilli()
 
-// 	// 更新字段
-// 	updates := make(map[string]any)
-// 	updates["name"] = req.Name
-// 	updates["updated_at"] = time.Now().UnixMilli()
+	// 更新租户
+	if err := s.tenantRepo.Update(ctx, tenantID, updates); err != nil {
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "更新租户失败", err)
+	}
 
-// 	if req.Description != "" {
-// 		updates["description"] = req.Description
-// 	} else {
-// 		updates["description"] = nil
-// 	}
+	// 获取更新后的租户信息
+	updatedTenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后租户信息失败", err)
+	}
 
-// 	if req.Status != nil {
-// 		updates["status"] = int16(*req.Status)
-// 	}
+	// 记录操作日志
+	ctx = operationlog.RecordUpdate(ctx, constants.ModuleTenant, "tenant", updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
 
-// 	_, err = q.Tenant.WithContext(ctx).
-// 		Where(q.Tenant.TenantID.Eq(tenantID)).
-// 		Updates(updates)
-// 	if err != nil {
-// 		return nil, xerr.Wrap(xerr.ErrUpdateError.Code, "更新租户失败", err)
-// 	}
+	return s.toTenantResponse(updatedTenant), nil
+}
 
-// 	// 重新查询获取最新数据
-// 	return s.GetTenantByID(ctx, tenantID)
-// }
+// DeleteTenant 删除租户
+func (s *TenantService) DeleteTenant(ctx context.Context, tenantID string) error {
+	// 检查租户是否存在
+	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return xerr.ErrNotFound
+		}
+		return xerr.Wrap(xerr.ErrInternal.Code, "查询租户失败", err)
+	}
 
-// // DeleteTenant 删除租户（软删除）
-// func (s *TenantService) DeleteTenant(ctx context.Context, tenantID string) error {
-// 	q := query.Use(s.db)
+	// TODO: 检查租户下是否还有用户，如果有则不允许删除
+	// userCount, err := s.userRepo.CountByTenantID(ctx, tenantID)
+	// if userCount > 0 {
+	//     return xerr.New(xerr.ErrBadRequest.Code, "租户下还有用户，无法删除")
+	// }
 
-// 	// 检查租户是否存在
-// 	exists, err := q.Tenant.WithContext(ctx).
-// 		Where(q.Tenant.TenantID.Eq(tenantID)).
-// 		Count()
-// 	if err != nil {
-// 		return xerr.Wrap(xerr.ErrQueryError.Code, "检查租户失败", err)
-// 	}
-// 	if exists == 0 {
-// 		return xerr.ErrNotFound
-// 	}
+	// 删除租户
+	if err := s.tenantRepo.Delete(ctx, tenantID); err != nil {
+		return xerr.Wrap(xerr.ErrInternal.Code, "删除租户失败", err)
+	}
 
-// 	// 检查租户下是否还有用户
-// 	userCount, err := q.User.WithContext(ctx).
-// 		Where(q.User.TenantID.Eq(tenantID)).
-// 		Count()
-// 	if err != nil {
-// 		return xerr.Wrap(xerr.ErrQueryError.Code, "检查租户用户失败", err)
-// 	}
-// 	if userCount > 0 {
-// 		return xerr.New(xerr.ErrBadRequest.Code, fmt.Sprintf("租户下还有 %d 个用户，无法删除", userCount))
-// 	}
+	// 记录操作日志
+	operationlog.RecordDelete(ctx, constants.ModuleTenant, "tenant", tenant.TenantID, tenant.Name, tenant)
 
-// 	// 软删除租户
-// 	_, err = q.Tenant.WithContext(ctx).
-// 		Where(q.Tenant.TenantID.Eq(tenantID)).
-// 		Updates(map[string]any{
-// 			"deleted_at": time.Now().UnixMilli(),
-// 		})
-// 	if err != nil {
-// 		return xerr.Wrap(xerr.ErrUpdateError.Code, "删除租户失败", err)
-// 	}
+	return nil
+}
 
-// 	return nil
-// }
+// ListTenants 获取租户列表
+func (s *TenantService) ListTenants(ctx context.Context, req *dto.TenantListRequest) (*dto.TenantListResponse, error) {
+	// 获取租户列表和总数，支持筛选条件
+	tenants, total, err := s.tenantRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Code, req.Name, req.Status)
+	if err != nil {
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询租户列表失败", err)
+	}
 
-// // ListTenants 获取租户列表
-// func (s *TenantService) ListTenants(ctx context.Context, req *dto.TenantListRequest) (*dto.TenantListResponse, error) {
-// 	q := query.Use(s.db)
+	// 转换为响应格式
+	tenantResponses := make([]*dto.TenantResponse, len(tenants))
+	for i, tenant := range tenants {
+		tenantResponses[i] = s.toTenantResponse(tenant)
+	}
 
-// 	dao := q.Tenant.WithContext(ctx)
+	// 构建分页响应
+	return &dto.TenantListResponse{
+		Response: pagination.NewResponse(tenantResponses, &req.Request, total),
+	}, nil
+}
 
-// 	// 添加筛选条件
-// 	if req.Code != "" {
-// 		dao = dao.Where(q.Tenant.Code.Like("%" + req.Code + "%"))
-// 	}
-// 	if req.Name != "" {
-// 		dao = dao.Where(q.Tenant.Name.Like("%" + req.Name + "%"))
-// 	}
-// 	if req.Status != nil {
-// 		dao = dao.Where(q.Tenant.Status.Eq(int16(*req.Status)))
-// 	}
+// UpdateTenantStatus 更新租户状态
+func (s *TenantService) UpdateTenantStatus(ctx context.Context, tenantID string, status int) error {
+	// 检查租户是否存在
+	oldTenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return xerr.ErrNotFound
+		}
+		return xerr.Wrap(xerr.ErrInternal.Code, "查询租户失败", err)
+	}
 
-// 	// 获取总数
-// 	total, err := dao.Count()
-// 	if err != nil {
-// 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询租户总数失败", err)
-// 	}
+	// 更新租户状态
+	if err := s.tenantRepo.UpdateStatus(ctx, tenantID, status); err != nil {
+		return xerr.Wrap(xerr.ErrInternal.Code, "更新租户状态失败", err)
+	}
 
-// 	// 分页查询
-// 	page, pageSize := req.GetPageParams()
-// 	offset := (page - 1) * pageSize
-// 	tenants, err := dao.
-// 		Order(q.Tenant.CreatedAt.Desc()).
-// 		Offset(offset).
-// 		Limit(pageSize).
-// 		Find()
-// 	if err != nil {
-// 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询租户列表失败", err)
-// 	}
+	// 获取更新后的租户信息
+	updatedTenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后租户信息失败", err)
+	}
 
-// 	// 转换响应
-// 	list := make([]dto.TenantResponse, len(tenants))
-// 	for i, tenant := range tenants {
-// 		list[i] = *s.toTenantResponse(tenant)
-// 	}
+	// 记录操作日志
+	operationlog.RecordUpdate(ctx, constants.ModuleTenant, "tenant", updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
 
-// 	return &dto.TenantListResponse{
-// 		List: list,
-// 		PageResponse: common.PageResponse{
-// 			Total:    int(total),
-// 			Page:     page,
-// 			PageSize: pageSize,
-// 		},
-// 	}, nil
-// }
+	return nil
+}
 
-// // UpdateTenantStatus 更新租户状态
-// func (s *TenantService) UpdateTenantStatus(ctx context.Context, tenantID string, req *dto.TenantStatusRequest) error {
-// 	q := query.Use(s.db)
+// toTenantResponse 转换为租户响应格式
+func (s *TenantService) toTenantResponse(tenant *model.Tenant) *dto.TenantResponse {
+	resp := &dto.TenantResponse{
+		TenantID:  tenant.TenantID,
+		Code:      tenant.TenantCode,
+		Name:      tenant.Name,
+		Status:    int(tenant.Status),
+		CreatedAt: tenant.CreatedAt,
+		UpdatedAt: tenant.UpdatedAt,
+	}
 
-// 	// 检查租户是否存在
-// 	exists, err := q.Tenant.WithContext(ctx).
-// 		Where(q.Tenant.TenantID.Eq(tenantID)).
-// 		Count()
-// 	if err != nil {
-// 		return xerr.Wrap(xerr.ErrQueryError.Code, "检查租户失败", err)
-// 	}
-// 	if exists == 0 {
-// 		return xerr.ErrNotFound
-// 	}
+	// 处理可选描述字段
+	if tenant.Description != nil {
+		resp.Description = *tenant.Description
+	}
 
-// 	// 更新状态
-// 	_, err = q.Tenant.WithContext(ctx).
-// 		Where(q.Tenant.TenantID.Eq(tenantID)).
-// 		Updates(map[string]interface{}{
-// 			"status":     int16(req.Status),
-// 			"updated_at": time.Now().UnixMilli(),
-// 		})
-// 	if err != nil {
-// 		return xerr.Wrap(xerr.ErrUpdateError.Code, "更新租户状态失败", err)
-// 	}
-
-// 	return nil
-// }
-
-// // toTenantResponse 转换为响应对象
-// func (s *TenantService) toTenantResponse(tenant *model.Tenant) *dto.TenantResponse {
-// 	resp := &dto.TenantResponse{
-// 		TenantID:  tenant.TenantID,
-// 		Code:      tenant.Code,
-// 		Name:      tenant.Name,
-// 		Status:    int(tenant.Status),
-// 		CreatedAt: tenant.CreatedAt,
-// 		UpdatedAt: tenant.UpdatedAt,
-// 	}
-// 	return resp
-// }
+	return resp
+}

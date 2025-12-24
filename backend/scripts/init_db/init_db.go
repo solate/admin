@@ -137,11 +137,11 @@ func main() {
 	if err := db.Where("role_code = ? AND tenant_id = ?", "super_admin", tenantID).First(&role).Error; err != nil {
 		// 角色不存在，创建新角色
 		role = model.Role{
-			RoleID:     roleID,
-			TenantID:   tenantID,
-			RoleCode:   "super_admin",
-			Name:       "超级管理员",
-			Status:     1,
+			RoleID:   roleID,
+			TenantID: tenantID,
+			RoleCode: "super_admin",
+			Name:     "超级管理员",
+			Status:   1,
 		}
 		if err := db.Create(&role).Error; err != nil {
 			fmt.Fprintf(os.Stderr, "❌ 创建超级管理员角色失败: %v\n", err)

@@ -54,7 +54,7 @@ func (r *UserRepo) List(ctx context.Context, offset, limit int) ([]*model.User, 
 }
 
 // ListWithFilters 根据筛选条件分页获取用户列表
-func (r *UserRepo) ListWithFilters(ctx context.Context, offset, limit int, userNameFilter string, statusFilter int32) ([]*model.User, int64, error) {
+func (r *UserRepo) ListWithFilters(ctx context.Context, offset, limit int, userNameFilter string, statusFilter int) ([]*model.User, int64, error) {
 	query := r.q.User.WithContext(ctx)
 
 	// 应用筛选条件
@@ -62,10 +62,18 @@ func (r *UserRepo) ListWithFilters(ctx context.Context, offset, limit int, userN
 		query = query.Where(r.q.User.UserName.Like("%" + userNameFilter + "%"))
 	}
 	if statusFilter != 0 {
-		query = query.Where(r.q.User.Status.Eq(statusFilter))
+		query = query.Where(r.q.User.Status.Eq(int16(statusFilter)))
 	}
 
-	return query.FindByPage(offset, limit)
+	// 获取总数
+	total, err := query.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 分页查询
+	users, err := query.Order(r.q.User.CreatedAt.Desc()).Offset(offset).Limit(limit).Find()
+	return users, total, err
 }
 
 // UpdateStatus 更新用户状态

@@ -32,7 +32,7 @@ COMMENT ON COLUMN tenants.description IS '租户描述';
 COMMENT ON COLUMN tenants.status IS '状态(1:启用, 2:禁用)';
 COMMENT ON COLUMN tenants.created_at IS '创建时间戳(毫秒)';
 COMMENT ON COLUMN tenants.updated_at IS '更新时间戳(毫秒)';
-COMMENT ON COLUMN tenants.deleted_at IS '删除时间戳(软删除)';
+COMMENT ON COLUMN tenants.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- ========================================
@@ -48,7 +48,7 @@ CREATE TABLE users (
     avatar VARCHAR(255), -- 头像URL
     phone VARCHAR(20), -- 手机号（全局唯一）
     email VARCHAR(255), -- 邮箱（全局唯一）
-    status INTEGER NOT NULL DEFAULT 1, -- 状态 (1:正常, 2:冻结)
+    status SMALLINT NOT NULL DEFAULT 1, -- 状态 (1:正常, 2:冻结)
     remark TEXT,
     last_login_time BIGINT, -- 最后登录时间
     created_at BIGINT NOT NULL DEFAULT 0,
@@ -69,10 +69,10 @@ COMMENT ON COLUMN users.phone IS '手机号(全局唯一)';
 COMMENT ON COLUMN users.email IS '电子邮箱(全局唯一)';
 COMMENT ON COLUMN users.status IS '状态(1:启用, 2:禁用)';
 COMMENT ON COLUMN users.remark IS '备注信息';
-COMMENT ON COLUMN users.last_login_time IS '最后登录时间戳';
-COMMENT ON COLUMN users.created_at IS '创建时间戳';
-COMMENT ON COLUMN users.updated_at IS '更新时间戳';
-COMMENT ON COLUMN users.deleted_at IS '删除时间戳(软删除)';
+COMMENT ON COLUMN users.last_login_time IS '最后登录时间戳(毫秒)';
+COMMENT ON COLUMN users.created_at IS '创建时间戳(毫秒)';
+COMMENT ON COLUMN users.updated_at IS '更新时间戳(毫秒)';
+COMMENT ON COLUMN users.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- ========================================
@@ -85,7 +85,7 @@ CREATE TABLE roles (
     role_code VARCHAR(50) NOT NULL, -- 角色编码 (如: hr_manager)
     name VARCHAR(100) NOT NULL, -- 角色名称 (如: 人事经理)
     description TEXT,
-    status INTEGER NOT NULL DEFAULT 1,
+    status SMALLINT NOT NULL DEFAULT 1,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0
@@ -101,9 +101,9 @@ COMMENT ON COLUMN roles.role_code IS '角色编码(租户内唯一)';
 COMMENT ON COLUMN roles.name IS '角色名称';
 COMMENT ON COLUMN roles.description IS '角色描述';
 COMMENT ON COLUMN roles.status IS '状态(1:启用, 2:禁用)';
-COMMENT ON COLUMN roles.created_at IS '创建时间戳';
-COMMENT ON COLUMN roles.updated_at IS '更新时间戳';
-COMMENT ON COLUMN roles.deleted_at IS '删除时间戳(软删除)';
+COMMENT ON COLUMN roles.created_at IS '创建时间戳(毫秒)';
+COMMENT ON COLUMN roles.updated_at IS '更新时间戳(毫秒)';
+COMMENT ON COLUMN roles.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- ========================================
@@ -119,7 +119,7 @@ CREATE TABLE permissions (
     type VARCHAR(20) NOT NULL, -- 资源类型: MENU(菜单), BUTTON(按钮), API(接口), DATA(数据)
     resource VARCHAR(255), -- 资源路径/路由/API地址
     action VARCHAR(20), -- 操作动词 (GET, POST, PUT, DELETE)
-    sort INTEGER DEFAULT 0, -- 排序权重
+    sort SMALLINT DEFAULT 0, -- 排序权重
     description TEXT,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
@@ -136,8 +136,9 @@ COMMENT ON COLUMN permissions.resource IS '资源路径(路由/API)';
 COMMENT ON COLUMN permissions.action IS '请求方法(仅API类型有效)';
 COMMENT ON COLUMN permissions.sort IS '显示排序';
 COMMENT ON COLUMN permissions.description IS '描述信息';
-COMMENT ON COLUMN permissions.created_at IS '创建时间戳';
-COMMENT ON COLUMN permissions.updated_at IS '更新时间戳';
+COMMENT ON COLUMN permissions.created_at IS '创建时间戳(毫秒)';
+COMMENT ON COLUMN permissions.updated_at IS '更新时间戳(毫秒)';
+COMMENT ON COLUMN permissions.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 -- ========================================
 -- 5. 用户-租户-角色关联表 (User Tenant Roles)

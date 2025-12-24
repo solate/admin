@@ -12,19 +12,19 @@ type Request struct {
 	PageSize int `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100"` // 每页数量
 }
 
-// Response 分页响应
-type Response struct {
-	List      any   `json:"list"`       // 数据列表
+// Response 分页响应基类（只包含分页元数据）
+type Response[T any] struct {
+	List      []T   `json:"list"`       // 列表数据
 	Page      int   `json:"page"`       // 当前页码
 	PageSize  int   `json:"page_size"`  // 每页大小
 	Total     int64 `json:"total"`      // 总记录数
 	TotalPage int64 `json:"total_page"` // 总页数
 }
 
-// ToResponse 从请求构建分页响应
-func (r *Request) ToResponse(list any, total int64) Response {
+// NewResponse 创建分页响应
+func NewResponse[T any](list []T, r *Request, total int64) Response[T] {
 	page, pageSize := r.GetPageParams()
-	return Response{
+	return Response[T]{
 		List:      list,
 		Page:      page,
 		PageSize:  pageSize,

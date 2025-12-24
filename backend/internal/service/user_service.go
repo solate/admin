@@ -7,6 +7,7 @@ import (
 	"admin/pkg/constants"
 	"admin/pkg/idgen"
 	"admin/pkg/operationlog"
+	"admin/pkg/pagination"
 	"admin/pkg/passwordgen"
 	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
@@ -57,13 +58,11 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 
 	// 创建用户模型（用户表与租户解耦）
 	user := &model.User{
-		UserID:    userID,
-		UserName:  req.UserName,
-		Password:  hashedPassword,
-		Name:      req.Name,
-		Status:    req.Status,
-		CreatedAt: time.Now().UnixMilli(),
-		UpdatedAt: time.Now().UnixMilli(),
+		UserID:   userID,
+		UserName: req.UserName,
+		Password: hashedPassword,
+		Name:     req.Name,
+		Status:   int16(req.Status),
 	}
 
 	// 如果没有传入姓名，使用用户名作为默认值
@@ -207,7 +206,7 @@ func (s *UserService) ListUsers(ctx context.Context, req *dto.ListUsersRequest) 
 	}
 
 	return &dto.ListUsersResponse{
-		Response: req.ToResponse(userResponses, total),
+		Response: pagination.NewResponse(userResponses, &req.Request, total),
 	}, nil
 }
 
@@ -265,7 +264,7 @@ func (s *UserService) toUserResponse(ctx context.Context, user *model.User) *dto
 		Avatar:        avatar,
 		Phone:         phone,
 		Email:         email,
-		Status:        user.Status,
+		Status:        int(user.Status),
 		TenantID:      xcontext.GetTenantID(ctx),
 		LastLoginTime: lastLoginTime,
 		CreatedAt:     user.CreatedAt,

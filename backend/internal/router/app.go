@@ -36,6 +36,7 @@ type Handlers struct {
 	CaptchaHandler *handler.CaptchaHandler
 	AuthHandler    *handler.AuthHandler
 	UserHandler    *handler.UserHandler
+	TenantHandler  *handler.TenantHandler
 }
 
 func NewApp() (*App, error) {
@@ -247,13 +248,15 @@ func (s *App) initHandlers() error {
 	// 初始化用户服务
 	userService := service.NewUserService(userRepo)
 
+	// 初始化租户服务
+	tenantService := service.NewTenantService(tenantRepo)
+
 	s.Handlers = &Handlers{
 		HealthHandler:  handler.NewHealthHandler(),
 		CaptchaHandler: handler.NewCaptchaHandler(s.Redis),
 		AuthHandler:    handler.NewAuthHandler(authService),
 		UserHandler:    handler.NewUserHandler(userService),
-		// PolicyHandler: handler.NewPolicyHandler(s.Services.CasbinService), // Will be nil for now
-		// TenantHandler: handler.NewTenantHandler(s.Services.TenantService),
+		TenantHandler:  handler.NewTenantHandler(tenantService),
 	}
 	return nil
 }

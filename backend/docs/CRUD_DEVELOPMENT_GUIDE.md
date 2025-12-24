@@ -680,6 +680,116 @@ type List{Resource}sResponse struct {
 
 ---
 
+## 数据类型规范
+
+### 状态字段类型
+
+| 层级 | 类型 | 说明 |
+|-----|------|-----|
+| 数据库 | `SMALLINT` | 节省空间，状态值范围小 |
+| Model | `int16` | 对应数据库 SMALLINT |
+| DTO Request | `int` | 简化 JSON 绑定，使用 validation tag |
+| DTO Response | `int` | JSON 序列化 |
+
+**示例：**
+```sql
+-- 数据库表定义
+status SMALLINT NOT NULL DEFAULT 1
+```
+
+```go
+// Model 定义
+type User struct {
+    Status int16 `gorm:"column:status;type:smallint;not null;default:1"`
+}
+
+// DTO Request 定义
+type UpdateUserRequest struct {
+    Status int `json:"status" binding:"omitempty,oneof=1 2"`
+}
+
+// DTO Response 定义
+type UserResponse struct {
+    Status int `json:"status"`
+}
+```
+
+### 指针字段使用规则
+
+**UpdateRequest 中的状态字段不需要使用指针**，原因：
+- 状态值已规范（1=启用，2=禁用），零值不会出现
+- 使用 `omitempty` tag 可省略该字段
+
+**其他可选字段仍使用指针**，用于区分"不更新"和"更新为零值"：
+```go
+type UpdateResourceRequest struct {
+    Name   *string `json:"name"`   // 可选更新，区分不更新 vs 更新为空字符串
+    Status int     `json:"status" binding:"omitempty,oneof=1 2"`  // 状态不用指针
+}
+```
+
+---
+
+## 分页规范
+
+### 使用泛型分页
+
+项目使用泛型分页，确保类型安全：
+
+```go
+// pkg/pagination/pagination.go
+type Request struct {
+    Page     int `form:"page" json:"page" binding:"omitempty,min=1"`
+    PageSize int `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100"`
+}
+
+type Response[T any] struct {
+    List      []T   `json:"list"`
+    Page      int   `json:"page"`
+    PageSize  int   `json:"page_size"`
+    Total     int64 `json:"total"`
+    TotalPage int64 `json:"total_page"`
+}
+
+func NewResponse[T any](list []T, r *Request, total int64) Response[T]
+```
+
+### DTO 定义
+
+```go
+// 列表请求 - 嵌入 pagination.Request
+type ListUsersRequest struct {
+    pagination.Request
+    Keyword string `form:"keyword"`
+    Status  *int   `form:"status" binding:"omitempty,oneof=1 2"`
+}
+
+// 列表响应 - 使用泛型 Response
+type ListUsersResponse struct {
+    pagination.Response[*UserResponse]
+}
+```
+
+### Service 层使用
+
+```go
+func (s *UserService) ListUsers(ctx context.Context, req *dto.ListUsersRequest) (*dto.ListUsersResponse, error) {
+    users, total, err := s.userRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Keyword, req.Status)
+    // ...
+
+    userResponses := make([]*dto.UserResponse, len(users))
+    for i, user := range users {
+        userResponses[i] = s.toUserResponse(ctx, user)
+    }
+
+    return &dto.ListUsersResponse{
+        Response: pagination.NewResponse(userResponses, &req.Request, total),
+    }, nil
+}
+```
+
+---
+
 ## 路由规范
 
 ### 路由注册
