@@ -1,13 +1,10 @@
 package middleware
 
 import (
+	"admin/pkg/bodyreader"
 	"admin/pkg/operationlog"
 	"admin/pkg/useragent"
 	"admin/pkg/xcontext"
-	"bytes"
-	"encoding/json"
-	"io"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -73,12 +70,14 @@ func extractRequestParams(c *gin.Context) string {
 		return ""
 	}
 
-	// 读取 Body
-	bodyBytes, _ := io.ReadAll(c.Request.Body)
-	// 恢复 Body 供后续 handler 使用
-	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	// 使用 bodyreader 读取并恢复 Body
+	bodyStr, restoredBody := bodyreader.ReadBodyString(c.Request.Body)
+	if restoredBody != nil {
+		c.Request.Body = restoredBody
+	}
 
-	return sanitizeParams(string(bodyBytes))
+	// 脱敏处理
+	return bodyreader.SanitizeParams(bodyStr)
 }
 
 // updateLogStatusFromResponse 根据响应状态更新日志状态
@@ -89,52 +88,4 @@ func updateLogStatusFromResponse(c *gin.Context, lc *operationlog.LogContext) {
 	}
 	// 注意：项目统一使用 HTTP 200，错误通过 response.Code 字段区分
 	// 因此不需要检查 HTTP 状态码
-}
-
-// sanitizeParams 脱敏处理请求参数 (敏感信息替换为 ***)
-func sanitizeParams(params string) string {
-	if params == "" {
-		return ""
-	}
-
-	// 解析 JSON
-	var data map[string]any
-	if err := json.Unmarshal([]byte(params), &data); err != nil {
-		return params // 不是 JSON，直接返回
-	}
-
-	// 敏感字段列表
-	sensitiveFields := []string{
-		"password", "passwd", "pwd",
-		"old_password", "new_password",
-		"secret", "token", "access_token", "refresh_token",
-		"api_key", "apikey", "api-key",
-		"phone", "mobile", "telephone",
-		"id_card", "idcard",
-	}
-
-	// 脱敏处理
-	for key, value := range data {
-		lowerKey := strings.ToLower(key)
-		for _, sensitive := range sensitiveFields {
-			if strings.Contains(lowerKey, sensitive) {
-				if strVal, ok := value.(string); ok {
-					data[key] = maskSensitive(strVal)
-				}
-				break
-			}
-		}
-	}
-
-	// 重新序列化
-	result, _ := json.Marshal(data)
-	return string(result)
-}
-
-// maskSensitive 敏感信息掩码
-func maskSensitive(value string) string {
-	if len(value) <= 4 {
-		return "***"
-	}
-	return value[:2] + "***" + value[len(value)-2:]
 }
