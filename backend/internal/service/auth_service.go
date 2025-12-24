@@ -57,7 +57,7 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	log.Debug().Msg("验证码验证通过")
 
 	// 查询用户（全局查询，不绑定租户）
-	user, err := s.userRepo.GetUserByName(ctx, req.UserName)
+	user, err := s.userRepo.GetByUserName(ctx, req.UserName)
 	if err != nil {
 		log.Error().Err(err).Str("username", req.UserName).Msg("查询用户失败")
 		return nil, xerr.Wrap(xerr.ErrUserNotFound.Code, "查询用户失败", err)
@@ -109,15 +109,10 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 				continue
 			}
 
-			// 角色类型默认为普通用户(1)
-			// 超级管理员权限通过角色列表判断，不再依赖 user.role_type
-			maxRoleType := int32(1)
-
 			tenantInfos = append(tenantInfos, dto.TenantInfo{
 				TenantID:   tenant.TenantID,
 				TenantName: tenant.Name,
 				TenantCode: tenant.TenantCode,
-				RoleType:   maxRoleType,
 			})
 		}
 	}
@@ -150,9 +145,8 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	if selectedTenant == nil {
 		log.Info().Int("tenant_count", len(tenantInfos)).Msg("用户有多个租户，需要选择")
 		return &dto.LoginResponse{
-			NeedSelectTenant: true,
-			UserID:           user.UserID,
-			Tenants:          tenantInfos,
+			UserID:  user.UserID,
+			Tenants: tenantInfos,
 		}, nil
 	}
 
@@ -177,7 +171,7 @@ func (s *AuthService) completeLogin(ctx context.Context, user *model.User, tenan
 	}
 
 	// 查询角色详情，只获取活跃的角色
-	roles, err := s.roleRepo.ListRolesByIDs(ctx, roleIDs)
+	roles, err := s.roleRepo.ListByIDs(ctx, roleIDs)
 	if err != nil {
 		log.Error().Err(err).Msg("查询角色失败")
 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询角色失败", err)
@@ -221,14 +215,13 @@ func (s *AuthService) completeLogin(ctx context.Context, user *model.User, tenan
 	log.Info().Str("user_id", user.UserID).Str("tenant_id", tenantInfo.TenantID).Msg("用户登录成功")
 
 	return &dto.LoginResponse{
-		NeedSelectTenant: false,
-		AccessToken:      tokenPair.AccessToken,
-		RefreshToken:     tokenPair.RefreshToken,
-		ExpiresIn:        tokenPair.ExpiresIn,
-		UserID:           user.UserID,
-		CurrentTenant:    tenantInfo,
-		Phone:            phone,
-		Email:            email,
+		AccessToken:   tokenPair.AccessToken,
+		RefreshToken:  tokenPair.RefreshToken,
+		ExpiresIn:     tokenPair.ExpiresIn,
+		UserID:        user.UserID,
+		CurrentTenant: tenantInfo,
+		Phone:         phone,
+		Email:         email,
 	}, nil
 }
 
@@ -237,14 +230,14 @@ func (s *AuthService) SelectTenant(ctx context.Context, userID, tenantID string)
 	log.Info().Str("user_id", userID).Str("tenant_id", tenantID).Msg("用户选择租户")
 
 	// 查询用户
-	user, err := s.userRepo.GetUserByID(ctx, userID)
+	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		log.Error().Err(err).Str("user_id", userID).Msg("查询用户失败")
 		return nil, xerr.Wrap(xerr.ErrUserNotFound.Code, "查询用户失败", err)
 	}
 
 	// 检查用户是否有该租户权限
-	hasPermission, err := s.userTenantRoleRepo.CheckUserHasTenantRole(ctx, userID, tenantID)
+	hasPermission, err := s.userTenantRoleRepo.CheckUserHasTenant(ctx, userID, tenantID)
 	if err != nil {
 		log.Error().Err(err).Str("user_id", userID).Str("tenant_id", tenantID).Msg("验证用户租户权限失败")
 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "验证用户租户权限失败", err)
@@ -269,13 +262,12 @@ func (s *AuthService) SelectTenant(ctx context.Context, userID, tenantID string)
 	}
 
 	// 获取角色详情
-	roles, err := s.roleRepo.ListRolesByIDs(ctx, roleIDs)
+	roles, err := s.roleRepo.ListByIDs(ctx, roleIDs)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询角色失败", err)
 	}
 
 	// 获取活跃角色代码
-	maxRoleType := int32(1) // 默认普通用户
 	activeRoleCodes := make([]string, 0, len(roles))
 	for _, role := range roles {
 		if role.Status == constants.StatusEnabled {
@@ -288,7 +280,6 @@ func (s *AuthService) SelectTenant(ctx context.Context, userID, tenantID string)
 		TenantID:   tenant.TenantID,
 		TenantName: tenant.Name,
 		TenantCode: tenant.TenantCode,
-		RoleType:   maxRoleType,
 	}
 
 	// 完成登录

@@ -50,7 +50,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 	}
 
 	// 检查用户名是否已存在（全局唯一）
-	exists, err := s.userRepo.CheckUserExists(ctx, req.UserName)
+	exists, err := s.userRepo.CheckExists(ctx, req.UserName)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "检查用户是否存在失败", err)
 	}
@@ -104,7 +104,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 	}
 
 	// 创建用户
-	if err := s.userRepo.CreateUser(ctx, user); err != nil {
+	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "创建用户失败", err)
 	}
 
@@ -119,7 +119,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 
 // GetUserByID 根据ID获取用户
 func (s *UserService) GetUserByID(ctx context.Context, userID string) (*dto.UserResponse, error) {
-	user, err := s.userRepo.GetUserByID(ctx, userID)
+	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, xerr.ErrUserNotFound
@@ -139,7 +139,7 @@ func (s *UserService) GetUserByID(ctx context.Context, userID string) (*dto.User
 // UpdateUser 更新用户
 func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
 	// 检查用户是否存在，获取旧值用于日志
-	oldUser, err := s.userRepo.GetUserByID(ctx, userID)
+	oldUser, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, xerr.ErrUserNotFound
@@ -179,12 +179,12 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 	updates["updated_at"] = time.Now().UnixMilli()
 
 	// 更新用户
-	if err := s.userRepo.UpdateUser(ctx, userID, updates); err != nil {
+	if err := s.userRepo.Update(ctx, userID, updates); err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "更新用户失败", err)
 	}
 
 	// 获取更新后的用户信息
-	updatedUser, err := s.userRepo.GetUserByID(ctx, userID)
+	updatedUser, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后用户信息失败", err)
 	}
@@ -204,7 +204,7 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 // DeleteUser 删除用户
 func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 	// 检查用户是否存在，获取用户信息用于日志
-	user, err := s.userRepo.GetUserByID(ctx, userID)
+	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return xerr.ErrUserNotFound
@@ -213,7 +213,7 @@ func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 	}
 
 	// 删除用户
-	if err := s.userRepo.DeleteUser(ctx, userID); err != nil {
+	if err := s.userRepo.Delete(ctx, userID); err != nil {
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除用户失败", err)
 	}
 
@@ -239,7 +239,7 @@ func (s *UserService) ListUsers(ctx context.Context, req *dto.ListUsersRequest) 
 	offset := (page - 1) * pageSize
 
 	// 获取用户列表和总数，支持筛选条件
-	users, total, err := s.userRepo.ListUsersWithFilters(ctx, offset, pageSize, req.UserName, req.Status)
+	users, total, err := s.userRepo.ListWithFilters(ctx, offset, pageSize, req.UserName, req.Status)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户列表失败", err)
 	}
@@ -268,7 +268,7 @@ func (s *UserService) ListUsers(ctx context.Context, req *dto.ListUsersRequest) 
 // UpdateUserStatus 更新用户状态
 func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, status int32) error {
 	// 检查用户是否存在，获取旧值用于日志
-	oldUser, err := s.userRepo.GetUserByID(ctx, userID)
+	oldUser, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return xerr.ErrUserNotFound
@@ -277,12 +277,12 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, statu
 	}
 
 	// 更新用户状态
-	if err := s.userRepo.UpdateUserStatus(ctx, userID, status); err != nil {
+	if err := s.userRepo.UpdateStatus(ctx, userID, status); err != nil {
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新用户状态失败", err)
 	}
 
 	// 获取更新后的用户信息
-	updatedUser, err := s.userRepo.GetUserByID(ctx, userID)
+	updatedUser, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后用户信息失败", err)
 	}

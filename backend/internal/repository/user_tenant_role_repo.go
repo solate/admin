@@ -20,46 +20,46 @@ func NewUserTenantRoleRepo(db *gorm.DB) *UserTenantRoleRepo {
 	}
 }
 
-// CreateUserTenantRole 创建用户租户角色关系
-func (r *UserTenantRoleRepo) CreateUserTenantRole(ctx context.Context, userTenantRole *model.UserTenantRole) error {
+// Create 创建用户租户角色关系
+func (r *UserTenantRoleRepo) Create(ctx context.Context, userTenantRole *model.UserTenantRole) error {
 	return r.q.UserTenantRole.WithContext(ctx).Create(userTenantRole)
 }
 
-// CreateUserTenantRoles 批量创建用户租户角色关系
-func (r *UserTenantRoleRepo) CreateUserTenantRoles(ctx context.Context, userTenantRoles []*model.UserTenantRole) error {
+// CreateBatch 批量创建用户租户角色关系
+func (r *UserTenantRoleRepo) CreateBatch(ctx context.Context, userTenantRoles []*model.UserTenantRole) error {
 	return r.q.UserTenantRole.WithContext(ctx).CreateInBatches(userTenantRoles, 100)
 }
 
-// GetUserTenantRoleByID 根据ID获取用户租户角色关系
-func (r *UserTenantRoleRepo) GetUserTenantRoleByID(ctx context.Context, userTenantRoleID string) (*model.UserTenantRole, error) {
+// GetByID 根据ID获取用户租户角色关系
+func (r *UserTenantRoleRepo) GetByID(ctx context.Context, userTenantRoleID string) (*model.UserTenantRole, error) {
 	return r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.UserTenantRoleID.Eq(userTenantRoleID)).First()
 }
 
-// GetUserTenantRoles 根据用户ID获取租户角色关系
-func (r *UserTenantRoleRepo) GetUserTenantRoles(ctx context.Context, userID string) ([]*model.UserTenantRole, error) {
+// GetByUserID 根据用户ID获取租户角色关系
+func (r *UserTenantRoleRepo) GetByUserID(ctx context.Context, userID string) ([]*model.UserTenantRole, error) {
 	return r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.UserID.Eq(userID)).Find()
 }
 
-// GetTenantUserRoles 根据租户ID获取用户角色关系
-func (r *UserTenantRoleRepo) GetTenantUserRoles(ctx context.Context, tenantID string) ([]*model.UserTenantRole, error) {
+// GetByTenantID 根据租户ID获取用户角色关系
+func (r *UserTenantRoleRepo) GetByTenantID(ctx context.Context, tenantID string) ([]*model.UserTenantRole, error) {
 	return r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.TenantID.Eq(tenantID)).Find()
 }
 
-// GetRoleUsers 根据角色ID获取用户关系
-func (r *UserTenantRoleRepo) GetRoleUsers(ctx context.Context, roleID string) ([]*model.UserTenantRole, error) {
+// GetByRoleID 根据角色ID获取用户关系
+func (r *UserTenantRoleRepo) GetByRoleID(ctx context.Context, roleID string) ([]*model.UserTenantRole, error) {
 	return r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.RoleID.Eq(roleID)).Find()
 }
 
-// GetUserTenantRoleByUserTenant 根据用户ID和租户ID获取角色关系
-func (r *UserTenantRoleRepo) GetUserTenantRoleByUserTenant(ctx context.Context, userID, tenantID string) ([]*model.UserTenantRole, error) {
+// GetByUserTenant 根据用户ID和租户ID获取角色关系
+func (r *UserTenantRoleRepo) GetByUserTenant(ctx context.Context, userID, tenantID string) ([]*model.UserTenantRole, error) {
 	return r.q.UserTenantRole.WithContext(ctx).
 		Where(r.q.UserTenantRole.UserID.Eq(userID)).
 		Where(r.q.UserTenantRole.TenantID.Eq(tenantID)).
 		Find()
 }
 
-// GetUserTenantRoleByUserTenantRole 根据用户ID、租户ID和角色ID获取关系
-func (r *UserTenantRoleRepo) GetUserTenantRoleByUserTenantRole(ctx context.Context, userID, tenantID, roleID string) (*model.UserTenantRole, error) {
+// GetByUserTenantRole 根据用户ID、租户ID和角色ID获取关系
+func (r *UserTenantRoleRepo) GetByUserTenantRole(ctx context.Context, userID, tenantID, roleID string) (*model.UserTenantRole, error) {
 	return r.q.UserTenantRole.WithContext(ctx).
 		Where(r.q.UserTenantRole.UserID.Eq(userID)).
 		Where(r.q.UserTenantRole.TenantID.Eq(tenantID)).
@@ -67,32 +67,32 @@ func (r *UserTenantRoleRepo) GetUserTenantRoleByUserTenantRole(ctx context.Conte
 		First()
 }
 
-// UpdateUserTenantRole 更新用户租户角色关系
-func (r *UserTenantRoleRepo) UpdateUserTenantRole(ctx context.Context, userTenantRoleID string, updates map[string]interface{}) error {
+// Update 更新用户租户角色关系
+func (r *UserTenantRoleRepo) Update(ctx context.Context, userTenantRoleID string, updates map[string]interface{}) error {
 	_, err := r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.UserTenantRoleID.Eq(userTenantRoleID)).Updates(updates)
 	return err
 }
 
-// DeleteUserTenantRole 删除用户租户角色关系
-func (r *UserTenantRoleRepo) DeleteUserTenantRole(ctx context.Context, userTenantRoleID string) error {
+// Delete 删除用户租户角色关系
+func (r *UserTenantRoleRepo) Delete(ctx context.Context, userTenantRoleID string) error {
 	_, err := r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.UserTenantRoleID.Eq(userTenantRoleID)).Delete()
 	return err
 }
 
-// DeleteUserTenantRolesByUserID 根据用户ID删除所有租户角色关系
-func (r *UserTenantRoleRepo) DeleteUserTenantRolesByUserID(ctx context.Context, userID string) error {
+// DeleteByUserID 根据用户ID删除所有租户角色关系
+func (r *UserTenantRoleRepo) DeleteByUserID(ctx context.Context, userID string) error {
 	_, err := r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.UserID.Eq(userID)).Delete()
 	return err
 }
 
-// DeleteUserTenantRolesByTenantID 根据租户ID删除所有用户角色关系
-func (r *UserTenantRoleRepo) DeleteUserTenantRolesByTenantID(ctx context.Context, tenantID string) error {
+// DeleteByTenantID 根据租户ID删除所有用户角色关系
+func (r *UserTenantRoleRepo) DeleteByTenantID(ctx context.Context, tenantID string) error {
 	_, err := r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.TenantID.Eq(tenantID)).Delete()
 	return err
 }
 
-// DeleteUserTenantRoleByUserTenant 删除指定用户和租户的角色关系
-func (r *UserTenantRoleRepo) DeleteUserTenantRoleByUserTenant(ctx context.Context, userID, tenantID string) error {
+// DeleteByUserTenant 删除指定用户和租户的角色关系
+func (r *UserTenantRoleRepo) DeleteByUserTenant(ctx context.Context, userID, tenantID string) error {
 	_, err := r.q.UserTenantRole.WithContext(ctx).
 		Where(r.q.UserTenantRole.UserID.Eq(userID)).
 		Where(r.q.UserTenantRole.TenantID.Eq(tenantID)).
@@ -100,8 +100,8 @@ func (r *UserTenantRoleRepo) DeleteUserTenantRoleByUserTenant(ctx context.Contex
 	return err
 }
 
-// DeleteUserTenantRoleByUserTenantRole 删除指定的用户租户角色关系
-func (r *UserTenantRoleRepo) DeleteUserTenantRoleByUserTenantRole(ctx context.Context, userID, tenantID, roleID string) error {
+// DeleteByUserTenantRole 删除指定的用户租户角色关系
+func (r *UserTenantRoleRepo) DeleteByUserTenantRole(ctx context.Context, userID, tenantID, roleID string) error {
 	_, err := r.q.UserTenantRole.WithContext(ctx).
 		Where(r.q.UserTenantRole.UserID.Eq(userID)).
 		Where(r.q.UserTenantRole.TenantID.Eq(tenantID)).
@@ -110,28 +110,28 @@ func (r *UserTenantRoleRepo) DeleteUserTenantRoleByUserTenantRole(ctx context.Co
 	return err
 }
 
-// ListUserTenantRoles 分页获取用户租户角色关系列表
-func (r *UserTenantRoleRepo) ListUserTenantRoles(ctx context.Context, offset, limit int) ([]*model.UserTenantRole, int64, error) {
+// List 分页获取用户租户角色关系列表
+func (r *UserTenantRoleRepo) List(ctx context.Context, offset, limit int) ([]*model.UserTenantRole, int64, error) {
 	return r.q.UserTenantRole.WithContext(ctx).FindByPage(offset, limit)
 }
 
-// CountUserTenantRolesByUser 统计用户的租户角色关系数量
-func (r *UserTenantRoleRepo) CountUserTenantRolesByUser(ctx context.Context, userID string) (int64, error) {
+// CountByUserID 统计用户的租户角色关系数量
+func (r *UserTenantRoleRepo) CountByUserID(ctx context.Context, userID string) (int64, error) {
 	return r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.UserID.Eq(userID)).Count()
 }
 
-// CountUserTenantRolesByTenant 统计租户的用户角色关系数量
-func (r *UserTenantRoleRepo) CountUserTenantRolesByTenant(ctx context.Context, tenantID string) (int64, error) {
+// CountByTenantID 统计租户的用户角色关系数量
+func (r *UserTenantRoleRepo) CountByTenantID(ctx context.Context, tenantID string) (int64, error) {
 	return r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.TenantID.Eq(tenantID)).Count()
 }
 
-// CountUserTenantRolesByRole 统计角色的用户关系数量
-func (r *UserTenantRoleRepo) CountUserTenantRolesByRole(ctx context.Context, roleID string) (int64, error) {
+// CountByRoleID 统计角色的用户关系数量
+func (r *UserTenantRoleRepo) CountByRoleID(ctx context.Context, roleID string) (int64, error) {
 	return r.q.UserTenantRole.WithContext(ctx).Where(r.q.UserTenantRole.RoleID.Eq(roleID)).Count()
 }
 
-// CheckUserTenantRoleExists 检查用户租户角色关系是否存在
-func (r *UserTenantRoleRepo) CheckUserTenantRoleExists(ctx context.Context, userID, tenantID, roleID string) (bool, error) {
+// CheckExists 检查用户租户角色关系是否存在
+func (r *UserTenantRoleRepo) CheckExists(ctx context.Context, userID, tenantID, roleID string) (bool, error) {
 	count, err := r.q.UserTenantRole.WithContext(ctx).
 		Where(r.q.UserTenantRole.UserID.Eq(userID)).
 		Where(r.q.UserTenantRole.TenantID.Eq(tenantID)).
@@ -143,8 +143,8 @@ func (r *UserTenantRoleRepo) CheckUserTenantRoleExists(ctx context.Context, user
 	return count > 0, nil
 }
 
-// CheckUserHasTenantRole 检查用户是否有指定租户的角色
-func (r *UserTenantRoleRepo) CheckUserHasTenantRole(ctx context.Context, userID, tenantID string) (bool, error) {
+// CheckUserHasTenant 检查用户是否有指定租户的角色
+func (r *UserTenantRoleRepo) CheckUserHasTenant(ctx context.Context, userID, tenantID string) (bool, error) {
 	count, err := r.q.UserTenantRole.WithContext(ctx).
 		Where(r.q.UserTenantRole.UserID.Eq(userID)).
 		Where(r.q.UserTenantRole.TenantID.Eq(tenantID)).
