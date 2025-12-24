@@ -169,7 +169,8 @@ func (s *TenantService) ListTenants(ctx context.Context, req *dto.TenantListRequ
 
 	// 构建分页响应
 	return &dto.TenantListResponse{
-		Response: pagination.NewResponse(tenantResponses, &req.Request, total),
+		Response: pagination.NewResponse(req.Request, total),
+		List:     tenantResponses,
 	}, nil
 }
 

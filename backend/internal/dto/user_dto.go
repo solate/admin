@@ -1,8 +1,6 @@
 package dto
 
-import (
-	"admin/pkg/pagination"
-)
+import "admin/pkg/pagination"
 
 // CreateUserRequest 创建用户请求
 type CreateUserRequest struct {
@@ -42,13 +40,14 @@ type UserResponse struct {
 
 // ListUsersRequest 用户列表请求
 type ListUsersRequest struct {
-	pagination.Request `json:",inline"` // 分页请求
-	UserName           string           `form:"username" binding:"omitempty"`         // 用户名模糊搜索
-	Status             int              `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
-	TenantID           string           `form:"tenant_id" binding:"omitempty"`        // 租户ID筛选
+	*pagination.Request `json:",inline"`
+	UserName           string `form:"username" binding:"omitempty"`         // 用户名模糊搜索
+	Status             int    `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
+	TenantID           string `form:"tenant_id" binding:"omitempty"`        // 租户ID筛选
 }
 
 // ListUsersResponse 用户列表响应
 type ListUsersResponse struct {
-	pagination.Response[*UserResponse]
+	*pagination.Response `json:",inline"`
+	List                 []*UserResponse `json:"list"` // 列表数据
 }

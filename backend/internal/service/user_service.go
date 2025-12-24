@@ -206,7 +206,8 @@ func (s *UserService) ListUsers(ctx context.Context, req *dto.ListUsersRequest) 
 	}
 
 	return &dto.ListUsersResponse{
-		Response: pagination.NewResponse(userResponses, &req.Request, total),
+		Response: pagination.NewResponse(req.Request, total),
+		List:     userResponses,
 	}, nil
 }
 

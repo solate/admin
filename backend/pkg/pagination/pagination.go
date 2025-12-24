@@ -13,8 +13,7 @@ type Request struct {
 }
 
 // Response 分页响应基类（只包含分页元数据）
-type Response[T any] struct {
-	List      []T   `json:"list"`       // 列表数据
+type Response struct {
 	Page      int   `json:"page"`       // 当前页码
 	PageSize  int   `json:"page_size"`  // 每页大小
 	Total     int64 `json:"total"`      // 总记录数
@@ -22,10 +21,9 @@ type Response[T any] struct {
 }
 
 // NewResponse 创建分页响应
-func NewResponse[T any](list []T, r *Request, total int64) Response[T] {
+func NewResponse(r *Request, total int64) *Response {
 	page, pageSize := r.GetPageParams()
-	return Response[T]{
-		List:      list,
+	return &Response{
 		Page:      page,
 		PageSize:  pageSize,
 		Total:     total,

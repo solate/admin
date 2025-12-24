@@ -32,12 +32,13 @@ type App struct {
 
 // Handlers 处理器层容器
 type Handlers struct {
-	HealthHandler  *handler.HealthHandler
-	CaptchaHandler *handler.CaptchaHandler
-	AuthHandler    *handler.AuthHandler
-	UserHandler    *handler.UserHandler
-	TenantHandler  *handler.TenantHandler
-	RoleHandler    *handler.RoleHandler
+	HealthHandler       *handler.HealthHandler
+	CaptchaHandler      *handler.CaptchaHandler
+	AuthHandler         *handler.AuthHandler
+	UserHandler         *handler.UserHandler
+	TenantHandler       *handler.TenantHandler
+	RoleHandler         *handler.RoleHandler
+	TenantMemberHandler *handler.TenantMemberHandler
 }
 
 func NewApp() (*App, error) {
@@ -248,14 +249,16 @@ func (s *App) initHandlers() error {
 	userService := service.NewUserService(userRepo)                                                                     // 初始化用户服务
 	tenantService := service.NewTenantService(tenantRepo)                                                               // 初始化租户服务
 	roleService := service.NewRoleService(roleRepo)                                                                     // 初始化角色服务
+	tenantMemberService := service.NewTenantMemberService(userRepo, roleRepo, userTenantRoleRepo)                      // 初始化租户成员服务
 
 	s.Handlers = &Handlers{
-		HealthHandler:  handler.NewHealthHandler(),
-		CaptchaHandler: handler.NewCaptchaHandler(s.Redis),
-		AuthHandler:    handler.NewAuthHandler(authService),
-		UserHandler:    handler.NewUserHandler(userService),
-		TenantHandler:  handler.NewTenantHandler(tenantService),
-		RoleHandler:    handler.NewRoleHandler(roleService),
+		HealthHandler:       handler.NewHealthHandler(),
+		CaptchaHandler:      handler.NewCaptchaHandler(s.Redis),
+		AuthHandler:         handler.NewAuthHandler(authService),
+		UserHandler:         handler.NewUserHandler(userService),
+		TenantHandler:       handler.NewTenantHandler(tenantService),
+		RoleHandler:         handler.NewRoleHandler(roleService),
+		TenantMemberHandler: handler.NewTenantMemberHandler(tenantMemberService),
 	}
 	return nil
 }

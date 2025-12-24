@@ -178,7 +178,8 @@ func (s *RoleService) ListRoles(ctx context.Context, req *dto.ListRolesRequest) 
 	}
 
 	return &dto.ListRolesResponse{
-		Response: pagination.NewResponse(roleResponses, &req.Request, total),
+		Response: pagination.NewResponse(req.Request, total),
+		List:     roleResponses,
 	}, nil
 }
 

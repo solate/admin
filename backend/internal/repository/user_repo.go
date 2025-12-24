@@ -91,3 +91,27 @@ func (r *UserRepo) CheckExists(ctx context.Context, userName string) (bool, erro
 	}
 	return count > 0, nil
 }
+
+// ListByIDsAndFilters 根据用户ID列表和筛选条件分页获取用户列表
+func (r *UserRepo) ListByIDsAndFilters(ctx context.Context, userIDs []string, offset, limit int, keywordFilter string, statusFilter int) ([]*model.User, int64, error) {
+	query := r.q.User.WithContext(ctx).Where(r.q.User.UserID.In(userIDs...))
+
+	// 应用筛选条件
+	if keywordFilter != "" {
+		query = query.Where(r.q.User.UserName.Like("%"+keywordFilter+"%")).
+			Or(r.q.User.Name.Like("%"+keywordFilter+"%"))
+	}
+	if statusFilter != 0 {
+		query = query.Where(r.q.User.Status.Eq(int16(statusFilter)))
+	}
+
+	// 获取总数
+	total, err := query.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 分页查询
+	users, err := query.Order(r.q.User.CreatedAt.Desc()).Offset(offset).Limit(limit).Find()
+	return users, total, err
+}
