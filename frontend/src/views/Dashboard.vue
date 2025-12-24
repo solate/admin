@@ -214,14 +214,14 @@ const quickActions = [
     description: '添加新的系统用户',
     icon: 'UserFilled',
     gradient: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
-    handler: () => router.push('/users?action=create')
+    handler: () => router.push('/system/users?action=create')
   },
   {
     title: '创建租户',
     description: '添加新的租户',
     icon: 'School',
     gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    handler: () => router.push('/tenants?action=create')
+    handler: () => router.push('/system/tenants?action=create')
   },
   {
     title: '系统配置',
@@ -474,11 +474,11 @@ function generateRandomData(count: number, min: number, max: number): number[] {
 }
 
 function goToUsers() {
-  router.push('/users')
+  router.push('/system/users')
 }
 
 function goToTenants() {
-  router.push('/tenants')
+  router.push('/system/tenants')
 }
 
 function toggleAutoRefresh() {

@@ -1,86 +1,70 @@
 <template>
   <div class="users-page">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <div class="header-content">
-        <h1 class="page-title">用户管理</h1>
-        <p class="page-subtitle">管理系统中的所有用户账户</p>
-      </div>
-      <div class="header-actions">
-        <el-button type="primary" @click="handleCreate">
-          <el-icon><Plus /></el-icon>
-          创建用户
-        </el-button>
-        <el-button @click="handleImport">
-          <el-icon><Upload /></el-icon>
-          批量导入
-        </el-button>
-        <el-button @click="handleExport">
-          <el-icon><Download /></el-icon>
-          导出数据
-        </el-button>
-      </div>
-    </div>
-
-    <!-- 搜索筛选 -->
-    <el-card class="search-card">
-      <el-form :model="searchForm" inline class="search-form">
-        <el-form-item label="关键词">
-          <el-input
-            v-model="searchForm.keyword"
-            placeholder="用户名/邮箱/手机号"
-            clearable
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="全部状态" clearable>
-            <el-option label="正常" value="active" />
-            <el-option label="禁用" value="disabled" />
-            <el-option label="待激活" value="pending" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="角色">
-          <el-select v-model="searchForm.roleId" placeholder="全部角色" clearable>
-            <el-option
-              v-for="role in roleOptions"
-              :key="role.id"
-              :label="role.name"
-              :value="role.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="创建时间">
-          <el-date-picker
-            v-model="searchForm.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>
-            搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <!-- 数据表格 -->
-    <el-card class="table-card">
-      <div class="table-header">
-        <div class="table-title">
-          <span>用户列表</span>
-          <el-tag type="info" size="small">{{ pagination.total }} 条记录</el-tag>
+    <el-card>
+      <template #header>
+        <div class="card-header">
+          <div class="header-left">
+            <span class="card-title">用户管理</span>
+            <el-tag type="info" size="small">{{ pagination.total }} 条记录</el-tag>
+          </div>
+          <div class="header-actions">
+            <el-button type="primary" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              新建用户
+            </el-button>
+            <el-button @click="handleImport">
+              <el-icon><Upload /></el-icon>
+              批量导入
+            </el-button>
+            <el-button @click="handleExport">
+              <el-icon><Download /></el-icon>
+              导出数据
+            </el-button>
+          </div>
         </div>
-        <div class="table-actions">
+      </template>
+
+      <!-- 搜索筛选 -->
+      <div class="search-bar">
+        <el-form :model="searchForm" inline class="search-form">
+          <el-form-item label="关键词">
+            <el-input
+              v-model="searchForm.keyword"
+              placeholder="用户名/邮箱/手机号"
+              clearable
+              style="width: 200px;"
+              @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="searchForm.status" placeholder="全部状态" clearable style="width: 120px;">
+              <el-option label="正常" value="active" />
+              <el-option label="禁用" value="disabled" />
+              <el-option label="待激活" value="pending" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="角色">
+            <el-select v-model="searchForm.roleId" placeholder="全部角色" clearable style="width: 150px;">
+              <el-option
+                v-for="role in roleOptions"
+                :key="role.id"
+                :label="role.name"
+                :value="role.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">
+              <el-icon><Search /></el-icon>
+              搜索
+            </el-button>
+            <el-button @click="handleReset">
+              <el-icon><Refresh /></el-icon>
+              重置
+            </el-button>
+          </el-form-item>
+        </el-form>
+        <div class="view-toggle">
           <el-button-group>
             <el-button
               :type="viewMode === 'table' ? 'primary' : ''"
@@ -105,6 +89,7 @@
         :data="tableData"
         stripe
         @selection-change="handleSelectionChange"
+        style="width: 100%;"
       >
         <el-table-column type="selection" width="55" />
         <el-table-column label="用户信息" min-width="200">
@@ -734,157 +719,143 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .users-page {
-  .page-header {
+  .card-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 24px;
+    align-items: center;
 
-    .header-content {
-      .page-title {
-        font-size: 28px;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0 0 8px 0;
-      }
-
-      .page-subtitle {
-        color: var(--text-secondary);
-        margin: 0;
-      }
-    }
-
-    .header-actions {
+    .header-left {
       display: flex;
-      gap: 12px;
-    }
-  }
-
-  .search-card {
-    margin-bottom: 24px;
-
-    .search-form {
-      .el-form-item {
-        margin-bottom: 0;
-      }
-    }
-  }
-
-  .table-card {
-    .table-header {
-      display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      gap: 12px;
 
-      .table-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
+      .card-title {
         font-size: 16px;
         font-weight: 600;
         color: var(--text-primary);
       }
     }
 
-    .user-info {
+    .header-actions {
       display: flex;
-      align-items: center;
-      gap: 12px;
+      gap: 10px;
+    }
+  }
 
-      .user-details {
-        .user-name {
+  .search-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border-lighter);
+    margin-bottom: 16px;
+
+    .search-form {
+      .el-form-item {
+        margin-bottom: 0;
+      }
+    }
+
+    .view-toggle {
+      flex-shrink: 0;
+    }
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .user-details {
+      .user-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+
+      .user-email {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+    }
+  }
+
+  .user-cards {
+    .user-card {
+      background: var(--bg-white);
+      border: 1px solid var(--border-lighter);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.3s ease;
+      height: 100%;
+
+      &:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+      }
+
+      .user-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .user-card-body {
+        .user-card-name {
+          font-size: 18px;
           font-weight: 600;
           color: var(--text-primary);
-          margin-bottom: 4px;
+          margin: 0 0 8px 0;
         }
 
-        .user-email {
-          font-size: 13px;
+        .user-card-email {
           color: var(--text-secondary);
-        }
-      }
-    }
-
-    .user-cards {
-      margin-top: 16px;
-
-      .user-card {
-        background: var(--bg-white);
-        border: 1px solid var(--border-lighter);
-        border-radius: 12px;
-        padding: 20px;
-        transition: all 0.3s ease;
-        height: 100%;
-
-        &:hover {
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-          transform: translateY(-2px);
+          margin: 0 0 12px 0;
+          font-size: 14px;
         }
 
-        .user-card-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        .user-card-roles {
           margin-bottom: 16px;
-        }
 
-        .user-card-body {
-          .user-card-name {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0 0 8px 0;
-          }
-
-          .user-card-email {
-            color: var(--text-secondary);
-            margin: 0 0 12px 0;
-            font-size: 14px;
-          }
-
-          .user-card-roles {
-            margin-bottom: 16px;
-
-            .role-tag {
-              margin-right: 4px;
-              margin-bottom: 4px;
-            }
-          }
-
-          .user-card-meta {
-            .meta-item {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 4px;
-              font-size: 13px;
-
-              .meta-label {
-                color: var(--text-secondary);
-              }
-
-              .meta-value {
-                color: var(--text-primary);
-              }
-            }
+          .role-tag {
+            margin-right: 4px;
+            margin-bottom: 4px;
           }
         }
 
-        .user-card-footer {
-          display: flex;
-          gap: 8px;
-          margin-top: 16px;
-          padding-top: 16px;
-          border-top: 1px solid var(--border-lighter);
+        .user-card-meta {
+          .meta-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 13px;
+
+            .meta-label {
+              color: var(--text-secondary);
+            }
+
+            .meta-value {
+              color: var(--text-primary);
+            }
+          }
         }
       }
-    }
 
-    .pagination-wrapper {
-      display: flex;
-      justify-content: center;
-      margin-top: 24px;
+      .user-card-footer {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-lighter);
+      }
     }
+  }
+
+  .pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
   }
 }
 

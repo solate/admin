@@ -1,165 +1,131 @@
 <template>
   <div class="tenants-page">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <div class="header-content">
-        <h1 class="page-title">租户管理</h1>
-        <p class="page-subtitle">管理多租户系统中的所有租户</p>
-      </div>
-      <div class="header-actions">
-        <el-button type="primary" @click="handleCreate">
-          <el-icon><Plus /></el-icon>
-          创建租户
-        </el-button>
-        <el-button @click="handleExport">
-          <el-icon><Download /></el-icon>
-          导出数据
-        </el-button>
-      </div>
-    </div>
-
-    <!-- 搜索筛选 -->
-    <el-card class="search-card">
-      <el-form :model="searchForm" inline class="search-form">
-        <el-form-item label="租户名称">
-          <el-input
-            v-model="searchForm.name"
-            placeholder="请输入租户名称"
-            clearable
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="全部状态" clearable>
-            <el-option label="正常运营" value="active" />
-            <el-option label="试用期" value="trial" />
-            <el-option label="已暂停" value="suspended" />
-            <el-option label="已过期" value="expired" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="套餐类型">
-          <el-select v-model="searchForm.plan" placeholder="全部套餐" clearable>
-            <el-option label="基础版" value="basic" />
-            <el-option label="专业版" value="professional" />
-            <el-option label="企业版" value="enterprise" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="创建时间">
-          <el-date-picker
-            v-model="searchForm.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>
-            搜索
-          </el-button>
-          <el-button @click="handleReset">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <!-- 数据表格 -->
-    <el-card class="table-card">
-      <div class="table-header">
-        <div class="table-title">
-          <span>租户列表</span>
-          <el-tag type="info" size="small">{{ pagination.total }} 条记录</el-tag>
+    <el-card>
+      <template #header>
+        <div class="card-header">
+          <span>租户管理</span>
+          <div class="header-actions">
+            <el-button type="primary" @click="handleCreate">
+              <el-icon><Plus /></el-icon>
+              新建租户
+            </el-button>
+            <el-button @click="handleExport">
+              <el-icon><Download /></el-icon>
+              导出数据
+            </el-button>
+          </div>
         </div>
-        <div class="table-stats">
-          <el-statistic
-            title="活跃租户"
-            :value="tenantStats.active"
-            suffix="个"
-          />
-          <el-statistic
-            title="试用期"
-            :value="tenantStats.trial"
-            suffix="个"
-          />
-          <el-statistic
-            title="总用户数"
-            :value="tenantStats.totalUsers"
-            suffix="人"
-          />
-        </div>
+      </template>
+
+      <!-- 搜索筛选 -->
+      <div class="search-bar">
+        <el-form :model="searchForm" inline class="search-form">
+          <el-form-item label="租户名称">
+            <el-input
+              v-model="searchForm.name"
+              placeholder="请输入租户名称"
+              clearable
+              style="width: 200px;"
+              @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="searchForm.status" placeholder="全部状态" clearable style="width: 120px;">
+              <el-option label="正常运营" value="active" />
+              <el-option label="试用期" value="trial" />
+              <el-option label="已暂停" value="suspended" />
+              <el-option label="已过期" value="expired" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="套餐类型">
+            <el-select v-model="searchForm.plan" placeholder="全部套餐" clearable style="width: 120px;">
+              <el-option label="基础版" value="basic" />
+              <el-option label="专业版" value="professional" />
+              <el-option label="企业版" value="enterprise" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">
+              <el-icon><Search /></el-icon>
+              搜索
+            </el-button>
+            <el-button @click="handleReset">
+              <el-icon><Refresh /></el-icon>
+              重置
+            </el-button>
+          </el-form-item>
+        </el-form>
       </div>
 
+      <!-- 数据表格 -->
       <el-table
         v-loading="loading"
         :data="tableData"
         stripe
         @selection-change="handleSelectionChange"
+        style="width: 100%;"
       >
-        <el-table-column type="selection" width="55" />
-        <el-table-column label="租户信息" min-width="250">
-          <template #default="{ row }">
-            <div class="tenant-info">
-              <div class="tenant-logo">
-                <el-avatar :size="50" :style="{ backgroundColor: row.color }">
-                  {{ row.name.charAt(0).toUpperCase() }}
-                </el-avatar>
-              </div>
-              <div class="tenant-details">
-                <div class="tenant-name">{{ row.name }}</div>
-                <div class="tenant-domain">{{ row.domain }}</div>
-                <div class="tenant-admin">管理员：{{ row.adminName }}</div>
-              </div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="套餐" width="120">
-          <template #default="{ row }">
-            <el-tag :type="getPlanType(row.plan)">
-              {{ getPlanName(row.plan) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
-              {{ getStatusText(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="用户数" width="80">
-          <template #default="{ row }">
-            {{ row.userCount }}
-          </template>
-        </el-table-column>
-        <el-table-column label="到期时间" width="120">
-          <template #default="{ row }">
-            <span :class="{ 'text-danger': isExpiringSoon(row.expiryDate) }">
-              {{ formatDate(row.expiryDate) }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="创建时间" width="120">
-          <template #default="{ row }">
-            {{ formatDate(row.createdAt) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="240" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" text size="small" @click="handleEdit(row)">
+      <el-table-column type="selection" width="55" />
+      <el-table-column label="租户信息" min-width="280">
+        <template #default="{ row }">
+          <div class="tenant-info">
+            <el-avatar :size="36" :style="{ backgroundColor: row.color }">
+              {{ row.name.charAt(0).toUpperCase() }}
+            </el-avatar>
+            <span class="tenant-name">{{ row.name }}</span>
+            <span class="tenant-domain">{{ row.domain }}</span>
+            <span class="tenant-admin">管理员：{{ row.adminName }}</span>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="套餐" width="120">
+        <template #default="{ row }">
+          <el-tag :type="getPlanType(row.plan)">
+            {{ getPlanName(row.plan) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" width="100">
+        <template #default="{ row }">
+          <el-tag :type="getStatusType(row.status)">
+            {{ getStatusText(row.status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="用户数" width="80">
+        <template #default="{ row }">
+          {{ row.userCount }}
+        </template>
+      </el-table-column>
+      <el-table-column label="到期时间" width="120">
+        <template #default="{ row }">
+          <span :class="{ 'text-danger': isExpiringSoon(row.expiryDate) }">
+            {{ formatDate(row.expiryDate) }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column label="创建时间" width="120">
+        <template #default="{ row }">
+          {{ formatDate(row.createdAt) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="280" fixed="right">
+        <template #default="{ row }">
+          <div class="action-buttons">
+            <el-button size="small" type="primary" plain @click="handleEdit(row)">
+              <el-icon><Edit /></el-icon>
               编辑
             </el-button>
-            <el-button type="success" text size="small" @click="handleManageUsers(row)">
-              用户管理
+            <el-button size="small" type="success" plain @click="handleManageUsers(row)">
+              <el-icon><User /></el-icon>
+              用户
             </el-button>
-            <el-button type="warning" text size="small" @click="handleRenew(row)">
+            <el-button size="small" type="warning" plain @click="handleRenew(row)">
+              <el-icon><RefreshRight /></el-icon>
               续费
             </el-button>
             <el-dropdown @command="(command) => handleMoreAction(command, row)">
-              <el-button type="info" text size="small">
+              <el-button size="small" type="info" plain>
                 更多<el-icon class="el-icon--right"><arrow-down /></el-icon>
               </el-button>
               <template #dropdown>
@@ -179,22 +145,18 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-          </template>
-        </el-table-column>
-      </el-table>
+          </div>
+        </template>
+      </el-table-column>
+    </el-table>
 
-      <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.size"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+    <!-- 分页 -->
+    <Pagination
+      v-model:current-page="pagination.page"
+      v-model:page-size="pagination.size"
+      :total="pagination.total"
+      @change="fetchTenants"
+    />
     </el-card>
 
     <!-- 租户表单对话框 -->
@@ -349,6 +311,8 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
+import { Edit, User, RefreshRight } from '@element-plus/icons-vue'
+import Pagination from '../../components/Pagination.vue'
 import dayjs from 'dayjs'
 
 // 接口定义
@@ -686,7 +650,7 @@ const handleRenewSubmit = async () => {
 }
 
 const handleManageUsers = (tenant: Tenant) => {
-  router.push(`/users?tenantId=${tenant.id}`)
+  router.push(`/system/users?tenantId=${tenant.id}`)
 }
 
 const handleMoreAction = async (command: string, tenant: Tenant) => {
@@ -808,34 +772,19 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .tenants-page {
-  .page-header {
+  .card-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 24px;
-
-    .header-content {
-      .page-title {
-        font-size: 28px;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0 0 8px 0;
-      }
-
-      .page-subtitle {
-        color: var(--text-secondary);
-        margin: 0;
-      }
-    }
+    align-items: center;
 
     .header-actions {
       display: flex;
-      gap: 12px;
+      gap: 10px;
     }
   }
 
-  .search-card {
-    margin-bottom: 24px;
+  .search-bar {
+    margin-bottom: 16px;
 
     .search-form {
       .el-form-item {
@@ -844,80 +793,62 @@ onMounted(() => {
     }
   }
 
-  .table-card {
-    .table-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
 
-      .table-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--text-primary);
+    .el-button {
+      margin: 0;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       }
 
-      .table-stats {
-        display: flex;
-        gap: 32px;
-
-        :deep(.el-statistic) {
-          text-align: center;
-
-          .el-statistic__head {
-            font-size: 13px;
-            color: var(--text-secondary);
-          }
-
-          .el-statistic__content {
-            .el-statistic__number {
-              font-size: 20px;
-              font-weight: 600;
-            }
-          }
-        }
+      .el-icon {
+        margin-right: 2px;
+        font-size: 12px;
       }
     }
+  }
 
-    .tenant-info {
+  .tenant-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .tenant-details {
       display: flex;
       align-items: center;
       gap: 16px;
 
-      .tenant-details {
-        .tenant-name {
-          font-size: 16px;
-          font-weight: 600;
-          color: var(--text-primary);
-          margin-bottom: 4px;
-        }
+      .tenant-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
 
-        .tenant-domain {
-          font-size: 13px;
-          color: var(--text-secondary);
-          margin-bottom: 2px;
-        }
+      .tenant-domain {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
 
-        .tenant-admin {
-          font-size: 12px;
-          color: var(--text-regular);
-        }
+      .tenant-admin {
+        font-size: 12px;
+        color: var(--text-regular);
       }
     }
+  }
 
-    .text-danger {
-      color: var(--danger-color);
-      font-weight: 500;
-    }
-
-    .pagination-wrapper {
-      display: flex;
-      justify-content: center;
-      margin-top: 24px;
-    }
+  .text-danger {
+    color: var(--danger-color);
+    font-weight: 500;
   }
 }
 

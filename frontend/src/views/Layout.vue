@@ -35,36 +35,17 @@
             <template #title>仪表盘</template>
           </el-menu-item>
 
-          <el-menu-item index="/users">
-            <el-icon><User /></el-icon>
-            <template #title>用户管理</template>
-          </el-menu-item>
-
-          <el-menu-item index="/roles">
-            <el-icon><Avatar /></el-icon>
-            <template #title>角色管理</template>
-          </el-menu-item>
-
-          <el-menu-item index="/tenants">
-            <el-icon><School /></el-icon>
-            <template #title>租户管理</template>
-          </el-menu-item>
-
-          <el-sub-menu index="/permissions">
-            <template #title>
-              <el-icon><Lock /></el-icon>
-              <span>权限管理</span>
-            </template>
-            <el-menu-item index="/permissions/menu">菜单权限</el-menu-item>
-            <el-menu-item index="/permissions/api">接口权限</el-menu-item>
-            <el-menu-item index="/permissions/data">数据权限</el-menu-item>
-          </el-sub-menu>
-
           <el-sub-menu index="/system">
             <template #title>
               <el-icon><Setting /></el-icon>
-              <span>系统设置</span>
+              <span>系统管理</span>
             </template>
+            <el-menu-item index="/system/users">用户管理</el-menu-item>
+            <el-menu-item index="/system/roles">角色管理</el-menu-item>
+            <el-menu-item index="/system/tenants">租户管理</el-menu-item>
+            <el-menu-item index="/system/permissions/menu">菜单权限</el-menu-item>
+            <el-menu-item index="/system/permissions/api">接口权限</el-menu-item>
+            <el-menu-item index="/system/permissions/data">数据权限</el-menu-item>
             <el-menu-item index="/system/dict">字典管理</el-menu-item>
             <el-menu-item index="/system/logs">操作日志</el-menu-item>
             <el-menu-item index="/system/monitor">系统监控</el-menu-item>
@@ -305,14 +286,14 @@ const unreadCount = computed(() => notifications.value.filter(n => !n.read).leng
 
 const breadcrumbConfig: Record<string, { title: string }> = {
   '/': { title: '首页' },
-  '/users': { title: '用户管理' },
-  '/roles': { title: '角色管理' },
-  '/tenants': { title: '租户管理' },
-  '/permissions': { title: '权限管理' },
-  '/permissions/menu': { title: '菜单权限' },
-  '/permissions/api': { title: '接口权限' },
-  '/permissions/data': { title: '数据权限' },
-  '/system': { title: '系统设置' },
+  '/system': { title: '系统管理' },
+  '/system/users': { title: '用户管理' },
+  '/system/roles': { title: '角色管理' },
+  '/system/tenants': { title: '租户管理' },
+  '/system/permissions': { title: '权限管理' },
+  '/system/permissions/menu': { title: '菜单权限' },
+  '/system/permissions/api': { title: '接口权限' },
+  '/system/permissions/data': { title: '数据权限' },
   '/system/dict': { title: '字典管理' },
   '/system/logs': { title: '操作日志' },
   '/system/monitor': { title: '系统监控' },
