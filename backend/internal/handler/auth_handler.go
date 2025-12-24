@@ -3,7 +3,6 @@ package handler
 import (
 	"admin/internal/dto"
 	"admin/internal/service"
-	"admin/pkg/config"
 	"admin/pkg/response"
 	"admin/pkg/xerr"
 
@@ -13,14 +12,12 @@ import (
 // AuthHandler JWT 认证处理器
 // 提供登录、选择租户、刷新、登出等接口的处理函数
 type AuthHandler struct {
-	config      *config.Config
 	authService *service.AuthService
 }
 
 // NewAuthHandler 创建认证处理器
-func NewAuthHandler(cfg *config.Config, authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 	return &AuthHandler{
-		config:      cfg,
 		authService: authService,
 	}
 }
@@ -156,4 +153,3 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 	c.JSON(200, gin.H{"message": "logged out successfully"})
 }
-

@@ -151,8 +151,8 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 		log.Info().Int("tenant_count", len(tenantInfos)).Msg("用户有多个租户，需要选择")
 		return &dto.LoginResponse{
 			NeedSelectTenant: true,
-			UserID:          user.UserID,
-			Tenants:         tenantInfos,
+			UserID:           user.UserID,
+			Tenants:          tenantInfos,
 		}, nil
 	}
 
@@ -200,7 +200,7 @@ func (s *AuthService) completeLogin(ctx context.Context, user *model.User, tenan
 
 	// 生成JWT令牌
 	// roleType 使用 tenantInfo 中的值，默认为普通用户(1)
-	tokenPair, err := s.jwt.GenerateTokenPair(ctx, tenantInfo.TenantID, tenantInfo.TenantCode, user.UserID, user.UserName, tenantInfo.RoleType, activeRoleCodes)
+	tokenPair, err := s.jwt.GenerateTokenPair(ctx, tenantInfo.TenantID, tenantInfo.TenantCode, user.UserID, user.UserName, activeRoleCodes)
 	if err != nil {
 		log.Error().Err(err).Msg("生成JWT令牌失败")
 		return nil, err
@@ -298,10 +298,10 @@ func (s *AuthService) SelectTenant(ctx context.Context, userID, tenantID string)
 	}
 
 	return &dto.SelectTenantResponse{
-		AccessToken:    loginResp.AccessToken,
-		RefreshToken:   loginResp.RefreshToken,
-		ExpiresIn:      loginResp.ExpiresIn,
-		CurrentTenant:  tenantInfo,
+		AccessToken:   loginResp.AccessToken,
+		RefreshToken:  loginResp.RefreshToken,
+		ExpiresIn:     loginResp.ExpiresIn,
+		CurrentTenant: tenantInfo,
 	}, nil
 }
 

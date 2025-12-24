@@ -242,7 +242,7 @@ func (s *App) initHandlers() error {
 	s.Handlers = &Handlers{
 		HealthHandler:  handler.NewHealthHandler(),
 		CaptchaHandler: handler.NewCaptchaHandler(s.Redis),
-		AuthHandler:    handler.NewAuthHandler(s.Config, authService),
+		AuthHandler:    handler.NewAuthHandler(authService),
 		UserHandler:    handler.NewUserHandler(userService),
 		// PolicyHandler: handler.NewPolicyHandler(s.Services.CasbinService), // Will be nil for now
 		// TenantHandler: handler.NewTenantHandler(s.Services.TenantService),

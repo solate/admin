@@ -33,8 +33,8 @@ func (m *Manager) generateUserKey(tenantID, userID string) string {
 // - 生成新的 access token 和 refresh token
 // - 将 refresh token 存储到 store
 // - 维护用户会话索引（便于后续跨设备登出）
-func (m *Manager) GenerateTokenPair(ctx context.Context, tenantID, tenantCode, userID, userName string, roleType int32, roles []string) (*TokenPair, error) {
-	tokenPair, err := GenerateTokenPair(tenantID, tenantCode, userID, userName, roleType, roles, m.config)
+func (m *Manager) GenerateTokenPair(ctx context.Context, tenantID, tenantCode, userID, userName string, roles []string) (*TokenPair, error) {
+	tokenPair, err := GenerateTokenPair(tenantID, tenantCode, userID, userName, roles, m.config)
 	if err != nil {
 		return nil, fmt.Errorf("generate token pair failed: %w", err)
 	}
@@ -111,7 +111,7 @@ func (m *Manager) VerifyRefreshToken(ctx context.Context, refreshToken string) (
 	}
 
 	// 生成新的 token 对
-	tokenPair, err := GenerateTokenPair(claims.TenantID, claims.TenantCode, claims.UserID, claims.UserName, claims.RoleType, claims.Roles, m.config)
+	tokenPair, err := GenerateTokenPair(claims.TenantID, claims.TenantCode, claims.UserID, claims.UserName, claims.Roles, m.config)
 	if err != nil {
 		return nil, fmt.Errorf("generate new token pair failed: %w", err)
 	}

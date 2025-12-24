@@ -18,7 +18,6 @@ type Claims struct {
 	TenantCode string   `json:"tenant_code"`        // 租户编码
 	UserID     string   `json:"user_id"`            // 用户ID
 	UserName   string   `json:"user_name"`          // 用户名
-	RoleType   int32    `json:"role_type"`          // 角色类型(1:普通用户, 2:租户管理员, 3:平台超级管理员)
 	Roles      []string `json:"roles"`              // 角色列表
 	TokenID    string   `json:"token_id,omitempty"` // refresh token的唯一标识
 	jwt.RegisteredClaims
@@ -53,18 +52,18 @@ var (
 // 注意：
 // - 使用随机 TokenID 作为会话标识，便于后续刷新和撤销
 // - ExpiresIn 返回 access token 的过期时间（秒）
-func GenerateTokenPair(tenantID, tenantCode, userID, userName string, roleType int32, roles []string, config *JWTConfig) (*TokenPair, error) {
+func GenerateTokenPair(tenantID, tenantCode, userID, userName string, roles []string, config *JWTConfig) (*TokenPair, error) {
 	// 生成refresh token的唯一ID
 	tokenID := uuid.New().String()
 
 	// 生成 access token
-	accessToken, err := generateToken(tenantID, tenantCode, userID, userName, roleType, roles, tokenID, config.AccessExpire, config.AccessSecret, config.Issuer)
+	accessToken, err := generateToken(tenantID, tenantCode, userID, userName, roles, tokenID, config.AccessExpire, config.AccessSecret, config.Issuer)
 	if err != nil {
 		return nil, err
 	}
 
 	// 生成 refresh token
-	refreshToken, err := generateToken(tenantID, tenantCode, userID, userName, roleType, roles, tokenID, config.RefreshExpire, config.RefreshSecret, config.Issuer)
+	refreshToken, err := generateToken(tenantID, tenantCode, userID, userName, roles, tokenID, config.RefreshExpire, config.RefreshSecret, config.Issuer)
 	if err != nil {
 		return nil, err
 	}
@@ -83,14 +82,13 @@ func VerifyToken(tokenString string, secret []byte) (*Claims, error) {
 }
 
 // generateToken 生成单个 token（带 Claims）
-func generateToken(tenantID, tenantCode, userID, userName string, roleType int32, roles []string, tokenID string, expire int64, secret []byte, issuer string) (string, error) {
+func generateToken(tenantID, tenantCode, userID, userName string, roles []string, tokenID string, expire int64, secret []byte, issuer string) (string, error) {
 	now := time.Now()
 	claims := &Claims{
 		TenantID:   tenantID,
 		TenantCode: tenantCode,
 		UserID:     userID,
 		UserName:   userName,
-		RoleType:   roleType,
 		Roles:      roles,
 		TokenID:    tokenID,
 		RegisteredClaims: jwt.RegisteredClaims{

@@ -21,7 +21,7 @@ func testConfig() *JWTConfig {
 func TestGenerateTokenPairAndParse(t *testing.T) {
 	cfg := testConfig()
 
-	pair, err := GenerateTokenPair("tenant-1", "tenant-1", "user-1", "user-1", 1, []string{"role-1"}, cfg)
+	pair, err := GenerateTokenPair("tenant-1", "tenant-1", "user-1", "user-1", []string{"role-1"}, cfg)
 	if err != nil {
 		t.Fatalf("GenerateTokenPair returned error: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestGenerateTokenPairAndParse(t *testing.T) {
 func TestVerifyTokenInvalidSignature(t *testing.T) {
 	cfg := testConfig()
 
-	pair, err := GenerateTokenPair("tenant-1", "tenant-1", "user-1", "user-1", 1, []string{"role-1"}, cfg)
+	pair, err := GenerateTokenPair("tenant-1", "tenant-1", "user-1", "user-1", []string{"role-1"}, cfg)
 	if err != nil {
 		t.Fatalf("GenerateTokenPair returned error: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestParseTokenExpired(t *testing.T) {
 		Issuer:        "admin",
 	}
 
-	token, err := generateToken("tenant-1", "tenant-1", "user-1", "user-1", 1, []string{"role-1"}, "token-1", expiredCfg.AccessExpire, secret, expiredCfg.Issuer)
+	token, err := generateToken("tenant-1", "tenant-1", "user-1", "user-1", []string{"role-1"}, "token-1", expiredCfg.AccessExpire, secret, expiredCfg.Issuer)
 	if err != nil {
 		t.Fatalf("generateToken returned error: %v", err)
 	}
