@@ -40,12 +40,12 @@ func SetTenantCode(ctx context.Context, tenantCode string) context.Context {
 	return context.WithValue(ctx, TenantCodeKey, tenantCode)
 }
 
-// GetTenantCode 从context获取租户代码
-func GetTenantCode(ctx context.Context) (string, bool) {
+// GetTenantCode 从context获取租户代码，如果不存在返回空字符串
+func GetTenantCode(ctx context.Context) string {
 	value := ctx.Value(TenantCodeKey)
 	if value == nil {
-		return "", false
+		return ""
 	}
-	tenantCode, ok := value.(string)
-	return tenantCode, ok
+	tenantCode, _ := value.(string)
+	return tenantCode
 }

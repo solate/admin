@@ -36,8 +36,8 @@ func OperationLogMiddleware(logger *operationlog.Logger) gin.HandlerFunc {
 		}
 
 		// 5. 从 context 获取用户信息（AuthMiddleware 已注入）
-		userID, _ := xcontext.GetUserID(c.Request.Context())
-		userName, _ := xcontext.GetUserName(c.Request.Context())
+		userID := xcontext.GetUserID(c.Request.Context())
+		userName := xcontext.GetUserName(c.Request.Context())
 
 		// 6. 构建日志条目
 		entry := &operationlog.LogEntry{

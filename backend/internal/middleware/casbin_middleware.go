@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"admin/pkg/casbin"
-	"admin/pkg/constants"
 	"admin/pkg/response"
+	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 
 	"github.com/gin-gonic/gin"
@@ -12,8 +12,8 @@ import (
 // CasbinMiddleware creates a middleware that enforces Casbin RBAC policies
 func CasbinMiddleware(enforcer *casbin.Enforcer) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userName := c.GetString(constants.CtxUserName)
-		tenantCode := c.GetString(constants.CtxTenantCode)
+		userName := xcontext.GetUserName(c.Request.Context())
+		tenantCode := xcontext.GetTenantCode(c.Request.Context())
 
 		if userName == "" || tenantCode == "" {
 			response.Error(c, xerr.ErrUnauthorized)

@@ -19,14 +19,14 @@ func SetRoleType(ctx context.Context, roleType int32) context.Context {
 	return context.WithValue(ctx, RoleTypeKey, roleType)
 }
 
-// GetRoleType 从context获取角色类型
-func GetRoleType(ctx context.Context) (int32, bool) {
+// GetRoleType 从context获取角色类型，如果不存在返回0
+func GetRoleType(ctx context.Context) int32 {
 	value := ctx.Value(RoleTypeKey)
 	if value == nil {
-		return 0, false
+		return 0
 	}
-	roleType, ok := value.(int32)
-	return roleType, ok
+	roleType, _ := value.(int32)
+	return roleType
 }
 
 // SetRoles 设置角色列表到context
@@ -34,12 +34,12 @@ func SetRoles(ctx context.Context, roles []string) context.Context {
 	return context.WithValue(ctx, RolesKey, roles)
 }
 
-// GetRoles 从context获取角色列表
-func GetRoles(ctx context.Context) ([]string, bool) {
+// GetRoles 从context获取角色列表，如果不存在返回nil
+func GetRoles(ctx context.Context) []string {
 	value := ctx.Value(RolesKey)
 	if value == nil {
-		return nil, false
+		return nil
 	}
-	roles, ok := value.([]string)
-	return roles, ok
+	roles, _ := value.([]string)
+	return roles
 }
