@@ -35,4 +35,10 @@ var (
 	ErrUserNoTenants          = New(2108, "用户未关联任何租户")
 	ErrUserTenantAccessDenied = New(2109, "用户无该租户访问权限")
 	ErrUserNoRoles            = New(2110, "用户在租户中无任何角色")
+
+	// 角色错误 2200-2299
+	ErrRoleNotFound   = New(2200, "角色不存在")
+	ErrRoleExists     = New(2201, "角色已存在")
+	ErrRoleCodeExists = New(2202, "角色编码已存在")
+	ErrRoleInUse      = New(2203, "角色正在使用中")
 )

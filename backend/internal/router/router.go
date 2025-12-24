@@ -86,6 +86,17 @@ func Setup(r *gin.Engine, app *App) {
 				tenant.PUT("/:tenant_id/status/:status", app.Handlers.TenantHandler.UpdateTenantStatus) // 更新租户状态
 			}
 
+			// 角色接口
+			role := authenticated.Group("/roles")
+			{
+				role.POST("", app.Handlers.RoleHandler.CreateRole)                              // 创建角色
+				role.GET("", app.Handlers.RoleHandler.ListRoles)                                // 获取角色列表
+				role.GET("/:role_id", app.Handlers.RoleHandler.GetRole)                         // 获取角色详情
+				role.PUT("/:role_id", app.Handlers.RoleHandler.UpdateRole)                      // 更新角色
+				role.DELETE("/:role_id", app.Handlers.RoleHandler.DeleteRole)                   // 删除角色
+				role.PUT("/:role_id/status/:status", app.Handlers.RoleHandler.UpdateRoleStatus) // 更新角色状态
+			}
+
 		}
 
 	}
