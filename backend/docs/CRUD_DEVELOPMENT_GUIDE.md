@@ -144,11 +144,16 @@ backend/
 | 操作 | Handler 方法 | Service 方法 | Repository 方法 |
 |-----|-------------|-------------|----------------|
 | 创建 | `Create{Resource}` | `Create{Resource}` | `Create` |
-| 查询详情 | `Get{Resource}` | `Get{Resource}` | `GetByID` |
+| 查询详情 | `Get{Resource}` | `Get{Resource}ByID` | `GetByID` |
 | 查询列表 | `List{Resource}s` | `List{Resource}s` | `ListWithFilters` |
 | 更新 | `Update{Resource}` | `Update{Resource}` | `Update` |
 | 删除 | `Delete{Resource}` | `Delete{Resource}` | `Delete` |
-| 状态更新 | `Update{Resource}Status` | `UpdateStatus` | `UpdateStatus` |
+| 状态更新 | `Update{Resource}Status` | `Update{Resource}Status` | `UpdateStatus` |
+
+**说明：**
+- Service 层的查询详情方法命名为 `Get{Resource}ByID`，更明确地表达通过 ID 查询的语义
+- Handler 层保持 `Get{Resource}` 简洁命名
+- Repository 层统一使用 `GetByID` 命名
 
 ### 路由命名
 
@@ -232,7 +237,7 @@ func (h *{Resource}Handler) Create{Resource}(c *gin.Context) {
 func (h *{Resource}Handler) Get{Resource}(c *gin.Context) {
     {resource}ID := c.Param("{resource}_id")
 
-    resp, err := h.Service.Get{Resource}(c.Request.Context(), {resource}ID)
+    resp, err := h.Service.Get{Resource}ByID(c.Request.Context(), {resource}ID)
     if err != nil {
         response.Error(c, err)
         return
@@ -328,7 +333,7 @@ func (h *{Resource}Handler) Update{Resource}Status(c *gin.Context) {
     {resource}ID := c.Param("{resource}_id")
     status := c.Param("status")
 
-    if err := h.Service.UpdateStatus(c.Request.Context(), {resource}ID, status); err != nil {
+    if err := h.Service.Update{Resource}Status(c.Request.Context(), {resource}ID, status); err != nil {
         response.Error(c, err)
         return
     }
@@ -395,8 +400,8 @@ func (s *{Resource}Service) Create{Resource}(ctx context.Context, req *dto.Creat
     return s.to{Resource}Response({resource}), nil
 }
 
-// Get{Resource} 获取资源详情
-func (s *{Resource}Service) Get{Resource}(ctx context.Context, {resource}ID string) (*dto.{Resource}Response, error) {
+// Get{Resource}ByID 获取资源详情
+func (s *{Resource}Service) Get{Resource}ByID(ctx context.Context, {resource}ID string) (*dto.{Resource}Response, error) {
     {resource}, err := s.Repo.GetByID(ctx, {resource}ID)
     if err != nil {
         if err == gorm.ErrRecordNotFound {
@@ -410,7 +415,7 @@ func (s *{Resource}Service) Get{Resource}(ctx context.Context, {resource}ID stri
 
 // List{Resource}s 获取资源列表
 func (s *{Resource}Service) List{Resource}s(ctx context.Context, req *dto.List{Resource}sRequest) (*dto.List{Resource}sResponse, error) {
-    {resource}s, total, err := s.Repo.ListWithFilters(ctx, req)
+    {resource}s, total, err := s.Repo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Keyword, req.Status)
     if err != nil {
         return nil, xerr.Wrap(err, "查询xxx列表失败")
     }
@@ -421,12 +426,7 @@ func (s *{Resource}Service) List{Resource}s(ctx context.Context, req *dto.List{R
     }
 
     return &dto.List{Resource}sResponse{
-        PageResponse: dto.PageResponse{
-            Page:     req.Page,
-            PageSize: req.PageSize,
-            Total:    total,
-        },
-        Items: items,
+        Response: pagination.NewResponse(items, &req.Request, total),
     }, nil
 }
 
@@ -495,8 +495,8 @@ func (s *{Resource}Service) Delete{Resource}(ctx context.Context, {resource}ID s
     return nil
 }
 
-// UpdateStatus 更新状态
-func (s *{Resource}Service) UpdateStatus(ctx context.Context, {resource}ID, status string) error {
+// Update{Resource}Status 更新状态
+func (s *{Resource}Service) Update{Resource}Status(ctx context.Context, {resource}ID string, status int) error {
     if err := s.Repo.UpdateStatus(ctx, {resource}ID, status); err != nil {
         return xerr.Wrap(err, "更新状态失败")
     }
@@ -532,7 +532,6 @@ import (
 
     "gorm.io/gen"
     "gorm.io/gorm"
-    "gorm.io/gen/field"
 
     "your-project/internal/dal/model"
     "your-project/internal/dal/query"
@@ -540,87 +539,87 @@ import (
 
 // {Resource}Repo 资源数据访问层
 type {Resource}Repo struct {
-    db    *gorm.DB
-    query *query.Query
+    db *gorm.DB
+    q  *query.Query
 }
 
-// New{Resource}Repo 创建资源数据访问层
-func New{Resource}Repo(db *gorm.DB, q *query.Query) *{Resource}Repo {
+// New{Resource}Repo 创建资源数据访问层（内部初始化 query）
+func New{Resource}Repo(db *gorm.DB) *{Resource}Repo {
     return &{Resource}Repo{
-        db:    db,
-        query: q,
+        db: db,
+        q:  query.Use(db),
     }
 }
 
 // Create 创建资源
 func (r *{Resource}Repo) Create(ctx context.Context, {resource} *model.{Resource}) error {
-    return r.query.{Resource}.WithContext(ctx).Create({resource})
+    return r.q.{Resource}.WithContext(ctx).Create({resource})
 }
 
 // GetByID 根据 ID 查询资源
 func (r *{Resource}Repo) GetByID(ctx context.Context, {resource}ID string) (*model.{Resource}, error) {
-    return r.query.{Resource}.WithContext(ctx).
-        Where(r.query.{Resource}.{Resource}ID.Eq({resource}ID)).
+    return r.q.{Resource}.WithContext(ctx).
+        Where(r.q.{Resource}.{Resource}ID.Eq({resource}ID)).
         First()
 }
 
 // Update 更新资源
 func (r *{Resource}Repo) Update(ctx context.Context, {resource}ID string, updates map[string]interface{}) error {
-    _, err := r.query.{Resource}.WithContext(ctx).
-        Where(r.query.{Resource}.{Resource}ID.Eq({resource}ID)).
+    _, err := r.q.{Resource}.WithContext(ctx).
+        Where(r.q.{Resource}.{Resource}ID.Eq({resource}ID)).
         Updates(updates)
     return err
 }
 
 // Delete 删除资源（软删除）
 func (r *{Resource}Repo) Delete(ctx context.Context, {resource}ID string) error {
-    _, err := r.query.{Resource}.WithContext(ctx).
-        Where(r.query.{Resource}.{Resource}ID.Eq({resource}ID)).
+    _, err := r.q.{Resource}.WithContext(ctx).
+        Where(r.q.{Resource}.{Resource}ID.Eq({resource}ID)).
         Delete()
     return err
 }
 
 // ListWithFilters 条件查询资源列表
-func (r *{Resource}Repo) ListWithFilters(ctx context.Context, req *dto.List{Resource}sRequest) ([]*model.{Resource}, int64, error) {
-    q := r.query.{Resource}.WithContext(ctx)
+func (r *{Resource}Repo) ListWithFilters(ctx context.Context, offset, limit int, keywordFilter string, statusFilter int) ([]*model.{Resource}, int64, error) {
+    query := r.q.{Resource}.WithContext(ctx)
 
     // 构建查询条件
-    if req.Keyword != "" {
-        q = q.Where(r.query.{Resource}.Name.Like("%" + req.Keyword + "%"))
+    if keywordFilter != "" {
+        query = query.Where(r.q.{Resource}.Name.Like("%" + keywordFilter + "%"))
     }
-    if req.Status != nil {
-        q = q.Where(r.query.{Resource}.Status.Eq(*req.Status))
+    if statusFilter != 0 {
+        query = query.Where(r.q.{Resource}.Status.Eq(int16(statusFilter)))
     }
 
     // 获取总数
-    total, err := q.Count()
+    total, err := query.Count()
     if err != nil {
         return nil, 0, err
     }
 
     // 分页查询
-    {resource}s, err := q.
-        Order(r.query.{Resource}.CreatedAt.Desc()).
-        Limit(req.PageSize).
-        Offset(req.GetOffset()).
+    {resource}s, err := query.
+        Order(r.q.{Resource}.CreatedAt.Desc()).
+        Offset(offset).
+        Limit(limit).
         Find()
 
     return {resource}s, total, nil
 }
 
-// CheckExists 检查唯一性
-func (r *{Resource}Repo) CheckExists(ctx context.Context, conds ...gen.Condition) (bool, error) {
-    count, err := r.query.{Resource}.WithContext(ctx).
-        Where(conds...).
+// CheckExists 检查唯一性（具体参数根据业务需求定义）
+func (r *{Resource}Repo) CheckExists(ctx context.Context, uniqueValue string) (bool, error) {
+    count, err := r.q.{Resource}.WithContext(ctx).
+        Where(r.q.{Resource}.UniqueField.Eq(uniqueValue)).
         Count()
     return count > 0, err
 }
 
 // UpdateStatus 更新状态
-func (r *{Resource}Repo) UpdateStatus(ctx context.Context, {resource}ID, status string) error {
-    _, err := r.query.{Resource}.WithContext(ctx).
-        Where(r.query.{Resource}.{Resource}ID.Eq({resource}ID)).
-        Update(r.query.{Resource}.Status, status)
+func (r *{Resource}Repo) UpdateStatus(ctx context.Context, {resource}ID string, status int) error {
+    _, err := r.q.{Resource}.WithContext(ctx).
+        Where(r.q.{Resource}.{Resource}ID.Eq({resource}ID)).
+        Update(r.q.{Resource}.Status, status)
     return err
 }
 ```
@@ -646,19 +645,19 @@ type Create{Resource}Request struct {
 
 // Update{Resource}Request 更新资源请求
 type Update{Resource}Request struct {
-    // 所有字段都是指针，表示可选更新
-    RequiredField *string `json:"required_field"`
-    OptionalField *string `json:"optional_field"`
-    Status        *int    `json:"status" binding:"omitempty,oneof=1 2"`
+    // 可选字段（非指针，通过空值判断是否更新）
+    RequiredField string `json:"required_field" binding:"omitempty"`
+    OptionalField string `json:"optional_field" binding:"omitempty"`
+    Status        int    `json:"status" binding:"omitempty,oneof=1 2"`
 }
 
 // List{Resource}sRequest 资源列表请求
 type List{Resource}sRequest struct {
-    pagination.PageRequest
+    pagination.Request
 
     // 筛选条件
-    Keyword string `json:"keyword" form:"keyword"`        // 关键词搜索
-    Status  *int   `json:"status" form:"status"`          // 状态筛选
+    Keyword string `json:"keyword" form:"keyword" binding:"omitempty"`        // 关键词搜索
+    Status  int    `json:"status" form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选（非指针类型）
 }
 
 // {Resource}Response 资源响应
@@ -673,8 +672,7 @@ type {Resource}Response struct {
 
 // List{Resource}sResponse 资源列表响应
 type List{Resource}sResponse struct {
-    PageResponse
-    Items []*{Resource}Response `json:"items"`
+    Response pagination.Response[*{Resource}Response]
 }
 ```
 
@@ -719,12 +717,37 @@ type UserResponse struct {
 **UpdateRequest 中的状态字段不需要使用指针**，原因：
 - 状态值已规范（1=启用，2=禁用），零值不会出现
 - 使用 `omitempty` tag 可省略该字段
+- 在 Service 层通过 `req.Status != 0` 判断是否需要更新
 
 **其他可选字段仍使用指针**，用于区分"不更新"和"更新为零值"：
+
 ```go
-type UpdateResourceRequest struct {
-    Name   *string `json:"name"`   // 可选更新，区分不更新 vs 更新为空字符串
-    Status int     `json:"status" binding:"omitempty,oneof=1 2"`  // 状态不用指针
+type UpdateUserRequest struct {
+    Password string `json:"password" binding:"omitempty"`         // 密码（非指针，空字符串不更新）
+    Phone    string `json:"phone" binding:"omitempty"`            // 手机号（非指针，空字符串不更新）
+    Email    string `json:"email" binding:"omitempty"`            // 邮箱（非指针，空字符串不更新）
+    Status   int    `json:"status" binding:"omitempty,oneof=1 2"` // 状态不用指针
+    Name     string `json:"name" binding:"omitempty"`             // 姓名（非指针，空字符串不更新）
+    Remark   string `json:"remark" binding:"omitempty"`           // 备注（非指针，空字符串不更新）
+}
+```
+
+**Service 层更新判断：**
+
+```go
+// 准备更新数据
+updates := make(map[string]interface{})
+if req.Password != "" {
+    updates["password"] = hashedPassword
+}
+if req.Phone != "" {
+    updates["phone"] = &req.Phone
+}
+if req.Email != "" {
+    updates["email"] = &req.Email
+}
+if req.Status != 0 {
+    updates["status"] = req.Status
 }
 ```
 
@@ -757,25 +780,32 @@ func NewResponse[T any](list []T, r *Request, total int64) Response[T]
 ### DTO 定义
 
 ```go
-// 列表请求 - 嵌入 pagination.Request
+// 列表请求 - 内嵌 pagination.Request
 type ListUsersRequest struct {
     pagination.Request
-    Keyword string `form:"keyword"`
-    Status  *int   `form:"status" binding:"omitempty,oneof=1 2"`
+    UserName string `form:"username" binding:"omitempty"`         // 用户名模糊搜索
+    Status   int    `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选（非指针类型）
 }
 
 // 列表响应 - 使用泛型 Response
 type ListUsersResponse struct {
-    pagination.Response[*UserResponse]
+    Response pagination.Response[*UserResponse]
 }
 ```
+
+**注意：**
+- 使用 `pagination.Request` 而非 `pagination.PageRequest`
+- 状态字段使用 `int` 而非 `*int`（零值用于表示"不筛选"）
+- 响应结构体字段名为 `Response` 而非内嵌
 
 ### Service 层使用
 
 ```go
 func (s *UserService) ListUsers(ctx context.Context, req *dto.ListUsersRequest) (*dto.ListUsersResponse, error) {
-    users, total, err := s.userRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Keyword, req.Status)
-    // ...
+    users, total, err := s.userRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.UserName, req.Status)
+    if err != nil {
+        return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户列表失败", err)
+    }
 
     userResponses := make([]*dto.UserResponse, len(users))
     for i, user := range users {
@@ -963,10 +993,60 @@ func (r *{Resource}Repo) Delete(ctx context.Context, id string) error {
 
 ### 10. 操作日志记录
 
+在 Service 层的关键操作（创建、更新、删除）中记录操作日志：
+
 ```go
-// 在 Service 层记录关键操作
-// 可通过中间件自动记录
+import (
+    "admin/pkg/constants"
+    "admin/pkg/operationlog"
+)
+
+// 创建操作
+func (s *{Resource}Service) Create{Resource}(ctx context.Context, req *dto.Create{Resource}Request) (*dto.{Resource}Response, error) {
+    // ... 业务逻辑 ...
+
+    // 创建成功后记录操作日志
+    ctx = operationlog.RecordCreate(ctx, constants.Module{Resource}, "{resource}", {resource}.{Resource}ID, {resource}.Name, {resource})
+
+    return s.to{Resource}Response({resource}), nil
+}
+
+// 更新操作
+func (s *{Resource}Service) Update{Resource}(ctx context.Context, {resource}ID string, req *dto.Update{Resource}Request) (*dto.{Resource}Response, error) {
+    // 获取旧值用于日志
+    old{Resource}, err := s.Repo.GetByID(ctx, {resource}ID)
+    // ... 更新逻辑 ...
+
+    // 获取更新后的数据
+    updated{Resource}, err := s.Repo.GetByID(ctx, {resource}ID)
+
+    // 记录操作日志
+    ctx = operationlog.RecordUpdate(ctx, constants.Module{Resource}, "{resource}", updated{Resource}.{Resource}ID, updated{Resource}.Name, old{Resource}, updated{Resource})
+
+    return s.to{Resource}Response(updated{Resource}), nil
+}
+
+// 删除操作
+func (s *{Resource}Service) Delete{Resource}(ctx context.Context, {resource}ID string) error {
+    // 获取删除前的数据用于日志
+    {resource}, err := s.Repo.GetByID(ctx, {resource}ID)
+    // ... 删除逻辑 ...
+
+    // 记录操作日志（注意：删除操作不需要返回 ctx）
+    operationlog.RecordDelete(ctx, constants.Module{Resource}, "{resource}", {resource}.{Resource}ID, {resource}.Name, {resource})
+
+    return nil
+}
 ```
+
+**操作日志参数说明：**
+- `ctx`: 上下文
+- `module`: 模块常量（如 `constants.ModuleUser`）
+- `resourceType`: 资源类型（如 "user"）
+- `resourceID`: 资源 ID
+- `resourceName`: 资源名称（用于日志展示）
+- `oldData`: 旧数据（更新/删除时需要）
+- `newData`: 新数据（创建/更新时需要）
 
 ---
 
