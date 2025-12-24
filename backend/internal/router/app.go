@@ -8,6 +8,7 @@ import (
 	"admin/pkg/config"
 	"admin/pkg/database"
 	"admin/pkg/jwt"
+	"admin/pkg/operationlog"
 	"admin/pkg/logger"
 	"admin/pkg/xredis"
 	"fmt"
@@ -19,13 +20,14 @@ import (
 )
 
 type App struct {
-	Config   *config.Config        // 配置
-	Router   *gin.Engine           // 路由
-	DB       *gorm.DB              // 数据库连接
-	Redis    redis.UniversalClient // Redis连接
-	JWT      *jwt.Manager          // JWT管理器
-	Enforcer *casbin.Enforcer      // Casbin enforce
-	Handlers *Handlers             // 处理器层容器
+	Config    *config.Config        // 配置
+	Router    *gin.Engine           // 路由
+	DB        *gorm.DB              // 数据库连接
+	Redis     redis.UniversalClient // Redis连接
+	JWT       *jwt.Manager          // JWT管理器
+	Enforcer  *casbin.Enforcer      // Casbin enforce
+	Handlers  *Handlers             // 处理器层容器
+	OperationLogLogger *operationlog.Logger // 操作日志写入器
 }
 
 // Handlers 处理器层容器
@@ -68,10 +70,10 @@ func NewApp() (*App, error) {
 		return nil, fmt.Errorf("failed to init casbin: %w", err)
 	}
 
-	// 7. 初始化服务层 (废弃，不再使用)
-	// if err := app.initServices(); err != nil {
-	// 	return nil, fmt.Errorf("failed to init services: %w", err)
-	// }
+	// 7. 初始化操作日志写入器
+	if err := app.initOperationLogLogger(); err != nil {
+		return nil, fmt.Errorf("failed to init operation log logger: %w", err)
+	}
 
 	// 8. 初始化处理器层
 	if err := app.initHandlers(); err != nil {
@@ -222,6 +224,12 @@ func (s *App) Close() error {
 	if err := xredis.Close(); err != nil {
 		return err
 	}
+	return nil
+}
+
+// initOperationLogLogger 初始化操作日志写入器
+func (s *App) initOperationLogLogger() error {
+	s.OperationLogLogger = operationlog.NewLogger(s.DB)
 	return nil
 }
 

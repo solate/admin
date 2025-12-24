@@ -140,36 +140,26 @@ COMMENT ON COLUMN permissions.created_at IS '创建时间戳';
 COMMENT ON COLUMN permissions.updated_at IS '更新时间戳';
 
 -- ========================================
--- 5. 用户-租户-角色关联表 (User Tenant Role)
+-- 5. 用户-租户-角色关联表 (User Tenant Roles)
 -- 实现多租户下用户角色分配
 -- 一个用户可以在不同租户中拥有不同角色
+-- 历史变更通过 operation_logs 表追溯
 -- ========================================
-CREATE TABLE user_tenant_role (
+CREATE TABLE user_tenant_roles (
     user_tenant_role_id VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL, -- 用户ID
-    tenant_id VARCHAR(36) NOT NULL, -- 租户ID
-    role_id VARCHAR(255) NOT NULL, -- 角色ID
-    status INTEGER NOT NULL DEFAULT 1, -- 状态 (1:正常, 2:禁用) - 用户在该租户的状态
-    created_at BIGINT NOT NULL DEFAULT 0,
-    updated_at BIGINT NOT NULL DEFAULT 0,
-    deleted_at BIGINT DEFAULT 0
+    user_id VARCHAR(255) NOT NULL,
+    tenant_id VARCHAR(36) NOT NULL,
+    role_id VARCHAR(255) NOT NULL
 );
 
 -- 租户内用户-角色关联唯一约束
-CREATE UNIQUE INDEX idx_user_tenant_role_tenant_user_role ON user_tenant_role(tenant_id, user_id, role_id) WHERE deleted_at = 0;
+CREATE UNIQUE INDEX idx_user_tenant_roles_tenant_user_role ON user_tenant_roles(tenant_id, user_id, role_id);
 
-COMMENT ON TABLE user_tenant_role IS '用户-租户-角色关联表(核心)';
-COMMENT ON COLUMN user_tenant_role.user_tenant_role_id IS '关联ID';
-COMMENT ON COLUMN user_tenant_role.user_id IS '用户ID';
-COMMENT ON COLUMN user_tenant_role.tenant_id IS '租户ID';
-COMMENT ON COLUMN user_tenant_role.role_id IS '角色ID';
-COMMENT ON COLUMN user_tenant_role.status IS '状态(1:启用, 2:禁用)';
-COMMENT ON COLUMN user_tenant_role.created_at IS '创建时间戳';
-COMMENT ON COLUMN user_tenant_role.updated_at IS '更新时间戳';
-COMMENT ON COLUMN user_tenant_role.deleted_at IS '删除时间戳(软删除)';
-
-
-
+COMMENT ON TABLE user_tenant_roles IS '用户-租户-角色关联表(核心)';
+COMMENT ON COLUMN user_tenant_roles.user_tenant_role_id IS '关联ID';
+COMMENT ON COLUMN user_tenant_roles.user_id IS '用户ID';
+COMMENT ON COLUMN user_tenant_roles.tenant_id IS '租户ID';
+COMMENT ON COLUMN user_tenant_roles.role_id IS '角色ID';
 
 
 -- -- ========================================
@@ -205,5 +195,69 @@ COMMENT ON COLUMN user_tenant_role.deleted_at IS '删除时间戳(软删除)';
 -- COMMENT ON COLUMN casbin_rules.v3 IS 'v3: Action (操作)';
 -- COMMENT ON COLUMN casbin_rules.v4 IS '扩展字段';
 -- COMMENT ON COLUMN casbin_rules.v5 IS '扩展字段';
+
+
+-- ========================================
+-- 7. 操作记录表 (Operation Logs)
+-- 用于审计和追踪用户在系统中的操作行为
+-- ========================================
+CREATE TABLE operation_logs (
+    log_id VARCHAR(36) PRIMARY KEY,         -- 日志ID (UUID)
+    tenant_id VARCHAR(36) NOT NULL,         -- 租户ID
+    module VARCHAR(50) NOT NULL,            -- 模块名称 (如: user, role, tenant, permission, system)
+    operation_type VARCHAR(20) NOT NULL,    -- 操作类型 (CREATE, UPDATE, DELETE, QUERY, EXPORT, IMPORT, LOGIN, LOGOUT)
+    resource_type VARCHAR(50),              -- 资源类型 (如: user, role, menu, config)
+    resource_id VARCHAR(255),               -- 资源ID (被操作对象的ID)
+    resource_name VARCHAR(255),             -- 资源名称 (被操作对象的名称，便于展示)
+
+    user_id VARCHAR(255) NOT NULL,          -- 操作人用户ID
+    user_name VARCHAR(255) NOT NULL,        -- 操作人用户名
+    user_real_name VARCHAR(255),            -- 操作人真实姓名
+
+    request_method VARCHAR(10),             -- 请求方法 (GET, POST, PUT, DELETE)
+    request_path VARCHAR(500),              -- 请求路径
+    request_params TEXT,                    -- 请求参数 (JSON格式)
+
+    old_value TEXT,                         -- 操作前数据 (JSON格式，用于UPDATE/DELETE)
+    new_value TEXT,                         -- 操作后数据 (JSON格式，用于CREATE/UPDATE)
+
+    status SMALLINT NOT NULL DEFAULT 1,     -- 操作状态 (1:成功, 2:失败)
+    error_message TEXT,                     -- 错误信息 (操作失败时记录)
+
+    ip_address VARCHAR(50),                 -- 操作来源IP
+    user_agent TEXT,                        -- 用户代理 (浏览器/客户端信息)
+
+    created_at BIGINT NOT NULL              -- 操作时间戳(毫秒)
+);
+
+-- 索引设计：支持常用查询场景
+CREATE INDEX idx_operation_logs_tenant_module ON operation_logs(tenant_id, module);
+CREATE INDEX idx_operation_logs_tenant_user ON operation_logs(tenant_id, user_id);
+CREATE INDEX idx_operation_logs_tenant_time ON operation_logs(tenant_id, created_at);
+CREATE INDEX idx_operation_logs_resource ON operation_logs(resource_type, resource_id);
+CREATE INDEX idx_operation_logs_type ON operation_logs(operation_type);
+CREATE INDEX idx_operation_logs_created_at ON operation_logs(created_at);
+
+COMMENT ON TABLE operation_logs IS '操作记录表(审计日志)';
+COMMENT ON COLUMN operation_logs.log_id IS '日志ID(UUID)';
+COMMENT ON COLUMN operation_logs.tenant_id IS '租户ID';
+COMMENT ON COLUMN operation_logs.module IS '模块名称(如: user, role, tenant, permission, system)';
+COMMENT ON COLUMN operation_logs.operation_type IS '操作类型(CREATE:创建, UPDATE:更新, DELETE:删除, QUERY:查询, EXPORT:导出, IMPORT:导入, LOGIN:登录, LOGOUT:登出)';
+COMMENT ON COLUMN operation_logs.resource_type IS '资源类型(如: user, role, menu, config)';
+COMMENT ON COLUMN operation_logs.resource_id IS '资源ID(被操作对象的ID)';
+COMMENT ON COLUMN operation_logs.resource_name IS '资源名称(被操作对象的名称)';
+COMMENT ON COLUMN operation_logs.user_id IS '操作人用户ID';
+COMMENT ON COLUMN operation_logs.user_name IS '操作人用户名';
+COMMENT ON COLUMN operation_logs.user_real_name IS '操作人真实姓名';
+COMMENT ON COLUMN operation_logs.request_method IS '请求方法(GET, POST, PUT, DELETE)';
+COMMENT ON COLUMN operation_logs.request_path IS '请求路径';
+COMMENT ON COLUMN operation_logs.request_params IS '请求参数(JSON格式)';
+COMMENT ON COLUMN operation_logs.old_value IS '操作前数据(JSON格式)';
+COMMENT ON COLUMN operation_logs.new_value IS '操作后数据(JSON格式)';
+COMMENT ON COLUMN operation_logs.status IS '操作状态(1:成功, 2:失败)';
+COMMENT ON COLUMN operation_logs.error_message IS '错误信息';
+COMMENT ON COLUMN operation_logs.ip_address IS '操作来源IP';
+COMMENT ON COLUMN operation_logs.user_agent IS '用户代理信息';
+COMMENT ON COLUMN operation_logs.created_at IS '操作时间戳(毫秒)';
 
 

@@ -4,7 +4,9 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
+	"admin/pkg/constants"
 	"admin/pkg/idgen"
+	"admin/pkg/operationlog"
 	"admin/pkg/passwordgen"
 	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
@@ -106,6 +108,9 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "创建用户失败", err)
 	}
 
+	// 记录操作日志
+	ctx = operationlog.RecordCreate(ctx, constants.ModuleUser, "user", user.UserID, user.Name, user)
+
 	// 注意：创建用户后，还需要通过 user_tenant_role 表关联用户和租户
 	// 这里暂时不处理，需要单独的接口来分配角色
 
@@ -133,8 +138,8 @@ func (s *UserService) GetUserByID(ctx context.Context, userID string) (*dto.User
 
 // UpdateUser 更新用户
 func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
-	// 检查用户是否存在
-	_, err := s.userRepo.GetUserByID(ctx, userID)
+	// 检查用户是否存在，获取旧值用于日志
+	oldUser, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, xerr.ErrUserNotFound
@@ -184,6 +189,9 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后用户信息失败", err)
 	}
 
+	// 记录操作日志
+	ctx = operationlog.RecordUpdate(ctx, constants.ModuleUser, "user", updatedUser.UserID, updatedUser.Name, oldUser, updatedUser)
+
 	// 从上下文获取租户ID
 	tenantID := ""
 	if ctxTenantID, exists := xcontext.GetTenantID(ctx); exists {
@@ -195,8 +203,8 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 
 // DeleteUser 删除用户
 func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
-	// 检查用户是否存在
-	_, err := s.userRepo.GetUserByID(ctx, userID)
+	// 检查用户是否存在，获取用户信息用于日志
+	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return xerr.ErrUserNotFound
@@ -208,6 +216,9 @@ func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 	if err := s.userRepo.DeleteUser(ctx, userID); err != nil {
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除用户失败", err)
 	}
+
+	// 记录操作日志
+	operationlog.RecordDelete(ctx, constants.ModuleUser, "user", user.UserID, user.Name, user)
 
 	return nil
 }
@@ -256,8 +267,8 @@ func (s *UserService) ListUsers(ctx context.Context, req *dto.ListUsersRequest) 
 
 // UpdateUserStatus 更新用户状态
 func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, status int32) error {
-	// 检查用户是否存在
-	_, err := s.userRepo.GetUserByID(ctx, userID)
+	// 检查用户是否存在，获取旧值用于日志
+	oldUser, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return xerr.ErrUserNotFound
@@ -269,6 +280,15 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, statu
 	if err := s.userRepo.UpdateUserStatus(ctx, userID, status); err != nil {
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新用户状态失败", err)
 	}
+
+	// 获取更新后的用户信息
+	updatedUser, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后用户信息失败", err)
+	}
+
+	// 记录操作日志
+	operationlog.RecordUpdate(ctx, constants.ModuleUser, "user", updatedUser.UserID, updatedUser.Name, oldUser, updatedUser)
 
 	return nil
 }

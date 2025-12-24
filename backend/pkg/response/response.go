@@ -47,11 +47,13 @@ func SuccessWithMessage(c *gin.Context, message string, data any) {
 
 // Error 错误响应
 func Error(c *gin.Context, err error) {
+	c.Error(err) // 供 OperationLogMiddleware 使用
 	c.JSON(http.StatusOK, getResponse(c, err))
 }
 
 // ErrorWithMessage 错误响应（自定义消息）
 func ErrorWithMessage(c *gin.Context, code int, message string) {
+	c.Error(xerr.New(code, message)) // 供 OperationLogMiddleware 使用
 	c.JSON(http.StatusOK, Response{
 		Code:      code,
 		Message:   message,
@@ -61,6 +63,7 @@ func ErrorWithMessage(c *gin.Context, code int, message string) {
 
 // ErrorWithHttpCode 错误响应（自定义HTTP状态码）
 func ErrorWithHttpCode(c *gin.Context, httpCode int, err error) {
+	c.Error(err) // 供 OperationLogMiddleware 使用
 	c.JSON(httpCode, getResponse(c, err))
 }
 

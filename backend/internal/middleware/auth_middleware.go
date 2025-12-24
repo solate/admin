@@ -74,7 +74,6 @@ func SetAuthContext(ctx context.Context, claims *jwt.Claims) context.Context {
 	// 设置用户信息
 	ctx = xcontext.SetUserID(ctx, claims.UserID)
 	ctx = xcontext.SetUserName(ctx, claims.UserName)
-	ctx = xcontext.SetRoleType(ctx, claims.RoleType)
 	ctx = xcontext.SetRoles(ctx, claims.Roles)
 
 	return ctx
