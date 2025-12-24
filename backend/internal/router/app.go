@@ -243,17 +243,11 @@ func (s *App) initHandlers() error {
 	roleRepo := repository.NewRoleRepo(s.DB)
 	tenantRepo := repository.NewTenantRepo(s.DB)
 
-	// 初始化认证服务
-	authService := service.NewAuthService(userRepo, userTenantRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Config)
-
-	// 初始化用户服务
-	userService := service.NewUserService(userRepo)
-
-	// 初始化租户服务
-	tenantService := service.NewTenantService(tenantRepo)
-
-	// 初始化角色服务
-	roleService := service.NewRoleService(roleRepo)
+	// 初始化服务层
+	authService := service.NewAuthService(userRepo, userTenantRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Config) // 初始化认证服务
+	userService := service.NewUserService(userRepo)                                                                     // 初始化用户服务
+	tenantService := service.NewTenantService(tenantRepo)                                                               // 初始化租户服务
+	roleService := service.NewRoleService(roleRepo)                                                                     // 初始化角色服务
 
 	s.Handlers = &Handlers{
 		HealthHandler:  handler.NewHealthHandler(),
