@@ -27,6 +27,7 @@ func Record(ctx context.Context, module, operationType string) *OperationBuilder
 }
 
 // RecordCreate 记录创建操作
+// 注意：必须用返回的 ctx 覆盖原 ctx（ctx = RecordCreate(...)），否则中间件无法获取日志信息
 func RecordCreate(ctx context.Context, module string, resourceType, resourceID, resourceName string, newValue any) context.Context {
 	return Record(ctx, module, constants.OperationCreate).
 		Resource(resourceType, resourceID, resourceName).
@@ -35,6 +36,7 @@ func RecordCreate(ctx context.Context, module string, resourceType, resourceID, 
 }
 
 // RecordUpdate 记录更新操作
+// 注意：必须用返回的 ctx 覆盖原 ctx（ctx = RecordUpdate(...)），否则中间件无法获取日志信息
 func RecordUpdate(ctx context.Context, module string, resourceType, resourceID, resourceName string, oldValue, newValue any) context.Context {
 	return Record(ctx, module, constants.OperationUpdate).
 		Resource(resourceType, resourceID, resourceName).
@@ -43,6 +45,7 @@ func RecordUpdate(ctx context.Context, module string, resourceType, resourceID, 
 }
 
 // RecordDelete 记录删除操作
+// 注意：必须用返回的 ctx 覆盖原 ctx（ctx = RecordDelete(...)），否则中间件无法获取日志信息
 func RecordDelete(ctx context.Context, module string, resourceType, resourceID, resourceName string, oldValue any) context.Context {
 	return Record(ctx, module, constants.OperationDelete).
 		Resource(resourceType, resourceID, resourceName).
@@ -51,6 +54,7 @@ func RecordDelete(ctx context.Context, module string, resourceType, resourceID, 
 }
 
 // RecordQuery 记录查询操作
+// 注意：必须用返回的 ctx 覆盖原 ctx（ctx = RecordQuery(...)），否则中间件无法获取日志信息
 func RecordQuery(ctx context.Context, module, resourceType string) context.Context {
 	return Record(ctx, module, constants.OperationQuery).
 		Resource(resourceType, "", "").
@@ -58,6 +62,7 @@ func RecordQuery(ctx context.Context, module, resourceType string) context.Conte
 }
 
 // RecordLogin 记录登录操作
+// 注意：必须用返回的 ctx 覆盖原 ctx（ctx = RecordLogin(...)），否则中间件无法获取日志信息
 func RecordLogin(ctx context.Context, userID, userName string) context.Context {
 	return Record(ctx, constants.ModuleAuth, constants.OperationLogin).
 		Resource("user", userID, userName).
@@ -65,6 +70,7 @@ func RecordLogin(ctx context.Context, userID, userName string) context.Context {
 }
 
 // RecordLogout 记录登出操作
+// 注意：必须用返回的 ctx 覆盖原 ctx（ctx = RecordLogout(...)），否则中间件无法获取日志信息
 func RecordLogout(ctx context.Context, userID, userName string) context.Context {
 	return Record(ctx, constants.ModuleAuth, constants.OperationLogout).
 		Resource("user", userID, userName).

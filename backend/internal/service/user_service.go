@@ -22,9 +22,7 @@ type UserService struct {
 }
 
 // NewUserService 创建用户服务
-func NewUserService(
-	userRepo *repository.UserRepo,
-) *UserService {
+func NewUserService(userRepo *repository.UserRepo) *UserService {
 	return &UserService{
 		userRepo: userRepo,
 	}
