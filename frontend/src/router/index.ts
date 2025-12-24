@@ -15,6 +15,7 @@ const Register = () => import('../views/Register.vue')
 const SystemUsers = () => import('../views/system/Users.vue')
 const SystemRoles = () => import('../views/system/Roles.vue')
 const SystemTenants = () => import('../views/system/Tenants.vue')
+const SystemTenantMembers = () => import('../views/system/TenantMembers.vue')
 const SystemPermissions = () => import('../views/system/Permissions.vue')
 const SystemDict = () => import('../views/system/Dict.vue')
 const SystemLogs = () => import('../views/system/Logs.vue')
@@ -31,6 +32,7 @@ const routes = [
       { path: 'system/users', name: 'users', component: SystemUsers, meta: { title: '用户管理' } },
       { path: 'system/roles', name: 'roles', component: SystemRoles, meta: { title: '角色管理' } },
       { path: 'system/tenants', name: 'tenants', component: SystemTenants, meta: { title: '租户管理' } },
+      { path: 'system/tenant-members', name: 'tenant-members', component: SystemTenantMembers, meta: { title: '租户成员管理' } },
       { path: 'system/permissions/menu', name: 'permissions-menu', component: SystemPermissions, meta: { title: '菜单权限' } },
       { path: 'system/permissions/api', name: 'permissions-api', component: SystemPermissions, meta: { title: '接口权限' } },
       { path: 'system/permissions/data', name: 'permissions-data', component: SystemPermissions, meta: { title: '数据权限' } },
