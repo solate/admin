@@ -76,7 +76,7 @@ func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordCreate(ctx, constants.ModuleRole, "role", role.RoleID, role.Name, role)
+	ctx = operationlog.RecordCreate(ctx, constants.ModuleRole, constants.ResourceTypeRole, role.RoleID, role.Name, role)
 
 	return s.toRoleResponse(role), nil
 }
@@ -130,7 +130,7 @@ func (s *RoleService) UpdateRole(ctx context.Context, roleID string, req *dto.Up
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordUpdate(ctx, constants.ModuleRole, "role", updatedRole.RoleID, updatedRole.Name, oldRole, updatedRole)
+	ctx = operationlog.RecordUpdate(ctx, constants.ModuleRole, constants.ResourceTypeRole, updatedRole.RoleID, updatedRole.Name, oldRole, updatedRole)
 
 	return s.toRoleResponse(updatedRole), nil
 }
@@ -152,7 +152,7 @@ func (s *RoleService) DeleteRole(ctx context.Context, roleID string) error {
 	}
 
 	// 记录操作日志
-	operationlog.RecordDelete(ctx, constants.ModuleRole, "role", role.RoleID, role.Name, role)
+	operationlog.RecordDelete(ctx, constants.ModuleRole, constants.ResourceTypeRole, role.RoleID, role.Name, role)
 
 	return nil
 }
@@ -205,7 +205,7 @@ func (s *RoleService) UpdateRoleStatus(ctx context.Context, roleID string, statu
 	}
 
 	// 记录操作日志
-	operationlog.RecordUpdate(ctx, constants.ModuleRole, "role", updatedRole.RoleID, updatedRole.Name, oldRole, updatedRole)
+	operationlog.RecordUpdate(ctx, constants.ModuleRole, constants.ResourceTypeRole, updatedRole.RoleID, updatedRole.Name, oldRole, updatedRole)
 
 	return nil
 }

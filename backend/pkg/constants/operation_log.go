@@ -14,6 +14,16 @@ const (
 	ModuleAuth       = "auth"       // 认证相关 (登录、登出等)
 )
 
+// 资源类型常量（用于操作日志记录）
+const (
+	ResourceTypeUser       = "user"       // 用户资源
+	ResourceTypeRole       = "role"       // 角色资源
+	ResourceTypePermission = "permission" // 权限资源
+	ResourceTypeTenant     = "tenant"     // 租户资源
+	ResourceTypeMenu       = "menu"       // 菜单资源
+	ResourceTypeDict       = "dict"       // 字典资源
+)
+
 // 操作类型常量
 const (
 	OperationCreate = "CREATE" // 创建

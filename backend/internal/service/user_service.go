@@ -89,7 +89,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordCreate(ctx, constants.ModuleUser, "user", user.UserID, user.Name, user)
+	ctx = operationlog.RecordCreate(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Name, user)
 
 	// 注意：创建用户后，还需要通过 user_tenant_role 表关联用户和租户
 	// 这里暂时不处理，需要单独的接口来分配角色
@@ -164,7 +164,7 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordUpdate(ctx, constants.ModuleUser, "user", updatedUser.UserID, updatedUser.Name, oldUser, updatedUser)
+	ctx = operationlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, updatedUser.UserID, updatedUser.Name, oldUser, updatedUser)
 
 	return s.toUserResponse(ctx, updatedUser), nil
 }
@@ -186,7 +186,7 @@ func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 	}
 
 	// 记录操作日志
-	operationlog.RecordDelete(ctx, constants.ModuleUser, "user", user.UserID, user.Name, user)
+	operationlog.RecordDelete(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Name, user)
 
 	return nil
 }
@@ -233,7 +233,7 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, statu
 	}
 
 	// 记录操作日志
-	operationlog.RecordUpdate(ctx, constants.ModuleUser, "user", updatedUser.UserID, updatedUser.Name, oldUser, updatedUser)
+	operationlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, updatedUser.UserID, updatedUser.Name, oldUser, updatedUser)
 
 	return nil
 }

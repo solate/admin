@@ -993,7 +993,25 @@ func (r *{Resource}Repo) Delete(ctx context.Context, id string) error {
 
 ### 10. 操作日志记录
 
-在 Service 层的关键操作（创建、更新、删除）中记录操作日志：
+在 Service 层的关键操作（创建、更新、删除）中记录操作日志。
+
+**重要：资源类型应使用常量定义，避免硬编码字符串。**
+
+资源类型常量定义在 `pkg/constants/operation_log.go` 中：
+
+```go
+// 资源类型常量（用于操作日志记录）
+const (
+    ResourceTypeUser       = "user"       // 用户资源
+    ResourceTypeRole       = "role"       // 角色资源
+    ResourceTypePermission = "permission" // 权限资源
+    ResourceTypeTenant     = "tenant"     // 租户资源
+    ResourceTypeMenu       = "menu"       // 菜单资源
+    ResourceTypeDict       = "dict"       // 字典资源
+)
+```
+
+**使用示例（以租户管理为例）：**
 
 ```go
 import (
@@ -1002,38 +1020,38 @@ import (
 )
 
 // 创建操作
-func (s *{Resource}Service) Create{Resource}(ctx context.Context, req *dto.Create{Resource}Request) (*dto.{Resource}Response, error) {
+func (s *TenantService) CreateTenant(ctx context.Context, req *dto.CreateTenantRequest) (*dto.TenantResponse, error) {
     // ... 业务逻辑 ...
 
     // 创建成功后记录操作日志
-    ctx = operationlog.RecordCreate(ctx, constants.Module{Resource}, "{resource}", {resource}.{Resource}ID, {resource}.Name, {resource})
+    ctx = operationlog.RecordCreate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, tenant.TenantID, tenant.Name, tenant)
 
-    return s.to{Resource}Response({resource}), nil
+    return s.toTenantResponse(tenant), nil
 }
 
 // 更新操作
-func (s *{Resource}Service) Update{Resource}(ctx context.Context, {resource}ID string, req *dto.Update{Resource}Request) (*dto.{Resource}Response, error) {
+func (s *TenantService) UpdateTenant(ctx context.Context, tenantID string, req *dto.UpdateTenantRequest) (*dto.TenantResponse, error) {
     // 获取旧值用于日志
-    old{Resource}, err := s.Repo.GetByID(ctx, {resource}ID)
+    oldTenant, err := s.Repo.GetByID(ctx, tenantID)
     // ... 更新逻辑 ...
 
     // 获取更新后的数据
-    updated{Resource}, err := s.Repo.GetByID(ctx, {resource}ID)
+    updatedTenant, err := s.Repo.GetByID(ctx, tenantID)
 
     // 记录操作日志
-    ctx = operationlog.RecordUpdate(ctx, constants.Module{Resource}, "{resource}", updated{Resource}.{Resource}ID, updated{Resource}.Name, old{Resource}, updated{Resource})
+    ctx = operationlog.RecordUpdate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
 
-    return s.to{Resource}Response(updated{Resource}), nil
+    return s.toTenantResponse(updatedTenant), nil
 }
 
 // 删除操作
-func (s *{Resource}Service) Delete{Resource}(ctx context.Context, {resource}ID string) error {
+func (s *TenantService) DeleteTenant(ctx context.Context, tenantID string) error {
     // 获取删除前的数据用于日志
-    {resource}, err := s.Repo.GetByID(ctx, {resource}ID)
+    tenant, err := s.Repo.GetByID(ctx, tenantID)
     // ... 删除逻辑 ...
 
     // 记录操作日志（注意：删除操作不需要返回 ctx）
-    operationlog.RecordDelete(ctx, constants.Module{Resource}, "{resource}", {resource}.{Resource}ID, {resource}.Name, {resource})
+    operationlog.RecordDelete(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, tenant.TenantID, tenant.Name, tenant)
 
     return nil
 }
@@ -1041,12 +1059,16 @@ func (s *{Resource}Service) Delete{Resource}(ctx context.Context, {resource}ID s
 
 **操作日志参数说明：**
 - `ctx`: 上下文
-- `module`: 模块常量（如 `constants.ModuleUser`）
-- `resourceType`: 资源类型（如 "user"）
+- `module`: 模块常量（如 `constants.ModuleTenant`）
+- `resourceType`: 资源类型常量（如 `constants.ResourceTypeTenant`）
 - `resourceID`: 资源 ID
 - `resourceName`: 资源名称（用于日志展示）
 - `oldData`: 旧数据（更新/删除时需要）
 - `newData`: 新数据（创建/更新时需要）
+
+**新增资源类型常量时：**
+
+如果需要为新的资源类型添加常量，请在 `pkg/constants/operation_log.go` 中的 `ResourceType` 常量组中添加：
 
 ---
 

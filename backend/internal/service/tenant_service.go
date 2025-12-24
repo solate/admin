@@ -63,7 +63,7 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *dto.TenantCreateR
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordCreate(ctx, constants.ModuleTenant, "tenant", tenant.TenantID, tenant.Name, tenant)
+	ctx = operationlog.RecordCreate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, tenant.TenantID, tenant.Name, tenant)
 
 	return s.toTenantResponse(tenant), nil
 }
@@ -120,7 +120,7 @@ func (s *TenantService) UpdateTenant(ctx context.Context, tenantID string, req *
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordUpdate(ctx, constants.ModuleTenant, "tenant", updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
+	ctx = operationlog.RecordUpdate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
 
 	return s.toTenantResponse(updatedTenant), nil
 }
@@ -148,7 +148,7 @@ func (s *TenantService) DeleteTenant(ctx context.Context, tenantID string) error
 	}
 
 	// 记录操作日志
-	operationlog.RecordDelete(ctx, constants.ModuleTenant, "tenant", tenant.TenantID, tenant.Name, tenant)
+	operationlog.RecordDelete(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, tenant.TenantID, tenant.Name, tenant)
 
 	return nil
 }
@@ -196,7 +196,7 @@ func (s *TenantService) UpdateTenantStatus(ctx context.Context, tenantID string,
 	}
 
 	// 记录操作日志
-	operationlog.RecordUpdate(ctx, constants.ModuleTenant, "tenant", updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
+	operationlog.RecordUpdate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
 
 	return nil
 }
