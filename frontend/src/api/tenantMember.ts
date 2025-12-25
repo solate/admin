@@ -1,22 +1,13 @@
 import http from './http'
-import type { PageResponse } from './factory'
 import type { RoleInfo } from './role'
-
-// 分页响应
-export interface TenantMemberPageResponse {
-  page: number
-  page_size: number
-  total: number
-  total_page: number
-}
 
 // 租户成员信息
 export interface TenantMemberInfo {
   user_id: string
   username: string
   name: string
-  phone: string
-  email: string
+  phone?: string
+  email?: string
   status: number
   role_ids: string[]
   first_login: boolean
@@ -34,11 +25,11 @@ export interface TenantMemberListParams {
 
 // 租户成员列表响应
 export interface TenantMemberListResponse {
+  list: TenantMemberInfo[]
   page: number
   page_size: number
   total: number
   total_page: number
-  list: TenantMemberInfo[]
 }
 
 // 添加租户成员请求
