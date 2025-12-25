@@ -107,6 +107,26 @@ func Setup(r *gin.Engine, app *App) {
 				tenantMember.PUT("/roles", app.Handlers.TenantMemberHandler.UpdateMemberRoles)         // 更新成员角色
 			}
 
+			// 菜单接口
+			menu := authenticated.Group("/menus")
+			{
+				menu.POST("", app.Handlers.MenuHandler.CreateMenu)                              // 创建菜单
+				menu.GET("", app.Handlers.MenuHandler.ListMenus)                                // 获取菜单列表（分页）
+				menu.GET("/all", app.Handlers.MenuHandler.GetAllMenus)                          // 获取所有菜单（平铺）
+				menu.GET("/tree", app.Handlers.MenuHandler.GetMenuTree)                         // 获取菜单树
+				menu.GET("/:menu_id", app.Handlers.MenuHandler.GetMenu)                         // 获取菜单详情
+				menu.PUT("/:menu_id", app.Handlers.MenuHandler.UpdateMenu)                      // 更新菜单
+				menu.DELETE("/:menu_id", app.Handlers.MenuHandler.DeleteMenu)                   // 删除菜单
+				menu.PUT("/:menu_id/status/:status", app.Handlers.MenuHandler.UpdateMenuStatus) // 更新菜单状态
+			}
+
+			// 用户菜单接口（基于权限动态加载）
+			userMenu := authenticated.Group("/user")
+			{
+				userMenu.GET("/menu", app.Handlers.UserMenuHandler.GetUserMenu)      // 获取用户菜单树
+				userMenu.GET("/buttons", app.Handlers.UserMenuHandler.GetUserButtons) // 获取菜单按钮权限
+			}
+
 		}
 
 	}

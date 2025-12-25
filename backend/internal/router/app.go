@@ -39,6 +39,8 @@ type Handlers struct {
 	TenantHandler       *handler.TenantHandler
 	RoleHandler         *handler.RoleHandler
 	TenantMemberHandler *handler.TenantMemberHandler
+	MenuHandler         *handler.MenuHandler
+	UserMenuHandler     *handler.UserMenuHandler
 }
 
 func NewApp() (*App, error) {
@@ -243,6 +245,8 @@ func (s *App) initHandlers() error {
 	userTenantRoleRepo := repository.NewUserTenantRoleRepo(s.DB)
 	roleRepo := repository.NewRoleRepo(s.DB)
 	tenantRepo := repository.NewTenantRepo(s.DB)
+	menuRepo := repository.NewMenuRepo(s.DB)
+	userMenuRepo := repository.NewUserMenuRepo(s.DB)
 
 	// 初始化服务层
 	authService := service.NewAuthService(userRepo, userTenantRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Config) // 初始化认证服务
@@ -250,6 +254,8 @@ func (s *App) initHandlers() error {
 	tenantService := service.NewTenantService(tenantRepo)                                                               // 初始化租户服务
 	roleService := service.NewRoleService(roleRepo)                                                                     // 初始化角色服务
 	tenantMemberService := service.NewTenantMemberService(userRepo, roleRepo, userTenantRoleRepo)                      // 初始化租户成员服务
+	menuService := service.NewMenuService(menuRepo)                                                                     // 初始化菜单服务
+	userMenuService := service.NewUserMenuService(userMenuRepo, s.Enforcer)                                            // 初始化用户菜单服务
 
 	s.Handlers = &Handlers{
 		HealthHandler:       handler.NewHealthHandler(),
@@ -259,6 +265,8 @@ func (s *App) initHandlers() error {
 		TenantHandler:       handler.NewTenantHandler(tenantService),
 		RoleHandler:         handler.NewRoleHandler(roleService),
 		TenantMemberHandler: handler.NewTenantMemberHandler(tenantMemberService),
+		MenuHandler:         handler.NewMenuHandler(menuService),
+		UserMenuHandler:     handler.NewUserMenuHandler(userMenuService),
 	}
 	return nil
 }

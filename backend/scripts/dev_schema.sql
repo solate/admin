@@ -109,36 +109,85 @@ COMMENT ON COLUMN roles.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- ========================================
 -- 4. 权限表 (Permissions)
 -- 功能/菜单/API资源的定义
--- 注意：当前设计为"租户级权限"，即每个租户可定义自己的权限列表
--- 若系统权限是统一的，建议将tenant_id设为可空或移除，作为公共元数据
+-- 支持三层权限控制：MENU(菜单)、BUTTON(按钮)、API(接口)
+-- tenant_id=0 表示超管定义的系统权限池
 -- ========================================
 CREATE TABLE permissions (
     permission_id VARCHAR(255) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL, -- [多租户核心] 属于特定租户的权限定义
+    tenant_id VARCHAR(36) NOT NULL, -- [多租户核心] 所属租户ID（0=超管系统权限池）
     name VARCHAR(100) NOT NULL, -- 权限名称
     type VARCHAR(20) NOT NULL, -- 资源类型: MENU(菜单), BUTTON(按钮), API(接口), DATA(数据)
+    parent_id VARCHAR(255), -- 父菜单ID（用于构建树形结构，仅MENU类型有效）
     resource VARCHAR(255), -- 资源路径/路由/API地址
-    action VARCHAR(20), -- 操作动词 (GET, POST, PUT, DELETE)
+    action VARCHAR(20), -- 请求方法 (GET, POST, PUT, DELETE)
+    path VARCHAR(255), -- 前端路由路径（仅MENU类型有效）
+    component VARCHAR(255), -- 前端组件路径（仅MENU类型有效）
+    redirect VARCHAR(255), -- 重定向路径（仅MENU类型有效）
+    icon VARCHAR(100), -- 图标（仅MENU类型有效）
     sort SMALLINT DEFAULT 0, -- 排序权重
+    status SMALLINT DEFAULT 1, -- 显示状态：1显示，2隐藏（仅MENU类型有效）
+    source_type VARCHAR(20) DEFAULT 'SYSTEM', -- 来源：SYSTEM（系统定义）/ CUSTOM（租户自定义）
+    is_visible SMALLINT DEFAULT 1, -- 是否在前端显示（1显示，0隐藏，按钮/API不需要显示）
     description TEXT,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0
 );
 
-COMMENT ON TABLE permissions IS '权限/菜单定义表(租户隔离)';
+-- 索引优化
+CREATE INDEX idx_permissions_tenant_type ON permissions(tenant_id, type);
+CREATE INDEX idx_permissions_tenant_parent ON permissions(tenant_id, parent_id, deleted_at);
+CREATE INDEX idx_permissions_source ON permissions(tenant_id, source_type, deleted_at);
+CREATE INDEX idx_permissions_status ON permissions(status) WHERE status IS NOT NULL;
+
+COMMENT ON TABLE permissions IS '权限/菜单定义表(租户隔离,支持三层权限)';
 COMMENT ON COLUMN permissions.permission_id IS '权限ID';
-COMMENT ON COLUMN permissions.tenant_id IS '所属租户ID';
-COMMENT ON COLUMN permissions.code IS '权限标识(如 sys:user:list)';
+COMMENT ON COLUMN permissions.tenant_id IS '所属租户ID(0=超管系统权限池)';
 COMMENT ON COLUMN permissions.name IS '权限名称';
 COMMENT ON COLUMN permissions.type IS '类型(MENU:菜单, BUTTON:按钮, API:接口, DATA:数据)';
+COMMENT ON COLUMN permissions.parent_id IS '父菜单ID(用于构建树形结构)';
 COMMENT ON COLUMN permissions.resource IS '资源路径(路由/API)';
 COMMENT ON COLUMN permissions.action IS '请求方法(仅API类型有效)';
+COMMENT ON COLUMN permissions.path IS '前端路由路径(仅MENU类型)';
+COMMENT ON COLUMN permissions.component IS '前端组件路径(仅MENU类型)';
+COMMENT ON COLUMN permissions.redirect IS '重定向路径(仅MENU类型)';
+COMMENT ON COLUMN permissions.icon IS '图标(仅MENU类型)';
 COMMENT ON COLUMN permissions.sort IS '显示排序';
+COMMENT ON COLUMN permissions.status IS '显示状态(1:显示, 2:隐藏)';
+COMMENT ON COLUMN permissions.source_type IS '来源(SYSTEM:系统定义, CUSTOM:租户自定义)';
+COMMENT ON COLUMN permissions.is_visible IS '是否在前端显示(1:显示, 0:隐藏)';
 COMMENT ON COLUMN permissions.description IS '描述信息';
 COMMENT ON COLUMN permissions.created_at IS '创建时间戳(毫秒)';
 COMMENT ON COLUMN permissions.updated_at IS '更新时间戳(毫秒)';
 COMMENT ON COLUMN permissions.deleted_at IS '删除时间戳(毫秒,软删除)';
+
+
+-- ========================================
+-- 4.1 租户启用权限表 (Tenant Permissions)
+-- 超管给租户勾选可用的菜单/权限
+-- 租户管理员只能从 tenant_permissions 中选择权限分配给角色
+-- ========================================
+CREATE TABLE tenant_permissions (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id VARCHAR(36) NOT NULL, -- 租户ID
+    permission_id VARCHAR(255) NOT NULL, -- 权限/菜单ID
+    enabled SMALLINT DEFAULT 1, -- 是否启用：1启用，0禁用
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
+    CONSTRAINT uk_tenant_permission UNIQUE (tenant_id, permission_id)
+);
+
+CREATE INDEX idx_tenant_permissions ON tenant_permissions(tenant_id, enabled, deleted_at);
+
+COMMENT ON TABLE tenant_permissions IS '租户启用的权限关联表(超管给租户勾选菜单)';
+COMMENT ON COLUMN tenant_permissions.id IS '主键ID';
+COMMENT ON COLUMN tenant_permissions.tenant_id IS '租户ID';
+COMMENT ON COLUMN tenant_permissions.permission_id IS '权限/菜单ID';
+COMMENT ON COLUMN tenant_permissions.enabled IS '是否启用(1:启用, 0:禁用)';
+COMMENT ON COLUMN tenant_permissions.created_at IS '创建时间戳(毫秒)';
+COMMENT ON COLUMN tenant_permissions.updated_at IS '更新时间戳(毫秒)';
+COMMENT ON COLUMN tenant_permissions.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 -- ========================================
 -- 5. 用户-租户-角色关联表 (User Tenant Roles)

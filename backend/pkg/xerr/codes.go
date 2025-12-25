@@ -41,4 +41,13 @@ var (
 	ErrRoleExists     = New(2201, "角色已存在")
 	ErrRoleCodeExists = New(2202, "角色编码已存在")
 	ErrRoleInUse      = New(2203, "角色正在使用中")
+
+	// 菜单错误 2300-2399
+	ErrMenuNotFound        = New(2300, "菜单不存在")
+	ErrMenuExists          = New(2301, "菜单已存在")
+	ErrMenuCodeExists      = New(2302, "菜单编码已存在")
+	ErrMenuInUse           = New(2303, "菜单正在使用中")
+	ErrMenuHasChildren     = New(2304, "菜单下有子菜单，无法删除")
+	ErrMenuInvalidParent   = New(2305, "父菜单无效")
+	ErrMenuCannotMoveToSelf = New(2306, "不能将菜单移动到自己或其子菜单下")
 )
