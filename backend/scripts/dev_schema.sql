@@ -81,14 +81,13 @@ COMMENT ON COLUMN users.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 -- ========================================
 -- 3. 角色表 (Roles)
--- 租户自定义角色，支持继承 default 租户的角色模板
+-- 租户自定义角色，继承关系由 Casbin g2 策略管理
 -- ========================================
 CREATE TABLE roles (
-    role_id VARCHAR(255) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL, -- [多租户核心] 角色属于特定租户
-    parent_id VARCHAR(255), -- 父角色ID（用于继承超管在 default 租户创建的角色模板）
-    role_code VARCHAR(50) NOT NULL, -- 角色编码 (如: hr_manager)
-    name VARCHAR(100) NOT NULL, -- 角色名称 (如: 人事经理)
+    role_id VARCHAR(36) PRIMARY KEY,
+    tenant_id VARCHAR(36) NOT NULL,  -- [多租户核心] 角色属于特定租户
+    code VARCHAR(50) NOT NULL,       -- 角色编码 (如: sales, manager)
+    name VARCHAR(100) NOT NULL,      -- 角色名称 (如: 销售角色)
     description TEXT,
     status SMALLINT NOT NULL DEFAULT 1,
     created_at BIGINT NOT NULL DEFAULT 0,
@@ -97,13 +96,12 @@ CREATE TABLE roles (
 );
 
 -- 租户内角色编码唯一约束
-CREATE UNIQUE INDEX idx_roles_tenant_role_code ON roles(tenant_id, role_code) WHERE deleted_at = 0;
+CREATE UNIQUE INDEX idx_roles_tenant_code ON roles(tenant_id, code) WHERE deleted_at = 0;
 
-COMMENT ON TABLE roles IS '角色表(租户隔离，支持继承default租户的角色模板)';
-COMMENT ON COLUMN roles.role_id IS '角色ID';
+COMMENT ON TABLE roles IS '角色表(租户隔离，继承关系由Casbin g2策略管理)';
+COMMENT ON COLUMN roles.role_id IS '角色ID(UUID)';
 COMMENT ON COLUMN roles.tenant_id IS '所属租户ID';
-COMMENT ON COLUMN roles.parent_id IS '父角色ID(用于继承超管在default租户创建的角色模板)';
-COMMENT ON COLUMN roles.role_code IS '角色编码(租户内唯一)';
+COMMENT ON COLUMN roles.code IS '角色编码(租户内唯一，用于Casbin策略)';
 COMMENT ON COLUMN roles.name IS '角色名称';
 COMMENT ON COLUMN roles.description IS '角色描述';
 COMMENT ON COLUMN roles.status IS '状态(1:启用, 2:禁用)';
@@ -170,19 +168,16 @@ COMMENT ON COLUMN menus.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- ========================================
--- 5. 权限表 (Permissions)
--- 权限配置的业务层抽象，记录菜单/按钮/API的权限定义
--- 通过 resource 字段关联 menus.menu_id (MENU/BUTTON类型) 或 API 路径 (API类型)
+-- 5. 权限点定义表 (Permissions)
+-- 全局权限点定义，供前端权限选择器使用
+-- resource 格式: menu:xxx, btn:xxx, /api/v1/xxx
 -- ========================================
 CREATE TABLE permissions (
-    permission_id VARCHAR(255) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,          -- [多租户核心] 所属租户ID
+    permission_id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,              -- 权限名称
-    type VARCHAR(20) NOT NULL,               -- 资源类型: MENU(菜单), BUTTON(按钮), API(接口), DATA(数据)
-    resource VARCHAR(255) NOT NULL,          -- 关联 menus.menu_id (MENU/BUTTON类型) 或 API 路径 (API类型)
+    type VARCHAR(20) NOT NULL,               -- 类型: MENU, BUTTON, API
+    resource VARCHAR(255) NOT NULL,          -- 资源标识 (menu:xxx, btn:xxx, /api/v1/xxx)
     action VARCHAR(50),                      -- 请求方法 (GET, POST, PUT, DELETE)，仅 API 类型有效
-    parent_id VARCHAR(255),                  -- 父权限ID（BUTTON 的父权限为 MENU，用于构建权限树）
-
     description TEXT,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
@@ -190,18 +185,15 @@ CREATE TABLE permissions (
 );
 
 -- 索引优化
-CREATE INDEX idx_permissions_tenant_type ON permissions(tenant_id, type);
-CREATE INDEX idx_permissions_tenant_resource ON permissions(tenant_id, resource);
+CREATE INDEX idx_permissions_type ON permissions(type, deleted_at);
 CREATE INDEX idx_permissions_resource ON permissions(resource, deleted_at);
 
-COMMENT ON TABLE permissions IS '权限配置表(租户隔离，业务层抽象)';
-COMMENT ON COLUMN permissions.permission_id IS '权限ID';
-COMMENT ON COLUMN permissions.tenant_id IS '所属租户ID';
+COMMENT ON TABLE permissions IS '权限点定义表(全局，供前端权限选择器使用)';
+COMMENT ON COLUMN permissions.permission_id IS '权限ID(UUID)';
 COMMENT ON COLUMN permissions.name IS '权限名称';
-COMMENT ON COLUMN permissions.type IS '类型(MENU:菜单权限, BUTTON:按钮权限, API:接口权限, DATA:数据权限)';
-COMMENT ON COLUMN permissions.resource IS '资源标识(menu_id或API路径)';
+COMMENT ON COLUMN permissions.type IS '类型(MENU:菜单, BUTTON:按钮, API:接口)';
+COMMENT ON COLUMN permissions.resource IS '资源标识(menu:xxx, btn:xxx, /api/v1/xxx)';
 COMMENT ON COLUMN permissions.action IS '请求方法(GET/POST/PUT/DELETE,仅API类型)';
-COMMENT ON COLUMN permissions.parent_id IS '父权限ID(用于构建权限树)';
 COMMENT ON COLUMN permissions.description IS '描述信息';
 COMMENT ON COLUMN permissions.created_at IS '创建时间戳(毫秒)';
 COMMENT ON COLUMN permissions.updated_at IS '更新时间戳(毫秒)';
@@ -209,17 +201,43 @@ COMMENT ON COLUMN permissions.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- ========================================
--- 6. Casbin 策略表 (Casbin Rules)
+-- 6. 租户菜单边界表 (Tenant Menus)
+-- 超管给租户分配的可用菜单范围
+-- 租户角色的菜单权限必须在此范围内
+-- ========================================
+CREATE TABLE tenant_menus (
+    id VARCHAR(36) PRIMARY KEY,
+    tenant_id VARCHAR(36) NOT NULL,          -- 租户ID
+    menu_id VARCHAR(36) NOT NULL,            -- 菜单ID
+    created_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
+    UNIQUE KEY uk_tenant_menu(tenant_id, menu_id, deleted_at)
+);
+
+-- 索引优化
+CREATE INDEX idx_tenant_menus_tenant ON tenant_menus(tenant_id, deleted_at);
+
+COMMENT ON TABLE tenant_menus IS '租户菜单边界表(超管分配租户可用菜单)';
+COMMENT ON COLUMN tenant_menus.id IS '主键ID(UUID)';
+COMMENT ON COLUMN tenant_menus.tenant_id IS '租户ID';
+COMMENT ON COLUMN tenant_menus.menu_id IS '菜单ID';
+COMMENT ON COLUMN tenant_menus.created_at IS '创建时间戳(毫秒)';
+COMMENT ON COLUMN tenant_menus.deleted_at IS '删除时间戳(毫秒,软删除)';
+
+
+-- ========================================
+-- 7. Casbin 策略表 (Casbin Rules)
 -- 由 Casbin gorm-adapter 自动创建，用于 RBAC 模型持久化
 -- 支持带租户的 RBAC 模型 (RBAC with Domains)
 -- ptype='p': 权限策略 p(sub, dom, obj, act)
 -- ptype='g': 用户角色关联 g(user, role, domain)
+-- ptype='g2': 角色继承 g2(child_role, parent_role) - 不需要 domain
 -- ========================================
 -- 注：该表由 Casbin 自动创建，无需手动建表
 
 
 -- ========================================
--- 7. 操作记录表 (Operation Logs)
+-- 8. 操作记录表 (Operation Logs)
 -- 用于审计和追踪用户在系统中的操作行为
 -- ========================================
 CREATE TABLE operation_logs (

@@ -63,19 +63,19 @@ INSERT INTO users (user_id, tenant_id, user_name, password, user_type) VALUES
 CREATE TABLE roles (
     role_id VARCHAR(36) PRIMARY KEY,
     tenant_id VARCHAR(36) NOT NULL,
-    parent_id VARCHAR(36),
     name VARCHAR(100) NOT NULL,
     code VARCHAR(50) NOT NULL,
     FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id),
-    FOREIGN KEY (parent_id) REFERENCES roles(role_id)
+    UNIQUE KEY uk_tenant_code(tenant_id, code)
 );
 
 -- 初始化数据
-INSERT INTO roles (role_id, tenant_id, parent_id, name, code) VALUES
-('role-super-001', 'tenant-default', NULL, '超级管理员', 'super_admin'),
-('role-sales-001', 'tenant-default', NULL, '销售角色', 'sales'),
-('role-sales-002', 'tenant-001', 'role-sales-001', '销售角色', 'sales');
+INSERT INTO roles (role_id, tenant_id, name, code) VALUES
+('role-super-001', 'tenant-default', '超级管理员', 'super_admin'),
+('role-sales-001', 'tenant-default', '销售角色', 'sales');
 ```
+
+**注意**：`parent_id` 已删除，角色继承通过 Casbin `g2` 策略管理。
 
 ---
 
@@ -91,7 +91,8 @@ r = sub, dom, obj, act
 p = sub, dom, obj, act
 
 [role_definition]
-g = _, _, _
+g = _, _, _  # 用户-角色-租户: (user, role, domain)
+g2 = _, _    # 角色继承: (child_role, parent_role)
 
 [matchers]
 m = g(r.sub, p.sub, r.dom) && r.dom == p.dom && keyMatch2(r.obj, p.obj) && regexMatch(r.act, p.act)
@@ -99,18 +100,18 @@ m = g(r.sub, p.sub, r.dom) && r.dom == p.dom && keyMatch2(r.obj, p.obj) && regex
 
 ### 3.2 策略示例
 
-```sql
--- 用户角色绑定 (g 策略)
--- g, username, tenantCode, roleCode
+```conf
+# g 策略：用户角色绑定 (user, role, domain)
 g, admin, default, super_admin
-g, admin, company-a, tenant_admin
-g, zhangsan, company-a, sales
+g, zhangsan, company-a, tenant-a-sales
 
--- 角色权限 (p 策略)
--- p, roleCode, tenantCode, resource, action
+# g2 策略：角色继承 (child, parent) - 不需要 domain
+g2, tenant-a-sales, sales
+
+# p 策略：角色权限 (role, domain, resource, action)
 p, super_admin, default, *, *
 p, sales, default, menu:orders, *
-p, sales, company-a, menu:orders, *
+p, sales, default, btn:order_create, *
 ```
 
 ---
@@ -315,37 +316,28 @@ func (s *UserService) HasPermission(userID, tenantCode, resource, action string)
 
 ```go
 func (s *RoleService) CreateRole(ctx context.Context, req *CreateRoleRequest) error {
-    currentUser := ctx.Value("user").(*JWTClaims)
-    tenantID := currentUser.TenantID
-    tenantCode := currentUser.TenantCode
+    tenantCode := getTenantCode(ctx)
 
     // 如果有父角色，验证父角色属于 default 租户
-    if req.ParentID != nil {
-        parent, _ := s.roleRepo.GetByID(ctx, *req.ParentID)
-        parentTenant, _ := s.tenantRepo.GetByID(ctx, parent.TenantID)
-        if parentTenant.TenantCode != "default" {
+    if req.ParentRoleCode != nil {
+        parent, _ := s.roleRepo.GetByCode(ctx, *req.ParentRoleCode)
+        if parent.TenantID != constants.DefaultTenantID {
             return errors.New("只能继承平台角色模板")
         }
+    }
 
-        // 创建角色
-        role := &Role{
-            RoleID:   uuid.New(),
-            TenantID: tenantID,
-            ParentID: req.ParentID,
-            Code:     req.Code,
-        }
-        s.roleRepo.Create(ctx, role)
+    // 创建角色
+    role := &Role{
+        RoleID:   uuid.New(),
+        TenantID: getTenantID(ctx),
+        Code:     req.Code,
+        Name:     req.Name,
+    }
+    s.roleRepo.Create(ctx, role)
 
-        // Casbin: 角色继承
-        s.enforcer.AddGroupingPolicy(role.Code, tenantCode, parent.Code)
-
-        // 复制父角色权限（受租户菜单边界限制）
-        parentPolicies := s.enforcer.GetFilteredPolicy(0, parent.Code, "default")
-        for _, policy := range parentPolicies {
-            resource := policy[2]
-            // 检查菜单边界...
-            s.enforcer.AddPolicy(role.Code, tenantCode, resource, "*")
-        }
+    // Casbin g2: 创建角色继承关系 (child, parent) - 注意 g2 不需要 domain
+    if req.ParentRoleCode != nil {
+        s.enforcer.AddGroupingPolicy(role.Code, *req.ParentRoleCode)
     }
 
     return nil
