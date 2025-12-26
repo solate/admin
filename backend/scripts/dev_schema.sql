@@ -37,13 +37,14 @@ COMMENT ON COLUMN tenants.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 -- ========================================
 -- 2. 用户表 (Users)
--- 用户属于单个租户，平台超管的 tenant_id 为 NULL
+-- 所有用户都绑定租户，通过 user_type 区分权限级别
 -- ========================================
 CREATE TABLE users (
     user_id VARCHAR(255) PRIMARY KEY, -- 建议统一使用UUID (VARCHAR(36))
-    tenant_id VARCHAR(36), -- 租户ID，NULL表示平台超管，有值表示租户用户
+    tenant_id VARCHAR(36) NOT NULL, -- 租户ID（所有用户都有值，包括超管）
     user_name VARCHAR(255) NOT NULL, -- 登录账号（租户内唯一）
     password VARCHAR(255) NOT NULL, -- 密码 (Bcrypt加密)
+    user_type SMALLINT NOT NULL DEFAULT 1, -- 用户类型 (1:普通用户, 2:租户管理员, 3:超级管理员)
     name VARCHAR(255) NOT NULL DEFAULT '', -- 真实姓名/昵称
     avatar VARCHAR(255), -- 头像URL
     phone VARCHAR(20), -- 手机号
@@ -57,15 +58,15 @@ CREATE TABLE users (
 );
 
 -- 租户内用户名唯一约束
--- 平台超管：(NULL, 'admin') 全局唯一
--- 租户用户：('tenant-001', 'admin') 租户内唯一
+-- ('tenant-001', 'admin') 租户内唯一
 CREATE UNIQUE INDEX uk_tenant_username ON users(tenant_id, user_name) WHERE deleted_at = 0;
 
-COMMENT ON TABLE users IS '用户表(单租户用户，tenant_id为NULL表示平台超管)';
+COMMENT ON TABLE users IS '用户表(所有用户都绑定租户，通过user_type区分权限级别)';
 COMMENT ON COLUMN users.user_id IS '用户ID';
-COMMENT ON COLUMN users.tenant_id IS '租户ID(NULL=平台超管, 有值=租户用户)';
+COMMENT ON COLUMN users.tenant_id IS '租户ID(所有用户都有值)';
 COMMENT ON COLUMN users.user_name IS '用户名(登录账号，租户内唯一)';
 COMMENT ON COLUMN users.password IS '加密密码';
+COMMENT ON COLUMN users.user_type IS '用户类型(1:普通用户, 2:租户管理员, 3:超级管理员)';
 COMMENT ON COLUMN users.name IS '姓名/昵称';
 COMMENT ON COLUMN users.avatar IS '头像URL';
 COMMENT ON COLUMN users.phone IS '手机号';
@@ -80,11 +81,12 @@ COMMENT ON COLUMN users.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 -- ========================================
 -- 3. 角色表 (Roles)
--- 租户自定义角色，实现RBAC模型
+-- 租户自定义角色，支持继承 default 租户的角色模板
 -- ========================================
 CREATE TABLE roles (
     role_id VARCHAR(255) PRIMARY KEY,
     tenant_id VARCHAR(36) NOT NULL, -- [多租户核心] 角色属于特定租户
+    parent_id VARCHAR(255), -- 父角色ID（用于继承超管在 default 租户创建的角色模板）
     role_code VARCHAR(50) NOT NULL, -- 角色编码 (如: hr_manager)
     name VARCHAR(100) NOT NULL, -- 角色名称 (如: 人事经理)
     description TEXT,
@@ -97,9 +99,10 @@ CREATE TABLE roles (
 -- 租户内角色编码唯一约束
 CREATE UNIQUE INDEX idx_roles_tenant_role_code ON roles(tenant_id, role_code) WHERE deleted_at = 0;
 
-COMMENT ON TABLE roles IS '角色表(租户隔离)';
+COMMENT ON TABLE roles IS '角色表(租户隔离，支持继承default租户的角色模板)';
 COMMENT ON COLUMN roles.role_id IS '角色ID';
 COMMENT ON COLUMN roles.tenant_id IS '所属租户ID';
+COMMENT ON COLUMN roles.parent_id IS '父角色ID(用于继承超管在default租户创建的角色模板)';
 COMMENT ON COLUMN roles.role_code IS '角色编码(租户内唯一)';
 COMMENT ON COLUMN roles.name IS '角色名称';
 COMMENT ON COLUMN roles.description IS '角色描述';
