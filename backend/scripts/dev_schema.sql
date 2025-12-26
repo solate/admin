@@ -37,17 +37,17 @@ COMMENT ON COLUMN tenants.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 -- ========================================
 -- 2. 用户表 (Users)
--- 平台级用户表，与租户解耦
--- 一个用户可以通过 user_tenant_role 表关联多个租户
+-- 用户属于单个租户，平台超管的 tenant_id 为 NULL
 -- ========================================
 CREATE TABLE users (
     user_id VARCHAR(255) PRIMARY KEY, -- 建议统一使用UUID (VARCHAR(36))
-    user_name VARCHAR(255) NOT NULL UNIQUE, -- 登录账号（全局唯一）
+    tenant_id VARCHAR(36), -- 租户ID，NULL表示平台超管，有值表示租户用户
+    user_name VARCHAR(255) NOT NULL, -- 登录账号（租户内唯一）
     password VARCHAR(255) NOT NULL, -- 密码 (Bcrypt加密)
     name VARCHAR(255) NOT NULL DEFAULT '', -- 真实姓名/昵称
     avatar VARCHAR(255), -- 头像URL
-    phone VARCHAR(20), -- 手机号（全局唯一）
-    email VARCHAR(255), -- 邮箱（全局唯一）
+    phone VARCHAR(20), -- 手机号
+    email VARCHAR(255), -- 邮箱
     status SMALLINT NOT NULL DEFAULT 1, -- 状态 (1:正常, 2:冻结)
     remark TEXT,
     last_login_time BIGINT, -- 最后登录时间
@@ -56,17 +56,20 @@ CREATE TABLE users (
     deleted_at BIGINT DEFAULT 0
 );
 
--- 用户名唯一约束（全局唯一）
-CREATE UNIQUE INDEX idx_users_username ON users(user_name) WHERE deleted_at = 0;
+-- 租户内用户名唯一约束
+-- 平台超管：(NULL, 'admin') 全局唯一
+-- 租户用户：('tenant-001', 'admin') 租户内唯一
+CREATE UNIQUE INDEX uk_tenant_username ON users(tenant_id, user_name) WHERE deleted_at = 0;
 
-COMMENT ON TABLE users IS '用户表(平台级，与租户解耦)';
+COMMENT ON TABLE users IS '用户表(单租户用户，tenant_id为NULL表示平台超管)';
 COMMENT ON COLUMN users.user_id IS '用户ID';
-COMMENT ON COLUMN users.user_name IS '用户名(登录账号，全局唯一)';
+COMMENT ON COLUMN users.tenant_id IS '租户ID(NULL=平台超管, 有值=租户用户)';
+COMMENT ON COLUMN users.user_name IS '用户名(登录账号，租户内唯一)';
 COMMENT ON COLUMN users.password IS '加密密码';
 COMMENT ON COLUMN users.name IS '姓名/昵称';
 COMMENT ON COLUMN users.avatar IS '头像URL';
-COMMENT ON COLUMN users.phone IS '手机号(全局唯一)';
-COMMENT ON COLUMN users.email IS '电子邮箱(全局唯一)';
+COMMENT ON COLUMN users.phone IS '手机号';
+COMMENT ON COLUMN users.email IS '电子邮箱';
 COMMENT ON COLUMN users.status IS '状态(1:启用, 2:禁用)';
 COMMENT ON COLUMN users.remark IS '备注信息';
 COMMENT ON COLUMN users.last_login_time IS '最后登录时间戳(毫秒)';
@@ -107,27 +110,76 @@ COMMENT ON COLUMN roles.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- ========================================
--- 4. 权限表 (Permissions)
--- 功能/菜单/API资源的定义
--- 支持三层权限控制：MENU(菜单)、BUTTON(按钮)、API(接口)
--- tenant_id=0 表示超管定义的系统权限池
+-- 4. 菜单表
+-- 纯粹的菜单结构定义表
+-- tenant_id='default' 为系统菜单模板（超管维护）
+-- tenant_id='具体租户' 仅存储租户自定义菜单
+-- 租户查询菜单时合并 default + 自定义菜单
+-- ========================================
+
+CREATE TABLE menus (
+    menu_id VARCHAR(255) PRIMARY KEY,
+    tenant_id VARCHAR(36) NOT NULL,          -- [多租户核心] 所属租户ID 
+    parent_id VARCHAR(255),                   -- 父菜单ID（用于构建树形结构）
+
+    -- 菜单基础信息
+    name VARCHAR(100) NOT NULL,               -- 菜单名称
+    path VARCHAR(255),                        -- 前端路由路径
+    component VARCHAR(255),                   -- 前端组件路径
+    redirect VARCHAR(255),                    -- 重定向路径
+    icon VARCHAR(100),                        -- 图标
+    sort SMALLINT DEFAULT 0,                  -- 排序权重
+
+    -- 状态控制（1=启用且显示, 2=禁用且隐藏）
+    status SMALLINT NOT NULL DEFAULT 1,       -- 状态(1:启用, 2:禁用)
+
+    -- 来源标识
+    source_type VARCHAR(20) NOT NULL DEFAULT 'SYSTEM',  -- 来源(SYSTEM:系统, CUSTOM:租户自定义)
+
+    description TEXT,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0
+);
+
+-- 索引优化
+CREATE INDEX idx_menus_tenant_parent ON menus(tenant_id, parent_id, deleted_at);
+CREATE INDEX idx_menus_tenant_source ON menus(tenant_id, source_type, deleted_at);
+CREATE INDEX idx_menus_tenant_sort ON menus(tenant_id, sort);
+CREATE INDEX idx_menus_status ON menus(status, deleted_at);
+
+COMMENT ON TABLE menus IS '菜单结构表(租户隔离,查询时合并default+自定义)';
+COMMENT ON COLUMN menus.menu_id IS '菜单ID';
+COMMENT ON COLUMN menus.tenant_id IS '所属租户ID(default=系统菜单模板,具体值=租户自定义)';
+COMMENT ON COLUMN menus.parent_id IS '父菜单ID(用于构建树形结构)';
+COMMENT ON COLUMN menus.name IS '菜单名称';
+COMMENT ON COLUMN menus.path IS '前端路由路径';
+COMMENT ON COLUMN menus.component IS '前端组件路径';
+COMMENT ON COLUMN menus.redirect IS '重定向路径';
+COMMENT ON COLUMN menus.icon IS '图标';
+COMMENT ON COLUMN menus.sort IS '显示排序';
+COMMENT ON COLUMN menus.status IS '状态(1:启用, 2:禁用)';
+COMMENT ON COLUMN menus.source_type IS '来源(SYSTEM:系统菜单, CUSTOM:租户自定义)';
+COMMENT ON COLUMN menus.description IS '描述信息';
+COMMENT ON COLUMN menus.created_at IS '创建时间戳(毫秒)';
+COMMENT ON COLUMN menus.updated_at IS '更新时间戳(毫秒)';
+COMMENT ON COLUMN menus.deleted_at IS '删除时间戳(毫秒,软删除)';
+
+
+-- ========================================
+-- 5. 权限表 (Permissions)
+-- 权限配置的业务层抽象，记录菜单/按钮/API的权限定义
+-- 通过 resource 字段关联 menus.menu_id (MENU/BUTTON类型) 或 API 路径 (API类型)
 -- ========================================
 CREATE TABLE permissions (
     permission_id VARCHAR(255) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL, -- [多租户核心] 所属租户ID（0=超管系统权限池）
-    name VARCHAR(100) NOT NULL, -- 权限名称
-    type VARCHAR(20) NOT NULL, -- 资源类型: MENU(菜单), BUTTON(按钮), API(接口), DATA(数据)
-    parent_id VARCHAR(255), -- 父菜单ID（用于构建树形结构，仅MENU类型有效）
-    resource VARCHAR(255), -- 资源路径/路由/API地址
-    action VARCHAR(20), -- 请求方法 (GET, POST, PUT, DELETE)
-    path VARCHAR(255), -- 前端路由路径（仅MENU类型有效）
-    component VARCHAR(255), -- 前端组件路径（仅MENU类型有效）
-    redirect VARCHAR(255), -- 重定向路径（仅MENU类型有效）
-    icon VARCHAR(100), -- 图标（仅MENU类型有效）
-    sort SMALLINT DEFAULT 0, -- 排序权重
-    status SMALLINT DEFAULT 1, -- 显示状态：1显示，2隐藏（仅MENU类型有效）
-    source_type VARCHAR(20) DEFAULT 'SYSTEM', -- 来源：SYSTEM（系统定义）/ CUSTOM（租户自定义）
-    is_visible SMALLINT DEFAULT 1, -- 是否在前端显示（1显示，0隐藏，按钮/API不需要显示）
+    tenant_id VARCHAR(36) NOT NULL,          -- [多租户核心] 所属租户ID
+    name VARCHAR(100) NOT NULL,              -- 权限名称
+    type VARCHAR(20) NOT NULL,               -- 资源类型: MENU(菜单), BUTTON(按钮), API(接口), DATA(数据)
+    resource VARCHAR(255) NOT NULL,          -- 关联 menus.menu_id (MENU/BUTTON类型) 或 API 路径 (API类型)
+    action VARCHAR(50),                      -- 请求方法 (GET, POST, PUT, DELETE)，仅 API 类型有效
+    parent_id VARCHAR(255),                  -- 父权限ID（BUTTON 的父权限为 MENU，用于构建权限树）
+
     description TEXT,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
@@ -136,26 +188,17 @@ CREATE TABLE permissions (
 
 -- 索引优化
 CREATE INDEX idx_permissions_tenant_type ON permissions(tenant_id, type);
-CREATE INDEX idx_permissions_tenant_parent ON permissions(tenant_id, parent_id, deleted_at);
-CREATE INDEX idx_permissions_source ON permissions(tenant_id, source_type, deleted_at);
-CREATE INDEX idx_permissions_status ON permissions(status) WHERE status IS NOT NULL;
+CREATE INDEX idx_permissions_tenant_resource ON permissions(tenant_id, resource);
+CREATE INDEX idx_permissions_resource ON permissions(resource, deleted_at);
 
-COMMENT ON TABLE permissions IS '权限/菜单定义表(租户隔离,支持三层权限)';
+COMMENT ON TABLE permissions IS '权限配置表(租户隔离，业务层抽象)';
 COMMENT ON COLUMN permissions.permission_id IS '权限ID';
-COMMENT ON COLUMN permissions.tenant_id IS '所属租户ID(0=超管系统权限池)';
+COMMENT ON COLUMN permissions.tenant_id IS '所属租户ID';
 COMMENT ON COLUMN permissions.name IS '权限名称';
-COMMENT ON COLUMN permissions.type IS '类型(MENU:菜单, BUTTON:按钮, API:接口, DATA:数据)';
-COMMENT ON COLUMN permissions.parent_id IS '父菜单ID(用于构建树形结构)';
-COMMENT ON COLUMN permissions.resource IS '资源路径(路由/API)';
-COMMENT ON COLUMN permissions.action IS '请求方法(仅API类型有效)';
-COMMENT ON COLUMN permissions.path IS '前端路由路径(仅MENU类型)';
-COMMENT ON COLUMN permissions.component IS '前端组件路径(仅MENU类型)';
-COMMENT ON COLUMN permissions.redirect IS '重定向路径(仅MENU类型)';
-COMMENT ON COLUMN permissions.icon IS '图标(仅MENU类型)';
-COMMENT ON COLUMN permissions.sort IS '显示排序';
-COMMENT ON COLUMN permissions.status IS '显示状态(1:显示, 2:隐藏)';
-COMMENT ON COLUMN permissions.source_type IS '来源(SYSTEM:系统定义, CUSTOM:租户自定义)';
-COMMENT ON COLUMN permissions.is_visible IS '是否在前端显示(1:显示, 0:隐藏)';
+COMMENT ON COLUMN permissions.type IS '类型(MENU:菜单权限, BUTTON:按钮权限, API:接口权限, DATA:数据权限)';
+COMMENT ON COLUMN permissions.resource IS '资源标识(menu_id或API路径)';
+COMMENT ON COLUMN permissions.action IS '请求方法(GET/POST/PUT/DELETE,仅API类型)';
+COMMENT ON COLUMN permissions.parent_id IS '父权限ID(用于构建权限树)';
 COMMENT ON COLUMN permissions.description IS '描述信息';
 COMMENT ON COLUMN permissions.created_at IS '创建时间戳(毫秒)';
 COMMENT ON COLUMN permissions.updated_at IS '更新时间戳(毫秒)';
@@ -163,88 +206,13 @@ COMMENT ON COLUMN permissions.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- ========================================
--- 4.1 租户启用权限表 (Tenant Permissions)
--- 超管给租户勾选可用的菜单/权限
--- 租户管理员只能从 tenant_permissions 中选择权限分配给角色
+-- 6. Casbin 策略表 (Casbin Rules)
+-- 由 Casbin gorm-adapter 自动创建，用于 RBAC 模型持久化
+-- 支持带租户的 RBAC 模型 (RBAC with Domains)
+-- ptype='p': 权限策略 p(sub, dom, obj, act)
+-- ptype='g': 用户角色关联 g(user, role, domain)
 -- ========================================
-CREATE TABLE tenant_permissions (
-    id BIGSERIAL PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL, -- 租户ID
-    permission_id VARCHAR(255) NOT NULL, -- 权限/菜单ID
-    enabled SMALLINT DEFAULT 1, -- 是否启用：1启用，0禁用
-    created_at BIGINT NOT NULL DEFAULT 0,
-    updated_at BIGINT NOT NULL DEFAULT 0,
-    deleted_at BIGINT DEFAULT 0,
-    CONSTRAINT uk_tenant_permission UNIQUE (tenant_id, permission_id)
-);
-
-CREATE INDEX idx_tenant_permissions ON tenant_permissions(tenant_id, enabled, deleted_at);
-
-COMMENT ON TABLE tenant_permissions IS '租户启用的权限关联表(超管给租户勾选菜单)';
-COMMENT ON COLUMN tenant_permissions.id IS '主键ID';
-COMMENT ON COLUMN tenant_permissions.tenant_id IS '租户ID';
-COMMENT ON COLUMN tenant_permissions.permission_id IS '权限/菜单ID';
-COMMENT ON COLUMN tenant_permissions.enabled IS '是否启用(1:启用, 0:禁用)';
-COMMENT ON COLUMN tenant_permissions.created_at IS '创建时间戳(毫秒)';
-COMMENT ON COLUMN tenant_permissions.updated_at IS '更新时间戳(毫秒)';
-COMMENT ON COLUMN tenant_permissions.deleted_at IS '删除时间戳(毫秒,软删除)';
-
--- ========================================
--- 5. 用户-租户-角色关联表 (User Tenant Roles)
--- 实现多租户下用户角色分配
--- 一个用户可以在不同租户中拥有不同角色
--- 历史变更通过 operation_logs 表追溯
--- ========================================
-CREATE TABLE user_tenant_roles (
-    user_tenant_role_id VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    tenant_id VARCHAR(36) NOT NULL,
-    role_id VARCHAR(255) NOT NULL
-);
-
--- 租户内用户-角色关联唯一约束
-CREATE UNIQUE INDEX idx_user_tenant_roles_tenant_user_role ON user_tenant_roles(tenant_id, user_id, role_id);
-
-COMMENT ON TABLE user_tenant_roles IS '用户-租户-角色关联表(核心)';
-COMMENT ON COLUMN user_tenant_roles.user_tenant_role_id IS '关联ID';
-COMMENT ON COLUMN user_tenant_roles.user_id IS '用户ID';
-COMMENT ON COLUMN user_tenant_roles.tenant_id IS '租户ID';
-COMMENT ON COLUMN user_tenant_roles.role_id IS '角色ID';
-
-
--- -- ========================================
--- -- (会自动建表，无需自己建)
--- -- 5. Casbin 策略表 (Casbin Rules)
--- -- 用于 Casbin RBAC 模型持久化
--- -- 支持带租户的 RBAC 模型 (RBAC with Domains)
--- -- ========================================
--- CREATE TABLE casbin_rule (
---     id SERIAL PRIMARY KEY,
---     ptype VARCHAR(255), -- 'p', 'g', 'g2'
---     v0 VARCHAR(255),    -- subject (user/role)
---     v1 VARCHAR(255),    -- domain/role/object
---     v2 VARCHAR(255),    -- object/role/action
---     v3 VARCHAR(255),    -- action (p类型) / 空 (g,g2类型)
---     v4 VARCHAR(255),    -- 通常为空，保留字段
---     v5 VARCHAR(255)     -- 通常为空，保留字段
--- );
--- -- 索引优化查询性能
--- CREATE UNIQUE INDEX idx_casbin_rule ON casbin_rule (ptype,v0,v1,v2,v3,v4,v5)
--- CREATE INDEX idx_casbin_ptype ON casbin_rules(ptype);
--- -- 针对 RBAC with Domain 模型的特定查询优化
--- CREATE INDEX idx_casbin_g_lookup ON casbin_rules(ptype, v0, v2) WHERE ptype = 'g';  -- g策略查询: g, user, domain -> 找角色
--- CREATE INDEX idx_casbin_p_match ON casbin_rules(ptype, v1, v2, v3) WHERE ptype = 'p';  -- p策略匹配: p, domain, resource, action -> 找策略
-
-
--- COMMENT ON TABLE casbin_rules IS 'Casbin权限策略表 (RBAC with Domains)';
--- COMMENT ON COLUMN casbin_rules.id IS '主键自增ID';
--- COMMENT ON COLUMN casbin_rules.ptype IS '策略类型(p:策略, g:角色关联, g2:角色继承)';
--- COMMENT ON COLUMN casbin_rules.v0 IS 'v0: Subject (用户ID/角色ID)';
--- COMMENT ON COLUMN casbin_rules.v1 IS 'v1: Domain (租户ID) / Role (角色ID)';
--- COMMENT ON COLUMN casbin_rules.v2 IS 'v2: Object (资源) / Domain (租户ID) / Role (角色ID)';
--- COMMENT ON COLUMN casbin_rules.v3 IS 'v3: Action (操作)';
--- COMMENT ON COLUMN casbin_rules.v4 IS '扩展字段';
--- COMMENT ON COLUMN casbin_rules.v5 IS '扩展字段';
+-- 注：该表由 Casbin 自动创建，无需手动建表
 
 
 -- ========================================
@@ -311,3 +279,38 @@ COMMENT ON COLUMN operation_logs.user_agent IS '用户代理信息';
 COMMENT ON COLUMN operation_logs.created_at IS '操作时间戳(毫秒)';
 
 
+
+
+-- -- ========================================
+-- -- (会自动建表，无需自己建)
+-- -- 5. Casbin 策略表 (Casbin Rules)
+-- -- 用于 Casbin RBAC 模型持久化
+-- -- 支持带租户的 RBAC 模型 (RBAC with Domains)
+-- -- ========================================
+-- CREATE TABLE casbin_rule (
+--     id SERIAL PRIMARY KEY,
+--     ptype VARCHAR(255), -- 'p', 'g', 'g2'
+--     v0 VARCHAR(255),    -- subject (user/role)
+--     v1 VARCHAR(255),    -- domain/role/object
+--     v2 VARCHAR(255),    -- object/role/action
+--     v3 VARCHAR(255),    -- action (p类型) / 空 (g,g2类型)
+--     v4 VARCHAR(255),    -- 通常为空，保留字段
+--     v5 VARCHAR(255)     -- 通常为空，保留字段
+-- );
+-- -- 索引优化查询性能
+-- CREATE UNIQUE INDEX idx_casbin_rule ON casbin_rule (ptype,v0,v1,v2,v3,v4,v5)
+-- CREATE INDEX idx_casbin_ptype ON casbin_rules(ptype);
+-- -- 针对 RBAC with Domain 模型的特定查询优化
+-- CREATE INDEX idx_casbin_g_lookup ON casbin_rules(ptype, v0, v2) WHERE ptype = 'g';  -- g策略查询: g, user, domain -> 找角色
+-- CREATE INDEX idx_casbin_p_match ON casbin_rules(ptype, v1, v2, v3) WHERE ptype = 'p';  -- p策略匹配: p, domain, resource, action -> 找策略
+
+
+-- COMMENT ON TABLE casbin_rules IS 'Casbin权限策略表 (RBAC with Domains)';
+-- COMMENT ON COLUMN casbin_rules.id IS '主键自增ID';
+-- COMMENT ON COLUMN casbin_rules.ptype IS '策略类型(p:策略, g:角色关联, g2:角色继承)';
+-- COMMENT ON COLUMN casbin_rules.v0 IS 'v0: Subject (用户ID/角色ID)';
+-- COMMENT ON COLUMN casbin_rules.v1 IS 'v1: Domain (租户ID) / Role (角色ID)';
+-- COMMENT ON COLUMN casbin_rules.v2 IS 'v2: Object (资源) / Domain (租户ID) / Role (角色ID)';
+-- COMMENT ON COLUMN casbin_rules.v3 IS 'v3: Action (操作)';
+-- COMMENT ON COLUMN casbin_rules.v4 IS '扩展字段';
+-- COMMENT ON COLUMN casbin_rules.v5 IS '扩展字段';
