@@ -16,7 +16,7 @@
 ```sql
 CREATE TABLE departments (
     dept_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     parent_id VARCHAR(36),
     dept_name VARCHAR(100) NOT NULL,
     dept_code VARCHAR(50),
@@ -35,7 +35,7 @@ CREATE TABLE departments (
 ```sql
 CREATE TABLE positions (
     position_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     position_code VARCHAR(50) NOT NULL,  -- DEPT_LEADER, EMPLOYEE, HR 等
     position_name VARCHAR(100) NOT NULL,
     level INT,                           -- 职级

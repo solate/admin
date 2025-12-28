@@ -16,7 +16,7 @@
 ```sql
 CREATE TABLE dict_types (
     type_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,       -- 默认租户为空字符串
+    tenant_id VARCHAR(20) NOT NULL,       -- 默认租户为 "00000000000000000000"
     type_code VARCHAR(50) NOT NULL,       -- 字典编码，如: order_status
     type_name VARCHAR(100) NOT NULL,      -- 字典名称，如: 订单状态
     UNIQUE KEY uk_tenant_code(tenant_id, type_code)
@@ -29,7 +29,7 @@ CREATE TABLE dict_types (
 CREATE TABLE dict_items (
     item_id VARCHAR(36) PRIMARY KEY,
     type_id VARCHAR(36) NOT NULL,         -- 关联字典类型
-    tenant_id VARCHAR(36) NOT NULL,       -- 默认租户为空字符串
+    tenant_id VARCHAR(20) NOT NULL,       -- 默认租户为 "00000000000000000000"
     label VARCHAR(100) NOT NULL,          -- 显示文本
     value VARCHAR(100) NOT NULL,          -- 实际值（不可变，用于匹配覆盖）
     sort INT DEFAULT 0,
@@ -336,8 +336,8 @@ package constants
 
 const (
     // 租户
-    DefaultTenantID   = ""       // 默认租户ID为空字符串
-    DefaultTenantCode = "default" // 默认租户code
+    DefaultTenantID   = "00000000000000000000" // 默认租户ID（20个零）
+    DefaultTenantCode = "default"              // 默认租户code
 )
 ```
 

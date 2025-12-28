@@ -10,9 +10,14 @@
 ## 1. 设计概述
 
 - **租户 ID 设计**：
-  - **默认租户**：`tenant_id` 为空字符串 `""`，`tenant_code` 为 `"default"`
-  - **其他租户**：`tenant_id` 为 UUID 值，`tenant_code` 为自定义编码
-  - 这样设计的好处：默认租户数据与普通租户数据在同一表中明确区分
+  - **默认租户**：`tenant_id` 为特殊值 `"00000000000000000000"`（20 个零），`tenant_code` 为 `"default"`
+  - **其他租户**：`tenant_id` 为 idgen 生成的 ID（Sonyflake，当前 18 位，最大 19 位），`tenant_code` 为自定义编码
+  - **字段长度**：使用 `VARCHAR(20)` 以支持 Sonyflake 的理论最大值（约 174 年后达到 19 位）
+  - **统一设计的好处**：
+    - 所有租户都有 ID，数据模型一致，不需要处理空字符串特殊情况
+    - 所有查询逻辑统一，`WHERE tenant_id = ?` 不需要特殊判断
+    - 避免 SQL 中空值处理的陷阱（如 `NOT IN` 子查询问题）
+    - 特殊 ID 不会与 idgen 生成的 ID 冲突（Sonyflake 从时间戳+机器ID生成，从 2023-01-01 开始，不会产生全零值）
 - **权限由角色控制**：通过 Casbin 的角色机制管理权限（角色继承、权限分配）
 - **user_type 冗余字段**：`1` 普通用户、`2` 租户管理员、`3` 超级管理员
   - 作用：Token 中携带，中间件直接判断是否超管，避免查询 Casbin + Roles 表
@@ -20,8 +25,7 @@
 - **Casbin domain**：直接使用 `tenant_code`，默认租户使用 `"default"`
 - **数据隔离**：
   - Repository 层通过 `tenant_id` 过滤数据
-  - 默认租户：`WHERE tenant_id = ''`
-  - 其他租户：`WHERE tenant_id = '具体的UUID'`
+  - 所有租户统一使用 `WHERE tenant_id = ?`，包括默认租户
 
 ---
 
@@ -31,23 +35,31 @@
 
 ```sql
 CREATE TABLE tenants (
-    tenant_id VARCHAR(36) PRIMARY KEY,
+    tenant_id VARCHAR(20) PRIMARY KEY,
     tenant_code VARCHAR(50) NOT NULL UNIQUE,
     tenant_name VARCHAR(255) NOT NULL
 );
 
--- 初始化数据（默认租户不需要插入，tenant_id 为空即表示默认租户）
+-- 初始化数据（默认租户也插入一条记录）
 INSERT INTO tenants (tenant_id, tenant_code, tenant_name) VALUES
-('tenant-001', 'company-a', '公司A'),
-('tenant-002', 'company-b', '公司B');
+('00000000000000000000', 'default', '默认租户'),
+('153547313510524266', 'company-a', '公司A'),
+('153547313510524267', 'company-b', '公司B');
 ```
+
+**说明**：
+- `tenant_id` 使用 `VARCHAR(20)` 以支持 Sonyflake 的理论最大值
+  - 当前生成的 ID 约 18 位：`153547313510524266`
+  - Sonyflake 理论最大值约 19 位：`9223372036854775807`
+  - 使用 20 位确保长期安全
+- 默认租户使用 20 个零作为 ID，这是一个特殊值，不会与 idgen 生成的 ID 冲突
 
 ### 2.2 用户表 (users)
 
 ```sql
 CREATE TABLE users (
     user_id VARCHAR(255) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     user_name VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
     user_type TINYINT NOT NULL DEFAULT 1,
@@ -56,9 +68,9 @@ CREATE TABLE users (
 
 -- 初始化数据
 INSERT INTO users (user_id, tenant_id, user_name, password, user_type) VALUES
-('user-super-001', '', 'admin', 'hashed_password', 3),              -- 超管（默认租户，tenant_id 为空）
-('user-admin-001', 'tenant-001', 'admin', 'hashed_password', 2),     -- 租户管理员
-('user-001', 'tenant-001', 'zhangsan', 'hashed_password', 1);        -- 普通用户
+('user-super-001', '00000000000000000000', 'admin', 'hashed_password', 3),   -- 超管（默认租户）
+('user-admin-001', '153547313510524266', 'admin', 'hashed_password', 2),  -- 租户管理员
+('user-001', '153547313510524266', 'zhangsan', 'hashed_password', 1);     -- 普通用户
 ```
 
 ### 2.3 角色表 (roles)
@@ -66,7 +78,7 @@ INSERT INTO users (user_id, tenant_id, user_name, password, user_type) VALUES
 ```sql
 CREATE TABLE roles (
     role_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
     code VARCHAR(50) NOT NULL,
     UNIQUE KEY uk_tenant_code(tenant_id, code)
@@ -74,8 +86,8 @@ CREATE TABLE roles (
 
 -- 初始化数据
 INSERT INTO roles (role_id, tenant_id, name, code) VALUES
-('role-super-001', '', '超级管理员', 'super_admin'),
-('role-sales-001', '', '销售角色', 'sales');
+('role-super-001', '00000000000000000000', '超级管理员', 'super_admin'),
+('role-sales-001', '00000000000000000000', '销售角色', 'sales');
 ```
 
 **注意**：`parent_id` 已删除，角色继承通过 Casbin `g2` 策略管理。
@@ -162,7 +174,7 @@ authGroup.Use(middlewares.AuthMiddleware())
 {
   "user_id": "user-super-001",
   "username": "admin",
-  "tenant_id": "",
+  "tenant_id": "00000000000000000000",
   "tenant_code": "default",
   "user_type": 3,
   "exp": 1734567890
@@ -223,6 +235,7 @@ func AuthMiddleware() gin.HandlerFunc {
         c.Set("username", claims.Username)
         c.Set("tenant_code", claims.TenantCode)
         c.Set("user_type", claims.UserType)
+        c.Set("tenant_id", claims.TenantID)
 
         // 超管跳过权限检查，其他用户需要 Casbin 验证
         if claims.UserType != 3 {
@@ -250,8 +263,8 @@ package constants
 
 const (
     // 租户
-    DefaultTenantID   = ""       // 默认租户 ID 为空字符串
-    DefaultTenantCode = "default" // 默认租户 code
+    DefaultTenantID   = "00000000000000000000" // 默认租户 ID（20 个零）
+    DefaultTenantCode = "default"              // 默认租户 code
 
     // 用户类型
     UserTypeUser        = 1 // 普通用户
@@ -262,6 +275,11 @@ const (
     SuperAdminRoleCode = "super_admin"
 )
 ```
+
+**说明**：
+- `DefaultTenantID` 使用 20 个零
+- Sonyflake 理论最大值约 19 位（`9223372036854775807`），20 个零足够安全
+- Sonyflake 从 2023-01-01 开始生成 ID，基于时间戳和机器 ID，理论上不会产生全零的 ID
 
 ---
 
@@ -321,7 +339,7 @@ func (s *UserService) HasPermission(userID, tenantCode, resource, action string)
 func (s *RoleService) CreateRole(ctx context.Context, req *CreateRoleRequest) error {
     tenantCode := getTenantCode(ctx)
 
-    // 如果有父角色，验证父角色属于默认租户（tenant_id 为空）
+    // 如果有父角色，验证父角色属于默认租户
     if req.ParentRoleCode != nil {
         parent, _ := s.roleRepo.GetByCode(ctx, *req.ParentRoleCode)
         if parent.TenantID != constants.DefaultTenantID {
@@ -355,14 +373,18 @@ func (s *RoleService) CreateRole(ctx context.Context, req *CreateRoleRequest) er
 
 | 文件 | 修改内容 |
 |------|----------|
-| `backend/scripts/dev_schema.sql` | 新增 tenants 表，users 表添加 user_type，tenant_id 改为 NOT NULL |
-| `backend/pkg/constants/system.go` | 添加 DefaultTenantID/Code、UserType 常量 |
+| `backend/scripts/dev_schema.sql` | 新增 tenants 表（含默认租户记录），users/roles 表 tenant_id 改为 VARCHAR(20) |
+| `backend/scripts/init_data/main.go` | 插入默认租户记录到 tenants 表 |
+| `backend/pkg/constants/system.go` | 添加 DefaultTenantID = "00000000000000000000"、DefaultTenantCode、UserType 常量 |
 | `backend/pkg/casbin/super_admin.go` | 使用 "default" 作为 domain |
 | `backend/internal/middleware/tenant.go` | 租户中间件（从路径获取） |
 | `backend/internal/middleware/auth.go` | 认证中间件（从 Token 获取，user_type=3 跳过权限检查） |
-| `backend/internal/model/user.go` | 添加 UserType 字段 |
+| `backend/internal/model/tenant.go` | TenantID 字段改为 VARCHAR(20) |
+| `backend/internal/model/user.go` | TenantID 改为 VARCHAR(20)，添加 UserType 字段 |
+| `backend/internal/model/role.go` | TenantID 改为 VARCHAR(20) |
 | `backend/internal/router/router.go` | 添加 `:tenant_code` 路由 |
 | `backend/internal/repository/user_repo.go` | 支持按 tenant_id 条件查询 |
+| `backend/internal/repository/tenant_repo.go` | 添加 GetByCode 方法 |
 | `backend/internal/service/auth_service.go` | 登录逻辑调整 |
 
 ### 前端
@@ -371,3 +393,42 @@ func (s *RoleService) CreateRole(ctx context.Context, req *CreateRoleRequest) er
 |------|----------|
 | `frontend/src/api/auth.ts` | 更新登录 API，添加 tenant_code 参数 |
 | `frontend/src/views/Login.vue` | 登录页面添加租户选择或输入 |
+
+---
+
+## 10. 迁移说明
+
+如果当前系统已有数据（默认租户 tenant_id 为空），需要进行数据迁移：
+
+```sql
+-- 1. 修改表结构
+ALTER TABLE tenants MODIFY COLUMN tenant_id VARCHAR(20) NOT NULL;
+ALTER TABLE users MODIFY COLUMN tenant_id VARCHAR(20) NOT NULL;
+ALTER TABLE roles MODIFY COLUMN tenant_id VARCHAR(20) NOT NULL;
+
+-- 2. 插入默认租户记录
+INSERT INTO tenants (tenant_id, tenant_code, tenant_name)
+VALUES ('00000000000000000000', 'default', '默认租户');
+
+-- 3. 更新现有数据：将空字符串改为特殊 ID
+UPDATE users SET tenant_id = '00000000000000000000' WHERE tenant_id = '';
+UPDATE roles SET tenant_id = '00000000000000000000' WHERE tenant_id = '';
+
+-- 4. 如果其他表有租户字段，也需要更新
+-- UPDATE xxx SET tenant_id = '00000000000000000000' WHERE tenant_id = '';
+```
+
+---
+
+## 附录：Sonyflake ID 长度说明
+
+| 项目 | 值 | 位数 |
+|------|-----|------|
+| 当前生成的 ID | `153547313510524266` | 18 位 |
+| Sonyflake 理论最大值 | `9223372036854775807` | 19 位 |
+| 推荐字段长度 | `VARCHAR(20)` | - |
+
+**为什么选择 VARCHAR(20)**：
+- 当前 ID 是 18 位
+- Sonyflake 理论最大值是 19 位（约 174 年后才会达到）
+- 使用 20 位确保长期安全，无需担心未来溢出

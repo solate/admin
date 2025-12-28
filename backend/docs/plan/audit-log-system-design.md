@@ -16,7 +16,7 @@
 ```sql
 CREATE TABLE login_logs (
     log_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(36),
     username VARCHAR(50),
     login_type VARCHAR(20),                  -- PASSWORD, SSO, OAUTH
@@ -36,7 +36,7 @@ CREATE TABLE login_logs (
 ```sql
 CREATE TABLE operation_logs (
     log_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(36),
     username VARCHAR(50),
     user_real_name VARCHAR(100),             -- 真实姓名
@@ -67,7 +67,7 @@ CREATE TABLE operation_logs (
 ```sql
 CREATE TABLE data_change_logs (
     log_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(36),
     username VARCHAR(50),
     table_name VARCHAR(50),                  -- 表名

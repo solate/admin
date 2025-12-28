@@ -16,7 +16,7 @@
 ```sql
 CREATE TABLE users (
     user_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     dept_id VARCHAR(36),                      -- 所属部门
     user_name VARCHAR(50) NOT NULL,
     password VARCHAR(255) NOT NULL,

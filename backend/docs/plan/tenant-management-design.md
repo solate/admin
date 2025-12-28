@@ -3,7 +3,7 @@
 ## 设计原则
 
 - **租户隔离**：数据完全隔离，通过 `tenant_id` 区分
-- **默认租户**：`tenant_id` 为空字符串，用于超级管理员
+- **默认租户**：`tenant_id` 为 `"00000000000000000000"`（20 个零），用于超级管理员
 - **租户状态**：支持启用/禁用/过期
 - **配额管理**：限制租户的资源使用
 
@@ -15,7 +15,7 @@
 
 ```sql
 CREATE TABLE tenants (
-    tenant_id VARCHAR(36) PRIMARY KEY,
+    tenant_id VARCHAR(20) PRIMARY KEY,
     tenant_code VARCHAR(50) NOT NULL UNIQUE,
     tenant_name VARCHAR(100) NOT NULL,
     logo VARCHAR(255),                       -- 租户Logo
@@ -36,7 +36,7 @@ CREATE TABLE tenants (
 ```sql
 CREATE TABLE tenant_configs (
     config_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     config_key VARCHAR(50) NOT NULL,
     config_value TEXT,
     description VARCHAR(255),
@@ -51,7 +51,7 @@ CREATE TABLE tenant_configs (
 ```sql
 CREATE TABLE tenant_quotas (
     quota_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     resource_type VARCHAR(50) NOT NULL,      -- users, storage, api_calls
     used_count BIGINT DEFAULT 0,
     max_count BIGINT NOT NULL,
@@ -328,8 +328,8 @@ const (
     TenantStatusExpired = 2  // 过期
 
     // 默认租户
-    DefaultTenantID   = ""       // 默认租户ID为空
-    DefaultTenantCode = "default" // 默认租户code
+    DefaultTenantID   = "00000000000000000000" // 默认租户ID（20个零）
+    DefaultTenantCode = "default"              // 默认租户code
 
     // 默认配额
     DefaultMaxUsers   = 100

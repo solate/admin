@@ -16,7 +16,7 @@
 ```sql
 CREATE TABLE notification_templates (
     template_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36),                  -- NULL 表示系统模板
+    tenant_id VARCHAR(20),                  -- "00000000000000000000" 表示系统模板（默认租户）
     template_code VARCHAR(50) NOT NULL,
     template_name VARCHAR(100) NOT NULL,
     type VARCHAR(20) NOT NULL,              -- SYSTEM, CUSTOM
@@ -37,7 +37,7 @@ CREATE TABLE notification_templates (
 ```sql
 CREATE TABLE notifications (
     notification_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     receiver_id VARCHAR(36) NOT NULL,
     template_id VARCHAR(36),
     title VARCHAR(255) NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE notifications (
 ```sql
 CREATE TABLE notification_send_logs (
     log_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     notification_id VARCHAR(36),
     receiver_id VARCHAR(36) NOT NULL,
     channel VARCHAR(20) NOT NULL,           -- INBOX, EMAIL, SMS

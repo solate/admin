@@ -15,7 +15,7 @@
 ```sql
 CREATE TABLE files (
     file_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     file_name VARCHAR(255) NOT NULL,         -- 原始文件名
     file_path VARCHAR(500) NOT NULL,         -- 存储路径
     file_size BIGINT NOT NULL,               -- 字节
@@ -35,7 +35,7 @@ CREATE TABLE files (
 ```sql
 CREATE TABLE file_shares (
     share_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     file_id VARCHAR(36) NOT NULL,
     share_code VARCHAR(20) UNIQUE NOT NULL,   -- 分享码
     password VARCHAR(100),                    -- 访问密码（可选）

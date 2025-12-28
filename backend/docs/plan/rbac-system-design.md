@@ -16,7 +16,7 @@
 ```sql
 CREATE TABLE roles (
     role_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     role_name VARCHAR(50) NOT NULL,
     role_code VARCHAR(50) NOT NULL,
     description VARCHAR(255),

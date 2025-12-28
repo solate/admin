@@ -35,7 +35,7 @@ CREATE TABLE menus (
 ```sql
 CREATE TABLE tenant_menus (
     id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     menu_id VARCHAR(36) NOT NULL,
     created_at BIGINT,
     deleted_at BIGINT,
@@ -48,7 +48,7 @@ CREATE TABLE tenant_menus (
 ```sql
 CREATE TABLE roles (
     role_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
     code VARCHAR(50) NOT NULL,
     status TINYINT DEFAULT 1,
@@ -309,7 +309,7 @@ package constants
 
 const (
     // 租户
-    DefaultTenantID   = ""       // 默认租户ID为空字符串
+    DefaultTenantID   = "00000000000000000000" // 默认租户ID（20个零)
     DefaultTenantCode = "default" // 默认租户code
 
     // 用户类型

@@ -16,7 +16,7 @@
 ```sql
 CREATE TABLE api_keys (
     key_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     key_name VARCHAR(100) NOT NULL,         -- 密钥名称
     access_key VARCHAR(64) NOT NULL UNIQUE,  -- Access Key
     secret_key VARCHAR(128) NOT NULL,        -- Secret Key (加密存储)
@@ -37,7 +37,7 @@ CREATE TABLE api_keys (
 ```sql
 CREATE TABLE api_usage_logs (
     log_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tenant_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
     key_id VARCHAR(36) NOT NULL,
     endpoint VARCHAR(255) NOT NULL,          -- 请求路径
     method VARCHAR(10) NOT NULL,             -- GET, POST, etc.
