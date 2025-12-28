@@ -109,16 +109,13 @@ COMMENT ON COLUMN roles.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- ========================================
--- 4. 菜单表
--- 纯粹的菜单结构定义表
--- tenant_id='default' 为系统菜单模板（超管维护）
--- tenant_id='具体租户' 仅存储租户自定义菜单
--- 租户查询菜单时合并 default + 自定义菜单
+-- 4. 菜单表 (Menus)
+-- 全局菜单元数据定义表（不区分租户）
+-- 菜单的租户边界通过 tenant_menus 表控制
 -- ========================================
 
 CREATE TABLE menus (
     menu_id VARCHAR(20) PRIMARY KEY,
-    tenant_id VARCHAR(20) NOT NULL,          -- [多租户核心] 所属租户ID 
     parent_id VARCHAR(20),                   -- 父菜单ID（用于构建树形结构）
 
     -- 菜单基础信息
@@ -127,29 +124,20 @@ CREATE TABLE menus (
     component VARCHAR(255),                   -- 前端组件路径
     redirect VARCHAR(255),                    -- 重定向路径
     icon VARCHAR(100),                        -- 图标
-    sort SMALLINT DEFAULT 0,                  -- 排序权重
+    sort INT DEFAULT 0,                       -- 排序权重
 
     -- 状态控制（1=启用且显示, 2=禁用且隐藏）
-    status SMALLINT NOT NULL DEFAULT 1,       -- 状态(1:启用, 2:禁用)
-
-    -- 来源标识
-    source_type VARCHAR(20) NOT NULL DEFAULT 'SYSTEM',  -- 来源(SYSTEM:系统, CUSTOM:租户自定义)
+    status SMALLINT DEFAULT 1,                -- 状态(1:启用, 2:禁用)
 
     description TEXT,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
-    deleted_at BIGINT DEFAULT 0
+    deleted_at BIGINT DEFAULT 0,
+    KEY idx_parent(parent_id, deleted_at)
 );
 
--- 索引优化
-CREATE INDEX idx_menus_tenant_parent ON menus(tenant_id, parent_id, deleted_at);
-CREATE INDEX idx_menus_tenant_source ON menus(tenant_id, source_type, deleted_at);
-CREATE INDEX idx_menus_tenant_sort ON menus(tenant_id, sort);
-CREATE INDEX idx_menus_status ON menus(status, deleted_at);
-
-COMMENT ON TABLE menus IS '菜单结构表(租户隔离,查询时合并default+自定义)';
-COMMENT ON COLUMN menus.menu_id IS '菜单ID';
-COMMENT ON COLUMN menus.tenant_id IS '所属租户ID(default=系统菜单模板,具体值=租户自定义)';
+COMMENT ON TABLE menus IS '菜单元数据表(全局定义，租户边界由tenant_menus表控制)';
+COMMENT ON COLUMN menus.menu_id IS '菜单ID(18位字符串)';
 COMMENT ON COLUMN menus.parent_id IS '父菜单ID(用于构建树形结构)';
 COMMENT ON COLUMN menus.name IS '菜单名称';
 COMMENT ON COLUMN menus.path IS '前端路由路径';
@@ -158,7 +146,6 @@ COMMENT ON COLUMN menus.redirect IS '重定向路径';
 COMMENT ON COLUMN menus.icon IS '图标';
 COMMENT ON COLUMN menus.sort IS '显示排序';
 COMMENT ON COLUMN menus.status IS '状态(1:启用, 2:禁用)';
-COMMENT ON COLUMN menus.source_type IS '来源(SYSTEM:系统菜单, CUSTOM:租户自定义)';
 COMMENT ON COLUMN menus.description IS '描述信息';
 COMMENT ON COLUMN menus.created_at IS '创建时间戳(毫秒)';
 COMMENT ON COLUMN menus.updated_at IS '更新时间戳(毫秒)';
