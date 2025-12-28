@@ -37,14 +37,13 @@ COMMENT ON COLUMN tenants.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 -- ========================================
 -- 2. 用户表 (Users)
--- 所有用户都绑定租户，通过 user_type 区分权限级别
+-- 所有用户都绑定租户，权限由 Casbin 的角色策略控制
 -- ========================================
 CREATE TABLE users (
     user_id VARCHAR(20) PRIMARY KEY, -- 18位字符串ID
     tenant_id VARCHAR(20) NOT NULL, -- 租户ID（所有用户都有值，包括超管）
     user_name VARCHAR(100) NOT NULL, -- 登录账号（租户内唯一）
     password VARCHAR(100) NOT NULL, -- 密码 (Bcrypt加密)
-    user_type SMALLINT NOT NULL DEFAULT 1, -- 用户类型 (1:普通用户, 2:租户管理员, 3:超级管理员)
     name VARCHAR(100) NOT NULL DEFAULT '', -- 真实姓名/昵称
     avatar VARCHAR(255), -- 头像URL
     phone VARCHAR(20), -- 手机号
@@ -61,12 +60,11 @@ CREATE TABLE users (
 -- ('tenant-001', 'admin') 租户内唯一
 CREATE UNIQUE INDEX uk_tenant_username ON users(tenant_id, user_name) WHERE deleted_at = 0;
 
-COMMENT ON TABLE users IS '用户表(所有用户都绑定租户，通过user_type区分权限级别)';
+COMMENT ON TABLE users IS '用户表(所有用户都绑定租户，权限由Casbin角色策略控制)';
 COMMENT ON COLUMN users.user_id IS '用户ID';
 COMMENT ON COLUMN users.tenant_id IS '租户ID(所有用户都有值)';
 COMMENT ON COLUMN users.user_name IS '用户名(登录账号，租户内唯一)';
 COMMENT ON COLUMN users.password IS '加密密码';
-COMMENT ON COLUMN users.user_type IS '用户类型(1:普通用户, 2:租户管理员, 3:超级管理员)';
 COMMENT ON COLUMN users.name IS '姓名/昵称';
 COMMENT ON COLUMN users.avatar IS '头像URL';
 COMMENT ON COLUMN users.phone IS '手机号';

@@ -28,11 +28,21 @@ INSERT INTO tenants (tenant_id, tenant_code, tenant_name) VALUES
 
 ```sql
 CREATE TABLE users (
-    user_id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    user_name VARCHAR(255) NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    UNIQUE KEY uk_tenant_username (tenant_id, user_name)
+    user_name VARCHAR(100) NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL DEFAULT '',
+    avatar VARCHAR(255),
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    status SMALLINT NOT NULL DEFAULT 1,
+    remark TEXT,
+    last_login_time BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
+    UNIQUE KEY uk_tenant_username (tenant_id, user_name) WHERE deleted_at = 0
 );
 ```
 
@@ -40,11 +50,16 @@ CREATE TABLE users (
 
 ```sql
 CREATE TABLE roles (
-    role_id VARCHAR(36) PRIMARY KEY,
+    role_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    name VARCHAR(100) NOT NULL,
     code VARCHAR(50) NOT NULL,
-    UNIQUE KEY uk_tenant_code(tenant_id, code)
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    status SMALLINT NOT NULL DEFAULT 1,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
+    UNIQUE KEY uk_tenant_code(tenant_id, code) WHERE deleted_at = 0
 );
 
 INSERT INTO roles (role_id, tenant_id, name, code) VALUES
@@ -190,14 +205,13 @@ const (
 
 | 文件 | 修改内容 |
 |------|----------|
-| `backend/scripts/dev_schema.sql` | 新增 tenants、user_roles 表，tenant_id 改为 VARCHAR(20) |
+| `backend/scripts/dev_schema.sql` | 新增 tenants 表，所有 ID 字段统一为 VARCHAR(20) |
 | `backend/scripts/init_data/main.go` | 插入默认租户和角色记录 |
 | `backend/pkg/constants/system.go` | 添加租户常量 |
 | `backend/internal/middleware/tenant.go` | 租户中间件 |
 | `backend/internal/middleware/auth.go` | 认证中间件（包含 super_admin 则跳过权限检查） |
-| `backend/internal/model/user.go` | TenantID 改为 VARCHAR(20) |
-| `backend/internal/model/role.go` | TenantID 改为 VARCHAR(20) |
-| `backend/internal/repository/user_role_repo.go` | 用户角色关联查询 |
+| `backend/internal/model/user.go` | ID 字段改为 VARCHAR(20) |
+| `backend/internal/model/role.go` | ID 字段改为 VARCHAR(20) |
 | `backend/internal/service/auth_service.go` | 登录时查询用户角色并写入 Token |
 | `frontend/src/api/auth.ts` | 登录 API 添加 tenant_code |
 | `frontend/src/views/Login.vue` | 登录页添加租户输入 |
