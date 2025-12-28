@@ -64,6 +64,7 @@ CREATE TABLE operation_logs (
 ```
 
 ### 数据变更日志表 (data_change_logs)
+> **⚠️ 暂不实现**：该表设计保留在文档中供未来参考。当前 `operation_logs` 已满足审计需求，如有字段级别审计或数据恢复需求时再实现。
 
 ```sql
 CREATE TABLE data_change_logs (
@@ -450,8 +451,8 @@ const (
     OperTypeExport  = "EXPORT"
 
     // 日志保留天数
-    LoginLogRetentionDays      = 90
-    OperationLogRetentionDays  = 180
-    DataChangeLogRetentionDays = 365
+    LoginLogRetentionDays     = 90
+    OperationLogRetentionDays = 180
+    // DataChangeLogRetentionDays = 365  // 暂不实现
 )
 ```
