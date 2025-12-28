@@ -9,13 +9,19 @@
 
 ## 1. 设计概述
 
-- **统一租户绑定**：所有用户都有 `tenant_id`，包括超级管理员
+- **租户 ID 设计**：
+  - **默认租户**：`tenant_id` 为空字符串 `""`，`tenant_code` 为 `"default"`
+  - **其他租户**：`tenant_id` 为 UUID 值，`tenant_code` 为自定义编码
+  - 这样设计的好处：默认租户数据与普通租户数据在同一表中明确区分
 - **权限由角色控制**：通过 Casbin 的角色机制管理权限（角色继承、权限分配）
 - **user_type 冗余字段**：`1` 普通用户、`2` 租户管理员、`3` 超级管理员
   - 作用：Token 中携带，中间件直接判断是否超管，避免查询 Casbin + Roles 表
   - 注意：真实权限仍由 Casbin 的 role 控制，user_type 只是性能优化
-- **默认租户**：初始化 `default` 租户，超管属于此租户
-- **Casbin domain**：直接使用 `tenant_code`，无需特殊处理
+- **Casbin domain**：直接使用 `tenant_code`，默认租户使用 `"default"`
+- **数据隔离**：
+  - Repository 层通过 `tenant_id` 过滤数据
+  - 默认租户：`WHERE tenant_id = ''`
+  - 其他租户：`WHERE tenant_id = '具体的UUID'`
 
 ---
 
@@ -30,9 +36,8 @@ CREATE TABLE tenants (
     tenant_name VARCHAR(255) NOT NULL
 );
 
--- 初始化数据
+-- 初始化数据（默认租户不需要插入，tenant_id 为空即表示默认租户）
 INSERT INTO tenants (tenant_id, tenant_code, tenant_name) VALUES
-('tenant-default', 'default', '平台默认租户'),
 ('tenant-001', 'company-a', '公司A'),
 ('tenant-002', 'company-b', '公司B');
 ```
@@ -46,15 +51,14 @@ CREATE TABLE users (
     user_name VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
     user_type TINYINT NOT NULL DEFAULT 1,
-    UNIQUE KEY uk_tenant_username (tenant_id, user_name),
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id)
+    UNIQUE KEY uk_tenant_username (tenant_id, user_name)
 );
 
 -- 初始化数据
 INSERT INTO users (user_id, tenant_id, user_name, password, user_type) VALUES
-('user-super-001', 'tenant-default', 'admin', 'hashed_password', 3),  -- 超管
-('user-admin-001', 'tenant-001', 'admin', 'hashed_password', 2),      -- 租户管理员
-('user-001', 'tenant-001', 'zhangsan', 'hashed_password', 1);         -- 普通用户
+('user-super-001', '', 'admin', 'hashed_password', 3),              -- 超管（默认租户，tenant_id 为空）
+('user-admin-001', 'tenant-001', 'admin', 'hashed_password', 2),     -- 租户管理员
+('user-001', 'tenant-001', 'zhangsan', 'hashed_password', 1);        -- 普通用户
 ```
 
 ### 2.3 角色表 (roles)
@@ -65,14 +69,13 @@ CREATE TABLE roles (
     tenant_id VARCHAR(36) NOT NULL,
     name VARCHAR(100) NOT NULL,
     code VARCHAR(50) NOT NULL,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id),
     UNIQUE KEY uk_tenant_code(tenant_id, code)
 );
 
 -- 初始化数据
 INSERT INTO roles (role_id, tenant_id, name, code) VALUES
-('role-super-001', 'tenant-default', '超级管理员', 'super_admin'),
-('role-sales-001', 'tenant-default', '销售角色', 'sales');
+('role-super-001', '', '超级管理员', 'super_admin'),
+('role-sales-001', '', '销售角色', 'sales');
 ```
 
 **注意**：`parent_id` 已删除，角色继承通过 Casbin `g2` 策略管理。
@@ -159,7 +162,7 @@ authGroup.Use(middlewares.AuthMiddleware())
 {
   "user_id": "user-super-001",
   "username": "admin",
-  "tenant_id": "tenant-default",
+  "tenant_id": "",
   "tenant_code": "default",
   "user_type": 3,
   "exp": 1734567890
@@ -247,8 +250,8 @@ package constants
 
 const (
     // 租户
-    DefaultTenantID   = "tenant-default"
-    DefaultTenantCode = "default"
+    DefaultTenantID   = ""       // 默认租户 ID 为空字符串
+    DefaultTenantCode = "default" // 默认租户 code
 
     // 用户类型
     UserTypeUser        = 1 // 普通用户
@@ -318,7 +321,7 @@ func (s *UserService) HasPermission(userID, tenantCode, resource, action string)
 func (s *RoleService) CreateRole(ctx context.Context, req *CreateRoleRequest) error {
     tenantCode := getTenantCode(ctx)
 
-    // 如果有父角色，验证父角色属于 default 租户
+    // 如果有父角色，验证父角色属于默认租户（tenant_id 为空）
     if req.ParentRoleCode != nil {
         parent, _ := s.roleRepo.GetByCode(ctx, *req.ParentRoleCode)
         if parent.TenantID != constants.DefaultTenantID {

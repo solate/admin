@@ -117,7 +117,9 @@ func getTenantID(db *gorm.DB) (string, bool) {
 		return "", false
 	}
 	id, ok := db.Statement.Context.Value(tenantIDKey).(string)
-	return id, ok && id != ""
+	// 修改：允许空字符串作为有效的 tenant_id（用于默认租户）
+	// 只要 ok 为 true，就认为 tenant_id 有效
+	return id, ok
 }
 
 func shouldSkipTenantCheck(db *gorm.DB) bool {

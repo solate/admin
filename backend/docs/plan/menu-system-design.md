@@ -309,8 +309,8 @@ package constants
 
 const (
     // 租户
-    DefaultTenantID   = "tenant-default"
-    DefaultTenantCode = "default"
+    DefaultTenantID   = ""       // 默认租户ID为空字符串
+    DefaultTenantCode = "default" // 默认租户code
 
     // 用户类型
     UserTypeUser        = 1 // 普通用户

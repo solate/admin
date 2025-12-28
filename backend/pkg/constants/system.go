@@ -1,8 +1,10 @@
 package constants
 
 const (
-	// DefaultTenant 默认租户名称
-	DefaultTenant = "default"
+	// DefaultTenantID 默认租户ID（为空字符串，用于区分默认租户和普通租户）
+	DefaultTenantID = ""
+	// DefaultTenantCode 默认租户编码（超管租户，用于 Casbin domain）
+	DefaultTenantCode = "default"
 	// SuperAdminRole 超级管理员角色code
 	SuperAdmin = "super_admin"
 )
@@ -23,10 +25,10 @@ const (
 	TypeData   = "DATA"   // 数据权限
 )
 
-// 权限来源类型常量
+// 菜单来源类型常量
 const (
-	SourceTypeSystem = "SYSTEM" // 系统内置
-	SourceTypeCustom = "CUSTOM" // 租户自定义
+	MenuSourceTypeSystem = "SYSTEM" // 系统模板
+	MenuSourceTypeCustom = "CUSTOM" // 租户自定义
 )
 
 // 菜单状态常量
