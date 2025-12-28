@@ -15,17 +15,17 @@
 
 ```sql
 CREATE TABLE login_logs (
-    log_id VARCHAR(36) PRIMARY KEY,
+    log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    user_id VARCHAR(36),
+    user_id VARCHAR(20),
     username VARCHAR(50),
     login_type VARCHAR(20),                  -- PASSWORD, SSO, OAUTH
     login_ip VARCHAR(50),
     login_location VARCHAR(100),             -- IP解析的地理位置
     user_agent VARCHAR(255),
-    status TINYINT,                          -- 1:成功 0:失败
+    status SMALLINT,                         -- 1:成功 0:失败
     fail_reason VARCHAR(255),                -- 失败原因
-    created_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
     INDEX idx_tenant_user (tenant_id, user_id),
     INDEX idx_tenant_time (tenant_id, created_at)
 );
@@ -35,9 +35,9 @@ CREATE TABLE login_logs (
 
 ```sql
 CREATE TABLE operation_logs (
-    log_id VARCHAR(36) PRIMARY KEY,
+    log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    user_id VARCHAR(36),
+    user_id VARCHAR(20),
     username VARCHAR(50),
     user_real_name VARCHAR(100),             -- 真实姓名
     module VARCHAR(50),                      -- 模块名
@@ -50,11 +50,11 @@ CREATE TABLE operation_logs (
     request_params TEXT,                     -- 请求参数（脱敏）
     old_value TEXT,                          -- 旧值（JSON）
     new_value TEXT,                          -- 新值（JSON）
-    status TINYINT,                          -- 1:成功 2:失败
+    status SMALLINT,                         -- 1:成功 2:失败
     error_message TEXT,                      -- 错误信息
     ip_address VARCHAR(50),
     user_agent TEXT,
-    created_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
     INDEX idx_tenant_user (tenant_id, user_id),
     INDEX idx_tenant_time (tenant_id, created_at),
     INDEX idx_module (tenant_id, module, created_at),
@@ -66,18 +66,18 @@ CREATE TABLE operation_logs (
 
 ```sql
 CREATE TABLE data_change_logs (
-    log_id VARCHAR(36) PRIMARY KEY,
+    log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    user_id VARCHAR(36),
+    user_id VARCHAR(20),
     username VARCHAR(50),
     table_name VARCHAR(50),                  -- 表名
-    record_id VARCHAR(36),                   -- 记录ID
+    record_id VARCHAR(20),                   -- 记录ID
     operation VARCHAR(20),                   -- INSERT, UPDATE, DELETE
     old_value JSON,                          -- 旧值
     new_value JSON,                          -- 新值
     changed_fields TEXT,                     -- 变更字段列表
     ip_address VARCHAR(50),
-    created_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
     INDEX idx_tenant_table (tenant_id, table_name),
     INDEX idx_record (table_name, record_id),
     INDEX idx_tenant_time (tenant_id, created_at)

@@ -15,16 +15,16 @@
 
 ```sql
 CREATE TABLE departments (
-    dept_id VARCHAR(36) PRIMARY KEY,
+    dept_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    parent_id VARCHAR(36),
+    parent_id VARCHAR(20),
     dept_name VARCHAR(100) NOT NULL,
     dept_code VARCHAR(50),
     sort INT DEFAULT 0,
-    status TINYINT DEFAULT 1,
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT,
+    status SMALLINT DEFAULT 1,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     INDEX idx_tenant_parent(tenant_id, parent_id, deleted_at),
     INDEX idx_tenant_code(tenant_id, dept_code, deleted_at)
 );
@@ -34,16 +34,16 @@ CREATE TABLE departments (
 
 ```sql
 CREATE TABLE positions (
-    position_id VARCHAR(36) PRIMARY KEY,
+    position_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     position_code VARCHAR(50) NOT NULL,  -- DEPT_LEADER, EMPLOYEE, HR 等
     position_name VARCHAR(100) NOT NULL,
     level INT,                           -- 职级
     sort INT DEFAULT 0,
-    status TINYINT DEFAULT 1,
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT,
+    status SMALLINT DEFAULT 1,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     UNIQUE KEY uk_tenant_code(tenant_id, position_code, deleted_at)
 );
 ```
@@ -51,8 +51,8 @@ CREATE TABLE positions (
 ### 用户表扩展 (users)
 
 ```sql
-ALTER TABLE users ADD COLUMN dept_id VARCHAR(36);
-ALTER TABLE users ADD COLUMN position_id VARCHAR(36);
+ALTER TABLE users ADD COLUMN dept_id VARCHAR(20);
+ALTER TABLE users ADD COLUMN position_id VARCHAR(20);
 ```
 
 ### 用户多岗关联表 (user_positions) - 可选

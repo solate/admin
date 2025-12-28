@@ -15,17 +15,17 @@
 
 ```sql
 CREATE TABLE menus (
-    menu_id VARCHAR(36) PRIMARY KEY,
-    parent_id VARCHAR(36),
+    menu_id VARCHAR(20) PRIMARY KEY,
+    parent_id VARCHAR(20),
     name VARCHAR(100) NOT NULL,
     path VARCHAR(255),
     component VARCHAR(255),
     icon VARCHAR(50),
     sort INT DEFAULT 0,
-    status TINYINT DEFAULT 1,
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT,
+    status SMALLINT DEFAULT 1,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     KEY idx_parent(parent_id, deleted_at)
 );
 ```
@@ -34,11 +34,11 @@ CREATE TABLE menus (
 
 ```sql
 CREATE TABLE tenant_menus (
-    id VARCHAR(36) PRIMARY KEY,
+    id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    menu_id VARCHAR(36) NOT NULL,
-    created_at BIGINT,
-    deleted_at BIGINT,
+    menu_id VARCHAR(20) NOT NULL,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     UNIQUE KEY uk_tenant_menu(tenant_id, menu_id, deleted_at)
 );
 ```
@@ -47,14 +47,14 @@ CREATE TABLE tenant_menus (
 
 ```sql
 CREATE TABLE roles (
-    role_id VARCHAR(36) PRIMARY KEY,
+    role_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
     code VARCHAR(50) NOT NULL,
-    status TINYINT DEFAULT 1,
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT,
+    status SMALLINT DEFAULT 1,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     UNIQUE KEY uk_tenant_code(tenant_id, code, deleted_at)
 );
 ```
@@ -65,14 +65,14 @@ CREATE TABLE roles (
 
 ```sql
 CREATE TABLE permissions (
-    permission_id VARCHAR(36) PRIMARY KEY,
+    permission_id VARCHAR(20) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    type VARCHAR(20) NOT NULL,       -- MENU, BUTTON, API
+    type VARCHAR(10) NOT NULL,       -- MENU, BUTTON, API
     resource VARCHAR(255) NOT NULL,  -- menu:xxx, btn:xxx, /api/v1/xxx
     action VARCHAR(50),
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0
 );
 ```
 
@@ -309,8 +309,8 @@ package constants
 
 const (
     // 租户
-    DefaultTenantID   = "00000000000000000000" // 默认租户ID（20个零)
-    DefaultTenantCode = "default" // 默认租户code
+    DefaultTenantID   = "000000000000000000" // 默认租户ID（18个零）
+    DefaultTenantCode = "default"            // 默认租户code
 
     // 用户类型
     UserTypeUser        = 1 // 普通用户

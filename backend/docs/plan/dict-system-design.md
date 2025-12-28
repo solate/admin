@@ -15,11 +15,15 @@
 
 ```sql
 CREATE TABLE dict_types (
-    type_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(20) NOT NULL,       -- 默认租户为 "00000000000000000000"
+    type_id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,       -- 默认租户为 "000000000000000000"
     type_code VARCHAR(50) NOT NULL,       -- 字典编码，如: order_status
     type_name VARCHAR(100) NOT NULL,      -- 字典名称，如: 订单状态
-    UNIQUE KEY uk_tenant_code(tenant_id, type_code)
+    description TEXT,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
+    UNIQUE KEY uk_tenant_code(tenant_id, type_code, deleted_at)
 );
 ```
 
@@ -27,12 +31,15 @@ CREATE TABLE dict_types (
 
 ```sql
 CREATE TABLE dict_items (
-    item_id VARCHAR(36) PRIMARY KEY,
-    type_id VARCHAR(36) NOT NULL,         -- 关联字典类型
-    tenant_id VARCHAR(20) NOT NULL,       -- 默认租户为 "00000000000000000000"
+    item_id VARCHAR(20) PRIMARY KEY,
+    type_id VARCHAR(20) NOT NULL,         -- 关联字典类型
+    tenant_id VARCHAR(20) NOT NULL,       -- 默认租户为 "000000000000000000"
     label VARCHAR(100) NOT NULL,          -- 显示文本
     value VARCHAR(100) NOT NULL,          -- 实际值（不可变，用于匹配覆盖）
     sort INT DEFAULT 0,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     INDEX idx_type_value(type_id, tenant_id, value)
 );
 ```
@@ -336,7 +343,7 @@ package constants
 
 const (
     // 租户
-    DefaultTenantID   = "00000000000000000000" // 默认租户ID（20个零）
+    DefaultTenantID   = "000000000000000000" // 默认租户ID（18个零）
     DefaultTenantCode = "default"              // 默认租户code
 )
 ```

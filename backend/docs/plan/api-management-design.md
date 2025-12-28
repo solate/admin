@@ -15,18 +15,19 @@
 
 ```sql
 CREATE TABLE api_keys (
-    key_id VARCHAR(36) PRIMARY KEY,
+    key_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     key_name VARCHAR(100) NOT NULL,         -- 密钥名称
     access_key VARCHAR(64) NOT NULL UNIQUE,  -- Access Key
     secret_key VARCHAR(128) NOT NULL,        -- Secret Key (加密存储)
-    status TINYINT DEFAULT 1,                -- 1:启用 0:禁用
+    status SMALLINT DEFAULT 1,               -- 1:启用 0:禁用
     rate_limit INT DEFAULT 1000,             -- 每分钟请求限制
     expire_at BIGINT,                        -- 过期时间
     last_used_at BIGINT,                     -- 最后使用时间
-    created_by VARCHAR(36),
-    created_at BIGINT,
-    deleted_at BIGINT,
+    created_by VARCHAR(20),
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     INDEX idx_tenant (tenant_id, deleted_at),
     INDEX idx_access_key (access_key)
 );
@@ -38,14 +39,14 @@ CREATE TABLE api_keys (
 CREATE TABLE api_usage_logs (
     log_id BIGINT PRIMARY KEY AUTO_INCREMENT,
     tenant_id VARCHAR(20) NOT NULL,
-    key_id VARCHAR(36) NOT NULL,
+    key_id VARCHAR(20) NOT NULL,
     endpoint VARCHAR(255) NOT NULL,          -- 请求路径
     method VARCHAR(10) NOT NULL,             -- GET, POST, etc.
     status_code SMALLINT,                    -- 响应状态码
     response_time INT,                       -- 响应时间(ms)
     request_size INT,                        -- 请求大小(bytes)
     response_size INT,                       -- 响应大小(bytes)
-    created_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
     INDEX idx_tenant_time (tenant_id, created_at),
     INDEX idx_key_time (key_id, created_at)
 );

@@ -14,7 +14,7 @@
 
 ```sql
 CREATE TABLE files (
-    file_id VARCHAR(36) PRIMARY KEY,
+    file_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     file_name VARCHAR(255) NOT NULL,         -- 原始文件名
     file_path VARCHAR(500) NOT NULL,         -- 存储路径
@@ -22,9 +22,9 @@ CREATE TABLE files (
     file_type VARCHAR(50),                   -- MIME 类型
     file_ext VARCHAR(20),                    -- 扩展名
     storage_type VARCHAR(20) DEFAULT 'local', -- local, oss, s3
-    uploader_id VARCHAR(36),                 -- 上传者
-    created_at BIGINT,
-    deleted_at BIGINT,
+    uploader_id VARCHAR(20),                 -- 上传者
+    created_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     INDEX idx_tenant (tenant_id, deleted_at),
     INDEX idx_uploader (uploader_id, deleted_at)
 );
@@ -34,17 +34,17 @@ CREATE TABLE files (
 
 ```sql
 CREATE TABLE file_shares (
-    share_id VARCHAR(36) PRIMARY KEY,
+    share_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    file_id VARCHAR(36) NOT NULL,
+    file_id VARCHAR(20) NOT NULL,
     share_code VARCHAR(20) UNIQUE NOT NULL,   -- 分享码
     password VARCHAR(100),                    -- 访问密码（可选）
     expire_at BIGINT,                         -- 过期时间
     share_count INT DEFAULT 0,                -- 分享次数
     download_count INT DEFAULT 0,             -- 下载次数
-    created_by VARCHAR(36),
-    created_at BIGINT,
-    deleted_at BIGINT,
+    created_by VARCHAR(20),
+    created_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     INDEX idx_tenant (tenant_id, deleted_at),
     INDEX idx_file (file_id)
 );

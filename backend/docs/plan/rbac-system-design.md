@@ -15,16 +15,16 @@
 
 ```sql
 CREATE TABLE roles (
-    role_id VARCHAR(36) PRIMARY KEY,
+    role_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     role_name VARCHAR(50) NOT NULL,
     role_code VARCHAR(50) NOT NULL,
     description VARCHAR(255),
     sort INT DEFAULT 0,
-    status TINYINT DEFAULT 1,
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT,
+    status SMALLINT DEFAULT 1,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     UNIQUE KEY uk_tenant_code (tenant_id, role_code, deleted_at),
     INDEX idx_tenant (tenant_id, deleted_at)
 );
@@ -34,15 +34,15 @@ CREATE TABLE roles (
 
 ```sql
 CREATE TABLE permissions (
-    permission_id VARCHAR(36) PRIMARY KEY,
+    permission_id VARCHAR(20) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    type VARCHAR(20) NOT NULL,          -- MENU, BUTTON, API
+    type VARCHAR(10) NOT NULL,          -- MENU, BUTTON, API
     resource VARCHAR(255) NOT NULL,     -- menu:xxx, btn:xxx, /api/v1/xxx
     action VARCHAR(50),                 -- GET, POST, * 等
     description VARCHAR(255),
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     INDEX idx_resource (resource, deleted_at)
 );
 ```

@@ -15,18 +15,18 @@
 
 ```sql
 CREATE TABLE notification_templates (
-    template_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(20),                  -- "00000000000000000000" 表示系统模板（默认租户）
+    template_id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20),                  -- "000000000000000000" 表示系统模板（默认租户）
     template_code VARCHAR(50) NOT NULL,
     template_name VARCHAR(100) NOT NULL,
-    type VARCHAR(20) NOT NULL,              -- SYSTEM, CUSTOM
-    channel VARCHAR(20) NOT NULL,           -- INBOX, EMAIL, SMS
+    type VARCHAR(10) NOT NULL,              -- SYSTEM, CUSTOM
+    channel VARCHAR(10) NOT NULL,           -- INBOX, EMAIL, SMS
     title VARCHAR(255),                     -- 标题模板
     content TEXT NOT NULL,                  -- 内容模板（支持变量）
     variables TEXT,                         -- 变量列表（JSON）
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     UNIQUE KEY uk_code (template_code, deleted_at),
     INDEX idx_tenant_type (tenant_id, type)
 );
@@ -36,17 +36,17 @@ CREATE TABLE notification_templates (
 
 ```sql
 CREATE TABLE notifications (
-    notification_id VARCHAR(36) PRIMARY KEY,
+    notification_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    receiver_id VARCHAR(36) NOT NULL,
-    template_id VARCHAR(36),
+    receiver_id VARCHAR(20) NOT NULL,
+    template_id VARCHAR(20),
     title VARCHAR(255) NOT NULL,
     content TEXT,
     type VARCHAR(50),                       -- SYSTEM, ALERT, REMINDER
     is_read BOOLEAN DEFAULT FALSE,
     read_at BIGINT,
-    created_at BIGINT,
-    deleted_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     INDEX idx_receiver (tenant_id, receiver_id, is_read, created_at)
 );
 ```
@@ -55,19 +55,19 @@ CREATE TABLE notifications (
 
 ```sql
 CREATE TABLE notification_send_logs (
-    log_id VARCHAR(36) PRIMARY KEY,
+    log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    notification_id VARCHAR(36),
-    receiver_id VARCHAR(36) NOT NULL,
-    channel VARCHAR(20) NOT NULL,           -- INBOX, EMAIL, SMS
+    notification_id VARCHAR(20),
+    receiver_id VARCHAR(20) NOT NULL,
+    channel VARCHAR(10) NOT NULL,           -- INBOX, EMAIL, SMS
     receiver VARCHAR(255),                  -- 接收地址（邮箱/手机号）
     title VARCHAR(255),
     content TEXT,
-    status TINYINT,                         -- 0:待发送 1:成功 2:失败
+    status SMALLINT,                        -- 0:待发送 1:成功 2:失败
     error VARCHAR(500),
     retry_count INT DEFAULT 0,
     sent_at BIGINT,
-    created_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
     INDEX idx_tenant_status (tenant_id, status, created_at),
     INDEX idx_notification (notification_id)
 );

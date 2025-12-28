@@ -15,22 +15,22 @@
 
 ```sql
 CREATE TABLE users (
-    user_id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    dept_id VARCHAR(36),                      -- 所属部门
+    dept_id VARCHAR(20),                      -- 所属部门
     user_name VARCHAR(50) NOT NULL,
     password VARCHAR(255) NOT NULL,
     real_name VARCHAR(50),                    -- 真实姓名
     email VARCHAR(100),
     phone VARCHAR(20),
     avatar VARCHAR(255),                      -- 头像URL
-    user_type TINYINT DEFAULT 1,              -- 1:普通用户 2:租户管理员 3:超级管理员
-    status TINYINT DEFAULT 1,                 -- 1:启用 0:禁用 2:锁定
+    user_type SMALLINT DEFAULT 1,             -- 1:普通用户 2:租户管理员 3:超级管理员
+    status SMALLINT DEFAULT 1,                -- 1:启用 0:禁用 2:锁定
     last_login_at BIGINT,
     last_login_ip VARCHAR(50),
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     UNIQUE KEY uk_tenant_username (tenant_id, user_name, deleted_at),
     INDEX idx_tenant (tenant_id, deleted_at),
     INDEX idx_dept (dept_id, deleted_at)
@@ -41,12 +41,13 @@ CREATE TABLE users (
 
 ```sql
 CREATE TABLE user_positions (
-    id VARCHAR(36) PRIMARY KEY,
-    user_id VARCHAR(36) NOT NULL,
-    position_id VARCHAR(36) NOT NULL,
+    id VARCHAR(20) PRIMARY KEY,
+    user_id VARCHAR(20) NOT NULL,
+    position_id VARCHAR(20) NOT NULL,
     is_primary BOOLEAN DEFAULT TRUE,          -- 是否主岗位
-    created_at BIGINT,
-    UNIQUE KEY uk_user_position (user_id, position_id)
+    created_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
+    UNIQUE KEY uk_user_position (user_id, position_id, deleted_at)
 );
 ```
 

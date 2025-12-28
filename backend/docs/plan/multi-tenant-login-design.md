@@ -10,7 +10,7 @@
 ## 1. 设计概述
 
 - **租户 ID 设计**：
-  - **默认租户**：`tenant_id` 为特殊值 `"00000000000000000000"`（20 个零），`tenant_code` 为 `"default"`
+  - **默认租户**：`tenant_id` 为特殊值 `"000000000000000000"`（18 个零），`tenant_code` 为 `"default"`
   - **其他租户**：`tenant_id` 为 idgen 生成的 ID（Sonyflake，当前 18 位，最大 19 位），`tenant_code` 为自定义编码
   - **字段长度**：使用 `VARCHAR(20)` 以支持 Sonyflake 的理论最大值（约 174 年后达到 19 位）
   - **统一设计的好处**：
@@ -42,7 +42,7 @@ CREATE TABLE tenants (
 
 -- 初始化数据（默认租户也插入一条记录）
 INSERT INTO tenants (tenant_id, tenant_code, tenant_name) VALUES
-('00000000000000000000', 'default', '默认租户'),
+('000000000000000000', 'default', '默认租户'),
 ('153547313510524266', 'company-a', '公司A'),
 ('153547313510524267', 'company-b', '公司B');
 ```
@@ -52,7 +52,7 @@ INSERT INTO tenants (tenant_id, tenant_code, tenant_name) VALUES
   - 当前生成的 ID 约 18 位：`153547313510524266`
   - Sonyflake 理论最大值约 19 位：`9223372036854775807`
   - 使用 20 位确保长期安全
-- 默认租户使用 20 个零作为 ID，这是一个特殊值，不会与 idgen 生成的 ID 冲突
+- 默认租户使用 18 个零作为 ID，这是一个特殊值，不会与 idgen 生成的 ID 冲突
 
 ### 2.2 用户表 (users)
 
@@ -68,7 +68,7 @@ CREATE TABLE users (
 
 -- 初始化数据
 INSERT INTO users (user_id, tenant_id, user_name, password, user_type) VALUES
-('user-super-001', '00000000000000000000', 'admin', 'hashed_password', 3),   -- 超管（默认租户）
+('user-super-001', '000000000000000000', 'admin', 'hashed_password', 3),   -- 超管（默认租户）
 ('user-admin-001', '153547313510524266', 'admin', 'hashed_password', 2),  -- 租户管理员
 ('user-001', '153547313510524266', 'zhangsan', 'hashed_password', 1);     -- 普通用户
 ```
@@ -86,8 +86,8 @@ CREATE TABLE roles (
 
 -- 初始化数据
 INSERT INTO roles (role_id, tenant_id, name, code) VALUES
-('role-super-001', '00000000000000000000', '超级管理员', 'super_admin'),
-('role-sales-001', '00000000000000000000', '销售角色', 'sales');
+('role-super-001', '000000000000000000', '超级管理员', 'super_admin'),
+('role-sales-001', '000000000000000000', '销售角色', 'sales');
 ```
 
 **注意**：`parent_id` 已删除，角色继承通过 Casbin `g2` 策略管理。
@@ -174,7 +174,7 @@ authGroup.Use(middlewares.AuthMiddleware())
 {
   "user_id": "user-super-001",
   "username": "admin",
-  "tenant_id": "00000000000000000000",
+  "tenant_id": "000000000000000000",
   "tenant_code": "default",
   "user_type": 3,
   "exp": 1734567890
@@ -263,7 +263,7 @@ package constants
 
 const (
     // 租户
-    DefaultTenantID   = "00000000000000000000" // 默认租户 ID（20 个零）
+    DefaultTenantID   = "000000000000000000" // 默认租户 ID（18 个零）
     DefaultTenantCode = "default"              // 默认租户 code
 
     // 用户类型
@@ -277,8 +277,8 @@ const (
 ```
 
 **说明**：
-- `DefaultTenantID` 使用 20 个零
-- Sonyflake 理论最大值约 19 位（`9223372036854775807`），20 个零足够安全
+- `DefaultTenantID` 使用 18 个零
+- Sonyflake 理论最大值约 19 位（`9223372036854775807`），18 个零足够安全
 - Sonyflake 从 2023-01-01 开始生成 ID，基于时间戳和机器 ID，理论上不会产生全零的 ID
 
 ---
@@ -373,15 +373,15 @@ func (s *RoleService) CreateRole(ctx context.Context, req *CreateRoleRequest) er
 
 | 文件 | 修改内容 |
 |------|----------|
-| `backend/scripts/dev_schema.sql` | 新增 tenants 表（含默认租户记录），users/roles 表 tenant_id 改为 VARCHAR(20) |
+| `backend/scripts/dev_schema.sql` | 新增 tenants 表（含默认租户记录），users/roles 表 tenant_id 改为 VARCHAR(18) |
 | `backend/scripts/init_data/main.go` | 插入默认租户记录到 tenants 表 |
-| `backend/pkg/constants/system.go` | 添加 DefaultTenantID = "00000000000000000000"、DefaultTenantCode、UserType 常量 |
+| `backend/pkg/constants/system.go` | 添加 DefaultTenantID = "000000000000000000"、DefaultTenantCode、UserType 常量 |
 | `backend/pkg/casbin/super_admin.go` | 使用 "default" 作为 domain |
 | `backend/internal/middleware/tenant.go` | 租户中间件（从路径获取） |
 | `backend/internal/middleware/auth.go` | 认证中间件（从 Token 获取，user_type=3 跳过权限检查） |
-| `backend/internal/model/tenant.go` | TenantID 字段改为 VARCHAR(20) |
-| `backend/internal/model/user.go` | TenantID 改为 VARCHAR(20)，添加 UserType 字段 |
-| `backend/internal/model/role.go` | TenantID 改为 VARCHAR(20) |
+| `backend/internal/model/tenant.go` | TenantID 字段改为 VARCHAR(18) |
+| `backend/internal/model/user.go` | TenantID 改为 VARCHAR(18)，添加 UserType 字段 |
+| `backend/internal/model/role.go` | TenantID 改为 VARCHAR(18) |
 | `backend/internal/router/router.go` | 添加 `:tenant_code` 路由 |
 | `backend/internal/repository/user_repo.go` | 支持按 tenant_id 条件查询 |
 | `backend/internal/repository/tenant_repo.go` | 添加 GetByCode 方法 |
@@ -408,14 +408,14 @@ ALTER TABLE roles MODIFY COLUMN tenant_id VARCHAR(20) NOT NULL;
 
 -- 2. 插入默认租户记录
 INSERT INTO tenants (tenant_id, tenant_code, tenant_name)
-VALUES ('00000000000000000000', 'default', '默认租户');
+VALUES ('000000000000000000', 'default', '默认租户');
 
 -- 3. 更新现有数据：将空字符串改为特殊 ID
-UPDATE users SET tenant_id = '00000000000000000000' WHERE tenant_id = '';
-UPDATE roles SET tenant_id = '00000000000000000000' WHERE tenant_id = '';
+UPDATE users SET tenant_id = '000000000000000000' WHERE tenant_id = '';
+UPDATE roles SET tenant_id = '000000000000000000' WHERE tenant_id = '';
 
 -- 4. 如果其他表有租户字段，也需要更新
--- UPDATE xxx SET tenant_id = '00000000000000000000' WHERE tenant_id = '';
+-- UPDATE xxx SET tenant_id = '000000000000000000' WHERE tenant_id = '';
 ```
 
 ---

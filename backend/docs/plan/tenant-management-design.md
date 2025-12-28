@@ -3,7 +3,7 @@
 ## 设计原则
 
 - **租户隔离**：数据完全隔离，通过 `tenant_id` 区分
-- **默认租户**：`tenant_id` 为 `"00000000000000000000"`（20 个零），用于超级管理员
+- **默认租户**：`tenant_id` 为 `"000000000000000000"`（18 个零），用于超级管理员
 - **租户状态**：支持启用/禁用/过期
 - **配额管理**：限制租户的资源使用
 
@@ -20,13 +20,13 @@ CREATE TABLE tenants (
     tenant_name VARCHAR(100) NOT NULL,
     logo VARCHAR(255),                       -- 租户Logo
     domain VARCHAR(100),                     -- 自定义域名
-    status TINYINT DEFAULT 1,                -- 1:正常 0:禁用 2:过期
+    status SMALLINT DEFAULT 1,               -- 1:正常 0:禁用 2:过期
     expire_at BIGINT,                        -- 过期时间
     max_users INT DEFAULT 100,               -- 最大用户数
     max_storage BIGINT DEFAULT 10737418240,  -- 最大存储(10GB)
-    created_at BIGINT,
-    updated_at BIGINT,
-    deleted_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     INDEX idx_status (status, expire_at)
 );
 ```
@@ -35,14 +35,15 @@ CREATE TABLE tenants (
 
 ```sql
 CREATE TABLE tenant_configs (
-    config_id VARCHAR(36) PRIMARY KEY,
+    config_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     config_key VARCHAR(50) NOT NULL,
     config_value TEXT,
     description VARCHAR(255),
-    created_at BIGINT,
-    updated_at BIGINT,
-    UNIQUE KEY uk_tenant_key (tenant_id, config_key)
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
+    UNIQUE KEY uk_tenant_key (tenant_id, config_key, deleted_at)
 );
 ```
 
@@ -50,14 +51,15 @@ CREATE TABLE tenant_configs (
 
 ```sql
 CREATE TABLE tenant_quotas (
-    quota_id VARCHAR(36) PRIMARY KEY,
+    quota_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     resource_type VARCHAR(50) NOT NULL,      -- users, storage, api_calls
     used_count BIGINT DEFAULT 0,
     max_count BIGINT NOT NULL,
     reset_at BIGINT,                         -- 重置时间（用于周期性配额）
-    created_at BIGINT,
-    updated_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0,
     UNIQUE KEY uk_tenant_resource (tenant_id, resource_type)
 );
 ```
@@ -328,7 +330,7 @@ const (
     TenantStatusExpired = 2  // 过期
 
     // 默认租户
-    DefaultTenantID   = "00000000000000000000" // 默认租户ID（20个零）
+    DefaultTenantID   = "000000000000000000" // 默认租户ID（18个零）
     DefaultTenantCode = "default"              // 默认租户code
 
     // 默认配额
