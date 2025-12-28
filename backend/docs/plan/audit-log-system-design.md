@@ -18,7 +18,8 @@ CREATE TABLE login_logs (
     log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(20),
-    username VARCHAR(50),
+    user_name VARCHAR(100),                  -- 登录账号
+    user_display_name VARCHAR(100),          -- 昵称
     login_type VARCHAR(20),                  -- PASSWORD, SSO, OAUTH
     login_ip VARCHAR(50),
     login_location VARCHAR(100),             -- IP解析的地理位置
@@ -38,8 +39,8 @@ CREATE TABLE operation_logs (
     log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(20),
-    username VARCHAR(50),
-    user_real_name VARCHAR(100),             -- 真实姓名
+    user_name VARCHAR(100),                 -- 登录账号
+    user_display_name VARCHAR(100),         -- 昵称
     module VARCHAR(50),                      -- 模块名
     operation_type VARCHAR(20),              -- CREATE, UPDATE, DELETE, QUERY
     resource_type VARCHAR(50),               -- 资源类型
@@ -69,7 +70,8 @@ CREATE TABLE data_change_logs (
     log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(20),
-    username VARCHAR(50),
+    user_name VARCHAR(100),                 -- 登录账号
+    user_display_name VARCHAR(100),         -- 昵称
     table_name VARCHAR(50),                  -- 表名
     record_id VARCHAR(20),                   -- 记录ID
     operation VARCHAR(20),                   -- INSERT, UPDATE, DELETE
@@ -189,7 +191,8 @@ func (w *LoginWriter) Write(ctx context.Context, entry *operationlog.LogEntry) e
         LogID:        idgen.MustGenerateUUID(),
         TenantID:     entry.TenantID,
         UserID:       entry.UserID,
-        Username:     entry.UserName,
+        UserName:     entry.UserName,
+        UserDisplayName: entry.UserDisplayName,
         LoginType:    lc.Module,           // 从 Module 获取登录类型
         LoginIP:      entry.IPAddress,
         UserAgent:    entry.UserAgent,
@@ -229,6 +232,7 @@ func (w *OperationWriter) Write(ctx context.Context, entry *operationlog.LogEntr
         ResourceName:  &lc.ResourceName,
         UserID:        entry.UserID,
         UserName:      entry.UserName,
+        UserDisplayName: entry.UserDisplayName,
         RequestMethod: &entry.RequestMethod,
         RequestPath:   &entry.RequestPath,
         RequestParams: &entry.RequestParams,
@@ -270,6 +274,7 @@ func OperationLogMiddleware(logger *operationlog.Logger) gin.HandlerFunc {
             TenantID:      xcontext.GetTenantID(c.Request.Context()),
             UserID:        xcontext.GetUserID(c.Request.Context()),
             UserName:      xcontext.GetUserName(c.Request.Context()),
+            UserDisplayName: xcontext.GetUserDisplayName(c.Request.Context()),
             RequestMethod: c.Request.Method,
             RequestPath:   c.Request.URL.Path,
             RequestParams: requestParams,

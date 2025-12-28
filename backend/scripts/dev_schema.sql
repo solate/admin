@@ -313,60 +313,86 @@ COMMENT ON COLUMN user_positions.is_primary IS '是否为主岗位';
 
 
 -- ========================================
--- 9. 操作记录表 (Operation Logs)
--- 用于审计和追踪用户在系统中的操作行为
+-- 9. 登录日志表 (Login Logs)
+-- 记录用户登录行为，用于安全审计
 -- ========================================
-CREATE TABLE operation_logs (
-    log_id VARCHAR(20) PRIMARY KEY,         -- 日志ID
-    tenant_id VARCHAR(20) NOT NULL,         -- 租户ID
-    module VARCHAR(50) NOT NULL,            -- 模块名称 (如: user, role, tenant, permission, system)
-    operation_type VARCHAR(20) NOT NULL,    -- 操作类型 (CREATE, UPDATE, DELETE, QUERY, EXPORT, IMPORT, LOGIN, LOGOUT)
-    resource_type VARCHAR(50),              -- 资源类型 (如: user, role, menu, config)
-    resource_id VARCHAR(20),               -- 资源ID (被操作对象的ID)
-    resource_name VARCHAR(100),            -- 资源名称 (被操作对象的名称，便于展示)
-
-    user_id VARCHAR(20) NOT NULL,          -- 操作人用户ID
-    user_name VARCHAR(100) NOT NULL,       -- 操作人用户名
-    user_real_name VARCHAR(100),           -- 操作人真实姓名
-
-    request_method VARCHAR(10),             -- 请求方法 (GET, POST, PUT, DELETE)
-    request_path VARCHAR(500),              -- 请求路径
-    request_params TEXT,                    -- 请求参数 (JSON格式)
-
-    old_value TEXT,                         -- 操作前数据 (JSON格式，用于UPDATE/DELETE)
-    new_value TEXT,                         -- 操作后数据 (JSON格式，用于CREATE/UPDATE)
-
-    status SMALLINT NOT NULL DEFAULT 1,     -- 操作状态 (1:成功, 2:失败)
-    error_message TEXT,                     -- 错误信息 (操作失败时记录)
-
-    ip_address VARCHAR(50),                 -- 操作来源IP
-    user_agent TEXT,                        -- 用户代理 (浏览器/客户端信息)
-
-    created_at BIGINT NOT NULL              -- 操作时间戳(毫秒)
+CREATE TABLE login_logs (
+    log_id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,
+    user_id VARCHAR(20),
+    user_name VARCHAR(100),                  -- 登录账号
+    user_display_name VARCHAR(100),          -- 昵称
+    login_type VARCHAR(20),                  -- PASSWORD, SSO, OAUTH
+    login_ip VARCHAR(50),
+    login_location VARCHAR(100),             -- IP解析的地理位置
+    user_agent VARCHAR(255),
+    status SMALLINT,                         -- 1:成功 0:失败
+    fail_reason VARCHAR(255),                -- 失败原因
+    created_at BIGINT NOT NULL DEFAULT 0,
+    INDEX idx_tenant_user (tenant_id, user_id),
+    INDEX idx_tenant_time (tenant_id, created_at)
 );
 
--- 索引设计：支持常用查询场景
-CREATE INDEX idx_operation_logs_tenant_module ON operation_logs(tenant_id, module);
-CREATE INDEX idx_operation_logs_tenant_user ON operation_logs(tenant_id, user_id);
-CREATE INDEX idx_operation_logs_tenant_time ON operation_logs(tenant_id, created_at);
-CREATE INDEX idx_operation_logs_resource ON operation_logs(resource_type, resource_id);
-CREATE INDEX idx_operation_logs_type ON operation_logs(operation_type);
-CREATE INDEX idx_operation_logs_created_at ON operation_logs(created_at);
+COMMENT ON TABLE login_logs IS '登录日志表(记录用户登录行为，用于安全审计)';
+COMMENT ON COLUMN login_logs.log_id IS '日志ID(18位字符串)';
+COMMENT ON COLUMN login_logs.tenant_id IS '租户ID';
+COMMENT ON COLUMN login_logs.user_id IS '用户ID';
+COMMENT ON COLUMN login_logs.user_name IS '登录账号';
+COMMENT ON COLUMN login_logs.user_display_name IS '昵称';
+COMMENT ON COLUMN login_logs.login_type IS '登录类型(PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录)';
+COMMENT ON COLUMN login_logs.login_ip IS '登录IP地址';
+COMMENT ON COLUMN login_logs.login_location IS '登录位置(IP解析的地理位置)';
+COMMENT ON COLUMN login_logs.user_agent IS '用户代理(浏览器/客户端信息)';
+COMMENT ON COLUMN login_logs.status IS '状态(1:成功, 0:失败)';
+COMMENT ON COLUMN login_logs.fail_reason IS '失败原因';
+COMMENT ON COLUMN login_logs.created_at IS '创建时间戳(毫秒)';
 
-COMMENT ON TABLE operation_logs IS '操作记录表(审计日志)';
+
+-- ========================================
+-- 10. 操作日志表 (Operation Logs)
+-- 记录用户在系统中的操作行为，用于审计和追踪
+-- ========================================
+CREATE TABLE operation_logs (
+    log_id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,
+    user_id VARCHAR(20),
+    user_name VARCHAR(100),                  -- 登录账号
+    user_display_name VARCHAR(100),          -- 昵称
+    module VARCHAR(50),                      -- 模块名
+    operation_type VARCHAR(20),              -- CREATE, UPDATE, DELETE, QUERY
+    resource_type VARCHAR(50),               -- 资源类型
+    resource_id VARCHAR(255),                -- 资源ID
+    resource_name VARCHAR(255),              -- 资源名称
+    request_method VARCHAR(10),              -- GET, POST, PUT, DELETE
+    request_path VARCHAR(500),               -- 请求路径
+    request_params TEXT,                     -- 请求参数（脱敏）
+    old_value TEXT,                          -- 旧值（JSON）
+    new_value TEXT,                          -- 新值（JSON）
+    status SMALLINT,                         -- 1:成功 2:失败
+    error_message TEXT,                      -- 错误信息
+    ip_address VARCHAR(50),
+    user_agent TEXT,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    INDEX idx_tenant_user (tenant_id, user_id),
+    INDEX idx_tenant_time (tenant_id, created_at),
+    INDEX idx_module (tenant_id, module, created_at),
+    INDEX idx_resource (resource_type, resource_id)
+);
+
+COMMENT ON TABLE operation_logs IS '操作日志表(记录用户操作行为，用于审计和追踪)';
 COMMENT ON COLUMN operation_logs.log_id IS '日志ID(18位字符串)';
 COMMENT ON COLUMN operation_logs.tenant_id IS '租户ID';
-COMMENT ON COLUMN operation_logs.module IS '模块名称(如: user, role, tenant, permission, system)';
-COMMENT ON COLUMN operation_logs.operation_type IS '操作类型(CREATE:创建, UPDATE:更新, DELETE:删除, QUERY:查询, EXPORT:导出, IMPORT:导入, LOGIN:登录, LOGOUT:登出)';
-COMMENT ON COLUMN operation_logs.resource_type IS '资源类型(如: user, role, menu, config)';
-COMMENT ON COLUMN operation_logs.resource_id IS '资源ID(被操作对象的ID)';
-COMMENT ON COLUMN operation_logs.resource_name IS '资源名称(被操作对象的名称)';
 COMMENT ON COLUMN operation_logs.user_id IS '操作人用户ID';
-COMMENT ON COLUMN operation_logs.user_name IS '操作人用户名';
-COMMENT ON COLUMN operation_logs.user_real_name IS '操作人真实姓名';
+COMMENT ON COLUMN operation_logs.user_name IS '登录账号';
+COMMENT ON COLUMN operation_logs.user_display_name IS '昵称';
+COMMENT ON COLUMN operation_logs.module IS '模块名';
+COMMENT ON COLUMN operation_logs.operation_type IS '操作类型(CREATE:创建, UPDATE:更新, DELETE:删除, QUERY:查询)';
+COMMENT ON COLUMN operation_logs.resource_type IS '资源类型';
+COMMENT ON COLUMN operation_logs.resource_id IS '资源ID';
+COMMENT ON COLUMN operation_logs.resource_name IS '资源名称';
 COMMENT ON COLUMN operation_logs.request_method IS '请求方法(GET, POST, PUT, DELETE)';
 COMMENT ON COLUMN operation_logs.request_path IS '请求路径';
-COMMENT ON COLUMN operation_logs.request_params IS '请求参数(JSON格式)';
+COMMENT ON COLUMN operation_logs.request_params IS '请求参数(已脱敏)';
 COMMENT ON COLUMN operation_logs.old_value IS '操作前数据(JSON格式)';
 COMMENT ON COLUMN operation_logs.new_value IS '操作后数据(JSON格式)';
 COMMENT ON COLUMN operation_logs.status IS '操作状态(1:成功, 2:失败)';
@@ -374,6 +400,45 @@ COMMENT ON COLUMN operation_logs.error_message IS '错误信息';
 COMMENT ON COLUMN operation_logs.ip_address IS '操作来源IP';
 COMMENT ON COLUMN operation_logs.user_agent IS '用户代理信息';
 COMMENT ON COLUMN operation_logs.created_at IS '操作时间戳(毫秒)';
+
+
+-- ========================================
+-- 11. 数据变更日志表 (Data Change Logs)
+-- 记录数据表级别的变更，便于数据溯源和恢复
+-- ========================================
+CREATE TABLE data_change_logs (
+    log_id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,
+    user_id VARCHAR(20),
+    user_name VARCHAR(100),                  -- 登录账号
+    user_display_name VARCHAR(100),          -- 昵称
+    table_name VARCHAR(50),                  -- 表名
+    record_id VARCHAR(20),                   -- 记录ID
+    operation VARCHAR(20),                   -- INSERT, UPDATE, DELETE
+    old_value JSON,                          -- 旧值
+    new_value JSON,                          -- 新值
+    changed_fields TEXT,                     -- 变更字段列表
+    ip_address VARCHAR(50),
+    created_at BIGINT NOT NULL DEFAULT 0,
+    INDEX idx_tenant_table (tenant_id, table_name),
+    INDEX idx_record (table_name, record_id),
+    INDEX idx_tenant_time (tenant_id, created_at)
+);
+
+COMMENT ON TABLE data_change_logs IS '数据变更日志表(记录数据表级别的变更，便于数据溯源和恢复)';
+COMMENT ON COLUMN data_change_logs.log_id IS '日志ID(18位字符串)';
+COMMENT ON COLUMN data_change_logs.tenant_id IS '租户ID';
+COMMENT ON COLUMN data_change_logs.user_id IS '操作人用户ID';
+COMMENT ON COLUMN data_change_logs.user_name IS '登录账号';
+COMMENT ON COLUMN data_change_logs.user_display_name IS '昵称';
+COMMENT ON COLUMN data_change_logs.table_name IS '表名';
+COMMENT ON COLUMN data_change_logs.record_id IS '记录ID';
+COMMENT ON COLUMN data_change_logs.operation IS '操作类型(INSERT:插入, UPDATE:更新, DELETE:删除)';
+COMMENT ON COLUMN data_change_logs.old_value IS '操作前数据(JSON格式)';
+COMMENT ON COLUMN data_change_logs.new_value IS '操作后数据(JSON格式)';
+COMMENT ON COLUMN data_change_logs.changed_fields IS '变更字段列表';
+COMMENT ON COLUMN data_change_logs.ip_address IS '操作来源IP';
+COMMENT ON COLUMN data_change_logs.created_at IS '操作时间戳(毫秒)';
 
 
 
