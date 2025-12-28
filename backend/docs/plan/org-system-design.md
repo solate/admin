@@ -15,18 +15,19 @@
 
 ```sql
 CREATE TABLE departments (
-    dept_id VARCHAR(20) PRIMARY KEY,
+    department_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     parent_id VARCHAR(20),
-    dept_name VARCHAR(100) NOT NULL,
-    dept_code VARCHAR(50),
+    department_name VARCHAR(100) NOT NULL,
+    department_code VARCHAR(50),
+    description TEXT,
     sort INT DEFAULT 0,
     status SMALLINT DEFAULT 1,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0,
     INDEX idx_tenant_parent(tenant_id, parent_id, deleted_at),
-    INDEX idx_tenant_code(tenant_id, dept_code, deleted_at)
+    INDEX idx_tenant_code(tenant_id, department_code, deleted_at)
 );
 ```
 
@@ -39,6 +40,7 @@ CREATE TABLE positions (
     position_code VARCHAR(50) NOT NULL,  -- DEPT_LEADER, EMPLOYEE, HR 等
     position_name VARCHAR(100) NOT NULL,
     level INT,                           -- 职级
+    description TEXT,                     -- 岗位描述
     sort INT DEFAULT 0,
     status SMALLINT DEFAULT 1,
     created_at BIGINT NOT NULL DEFAULT 0,
@@ -51,7 +53,7 @@ CREATE TABLE positions (
 ### 用户表扩展 (users)
 
 ```sql
-ALTER TABLE users ADD COLUMN dept_id VARCHAR(20);
+ALTER TABLE users ADD COLUMN department_id VARCHAR(20);
 ALTER TABLE users ADD COLUMN position_id VARCHAR(20);
 ```
 
@@ -59,10 +61,9 @@ ALTER TABLE users ADD COLUMN position_id VARCHAR(20);
 
 ```sql
 CREATE TABLE user_positions (
-    user_id VARCHAR(36) NOT NULL,
-    position_id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(20) NOT NULL,
+    position_id VARCHAR(20) NOT NULL,
     is_primary BOOLEAN DEFAULT TRUE,
-    created_at BIGINT,
     PRIMARY KEY (user_id, position_id)
 );
 ```
@@ -118,12 +119,12 @@ func (s *DeptService) Create(ctx context.Context, req *CreateDeptRequest) error 
     }
 
     dept := &Department{
-        DeptID:   uuid.New().String(),
-        TenantID: tenantID,
-        ParentID: req.ParentID,
-        DeptName: req.DeptName,
-        DeptCode: req.DeptCode,
-        Status:   1,
+        DepartmentID:   uuid.New().String(),
+        TenantID:       tenantID,
+        ParentID:       req.ParentID,
+        DepartmentName: req.DepartmentName,
+        DepartmentCode: req.DepartmentCode,
+        Status:         1,
     }
     return s.deptRepo.Create(ctx, dept)
 }
@@ -172,7 +173,7 @@ func (s *UserService) ListUsers(ctx context.Context) ([]*User, error) {
     }
 
     if contains(positions, "DEPT_LEADER") || contains(positions, "MANAGER") {
-        return s.userRepo.ListByDeptWithChildren(ctx, user.DeptID)
+        return s.userRepo.ListByDeptWithChildren(ctx, user.DepartmentID)
     }
 
     if contains(positions, "HR") {
@@ -334,7 +335,7 @@ func (r *DeptRepo) GetDescendantIDs(ctx context.Context, deptID string) ([]strin
 
     children, _ := r.GetChildren(ctx, deptID)
     for _, child := range children {
-        childIDs, _ := r.GetDescendantIDs(ctx, child.DeptID)
+        childIDs, _ := r.GetDescendantIDs(ctx, child.DepartmentID)
         ids = append(ids, childIDs...)
     }
 
@@ -351,14 +352,14 @@ func (r *UserRepo) ListByDeptWithChildren(ctx context.Context, deptID string) ([
     deptIDs, _ := r.deptRepo.GetDescendantIDs(ctx, deptID)
 
     return r.q.User.WithContext(ctx).
-        Where(r.q.User.DeptID.In(deptIDs...)).
+        Where(r.q.User.DepartmentID.In(deptIDs...)).
         Find()
 }
 
 // 统计部门下用户数
 func (r *UserRepo) CountByDept(ctx context.Context, deptID string) (int64, error) {
     return r.q.User.WithContext(ctx).
-        Where(r.q.User.DeptID.Eq(deptID)).
+        Where(r.q.User.DepartmentID.Eq(deptID)).
         Count()
 }
 ```

@@ -48,6 +48,8 @@ CREATE TABLE users (
     avatar VARCHAR(255), -- 头像URL
     phone VARCHAR(20), -- 手机号
     email VARCHAR(100), -- 邮箱
+    department_id VARCHAR(20), -- 所属部门ID
+    position_id VARCHAR(20), -- 主岗位ID
     status SMALLINT NOT NULL DEFAULT 1, -- 状态 (1:正常, 2:冻结)
     remark TEXT,
     last_login_time BIGINT, -- 最后登录时间
@@ -69,6 +71,8 @@ COMMENT ON COLUMN users.name IS '姓名/昵称';
 COMMENT ON COLUMN users.avatar IS '头像URL';
 COMMENT ON COLUMN users.phone IS '手机号';
 COMMENT ON COLUMN users.email IS '电子邮箱';
+COMMENT ON COLUMN users.department_id IS '所属部门ID';
+COMMENT ON COLUMN users.position_id IS '主岗位ID';
 COMMENT ON COLUMN users.status IS '状态(1:启用, 2:禁用)';
 COMMENT ON COLUMN users.remark IS '备注信息';
 COMMENT ON COLUMN users.last_login_time IS '最后登录时间戳(毫秒)';
@@ -222,7 +226,94 @@ COMMENT ON COLUMN tenant_menus.deleted_at IS '删除时间戳(毫秒,软删除)'
 
 
 -- ========================================
--- 8. 操作记录表 (Operation Logs)
+-- 8. 组织结构系统 (Departments & Positions)
+-- 部门按职能划分，岗位按职责定义，支持一人多岗
+-- 详细设计见: docs/plan/org-system-design.md
+-- ========================================
+
+-- 8.1 部门表 (Departments)
+CREATE TABLE departments (
+    department_id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,
+    parent_id VARCHAR(20),                    -- 父部门ID（用于构建树形结构）
+    department_name VARCHAR(100) NOT NULL,     -- 部门名称
+    department_code VARCHAR(50),               -- 部门编码
+    description TEXT,                          -- 部门描述
+    sort INT DEFAULT 0,                        -- 排序权重
+    status SMALLINT DEFAULT 1,                 -- 状态 (1:启用, 2:禁用)
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0
+);
+
+-- 索引优化：支持租户内部门和父子关系查询
+CREATE INDEX idx_departments_tenant_parent ON departments(tenant_id, parent_id, deleted_at);
+CREATE INDEX idx_departments_tenant_code ON departments(tenant_id, department_code, deleted_at);
+
+COMMENT ON TABLE departments IS '部门表(按职能划分，支持树形结构)';
+COMMENT ON COLUMN departments.department_id IS '部门ID(18位字符串)';
+COMMENT ON COLUMN departments.tenant_id IS '租户ID';
+COMMENT ON COLUMN departments.parent_id IS '父部门ID(用于构建树形结构)';
+COMMENT ON COLUMN departments.department_name IS '部门名称';
+COMMENT ON COLUMN departments.department_code IS '部门编码';
+COMMENT ON COLUMN departments.description IS '部门描述';
+COMMENT ON COLUMN departments.sort IS '排序权重';
+COMMENT ON COLUMN departments.status IS '状态(1:启用, 2:禁用)';
+COMMENT ON COLUMN departments.created_at IS '创建时间戳(毫秒)';
+COMMENT ON COLUMN departments.updated_at IS '更新时间戳(毫秒)';
+COMMENT ON COLUMN departments.deleted_at IS '删除时间戳(毫秒,软删除)';
+
+
+-- 8.2 岗位表 (Positions)
+-- 岗位编码（如 DEPT_LEADER, EMPLOYEE）与 Casbin 角色对应
+CREATE TABLE positions (
+    position_id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,
+    position_code VARCHAR(50) NOT NULL,        -- 岗位编码 (DEPT_LEADER, EMPLOYEE, HR 等)
+    position_name VARCHAR(100) NOT NULL,       -- 岗位名称
+    level INT,                                 -- 职级
+    description TEXT,                          -- 岗位描述
+    sort INT DEFAULT 0,                        -- 排序权重
+    status SMALLINT DEFAULT 1,                 -- 状态 (1:启用, 2:禁用)
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0
+);
+
+-- 租户内岗位编码唯一约束（标准岗位编码与 Casbin 角色对应）
+CREATE UNIQUE INDEX uk_positions_tenant_code ON positions(tenant_id, position_code) WHERE deleted_at = 0;
+
+COMMENT ON TABLE positions IS '岗位表(按职责定义，岗位编码与Casbin角色对应)';
+COMMENT ON COLUMN positions.position_id IS '岗位ID(18位字符串)';
+COMMENT ON COLUMN positions.tenant_id IS '租户ID';
+COMMENT ON COLUMN positions.position_code IS '岗位编码(租户内唯一，如DEPT_LEADER, EMPLOYEE)';
+COMMENT ON COLUMN positions.position_name IS '岗位名称';
+COMMENT ON COLUMN positions.level IS '职级';
+COMMENT ON COLUMN positions.description IS '岗位描述';
+COMMENT ON COLUMN positions.sort IS '排序权重';
+COMMENT ON COLUMN positions.status IS '状态(1:启用, 2:禁用)';
+COMMENT ON COLUMN positions.created_at IS '创建时间戳(毫秒)';
+COMMENT ON COLUMN positions.updated_at IS '更新时间戳(毫秒)';
+COMMENT ON COLUMN positions.deleted_at IS '删除时间戳(毫秒,软删除)';
+
+
+-- 8.3 用户多岗关联表 (User Positions) - 可选
+-- 支持用户兼任多个岗位
+CREATE TABLE user_positions (
+    user_id VARCHAR(20) NOT NULL,
+    position_id VARCHAR(20) NOT NULL,
+    is_primary BOOLEAN DEFAULT TRUE,          -- 是否为主岗位
+    PRIMARY KEY (user_id, position_id)
+);
+
+COMMENT ON TABLE user_positions IS '用户多岗关联表(支持用户兼任多个岗位)';
+COMMENT ON COLUMN user_positions.user_id IS '用户ID';
+COMMENT ON COLUMN user_positions.position_id IS '岗位ID';
+COMMENT ON COLUMN user_positions.is_primary IS '是否为主岗位';
+
+
+-- ========================================
+-- 9. 操作记录表 (Operation Logs)
 -- 用于审计和追踪用户在系统中的操作行为
 -- ========================================
 CREATE TABLE operation_logs (
