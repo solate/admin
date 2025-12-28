@@ -1,37 +1,16 @@
 # 多租户登录设计方案
 
-> **架构模式**：用户属于单个租户，通过 `tenant_id` 绑定
-> **Casbin 集成**：使用 `(username, tenantCode, roleCode)` 三元组，权限由角色控制
-> **user_type 冗余**：Token 中携带 user_type，避免每次请求都查询 Casbin 判断是否超管
-> **租户隔离**：登录时通过 URL 路径参数，业务接口从 Token 获取租户
+## 核心设计
 
----
+- **用户-租户关系**：用户属于单个租户，通过 `tenant_id` 绑定
+- **租户 ID**：默认租户使用 `000000000000000000`（18 个零），其他租户使用 idgen 生成的 Sonyflake ID（18 位）
+- **权限控制**：Casbin `(username, tenantCode, roleCode)` 三元组
+- **超管判断**：Token 中携带 `roles` 数组，包含 `super_admin` 即为超管
+- **租户隔离**：登录时通过 URL 路径参数，业务接口从 Token 获取
 
-## 1. 设计概述
+## 数据库设计
 
-- **租户 ID 设计**：
-  - **默认租户**：`tenant_id` 为特殊值 `"000000000000000000"`（18 个零），`tenant_code` 为 `"default"`
-  - **其他租户**：`tenant_id` 为 idgen 生成的 ID（Sonyflake，当前 18 位，最大 19 位），`tenant_code` 为自定义编码
-  - **字段长度**：使用 `VARCHAR(20)` 以支持 Sonyflake 的理论最大值（约 174 年后达到 19 位）
-  - **统一设计的好处**：
-    - 所有租户都有 ID，数据模型一致，不需要处理空字符串特殊情况
-    - 所有查询逻辑统一，`WHERE tenant_id = ?` 不需要特殊判断
-    - 避免 SQL 中空值处理的陷阱（如 `NOT IN` 子查询问题）
-    - 特殊 ID 不会与 idgen 生成的 ID 冲突（Sonyflake 从时间戳+机器ID生成，从 2023-01-01 开始，不会产生全零值）
-- **权限由角色控制**：通过 Casbin 的角色机制管理权限（角色继承、权限分配）
-- **user_type 冗余字段**：`1` 普通用户、`2` 租户管理员、`3` 超级管理员
-  - 作用：Token 中携带，中间件直接判断是否超管，避免查询 Casbin + Roles 表
-  - 注意：真实权限仍由 Casbin 的 role 控制，user_type 只是性能优化
-- **Casbin domain**：直接使用 `tenant_code`，默认租户使用 `"default"`
-- **数据隔离**：
-  - Repository 层通过 `tenant_id` 过滤数据
-  - 所有租户统一使用 `WHERE tenant_id = ?`，包括默认租户
-
----
-
-## 2. 数据库设计
-
-### 2.1 租户表 (tenants)
+### 租户表
 
 ```sql
 CREATE TABLE tenants (
@@ -40,21 +19,12 @@ CREATE TABLE tenants (
     tenant_name VARCHAR(255) NOT NULL
 );
 
--- 初始化数据（默认租户也插入一条记录）
 INSERT INTO tenants (tenant_id, tenant_code, tenant_name) VALUES
 ('000000000000000000', 'default', '默认租户'),
-('153547313510524266', 'company-a', '公司A'),
-('153547313510524267', 'company-b', '公司B');
+('153547313510524266', 'company-a', '公司A');
 ```
 
-**说明**：
-- `tenant_id` 使用 `VARCHAR(20)` 以支持 Sonyflake 的理论最大值
-  - 当前生成的 ID 约 18 位：`153547313510524266`
-  - Sonyflake 理论最大值约 19 位：`9223372036854775807`
-  - 使用 20 位确保长期安全
-- 默认租户使用 18 个零作为 ID，这是一个特殊值，不会与 idgen 生成的 ID 冲突
-
-### 2.2 用户表 (users)
+### 用户表
 
 ```sql
 CREATE TABLE users (
@@ -62,18 +32,11 @@ CREATE TABLE users (
     tenant_id VARCHAR(20) NOT NULL,
     user_name VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
-    user_type TINYINT NOT NULL DEFAULT 1,
     UNIQUE KEY uk_tenant_username (tenant_id, user_name)
 );
-
--- 初始化数据
-INSERT INTO users (user_id, tenant_id, user_name, password, user_type) VALUES
-('user-super-001', '000000000000000000', 'admin', 'hashed_password', 3),   -- 超管（默认租户）
-('user-admin-001', '153547313510524266', 'admin', 'hashed_password', 2),  -- 租户管理员
-('user-001', '153547313510524266', 'zhangsan', 'hashed_password', 1);     -- 普通用户
 ```
 
-### 2.3 角色表 (roles)
+### 角色表
 
 ```sql
 CREATE TABLE roles (
@@ -84,71 +47,65 @@ CREATE TABLE roles (
     UNIQUE KEY uk_tenant_code(tenant_id, code)
 );
 
--- 初始化数据
 INSERT INTO roles (role_id, tenant_id, name, code) VALUES
 ('role-super-001', '000000000000000000', '超级管理员', 'super_admin'),
 ('role-sales-001', '000000000000000000', '销售角色', 'sales');
 ```
 
-**注意**：`parent_id` 已删除，角色继承通过 Casbin `g2` 策略管理。
+### 用户角色关联表
 
----
+```sql
+CREATE TABLE user_roles (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    role_id VARCHAR(36) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
+    UNIQUE KEY uk_user_role(user_id, role_id)
+);
+```
 
-## 3. Casbin 设计
+## Casbin 配置
 
-### 3.1 模型配置
+### 模型
 
 ```conf
 [request_definition]
 r = sub, dom, obj, act
 
-[policy_definition]
-p = sub, dom, obj, act
-
 [role_definition]
-g = _, _, _  # 用户-角色-租户: (user, role, domain)
-g2 = _, _    # 角色继承: (child_role, parent_role)
+g = _, _, _  # (user, role, domain)
+g2 = _, _    # 角色继承
 
 [matchers]
 m = g(r.sub, p.sub, r.dom) && r.dom == p.dom && keyMatch2(r.obj, p.obj) && regexMatch(r.act, p.act)
 ```
 
-### 3.2 策略示例
+### 策略示例
 
 ```conf
-# g 策略：用户角色绑定 (user, role, domain)
+# 用户角色
 g, admin, default, super_admin
 g, zhangsan, company-a, tenant-a-sales
 
-# g2 策略：角色继承 (child, parent) - 不需要 domain
+# 角色继承
 g2, tenant-a-sales, sales
 
-# p 策略：角色权限 (role, domain, resource, action)
+# 角色权限
 p, super_admin, default, *, *
 p, sales, default, menu:orders, *
-p, sales, default, btn:order_create, *
 ```
 
----
-
-## 4. 路由设计
-
-```
-公开接口（无 Token）：  /api/v1/:tenant_code/*  → 从路径获取租户
-认证接口（有 Token）：  /api/v1/*             → 从 Token 获取租户
-```
-
-### 4.1 路由示例
+## 路由设计
 
 ```go
-// 公开接口
+// 公开接口 - 从路径获取租户
 publicGroup := r.Group("/api/v1/:tenant_code")
 publicGroup.Use(middlewares.TenantMiddleware())
 {
     publicGroup.POST("/login", authHandler.Login)
 }
 
-// 认证接口
+// 认证接口 - 从 Token 获取租户
 authGroup := r.Group("/api/v1")
 authGroup.Use(middlewares.AuthMiddleware())
 {
@@ -156,19 +113,11 @@ authGroup.Use(middlewares.AuthMiddleware())
 }
 ```
 
-### 4.2 URL 示例
+**URL 示例**:
+- 登录: `POST /api/v1/default/login`
+- 业务: `GET /api/v1/users`
 
-| 接口 | URL |
-|------|-----|
-| 超管登录 | `POST /api/v1/default/login` |
-| 租户A登录 | `POST /api/v1/company-a/login` |
-| 用户列表 | `GET /api/v1/users` |
-
----
-
-## 5. JWT Token 设计
-
-### 5.1 Token Payload
+## Token 设计
 
 ```json
 {
@@ -176,41 +125,25 @@ authGroup.Use(middlewares.AuthMiddleware())
   "username": "admin",
   "tenant_id": "000000000000000000",
   "tenant_code": "default",
-  "user_type": 3,
+  "roles": ["super_admin", "sales"],
   "exp": 1734567890
 }
 ```
 
-### 5.2 登录响应
+## 中间件
 
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user_id": "user-super-001",
-  "username": "admin",
-  "tenant_code": "default",
-  "user_type": 3
-}
-```
-
----
-
-## 6. 中间件设计
-
-### 6.1 TenantMiddleware（公开接口）
+### TenantMiddleware（公开接口）
 
 ```go
 func TenantMiddleware() gin.HandlerFunc {
     return func(c *gin.Context) {
         tenantCode := c.Param("tenant_code")
-
         tenant, err := tenantRepo.GetByCode(c, tenantCode)
         if err != nil {
             c.JSON(404, gin.H{"message": "租户不存在"})
             c.Abort()
             return
         }
-
         c.Set("tenant_id", tenant.TenantID)
         c.Set("tenant_code", tenant.TenantCode)
         c.Next()
@@ -218,217 +151,53 @@ func TenantMiddleware() gin.HandlerFunc {
 }
 ```
 
-### 6.2 AuthMiddleware（认证接口）
+### AuthMiddleware（认证接口）
 
 ```go
 func AuthMiddleware() gin.HandlerFunc {
     return func(c *gin.Context) {
-        token := c.GetHeader("Authorization")
-        claims, err := parseToken(token)
-        if err != nil {
-            c.JSON(401, gin.H{"message": "未授权"})
-            c.Abort()
-            return
-        }
-
+        claims := parseToken(c.GetHeader("Authorization"))
         c.Set("user", claims)
-        c.Set("username", claims.Username)
-        c.Set("tenant_code", claims.TenantCode)
-        c.Set("user_type", claims.UserType)
         c.Set("tenant_id", claims.TenantID)
+        c.Set("tenant_code", claims.TenantCode)
 
-        // 超管跳过权限检查，其他用户需要 Casbin 验证
-        if claims.UserType != 3 {
-            path := c.Request.URL.Path
-            method := c.Request.Method
-            allowed, _ := enforcer.Enforce(claims.Username, claims.TenantCode, path, method)
+        // 超管跳过权限检查
+        isSuperAdmin := slices.Contains(claims.Roles, "super_admin")
+        if !isSuperAdmin {
+            allowed, _ := enforcer.Enforce(claims.Username, claims.TenantCode, c.Request.URL.Path, c.Request.Method)
             if !allowed {
                 c.JSON(403, gin.H{"message": "无权限"})
                 c.Abort()
                 return
             }
         }
-
         c.Next()
     }
 }
 ```
 
----
-
-## 7. 常量定义
+## 常量
 
 ```go
-package constants
-
 const (
-    // 租户
-    DefaultTenantID   = "000000000000000000" // 默认租户 ID（18 个零）
-    DefaultTenantCode = "default"              // 默认租户 code
-
-    // 用户类型
-    UserTypeUser        = 1 // 普通用户
-    UserTypeTenantAdmin = 2 // 租户管理员
-    UserTypeSuperAdmin  = 3 // 超级管理员
-
-    // 角色
+    DefaultTenantID   = "000000000000000000"
+    DefaultTenantCode = "default"
     SuperAdminRoleCode = "super_admin"
 )
 ```
 
-**说明**：
-- `DefaultTenantID` 使用 18 个零
-- Sonyflake 理论最大值约 19 位（`9223372036854775807`），18 个零足够安全
-- Sonyflake 从 2023-01-01 开始生成 ID，基于时间戳和机器 ID，理论上不会产生全零的 ID
-
----
-
-## 8. 核心业务逻辑
-
-### 8.1 登录
-
-```go
-func (h *AuthHandler) Login(c *gin.Context) {
-    tenantCode := c.Param("tenant_code")
-
-    var req LoginRequest
-    c.BindJSON(&req)
-
-    // 查询租户
-    tenant, err := h.tenantRepo.GetByCode(c, tenantCode)
-    if err != nil {
-        c.JSON(404, gin.H{"message": "租户不存在"})
-        return
-    }
-
-    // 查询用户
-    user, err := h.userRepo.GetByUsernameAndTenant(c, req.Username, tenant.TenantID)
-    if err != nil || !verifyPassword(req.Password, user.Password) {
-        c.JSON(401, gin.H{"message": "用户名或密码错误"})
-        return
-    }
-
-    // 生成 Token
-    token := generateToken JWTClaims{
-        UserID:     user.UserID,
-        Username:   user.UserName,
-        TenantID:   user.TenantID,
-        TenantCode: tenant.TenantCode,
-        UserType:   user.UserType,
-    }
-
-    c.JSON(200, gin.H{
-        "access_token": token,
-        "user_type":    user.UserType,
-    })
-}
-```
-
-### 8.2 权限检查
-
-```go
-func (s *UserService) HasPermission(userID, tenantCode, resource, action string) bool {
-    allowed, _ := s.enforcer.Enforce(userID, tenantCode, resource, action)
-    return allowed
-}
-```
-
-### 8.3 租户创建角色（继承超管角色模板）
-
-```go
-func (s *RoleService) CreateRole(ctx context.Context, req *CreateRoleRequest) error {
-    tenantCode := getTenantCode(ctx)
-
-    // 如果有父角色，验证父角色属于默认租户
-    if req.ParentRoleCode != nil {
-        parent, _ := s.roleRepo.GetByCode(ctx, *req.ParentRoleCode)
-        if parent.TenantID != constants.DefaultTenantID {
-            return errors.New("只能继承平台角色模板")
-        }
-    }
-
-    // 创建角色
-    role := &Role{
-        RoleID:   uuid.New(),
-        TenantID: getTenantID(ctx),
-        Code:     req.Code,
-        Name:     req.Name,
-    }
-    s.roleRepo.Create(ctx, role)
-
-    // Casbin g2: 创建角色继承关系 (child, parent) - 注意 g2 不需要 domain
-    if req.ParentRoleCode != nil {
-        s.enforcer.AddGroupingPolicy(role.Code, *req.ParentRoleCode)
-    }
-
-    return nil
-}
-```
-
----
-
-## 9. 文件修改清单
-
-### 后端
+## 修改清单
 
 | 文件 | 修改内容 |
 |------|----------|
-| `backend/scripts/dev_schema.sql` | 新增 tenants 表（含默认租户记录），users/roles 表 tenant_id 改为 VARCHAR(18) |
-| `backend/scripts/init_data/main.go` | 插入默认租户记录到 tenants 表 |
-| `backend/pkg/constants/system.go` | 添加 DefaultTenantID = "000000000000000000"、DefaultTenantCode、UserType 常量 |
-| `backend/pkg/casbin/super_admin.go` | 使用 "default" 作为 domain |
-| `backend/internal/middleware/tenant.go` | 租户中间件（从路径获取） |
-| `backend/internal/middleware/auth.go` | 认证中间件（从 Token 获取，user_type=3 跳过权限检查） |
-| `backend/internal/model/tenant.go` | TenantID 字段改为 VARCHAR(18) |
-| `backend/internal/model/user.go` | TenantID 改为 VARCHAR(18)，添加 UserType 字段 |
-| `backend/internal/model/role.go` | TenantID 改为 VARCHAR(18) |
-| `backend/internal/router/router.go` | 添加 `:tenant_code` 路由 |
-| `backend/internal/repository/user_repo.go` | 支持按 tenant_id 条件查询 |
-| `backend/internal/repository/tenant_repo.go` | 添加 GetByCode 方法 |
-| `backend/internal/service/auth_service.go` | 登录逻辑调整 |
-
-### 前端
-
-| 文件 | 修改内容 |
-|------|----------|
-| `frontend/src/api/auth.ts` | 更新登录 API，添加 tenant_code 参数 |
-| `frontend/src/views/Login.vue` | 登录页面添加租户选择或输入 |
-
----
-
-## 10. 迁移说明
-
-如果当前系统已有数据（默认租户 tenant_id 为空），需要进行数据迁移：
-
-```sql
--- 1. 修改表结构
-ALTER TABLE tenants MODIFY COLUMN tenant_id VARCHAR(20) NOT NULL;
-ALTER TABLE users MODIFY COLUMN tenant_id VARCHAR(20) NOT NULL;
-ALTER TABLE roles MODIFY COLUMN tenant_id VARCHAR(20) NOT NULL;
-
--- 2. 插入默认租户记录
-INSERT INTO tenants (tenant_id, tenant_code, tenant_name)
-VALUES ('000000000000000000', 'default', '默认租户');
-
--- 3. 更新现有数据：将空字符串改为特殊 ID
-UPDATE users SET tenant_id = '000000000000000000' WHERE tenant_id = '';
-UPDATE roles SET tenant_id = '000000000000000000' WHERE tenant_id = '';
-
--- 4. 如果其他表有租户字段，也需要更新
--- UPDATE xxx SET tenant_id = '000000000000000000' WHERE tenant_id = '';
-```
-
----
-
-## 附录：Sonyflake ID 长度说明
-
-| 项目 | 值 | 位数 |
-|------|-----|------|
-| 当前生成的 ID | `153547313510524266` | 18 位 |
-| Sonyflake 理论最大值 | `9223372036854775807` | 19 位 |
-| 推荐字段长度 | `VARCHAR(20)` | - |
-
-**为什么选择 VARCHAR(20)**：
-- 当前 ID 是 18 位
-- Sonyflake 理论最大值是 19 位（约 174 年后才会达到）
-- 使用 20 位确保长期安全，无需担心未来溢出
+| `backend/scripts/dev_schema.sql` | 新增 tenants、user_roles 表，tenant_id 改为 VARCHAR(20) |
+| `backend/scripts/init_data/main.go` | 插入默认租户和角色记录 |
+| `backend/pkg/constants/system.go` | 添加租户常量 |
+| `backend/internal/middleware/tenant.go` | 租户中间件 |
+| `backend/internal/middleware/auth.go` | 认证中间件（包含 super_admin 则跳过权限检查） |
+| `backend/internal/model/user.go` | TenantID 改为 VARCHAR(20) |
+| `backend/internal/model/role.go` | TenantID 改为 VARCHAR(20) |
+| `backend/internal/repository/user_role_repo.go` | 用户角色关联查询 |
+| `backend/internal/service/auth_service.go` | 登录时查询用户角色并写入 Token |
+| `frontend/src/api/auth.ts` | 登录 API 添加 tenant_code |
+| `frontend/src/views/Login.vue` | 登录页添加租户输入 |
