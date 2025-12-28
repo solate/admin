@@ -13,7 +13,7 @@
 -- 核心表：存储租户的基础信息，全局唯一
 -- ========================================
 CREATE TABLE tenants (
-    tenant_id VARCHAR(36) PRIMARY KEY, -- UUID作为主键，便于数据迁移和防碰撞
+    tenant_id VARCHAR(20) PRIMARY KEY, -- 18位字符串ID（默认租户：000000000000000000）
     tenant_code VARCHAR(50) NOT NULL, -- 租户编码（全局唯一，可用于二级域名或URL路径，如：tenant_shanghai）
     name VARCHAR(200) NOT NULL, -- 租户名称（企业/组织名称）
     description TEXT,
@@ -25,7 +25,7 @@ CREATE TABLE tenants (
 CREATE UNIQUE INDEX idx_tenants_tenant_code ON tenants(tenant_code);
 
 COMMENT ON TABLE tenants IS '租户表(SaaS核心表)';
-COMMENT ON COLUMN tenants.tenant_id IS '租户ID(UUID)';
+COMMENT ON COLUMN tenants.tenant_id IS '租户ID(18位字符串)';
 COMMENT ON COLUMN tenants.tenant_code IS '租户编码(全局唯一业务标识)';
 COMMENT ON COLUMN tenants.name IS '租户名称';
 COMMENT ON COLUMN tenants.description IS '租户描述';
@@ -40,15 +40,15 @@ COMMENT ON COLUMN tenants.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- 所有用户都绑定租户，通过 user_type 区分权限级别
 -- ========================================
 CREATE TABLE users (
-    user_id VARCHAR(255) PRIMARY KEY, -- 建议统一使用UUID (VARCHAR(36))
-    tenant_id VARCHAR(36) NOT NULL, -- 租户ID（所有用户都有值，包括超管）
-    user_name VARCHAR(255) NOT NULL, -- 登录账号（租户内唯一）
-    password VARCHAR(255) NOT NULL, -- 密码 (Bcrypt加密)
+    user_id VARCHAR(20) PRIMARY KEY, -- 18位字符串ID
+    tenant_id VARCHAR(20) NOT NULL, -- 租户ID（所有用户都有值，包括超管）
+    user_name VARCHAR(100) NOT NULL, -- 登录账号（租户内唯一）
+    password VARCHAR(100) NOT NULL, -- 密码 (Bcrypt加密)
     user_type SMALLINT NOT NULL DEFAULT 1, -- 用户类型 (1:普通用户, 2:租户管理员, 3:超级管理员)
-    name VARCHAR(255) NOT NULL DEFAULT '', -- 真实姓名/昵称
+    name VARCHAR(100) NOT NULL DEFAULT '', -- 真实姓名/昵称
     avatar VARCHAR(255), -- 头像URL
     phone VARCHAR(20), -- 手机号
-    email VARCHAR(255), -- 邮箱
+    email VARCHAR(100), -- 邮箱
     status SMALLINT NOT NULL DEFAULT 1, -- 状态 (1:正常, 2:冻结)
     remark TEXT,
     last_login_time BIGINT, -- 最后登录时间
@@ -84,8 +84,8 @@ COMMENT ON COLUMN users.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- 租户自定义角色，继承关系由 Casbin g2 策略管理
 -- ========================================
 CREATE TABLE roles (
-    role_id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,  -- [多租户核心] 角色属于特定租户
+    role_id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,  -- [多租户核心] 角色属于特定租户
     code VARCHAR(50) NOT NULL,       -- 角色编码 (如: sales, manager)
     name VARCHAR(100) NOT NULL,      -- 角色名称 (如: 销售角色)
     description TEXT,
@@ -99,7 +99,7 @@ CREATE TABLE roles (
 CREATE UNIQUE INDEX idx_roles_tenant_code ON roles(tenant_id, code) WHERE deleted_at = 0;
 
 COMMENT ON TABLE roles IS '角色表(租户隔离，继承关系由Casbin g2策略管理)';
-COMMENT ON COLUMN roles.role_id IS '角色ID(UUID)';
+COMMENT ON COLUMN roles.role_id IS '角色ID(18位字符串)';
 COMMENT ON COLUMN roles.tenant_id IS '所属租户ID';
 COMMENT ON COLUMN roles.code IS '角色编码(租户内唯一，用于Casbin策略)';
 COMMENT ON COLUMN roles.name IS '角色名称';
@@ -119,9 +119,9 @@ COMMENT ON COLUMN roles.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- ========================================
 
 CREATE TABLE menus (
-    menu_id VARCHAR(255) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,          -- [多租户核心] 所属租户ID 
-    parent_id VARCHAR(255),                   -- 父菜单ID（用于构建树形结构）
+    menu_id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,          -- [多租户核心] 所属租户ID 
+    parent_id VARCHAR(20),                   -- 父菜单ID（用于构建树形结构）
 
     -- 菜单基础信息
     name VARCHAR(100) NOT NULL,               -- 菜单名称
@@ -173,7 +173,7 @@ COMMENT ON COLUMN menus.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- resource 格式: menu:xxx, btn:xxx, /api/v1/xxx
 -- ========================================
 CREATE TABLE permissions (
-    permission_id VARCHAR(36) PRIMARY KEY,
+    permission_id VARCHAR(20) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,              -- 权限名称
     type VARCHAR(20) NOT NULL,               -- 类型: MENU, BUTTON, API
     resource VARCHAR(255) NOT NULL,          -- 资源标识 (menu:xxx, btn:xxx, /api/v1/xxx)
@@ -189,7 +189,7 @@ CREATE INDEX idx_permissions_type ON permissions(type, deleted_at);
 CREATE INDEX idx_permissions_resource ON permissions(resource, deleted_at);
 
 COMMENT ON TABLE permissions IS '权限点定义表(全局，供前端权限选择器使用)';
-COMMENT ON COLUMN permissions.permission_id IS '权限ID(UUID)';
+COMMENT ON COLUMN permissions.permission_id IS '权限ID(18位字符串)';
 COMMENT ON COLUMN permissions.name IS '权限名称';
 COMMENT ON COLUMN permissions.type IS '类型(MENU:菜单, BUTTON:按钮, API:接口)';
 COMMENT ON COLUMN permissions.resource IS '资源标识(menu:xxx, btn:xxx, /api/v1/xxx)';
@@ -206,9 +206,9 @@ COMMENT ON COLUMN permissions.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- 租户角色的菜单权限必须在此范围内
 -- ========================================
 CREATE TABLE tenant_menus (
-    id VARCHAR(36) PRIMARY KEY,
-    tenant_id VARCHAR(36) NOT NULL,          -- 租户ID
-    menu_id VARCHAR(36) NOT NULL,            -- 菜单ID
+    id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,          -- 租户ID
+    menu_id VARCHAR(20) NOT NULL,            -- 菜单ID
     created_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0,
     UNIQUE KEY uk_tenant_menu(tenant_id, menu_id, deleted_at)
@@ -218,7 +218,7 @@ CREATE TABLE tenant_menus (
 CREATE INDEX idx_tenant_menus_tenant ON tenant_menus(tenant_id, deleted_at);
 
 COMMENT ON TABLE tenant_menus IS '租户菜单边界表(超管分配租户可用菜单)';
-COMMENT ON COLUMN tenant_menus.id IS '主键ID(UUID)';
+COMMENT ON COLUMN tenant_menus.id IS '主键ID(18位字符串)';
 COMMENT ON COLUMN tenant_menus.tenant_id IS '租户ID';
 COMMENT ON COLUMN tenant_menus.menu_id IS '菜单ID';
 COMMENT ON COLUMN tenant_menus.created_at IS '创建时间戳(毫秒)';
@@ -241,17 +241,17 @@ COMMENT ON COLUMN tenant_menus.deleted_at IS '删除时间戳(毫秒,软删除)'
 -- 用于审计和追踪用户在系统中的操作行为
 -- ========================================
 CREATE TABLE operation_logs (
-    log_id VARCHAR(36) PRIMARY KEY,         -- 日志ID (UUID)
-    tenant_id VARCHAR(36) NOT NULL,         -- 租户ID
+    log_id VARCHAR(20) PRIMARY KEY,         -- 日志ID
+    tenant_id VARCHAR(20) NOT NULL,         -- 租户ID
     module VARCHAR(50) NOT NULL,            -- 模块名称 (如: user, role, tenant, permission, system)
     operation_type VARCHAR(20) NOT NULL,    -- 操作类型 (CREATE, UPDATE, DELETE, QUERY, EXPORT, IMPORT, LOGIN, LOGOUT)
     resource_type VARCHAR(50),              -- 资源类型 (如: user, role, menu, config)
-    resource_id VARCHAR(255),               -- 资源ID (被操作对象的ID)
-    resource_name VARCHAR(255),             -- 资源名称 (被操作对象的名称，便于展示)
+    resource_id VARCHAR(20),               -- 资源ID (被操作对象的ID)
+    resource_name VARCHAR(100),            -- 资源名称 (被操作对象的名称，便于展示)
 
-    user_id VARCHAR(255) NOT NULL,          -- 操作人用户ID
-    user_name VARCHAR(255) NOT NULL,        -- 操作人用户名
-    user_real_name VARCHAR(255),            -- 操作人真实姓名
+    user_id VARCHAR(20) NOT NULL,          -- 操作人用户ID
+    user_name VARCHAR(100) NOT NULL,       -- 操作人用户名
+    user_real_name VARCHAR(100),           -- 操作人真实姓名
 
     request_method VARCHAR(10),             -- 请求方法 (GET, POST, PUT, DELETE)
     request_path VARCHAR(500),              -- 请求路径
@@ -278,7 +278,7 @@ CREATE INDEX idx_operation_logs_type ON operation_logs(operation_type);
 CREATE INDEX idx_operation_logs_created_at ON operation_logs(created_at);
 
 COMMENT ON TABLE operation_logs IS '操作记录表(审计日志)';
-COMMENT ON COLUMN operation_logs.log_id IS '日志ID(UUID)';
+COMMENT ON COLUMN operation_logs.log_id IS '日志ID(18位字符串)';
 COMMENT ON COLUMN operation_logs.tenant_id IS '租户ID';
 COMMENT ON COLUMN operation_logs.module IS '模块名称(如: user, role, tenant, permission, system)';
 COMMENT ON COLUMN operation_logs.operation_type IS '操作类型(CREATE:创建, UPDATE:更新, DELETE:删除, QUERY:查询, EXPORT:导出, IMPORT:导入, LOGIN:登录, LOGOUT:登出)';
