@@ -237,3 +237,81 @@ func (h *MenuHandler) UpdateMenuStatus(c *gin.Context) {
 
 	response.Success(c, gin.H{"updated": true})
 }
+
+// UserMenuHandler 用户菜单处理器
+type UserMenuHandler struct {
+	userMenuService *service.UserMenuService
+}
+
+// NewUserMenuHandler 创建用户菜单处理器
+func NewUserMenuHandler(userMenuService *service.UserMenuService) *UserMenuHandler {
+	return &UserMenuHandler{
+		userMenuService: userMenuService,
+	}
+}
+
+// GetUserMenu 获取用户菜单树
+// @Summary 获取用户菜单
+// @Description 获取当前登录用户的菜单树
+// @Tags 用户菜单
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {object} response.Response{data=dto.UserMenuResponse} "获取成功"
+// @Router /user/menu [get]
+func (h *UserMenuHandler) GetUserMenu(c *gin.Context) {
+	// 从上下文获取用户名和租户编码
+	// 这些信息应该从 JWT token 中获取
+	// 暂时使用默认值
+	userName := c.GetHeader("X-User-Name")
+	tenantCode := c.GetHeader("X-Tenant-Code")
+
+	if userName == "" || tenantCode == "" {
+		response.Error(c, xerr.ErrUnauthorized)
+		return
+	}
+
+	resp, err := h.userMenuService.GetUserMenu(c.Request.Context(), userName, tenantCode)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, resp)
+}
+
+// GetUserButtons 获取菜单按钮权限
+// @Summary 获取菜单按钮权限
+// @Description 获取指定菜单的按钮权限
+// @Tags 用户菜单
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param menu_id query string true "菜单ID"
+// @Success 200 {object} response.Response{data=dto.UserButtonsResponse} "获取成功"
+// @Router /user/buttons [get]
+func (h *UserMenuHandler) GetUserButtons(c *gin.Context) {
+	menuID := c.Query("menu_id")
+	if menuID == "" {
+		response.Error(c, xerr.ErrInvalidParams)
+		return
+	}
+
+	// 从上下文获取用户名和租户编码
+	userName := c.GetHeader("X-User-Name")
+	tenantCode := c.GetHeader("X-Tenant-Code")
+
+	if userName == "" || tenantCode == "" {
+		response.Error(c, xerr.ErrUnauthorized)
+		return
+	}
+
+	resp, err := h.userMenuService.GetUserButtons(c.Request.Context(), userName, tenantCode, menuID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, resp)
+}
+

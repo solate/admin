@@ -120,7 +120,7 @@ COMMENT ON COLUMN roles.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 CREATE TABLE menus (
     menu_id VARCHAR(20) PRIMARY KEY,
-    parent_id VARCHAR(20),                            -- 父菜单ID（用于构建树形结构，根菜单为NULL）
+    parent_id VARCHAR(20) NOT NULL DEFAULT '',        -- 父菜单ID（用于构建树形结构，根菜单为空字符串）
 
     -- 菜单基础信息
     name VARCHAR(100) NOT NULL,                      -- 菜单名称
@@ -300,14 +300,14 @@ COMMENT ON COLUMN positions.deleted_at IS '删除时间戳(毫秒,软删除)';
 CREATE TABLE user_positions (
     user_id VARCHAR(20) NOT NULL,
     position_id VARCHAR(20) NOT NULL,
-    is_primary BOOLEAN DEFAULT TRUE,          -- 是否为主岗位
+    is_primary SMALLINT NOT NULL DEFAULT 2,   -- 是否为主岗位(1:是, 2:否)
     PRIMARY KEY (user_id, position_id)
 );
 
 COMMENT ON TABLE user_positions IS '用户多岗关联表(支持用户兼任多个岗位)';
 COMMENT ON COLUMN user_positions.user_id IS '用户ID';
 COMMENT ON COLUMN user_positions.position_id IS '岗位ID';
-COMMENT ON COLUMN user_positions.is_primary IS '是否为主岗位';
+COMMENT ON COLUMN user_positions.is_primary IS '是否为主岗位(1:是, 2:否)';
 
 
 -- ========================================
@@ -364,9 +364,9 @@ CREATE TABLE operation_logs (
     resource_name VARCHAR(255) NOT NULL DEFAULT '',     -- 资源名称
     request_method VARCHAR(10) NOT NULL DEFAULT '',     -- 请求方法(GET, POST, PUT, DELETE)
     request_path VARCHAR(500) NOT NULL DEFAULT '',      -- 请求路径
-    request_params TEXT,                                -- 请求参数（脱敏，可选）
-    old_value TEXT,                                     -- 操作前数据(JSON格式，仅 UPDATE 有)
-    new_value TEXT,                                     -- 操作后数据(JSON格式，仅 CREATE/UPDATE 有)
+    request_params TEXT NOT NULL DEFAULT '',            -- 请求参数（脱敏）
+    old_value TEXT NOT NULL DEFAULT '',                 -- 操作前数据(JSON格式，仅 UPDATE 有)
+    new_value TEXT NOT NULL DEFAULT '',                 -- 操作后数据(JSON格式，仅 CREATE/UPDATE 有)
     status SMALLINT NOT NULL DEFAULT 1,                 -- 操作状态(1:成功, 2:失败)
     error_message TEXT NOT NULL DEFAULT '',             -- 错误信息
     ip_address VARCHAR(50) NOT NULL DEFAULT '',         -- 操作来源IP

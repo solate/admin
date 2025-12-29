@@ -39,9 +39,9 @@ type Handlers struct {
 	UserHandler         *handler.UserHandler
 	TenantHandler       *handler.TenantHandler
 	RoleHandler         *handler.RoleHandler
-	TenantMemberHandler *handler.TenantMemberHandler
 	MenuHandler         *handler.MenuHandler
 	UserMenuHandler     *handler.UserMenuHandler
+	OperationLogHandler *handler.OperationLogHandler
 }
 
 func NewApp() (*App, error) {
@@ -246,20 +246,22 @@ func (s *App) initOperationLogLogger() error {
 func (s *App) initHandlers() error {
 	// 初始化仓库层
 	userRepo := repository.NewUserRepo(s.DB)
-	userTenantRoleRepo := repository.NewUserTenantRoleRepo(s.DB)
+	userRoleRepo := repository.NewUserRoleRepo(s.Enforcer)
 	roleRepo := repository.NewRoleRepo(s.DB)
 	tenantRepo := repository.NewTenantRepo(s.DB)
 	menuRepo := repository.NewMenuRepo(s.DB)
-	userMenuRepo := repository.NewUserMenuRepo(s.DB)
+	permissionRepo := repository.NewPermissionRepo(s.DB)
+	tenantMenuRepo := repository.NewTenantMenuRepo(s.DB)
+	operationLogRepo := repository.NewOperationLogRepo(s.DB)
 
 	// 初始化服务层
-	authService := service.NewAuthService(userRepo, userTenantRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Config) // 初始化认证服务
-	userService := service.NewUserService(userRepo)                                                                     // 初始化用户服务
-	tenantService := service.NewTenantService(tenantRepo)                                                               // 初始化租户服务
-	roleService := service.NewRoleService(roleRepo)                                                                     // 初始化角色服务
-	tenantMemberService := service.NewTenantMemberService(userRepo, roleRepo, userTenantRoleRepo)                       // 初始化租户成员服务
-	menuService := service.NewMenuService(menuRepo)                                                                     // 初始化菜单服务
-	userMenuService := service.NewUserMenuService(userMenuRepo, s.Enforcer)                                             // 初始化用户菜单服务
+	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Config) // 初始化认证服务
+	userService := service.NewUserService(userRepo)                                                        // 初始化用户服务
+	tenantService := service.NewTenantService(tenantRepo)                                                  // 初始化租户服务
+	roleService := service.NewRoleService(roleRepo)                                                          // 初始化角色服务
+	menuService := service.NewMenuService(menuRepo)                                                          // 初始化菜单服务
+	userMenuService := service.NewUserMenuService(permissionRepo, tenantMenuRepo, s.Enforcer)              // 初始化用户菜单服务
+	operationLogService := service.NewOperationLogService(operationLogRepo)                                   // 初始化操作日志服务
 
 	s.Handlers = &Handlers{
 		HealthHandler:       handler.NewHealthHandler(),
@@ -268,9 +270,9 @@ func (s *App) initHandlers() error {
 		UserHandler:         handler.NewUserHandler(userService),
 		TenantHandler:       handler.NewTenantHandler(tenantService),
 		RoleHandler:         handler.NewRoleHandler(roleService),
-		TenantMemberHandler: handler.NewTenantMemberHandler(tenantMemberService),
 		MenuHandler:         handler.NewMenuHandler(menuService),
 		UserMenuHandler:     handler.NewUserMenuHandler(userMenuService),
+		OperationLogHandler: handler.NewOperationLogHandler(operationLogService),
 	}
 	return nil
 }

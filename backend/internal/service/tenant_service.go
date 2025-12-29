@@ -49,12 +49,8 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *dto.TenantCreateR
 		TenantID:   tenantID,
 		TenantCode: req.Code,
 		Name:       req.Name,
+		Description: req.Description,
 		Status:     1, // 默认启用
-	}
-
-	// 设置可选描述
-	if req.Description != "" {
-		tenant.Description = &req.Description
 	}
 
 	// 创建租户
@@ -204,19 +200,13 @@ func (s *TenantService) UpdateTenantStatus(ctx context.Context, tenantID string,
 
 // toTenantResponse 转换为租户响应格式
 func (s *TenantService) toTenantResponse(tenant *model.Tenant) *dto.TenantResponse {
-	resp := &dto.TenantResponse{
-		TenantID:  tenant.TenantID,
-		Code:      tenant.TenantCode,
-		Name:      tenant.Name,
-		Status:    int(tenant.Status),
-		CreatedAt: tenant.CreatedAt,
-		UpdatedAt: tenant.UpdatedAt,
+	return &dto.TenantResponse{
+		TenantID:    tenant.TenantID,
+		Code:        tenant.TenantCode,
+		Name:        tenant.Name,
+		Description: tenant.Description,
+		Status:      int(tenant.Status),
+		CreatedAt:   tenant.CreatedAt,
+		UpdatedAt:   tenant.UpdatedAt,
 	}
-
-	// 处理可选描述字段
-	if tenant.Description != nil {
-		resp.Description = *tenant.Description
-	}
-
-	return resp
 }

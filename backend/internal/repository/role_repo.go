@@ -3,6 +3,8 @@ package repository
 import (
 	"admin/internal/dal/model"
 	"admin/internal/dal/query"
+	"admin/pkg/database"
+
 	"context"
 
 	"gorm.io/gorm"
@@ -30,8 +32,17 @@ func (r *RoleRepo) GetByID(ctx context.Context, roleID string) (*model.Role, err
 	return r.q.Role.WithContext(ctx).Where(r.q.Role.RoleID.Eq(roleID)).First()
 }
 
-// GetByRoleCode 根据角色编码获取角色
-func (r *RoleRepo) GetByRoleCode(ctx context.Context, tenantID, roleCode string) (*model.Role, error) {
+// GetByCode 根据角色编码获取当前租户的角色（依赖自动模式添加 tenant_id 过滤）
+func (r *RoleRepo) GetByCode(ctx context.Context, roleCode string) (*model.Role, error) {
+	return r.q.Role.WithContext(ctx).
+		Where(r.q.Role.RoleCode.Eq(roleCode)).
+		First()
+}
+
+// GetByCodeWithTenant 根据租户ID和角色编码获取角色（手动模式，用于跨租户查询）
+func (r *RoleRepo) GetByCodeWithTenant(ctx context.Context, tenantID, roleCode string) (*model.Role, error) {
+	// 跨租户查询：使用 ManualTenantMode 禁止自动添加当前租户过滤
+	ctx = database.ManualTenantMode(ctx)
 	return r.q.Role.WithContext(ctx).
 		Where(r.q.Role.TenantID.Eq(tenantID)).
 		Where(r.q.Role.RoleCode.Eq(roleCode)).

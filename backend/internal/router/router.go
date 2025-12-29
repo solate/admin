@@ -97,16 +97,6 @@ func Setup(r *gin.Engine, app *App) {
 				role.PUT("/:role_id/status/:status", app.Handlers.RoleHandler.UpdateRoleStatus) // 更新角色状态
 			}
 
-			// 租户成员接口
-			tenantMember := authenticated.Group("/tenant-members")
-			{
-				tenantMember.POST("", app.Handlers.TenantMemberHandler.AddTenantMember)                // 添加租户成员
-				tenantMember.GET("", app.Handlers.TenantMemberHandler.ListTenantMembers)              // 获取租户成员列表
-				tenantMember.POST("/remove", app.Handlers.TenantMemberHandler.RemoveTenantMember)      // 移除租户成员（请求体方式）
-				tenantMember.DELETE("/:user_id", app.Handlers.TenantMemberHandler.RemoveMemberByPath)  // 移除租户成员（路径参数方式）
-				tenantMember.PUT("/roles", app.Handlers.TenantMemberHandler.UpdateMemberRoles)         // 更新成员角色
-			}
-
 			// 菜单接口
 			menu := authenticated.Group("/menus")
 			{
@@ -125,6 +115,13 @@ func Setup(r *gin.Engine, app *App) {
 			{
 				userMenu.GET("/menu", app.Handlers.UserMenuHandler.GetUserMenu)      // 获取用户菜单树
 				userMenu.GET("/buttons", app.Handlers.UserMenuHandler.GetUserButtons) // 获取菜单按钮权限
+			}
+
+			// 操作日志接口
+			operationLog := authenticated.Group("/operation-logs")
+			{
+				operationLog.GET("", app.Handlers.OperationLogHandler.ListOperationLogs)                // 获取操作日志列表
+				operationLog.GET("/:log_id", app.Handlers.OperationLogHandler.GetOperationLog)          // 获取操作日志详情
 			}
 
 		}

@@ -36,6 +36,14 @@ func (r *UserRepo) GetByUserName(ctx context.Context, userName string) (*model.U
 	return r.q.User.WithContext(ctx).Where(r.q.User.UserName.Eq(userName)).First()
 }
 
+// GetByTenantAndUserName 根据租户ID和用户名获取用户（用于登录）
+func (r *UserRepo) GetByTenantAndUserName(ctx context.Context, tenantID, userName string) (*model.User, error) {
+	return r.q.User.WithContext(ctx).
+		Where(r.q.User.TenantID.Eq(tenantID)).
+		Where(r.q.User.UserName.Eq(userName)).
+		First()
+}
+
 // Update 更新用户
 func (r *UserRepo) Update(ctx context.Context, userID string, updates map[string]interface{}) error {
 	_, err := r.q.User.WithContext(ctx).Where(r.q.User.UserID.Eq(userID)).Updates(updates)

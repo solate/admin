@@ -63,27 +63,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Success 200 {object} response.Response "服务器内部错误"
 // @Router /auth/select-tenant [post]
 func (h *AuthHandler) SelectTenant(c *gin.Context) {
-	var req dto.SelectTenantRequest
-	if err := c.BindJSON(&req); err != nil {
-		response.Error(c, err)
-		return
-	}
-
-	// 从上下文获取 user_id（在登录接口返回后，前端需要携带 user_id）
-	// 这里我们假设从前端传来，实际生产中可以使用临时会话 token
-	userID := c.GetHeader("X-User-ID")
-	if userID == "" {
-		response.Error(c, xerr.ErrUnauthorized)
-		return
-	}
-
-	resp, err := h.authService.SelectTenant(c.Request.Context(), userID, req.TenantID)
-	if err != nil {
-		response.Error(c, err)
-		return
-	}
-
-	response.Success(c, resp)
+	// 新的设计中，登录时直接通过 last_tenant_id 指定租户
+	// 不需要单独的选择租户接口
+	// 保留此接口用于兼容，但返回未实现错误
+	response.Error(c, xerr.New(xerr.ErrInternal.Code, "该接口已废弃，请在登录时通过 last_tenant_id 参数指定租户"))
 }
 
 // RefreshRequest 刷新令牌请求

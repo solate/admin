@@ -60,11 +60,6 @@ func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest
 		Status:   int16(req.Status),
 	}
 
-	// 设置可选字段
-	if req.Description != "" {
-		role.Description = &req.Description
-	}
-
 	// 设置默认状态
 	if role.Status == 0 {
 		role.Status = 1 // 默认启用状态
@@ -111,7 +106,7 @@ func (s *RoleService) UpdateRole(ctx context.Context, roleID string, req *dto.Up
 		updates["name"] = req.Name
 	}
 	if req.Description != "" {
-		updates["description"] = &req.Description
+		updates["description"] = req.Description
 	}
 	if req.Status != 0 {
 		updates["status"] = req.Status
@@ -213,20 +208,14 @@ func (s *RoleService) UpdateRoleStatus(ctx context.Context, roleID string, statu
 
 // toRoleResponse 转换为角色响应格式
 func (s *RoleService) toRoleResponse(role *model.Role) *dto.RoleResponse {
-	resp := &dto.RoleResponse{
-		RoleID:    role.RoleID,
-		TenantID:  role.TenantID,
-		RoleCode:  role.RoleCode,
-		Name:      role.Name,
-		Status:    int(role.Status),
-		CreatedAt: role.CreatedAt,
-		UpdatedAt: role.UpdatedAt,
+	return &dto.RoleResponse{
+		RoleID:      role.RoleID,
+		TenantID:    role.TenantID,
+		RoleCode:    role.RoleCode,
+		Name:        role.Name,
+		Description: role.Description,
+		Status:      int(role.Status),
+		CreatedAt:   role.CreatedAt,
+		UpdatedAt:   role.UpdatedAt,
 	}
-
-	// 处理可选字段
-	if role.Description != nil {
-		resp.Description = *role.Description
-	}
-
-	return resp
 }

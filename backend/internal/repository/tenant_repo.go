@@ -25,8 +25,8 @@ func (r *TenantRepo) GetByID(ctx context.Context, tenantID string) (*model.Tenan
 	return r.q.Tenant.WithContext(ctx).Where(r.q.Tenant.TenantID.Eq(tenantID)).First()
 }
 
-// GetByTenantCode 根据租户编码获取租户信息
-func (r *TenantRepo) GetByTenantCode(ctx context.Context, tenantCode string) (*model.Tenant, error) {
+// GetByCode 根据租户编码获取租户信息
+func (r *TenantRepo) GetByCode(ctx context.Context, tenantCode string) (*model.Tenant, error) {
 	return r.q.Tenant.WithContext(ctx).Where(r.q.Tenant.TenantCode.Eq(tenantCode)).First()
 }
 

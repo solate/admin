@@ -8,7 +8,6 @@ import (
 	"admin/pkg/idgen"
 	"admin/pkg/operationlog"
 	"admin/pkg/pagination"
-	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 	"context"
 	"time"
@@ -30,30 +29,21 @@ func NewMenuService(menuRepo *repository.MenuRepo) *MenuService {
 
 // CreateMenu 创建菜单
 func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest) (*dto.MenuInfo, error) {
-	// 获取租户ID
-	tenantID := xcontext.GetTenantID(ctx)
-	if tenantID == "" {
-		return nil, xerr.ErrUnauthorized
+	// 生成菜单ID
+	menuID, err := idgen.GenerateUUID()
+	if err != nil {
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成菜单ID失败", err)
 	}
 
 	// 如果有父菜单，检查父菜单是否存在
 	if req.ParentID != "" {
-		parent, err := s.menuRepo.GetByID(ctx, req.ParentID)
+		_, err := s.menuRepo.GetByID(ctx, req.ParentID)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return nil, xerr.ErrMenuInvalidParent
 			}
 			return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询父菜单失败", err)
 		}
-		if parent.TenantID != tenantID {
-			return nil, xerr.ErrMenuInvalidParent
-		}
-	}
-
-	// 生成菜单ID
-	menuID, err := idgen.GenerateUUID()
-	if err != nil {
-		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成菜单ID失败", err)
 	}
 
 	// 构建菜单模型
@@ -62,49 +52,28 @@ func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest
 		status = constants.MenuStatusShow
 	}
 
-	permission := &model.Permission{
-		PermissionID: menuID,
-		TenantID:     tenantID,
-		Name:         req.Name,
-		Type:         req.Type,
-		Status:       &status,
-	}
-
-	// 设置可选字段
-	if req.ParentID != "" {
-		permission.ParentID = &req.ParentID
-	}
-	if req.Path != "" {
-		permission.Path = &req.Path
-	}
-	if req.Component != "" {
-		permission.Component = &req.Component
-	}
-	if req.Redirect != "" {
-		permission.Redirect = &req.Redirect
-	}
-	if req.Icon != "" {
-		permission.Icon = &req.Icon
-	}
-	if req.Action != "" {
-		permission.Action = &req.Action
-	}
-	if req.Resource != "" {
-		permission.Resource = &req.Resource
-	}
-	if req.Sort != nil {
-		permission.Sort = req.Sort
+	menu := &model.Menu{
+		MenuID:      menuID,
+		ParentID:    req.ParentID,
+		Name:        req.Name,
+		Path:        req.Path,
+		Component:   req.Component,
+		Redirect:    req.Redirect,
+		Icon:        req.Icon,
+		Sort:        int32(*req.Sort),
+		Status:      status,
+		Description: "",
 	}
 
 	// 创建菜单
-	if err := s.menuRepo.Create(ctx, permission); err != nil {
+	if err := s.menuRepo.Create(ctx, menu); err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "创建菜单失败", err)
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordCreate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, permission.PermissionID, permission.Name, permission)
+	ctx = operationlog.RecordCreate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, menu.MenuID, menu.Name, menu)
 
-	return s.toMenuInfo(permission), nil
+	return s.toMenuInfo(menu), nil
 }
 
 // GetMenuByID 获取菜单详情
@@ -139,17 +108,12 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 		}
 
 		// 检查父菜单是否存在
-		parent, err := s.menuRepo.GetByID(ctx, req.ParentID)
+		_, err := s.menuRepo.GetByID(ctx, req.ParentID)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
 				return nil, xerr.ErrMenuInvalidParent
 			}
 			return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询父菜单失败", err)
-		}
-
-		tenantID := xcontext.GetTenantID(ctx)
-		if parent.TenantID != tenantID {
-			return nil, xerr.ErrMenuInvalidParent
 		}
 	}
 
@@ -173,14 +137,8 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 	if req.Icon != "" {
 		updates["icon"] = req.Icon
 	}
-	if req.Action != "" {
-		updates["action"] = req.Action
-	}
-	if req.Resource != "" {
-		updates["resource"] = req.Resource
-	}
 	if req.Sort != nil {
-		updates["sort"] = req.Sort
+		updates["sort"] = int32(*req.Sort)
 	}
 	if req.Status != 0 {
 		updates["status"] = int16(req.Status)
@@ -199,7 +157,7 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordUpdate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, updatedMenu.PermissionID, updatedMenu.Name, oldMenu, updatedMenu)
+	ctx = operationlog.RecordUpdate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, updatedMenu.MenuID, updatedMenu.Name, oldMenu, updatedMenu)
 
 	return s.toMenuInfo(updatedMenu), nil
 }
@@ -230,25 +188,19 @@ func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) error {
 	}
 
 	// 记录操作日志
-	operationlog.RecordDelete(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, menu.PermissionID, menu.Name, menu)
+	operationlog.RecordDelete(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, menu.MenuID, menu.Name, menu)
 
 	return nil
 }
 
 // ListMenus 获取菜单列表
 func (s *MenuService) ListMenus(ctx context.Context, req *dto.ListMenusRequest) (*dto.ListMenusResponse, error) {
-	// 获取租户ID
-	tenantID := xcontext.GetTenantID(ctx)
-	if tenantID == "" {
-		return nil, xerr.ErrUnauthorized
-	}
-
 	// 获取菜单列表和总数，支持筛选条件
 	var statusFilter *int16
 	if req.Status != nil {
 		statusFilter = req.Status
 	}
-	menus, total, err := s.menuRepo.ListWithFilters(ctx, tenantID, req.GetOffset(), req.GetLimit(), req.Name, req.Type, statusFilter)
+	menus, total, err := s.menuRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Name, statusFilter)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单列表失败", err)
 	}
@@ -267,14 +219,8 @@ func (s *MenuService) ListMenus(ctx context.Context, req *dto.ListMenusRequest) 
 
 // GetAllMenus 获取所有菜单（平铺）
 func (s *MenuService) GetAllMenus(ctx context.Context) (*dto.AllMenusResponse, error) {
-	// 获取租户ID
-	tenantID := xcontext.GetTenantID(ctx)
-	if tenantID == "" {
-		return nil, xerr.ErrUnauthorized
-	}
-
 	// 获取所有菜单
-	menus, err := s.menuRepo.ListByTenant(ctx, tenantID)
+	menus, err := s.menuRepo.List(ctx)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单列表失败", err)
 	}
@@ -292,14 +238,8 @@ func (s *MenuService) GetAllMenus(ctx context.Context) (*dto.AllMenusResponse, e
 
 // GetMenuTree 获取菜单树
 func (s *MenuService) GetMenuTree(ctx context.Context) (*dto.MenuTreeResponse, error) {
-	// 获取租户ID
-	tenantID := xcontext.GetTenantID(ctx)
-	if tenantID == "" {
-		return nil, xerr.ErrUnauthorized
-	}
-
 	// 获取所有菜单
-	menus, err := s.menuRepo.ListByTenant(ctx, tenantID)
+	menus, err := s.menuRepo.List(ctx)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单列表失败", err)
 	}
@@ -335,17 +275,17 @@ func (s *MenuService) UpdateMenuStatus(ctx context.Context, menuID string, statu
 	}
 
 	// 记录操作日志
-	operationlog.RecordUpdate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, updatedMenu.PermissionID, updatedMenu.Name, oldMenu, updatedMenu)
+	operationlog.RecordUpdate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, updatedMenu.MenuID, updatedMenu.Name, oldMenu, updatedMenu)
 
 	return nil
 }
 
 // buildMenuTree 构建菜单树
-func (s *MenuService) buildMenuTree(menus []*model.Permission) []*dto.MenuTreeNode {
+func (s *MenuService) buildMenuTree(menus []*model.Menu) []*dto.MenuTreeNode {
 	// 创建节点映射
 	nodeMap := make(map[string]*dto.MenuTreeNode)
 	for _, menu := range menus {
-		nodeMap[menu.PermissionID] = &dto.MenuTreeNode{
+		nodeMap[menu.MenuID] = &dto.MenuTreeNode{
 			MenuInfo: s.toMenuInfo(menu),
 			Children: []*dto.MenuTreeNode{},
 		}
@@ -354,11 +294,11 @@ func (s *MenuService) buildMenuTree(menus []*model.Permission) []*dto.MenuTreeNo
 	// 构建树结构
 	var roots []*dto.MenuTreeNode
 	for _, menu := range menus {
-		node := nodeMap[menu.PermissionID]
-		if menu.ParentID == nil || *menu.ParentID == "" {
+		node := nodeMap[menu.MenuID]
+		if menu.ParentID == "" {
 			// 顶级菜单
 			roots = append(roots, node)
-		} else if parent, exists := nodeMap[*menu.ParentID]; exists {
+		} else if parent, exists := nodeMap[menu.ParentID]; exists {
 			// 添加到父菜单的子节点
 			parent.Children = append(parent.Children, node)
 		}
@@ -368,29 +308,21 @@ func (s *MenuService) buildMenuTree(menus []*model.Permission) []*dto.MenuTreeNo
 }
 
 // toMenuInfo 转换为菜单信息格式
-func (s *MenuService) toMenuInfo(menu *model.Permission) *dto.MenuInfo {
-	status := int16(constants.MenuStatusShow) // 默认显示
-	if menu.Status != nil {
-		status = *menu.Status
-	}
-
-	info := &dto.MenuInfo{
-		PermissionID: menu.PermissionID,
-		TenantID:     menu.TenantID,
+func (s *MenuService) toMenuInfo(menu *model.Menu) *dto.MenuInfo {
+	sort := int16(menu.Sort)
+	return &dto.MenuInfo{
+		PermissionID: menu.MenuID,
 		Name:         menu.Name,
-		Type:         menu.Type,
-		ParentID:     menu.ParentID,
-		Resource:     menu.Resource,
-		Action:       menu.Action,
-		Path:         menu.Path,
-		Component:    menu.Component,
-		Redirect:     menu.Redirect,
-		Icon:         menu.Icon,
-		Sort:         menu.Sort,
-		Status:       status,
-		Description:  menu.Description,
+		Type:         constants.TypeMenu,
+		ParentID:     &menu.ParentID,
+		Path:         &menu.Path,
+		Component:    &menu.Component,
+		Redirect:     &menu.Redirect,
+		Icon:         &menu.Icon,
+		Sort:         &sort,
+		Status:       menu.Status,
+		Description:  &menu.Description,
 		CreatedAt:    menu.CreatedAt,
 		UpdatedAt:    menu.UpdatedAt,
 	}
-	return info
 }

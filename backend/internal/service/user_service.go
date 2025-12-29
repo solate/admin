@@ -62,20 +62,14 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 		UserName: req.UserName,
 		Password: hashedPassword,
 		Name:     req.Name,
+		Phone:    req.Phone,
+		Email:    req.Email,
 		Status:   int16(req.Status),
 	}
 
 	// 如果没有传入姓名，使用用户名作为默认值
 	if user.Name == "" {
 		user.Name = req.UserName
-	}
-
-	// 设置可选字段
-	if req.Phone != "" {
-		user.Phone = &req.Phone
-	}
-	if req.Email != "" {
-		user.Email = &req.Email
 	}
 
 	// 设置默认状态
@@ -241,33 +235,16 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, statu
 
 // toUserResponse 转换为用户响应格式
 func (s *UserService) toUserResponse(ctx context.Context, user *model.User) *dto.UserResponse {
-	// 处理可能为nil的指针字段
-	var phone, email, avatar string
-	if user.Phone != nil {
-		phone = *user.Phone
-	}
-	if user.Email != nil {
-		email = *user.Email
-	}
-	if user.Avatar != nil {
-		avatar = *user.Avatar
-	}
-
-	var lastLoginTime int64
-	if user.LastLoginTime != nil {
-		lastLoginTime = *user.LastLoginTime
-	}
-
 	return &dto.UserResponse{
 		UserID:        user.UserID,
 		UserName:      user.UserName,
 		Name:          user.Name,
-		Avatar:        avatar,
-		Phone:         phone,
-		Email:         email,
+		Avatar:        user.Avatar,
+		Phone:         user.Phone,
+		Email:         user.Email,
 		Status:        int(user.Status),
 		TenantID:      xcontext.GetTenantID(ctx),
-		LastLoginTime: lastLoginTime,
+		LastLoginTime: user.LastLoginTime,
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
 	}

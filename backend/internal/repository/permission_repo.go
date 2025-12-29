@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// PermissionRepo 权限数据访问层，处理权限的基础 CRUD 操作
+// PermissionRepo 权限点数据访问层
 type PermissionRepo struct {
 	db *gorm.DB
 	q  *query.Query
@@ -22,35 +22,44 @@ func NewPermissionRepo(db *gorm.DB) *PermissionRepo {
 	}
 }
 
-// Create 创建权限
+// Create 创建权限点
 func (r *PermissionRepo) Create(ctx context.Context, permission *model.Permission) error {
 	return r.q.Permission.WithContext(ctx).Create(permission)
 }
 
-// CreateBatch 批量创建权限
+// CreateBatch 批量创建权限点
 func (r *PermissionRepo) CreateBatch(ctx context.Context, permissions []*model.Permission) error {
+	if len(permissions) == 0 {
+		return nil
+	}
 	return r.q.Permission.WithContext(ctx).Create(permissions...)
 }
 
-// GetByID 根据ID获取权限
+// GetByID 根据ID获取权限点
 func (r *PermissionRepo) GetByID(ctx context.Context, permissionID string) (*model.Permission, error) {
 	return r.q.Permission.WithContext(ctx).
 		Where(r.q.Permission.PermissionID.Eq(permissionID)).
 		First()
 }
 
-// GetByIDs 根据ID列表获取权限列表
+// GetByIDs 根据ID列表获取权限点列表
 func (r *PermissionRepo) GetByIDs(ctx context.Context, ids []string) ([]*model.Permission, error) {
 	if len(ids) == 0 {
 		return []*model.Permission{}, nil
 	}
 	return r.q.Permission.WithContext(ctx).
 		Where(r.q.Permission.PermissionID.In(ids...)).
-		Order(r.q.Permission.Sort.Asc()).
 		Find()
 }
 
-// Update 更新权限
+// GetByResource 根据资源标识获取权限点
+func (r *PermissionRepo) GetByResource(ctx context.Context, resource string) (*model.Permission, error) {
+	return r.q.Permission.WithContext(ctx).
+		Where(r.q.Permission.Resource.Eq(resource)).
+		First()
+}
+
+// Update 更新权限点
 func (r *PermissionRepo) Update(ctx context.Context, permissionID string, updates map[string]interface{}) error {
 	_, err := r.q.Permission.WithContext(ctx).
 		Where(r.q.Permission.PermissionID.Eq(permissionID)).
@@ -58,7 +67,7 @@ func (r *PermissionRepo) Update(ctx context.Context, permissionID string, update
 	return err
 }
 
-// Delete 删除权限（软删除）
+// Delete 删除权限点（软删除）
 func (r *PermissionRepo) Delete(ctx context.Context, permissionID string) error {
 	_, err := r.q.Permission.WithContext(ctx).
 		Where(r.q.Permission.PermissionID.Eq(permissionID)).
@@ -66,7 +75,7 @@ func (r *PermissionRepo) Delete(ctx context.Context, permissionID string) error 
 	return err
 }
 
-// DeleteBatch 批量删除权限（软删除）
+// DeleteBatch 批量删除权限点（软删除）
 func (r *PermissionRepo) DeleteBatch(ctx context.Context, ids []string) error {
 	if len(ids) == 0 {
 		return nil
@@ -77,42 +86,28 @@ func (r *PermissionRepo) DeleteBatch(ctx context.Context, ids []string) error {
 	return err
 }
 
-// List 根据筛选条件获取权限列表
-func (r *PermissionRepo) List(ctx context.Context, tenantID string, offset, limit int) ([]*model.Permission, int64, error) {
-	query := r.q.Permission.WithContext(ctx).Where(r.q.Permission.TenantID.Eq(tenantID))
-
-	total, err := query.Count()
-	if err != nil {
-		return nil, 0, err
-	}
-
-	permissions, err := query.
-		Order(r.q.Permission.Sort.Asc()).
-		Offset(offset).
-		Limit(limit).
-		Find()
-	return permissions, total, err
+// List 获取所有权限点列表
+func (r *PermissionRepo) List(ctx context.Context) ([]*model.Permission, error) {
+	return r.q.Permission.WithContext(ctx).Find()
 }
 
-// ListWithFilters 根据筛选条件分页获取权限列表
-func (r *PermissionRepo) ListWithFilters(ctx context.Context, tenantID string, offset, limit int, filters map[string]interface{}) ([]*model.Permission, int64, error) {
-	query := r.q.Permission.WithContext(ctx).Where(r.q.Permission.TenantID.Eq(tenantID))
+// ListByType 根据类型获取权限点列表
+func (r *PermissionRepo) ListByType(ctx context.Context, permissionType string) ([]*model.Permission, error) {
+	return r.q.Permission.WithContext(ctx).
+		Where(r.q.Permission.Type.Eq(permissionType)).
+		Find()
+}
+
+// ListWithFilters 根据筛选条件分页获取权限点列表
+func (r *PermissionRepo) ListWithFilters(ctx context.Context, offset, limit int, nameFilter, typeFilter string) ([]*model.Permission, int64, error) {
+	query := r.q.Permission.WithContext(ctx)
 
 	// 应用筛选条件
-	if nameFilter, ok := filters["name"].(string); ok && nameFilter != "" {
+	if nameFilter != "" {
 		query = query.Where(r.q.Permission.Name.Like("%" + nameFilter + "%"))
 	}
-	if typeFilter, ok := filters["type"].(string); ok && typeFilter != "" {
+	if typeFilter != "" {
 		query = query.Where(r.q.Permission.Type.Eq(typeFilter))
-	}
-	if statusFilter, ok := filters["status"].(int16); ok {
-		query = query.Where(r.q.Permission.Status.Eq(statusFilter))
-	}
-	if sourceTypeFilter, ok := filters["source_type"].(string); ok && sourceTypeFilter != "" {
-		query = query.Where(r.q.Permission.SourceType.Eq(sourceTypeFilter))
-	}
-	if parentIDFilter, ok := filters["parent_id"].(string); ok && parentIDFilter != "" {
-		query = query.Where(r.q.Permission.ParentID.Eq(parentIDFilter))
 	}
 
 	// 获取总数
@@ -123,17 +118,16 @@ func (r *PermissionRepo) ListWithFilters(ctx context.Context, tenantID string, o
 
 	// 分页查询
 	permissions, err := query.
-		Order(r.q.Permission.Sort.Asc()).
+		Order(r.q.Permission.PermissionID.Desc()).
 		Offset(offset).
 		Limit(limit).
 		Find()
 	return permissions, total, err
 }
 
-// CheckExistsByName 检查权限名称是否存在（租户内）
-func (r *PermissionRepo) CheckExistsByName(ctx context.Context, tenantID, name string) (bool, error) {
+// CheckExistsByName 检查权限名称是否存在
+func (r *PermissionRepo) CheckExistsByName(ctx context.Context, name string) (bool, error) {
 	count, err := r.q.Permission.WithContext(ctx).
-		Where(r.q.Permission.TenantID.Eq(tenantID)).
 		Where(r.q.Permission.Name.Eq(name)).
 		Count()
 	if err != nil {
@@ -142,9 +136,24 @@ func (r *PermissionRepo) CheckExistsByName(ctx context.Context, tenantID, name s
 	return count > 0, nil
 }
 
-// GetChildrenCount 获取子权限数量
-func (r *PermissionRepo) GetChildrenCount(ctx context.Context, parentID string) (int64, error) {
-	return r.q.Permission.WithContext(ctx).
-		Where(r.q.Permission.ParentID.Eq(parentID)).
+// CheckExistsByResource 检查资源标识是否存在
+func (r *PermissionRepo) CheckExistsByResource(ctx context.Context, resource string) (bool, error) {
+	count, err := r.q.Permission.WithContext(ctx).
+		Where(r.q.Permission.Resource.Eq(resource)).
 		Count()
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// Exists 检查权限点是否存在
+func (r *PermissionRepo) Exists(ctx context.Context, permissionID string) (bool, error) {
+	count, err := r.q.Permission.WithContext(ctx).
+		Where(r.q.Permission.PermissionID.Eq(permissionID)).
+		Count()
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

@@ -81,7 +81,7 @@ func (w *Writer) writeOperationLog(entry *LogEntry, lc *LogContext) error {
 		ResourceName:    lc.ResourceName,
 		RequestMethod:   entry.RequestMethod,
 		RequestPath:     entry.RequestPath,
-		RequestParams:   stringPtr(entry.RequestParams),
+		RequestParams:   entry.RequestParams,
 		OldValue:        serializeJSON(lc.OldValue),
 		NewValue:        serializeJSON(lc.NewValue),
 		Status:          lc.Status,
@@ -95,21 +95,14 @@ func (w *Writer) writeOperationLog(entry *LogEntry, lc *LogContext) error {
 	return nil
 }
 
-func serializeJSON(v any) *string {
+func serializeJSON(v any) string {
 	if v == nil {
-		return nil
+		return ""
 	}
 	data, err := json.Marshal(v)
 	if err != nil {
-		return nil
+		return ""
 	}
-	s := string(data)
-	return &s
+	return string(data)
 }
 
-func stringPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}

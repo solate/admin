@@ -1,8 +1,6 @@
 package constants
 
 const (
-	// DefaultTenantID 默认租户ID（为空字符串，用于区分默认租户和普通租户）
-	DefaultTenantID = ""
 	// DefaultTenantCode 默认租户编码（超管租户，用于 Casbin domain）
 	DefaultTenantCode = "default"
 	// SuperAdminRole 超级管理员角色code
