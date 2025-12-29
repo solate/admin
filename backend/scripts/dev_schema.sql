@@ -319,13 +319,12 @@ CREATE TABLE login_logs (
     tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(20) NOT NULL,
     user_name VARCHAR(100) NOT NULL,               -- 登录账号
-    nickname VARCHAR(100) NOT NULL DEFAULT '',      -- 昵称
     login_type VARCHAR(20) NOT NULL DEFAULT '',     -- PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录
-    login_ip VARCHAR(50) NOT NULL DEFAULT '',           -- 登录IP地址
+    login_ip VARCHAR(50) NOT NULL DEFAULT '',       -- 登录IP地址
     login_location VARCHAR(100) NOT NULL DEFAULT '',    -- 登录位置(IP解析的地理位置)
-    user_agent VARCHAR(255) NOT NULL DEFAULT '',        -- 用户代理(浏览器/客户端信息)
-    status SMALLINT NOT NULL DEFAULT 1,                 -- 状态(1:成功, 0:失败)
-    fail_reason VARCHAR(255) NOT NULL DEFAULT '',       -- 失败原因
+    user_agent VARCHAR(255) NOT NULL DEFAULT '',    -- 用户代理(浏览器/客户端信息)
+    status SMALLINT NOT NULL DEFAULT 1,            -- 状态(1:成功, 0:失败)
+    fail_reason VARCHAR(255) NOT NULL DEFAULT '',  -- 失败原因
     created_at BIGINT NOT NULL DEFAULT 0
 );
 
@@ -337,7 +336,6 @@ COMMENT ON COLUMN login_logs.log_id IS '日志ID(18位字符串)';
 COMMENT ON COLUMN login_logs.tenant_id IS '租户ID';
 COMMENT ON COLUMN login_logs.user_id IS '用户ID';
 COMMENT ON COLUMN login_logs.user_name IS '登录账号';
-COMMENT ON COLUMN login_logs.nickname IS '昵称';
 COMMENT ON COLUMN login_logs.login_type IS '登录类型(PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录)';
 COMMENT ON COLUMN login_logs.login_ip IS '登录IP地址';
 COMMENT ON COLUMN login_logs.login_location IS '登录位置(IP解析的地理位置)';
@@ -355,22 +353,21 @@ CREATE TABLE operation_logs (
     log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(20) NOT NULL,
-    user_name VARCHAR(100) NOT NULL,                 -- 登录账号
-    nickname VARCHAR(100) NOT NULL DEFAULT '',        -- 昵称
-    module VARCHAR(50) NOT NULL DEFAULT '',           -- 模块名
-    operation_type VARCHAR(20) NOT NULL DEFAULT '',     -- CREATE:创建, UPDATE:更新, DELETE:删除, QUERY:查询
-    resource_type VARCHAR(50) NOT NULL DEFAULT '',      -- 资源类型
-    resource_id VARCHAR(255) NOT NULL DEFAULT '',       -- 资源ID
-    resource_name VARCHAR(255) NOT NULL DEFAULT '',     -- 资源名称
-    request_method VARCHAR(10) NOT NULL DEFAULT '',     -- 请求方法(GET, POST, PUT, DELETE)
-    request_path VARCHAR(500) NOT NULL DEFAULT '',      -- 请求路径
-    request_params TEXT NOT NULL DEFAULT '',            -- 请求参数（脱敏）
-    old_value TEXT NOT NULL DEFAULT '',                 -- 操作前数据(JSON格式，仅 UPDATE 有)
-    new_value TEXT NOT NULL DEFAULT '',                 -- 操作后数据(JSON格式，仅 CREATE/UPDATE 有)
-    status SMALLINT NOT NULL DEFAULT 1,                 -- 操作状态(1:成功, 2:失败)
-    error_message TEXT NOT NULL DEFAULT '',             -- 错误信息
-    ip_address VARCHAR(50) NOT NULL DEFAULT '',         -- 操作来源IP
-    user_agent TEXT NOT NULL DEFAULT '',                -- 用户代理信息
+    user_name VARCHAR(100) NOT NULL,             -- 登录账号
+    module VARCHAR(50) NOT NULL DEFAULT '',       -- 模块名
+    operation_type VARCHAR(20) NOT NULL DEFAULT '',   -- CREATE:创建, UPDATE:更新, DELETE:删除, QUERY:查询
+    resource_type VARCHAR(50) NOT NULL DEFAULT '',    -- 资源类型
+    resource_id VARCHAR(255) NOT NULL DEFAULT '',     -- 资源ID
+    resource_name VARCHAR(255) NOT NULL DEFAULT '',   -- 资源名称
+    request_method VARCHAR(10) NOT NULL DEFAULT '',   -- 请求方法(GET, POST, PUT, DELETE)
+    request_path VARCHAR(500) NOT NULL DEFAULT '',    -- 请求路径
+    request_params TEXT NOT NULL DEFAULT '',          -- 请求参数（脱敏）
+    old_value TEXT NOT NULL DEFAULT '',               -- 操作前数据(JSON格式，仅 UPDATE 有)
+    new_value TEXT NOT NULL DEFAULT '',               -- 操作后数据(JSON格式，仅 CREATE/UPDATE 有)
+    status SMALLINT NOT NULL DEFAULT 1,               -- 操作状态(1:成功, 2:失败)
+    error_message TEXT NOT NULL DEFAULT '',           -- 错误信息
+    ip_address VARCHAR(50) NOT NULL DEFAULT '',       -- 操作来源IP
+    user_agent TEXT NOT NULL DEFAULT '',              -- 用户代理信息
     created_at BIGINT NOT NULL DEFAULT 0
 );
 
@@ -385,7 +382,6 @@ COMMENT ON COLUMN operation_logs.log_id IS '日志ID(18位字符串)';
 COMMENT ON COLUMN operation_logs.tenant_id IS '租户ID';
 COMMENT ON COLUMN operation_logs.user_id IS '操作人用户ID';
 COMMENT ON COLUMN operation_logs.user_name IS '登录账号';
-COMMENT ON COLUMN operation_logs.nickname IS '昵称';
 COMMENT ON COLUMN operation_logs.module IS '模块名';
 COMMENT ON COLUMN operation_logs.operation_type IS '操作类型(CREATE:创建, UPDATE:更新, DELETE:删除, QUERY:查询)';
 COMMENT ON COLUMN operation_logs.resource_type IS '资源类型';

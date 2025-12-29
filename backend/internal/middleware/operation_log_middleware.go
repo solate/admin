@@ -48,7 +48,6 @@ func OperationLogMiddleware(writer *operationlog.Writer) gin.HandlerFunc {
 			TenantID:      lc.TenantID,
 			UserID:        userID,
 			UserName:      userName,
-			Nickname:      lc.Nickname,
 			RequestMethod: c.Request.Method,
 			RequestPath:   c.Request.URL.Path,
 			RequestParams: requestParams,

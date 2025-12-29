@@ -57,22 +57,20 @@ func RecordQuery(ctx context.Context, module, resourceType string) context.Conte
 }
 
 // RecordLogin 记录登录操作
-func RecordLogin(ctx context.Context, userID, userName, nickname string) context.Context {
+func RecordLogin(ctx context.Context, userID, userName string) context.Context {
 	lc := Record(ctx, constants.ModuleAuth, constants.OperationLogin)
 	lc.ResourceType = "user"
 	lc.ResourceID = userID
 	lc.ResourceName = userName
-	lc.Nickname = nickname
 	return WithLogContext(ctx, lc)
 }
 
 // RecordLogout 记录登出操作
-func RecordLogout(ctx context.Context, userID, userName, nickname string) context.Context {
+func RecordLogout(ctx context.Context, userID, userName string) context.Context {
 	lc := Record(ctx, constants.ModuleAuth, constants.OperationLogout)
 	lc.ResourceType = "user"
 	lc.ResourceID = userID
 	lc.ResourceName = userName
-	lc.Nickname = nickname
 	return WithLogContext(ctx, lc)
 }
 
