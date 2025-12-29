@@ -128,7 +128,7 @@ CREATE TABLE menus (
     component VARCHAR(255) NOT NULL DEFAULT '',      -- 前端组件路径
     redirect VARCHAR(255) NOT NULL DEFAULT '',       -- 重定向路径
     icon VARCHAR(100) NOT NULL DEFAULT '',           -- 图标
-    sort INT DEFAULT 0,                              -- 排序权重
+    sort INT NOT NULL DEFAULT 0,                     -- 排序权重
 
     -- 状态控制（1=启用且显示, 2=禁用且隐藏）
     status SMALLINT NOT NULL DEFAULT 1,              -- 状态(1:启用, 2:禁用)
@@ -240,7 +240,7 @@ CREATE TABLE departments (
     department_name VARCHAR(100) NOT NULL,            -- 部门名称
     department_code VARCHAR(50) NOT NULL DEFAULT '',   -- 部门编码
     description TEXT NOT NULL DEFAULT '',              -- 部门描述
-    sort INT DEFAULT 0,                               -- 排序权重
+    sort INT NOT NULL DEFAULT 0,                      -- 排序权重
     status SMALLINT NOT NULL DEFAULT 1,               -- 状态 (1:启用, 2:禁用)
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
@@ -274,7 +274,7 @@ CREATE TABLE positions (
     position_name VARCHAR(100) NOT NULL,              -- 岗位名称
     level INT NOT NULL DEFAULT 0,                     -- 职级
     description TEXT NOT NULL DEFAULT '',             -- 岗位描述
-    sort INT DEFAULT 0,                               -- 排序权重
+    sort INT NOT NULL DEFAULT 0,                      -- 排序权重
     status SMALLINT NOT NULL DEFAULT 1,               -- 状态 (1:启用, 2:禁用)
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
