@@ -4,6 +4,7 @@ import (
 	"admin/internal/handler"
 	"admin/internal/repository"
 	"admin/internal/service"
+	"admin/pkg/cache"
 	"admin/pkg/casbin"
 	"admin/pkg/config"
 	"admin/pkg/database"
@@ -58,6 +59,11 @@ func NewApp() (*App, error) {
 	// 3. 初始化数据库
 	if err := app.initDatabase(app.Config); err != nil {
 		return nil, fmt.Errorf("failed to init database: %w", err)
+	}
+
+	// 3.5 初始化缓存（租户缓存等）
+	if err := cache.Init(app.DB); err != nil {
+		return nil, fmt.Errorf("failed to init cache: %w", err)
 	}
 
 	// 4. 初始化Redis
