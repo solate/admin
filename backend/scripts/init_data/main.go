@@ -129,7 +129,7 @@ func printResult(result *SeedResult) {
 	fmt.Println("┌─────────────────────────────────────────────────────────────────┐")
 	fmt.Printf("│ 用户名: %-55s │\n", result.User.UserName)
 	fmt.Printf("│ 密码:   %-55s │\n", result.Password)
-	fmt.Printf("│ 姓名:   %-55s │\n", result.User.Name)
+	fmt.Printf("│ 昵称:   %-55s │\n", result.User.Nickname)
 	fmt.Printf("│ 邮箱:   %-55s │\n", result.User.Email)
 	fmt.Printf("│ 手机:   %-55s │\n", result.User.Phone)
 	fmt.Println("└─────────────────────────────────────────────────────────────────┘")

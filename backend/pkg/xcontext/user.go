@@ -11,9 +11,8 @@ const (
 
 // UserContext 用户上下文信息
 type UserContext struct {
-	UserID          string
-	UserName        string
-	UserDisplayName string
+	UserID   string
+	UserName string
 }
 
 // SetUserID 设置用户ID到context
@@ -44,19 +43,4 @@ func GetUserName(ctx context.Context) string {
 	}
 	userName, _ := value.(string)
 	return userName
-}
-
-// SetUserDisplayName 设置用户显示名称到context
-func SetUserDisplayName(ctx context.Context, userDisplayName string) context.Context {
-	return context.WithValue(ctx, UserDisplayNameKey, userDisplayName)
-}
-
-// GetUserDisplayName 从context获取用户显示名称，如果不存在返回空字符串
-func GetUserDisplayName(ctx context.Context) string {
-	value := ctx.Value(UserDisplayNameKey)
-	if value == nil {
-		return ""
-	}
-	userDisplayName, _ := value.(string)
-	return userDisplayName
 }

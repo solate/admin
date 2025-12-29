@@ -107,7 +107,7 @@ func (r *UserRepo) ListByIDsAndFilters(ctx context.Context, userIDs []string, of
 	// 应用筛选条件
 	if keywordFilter != "" {
 		query = query.Where(r.q.User.UserName.Like("%"+keywordFilter+"%")).
-			Or(r.q.User.Name.Like("%"+keywordFilter+"%"))
+			Or(r.q.User.Nickname.Like("%"+keywordFilter+"%"))
 	}
 	if statusFilter != 0 {
 		query = query.Where(r.q.User.Status.Eq(int16(statusFilter)))

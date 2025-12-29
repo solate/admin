@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"admin/pkg/casbin"
+	"admin/pkg/constants"
 	"admin/pkg/response"
 	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
@@ -10,8 +11,18 @@ import (
 )
 
 // CasbinMiddleware creates a middleware that enforces Casbin RBAC policies
+// 说明：
+// - 超管（super_admin 角色）跳过权限检查
+// - 普通用户通过 Casbin 验证 (username, tenantCode, path, method)
 func CasbinMiddleware(enforcer *casbin.Enforcer) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 超管跳过权限检查
+		roles := xcontext.GetRoles(c.Request.Context())
+		if isSuperAdmin(roles) {
+			c.Next()
+			return
+		}
+
 		userName := xcontext.GetUserName(c.Request.Context())
 		tenantCode := xcontext.GetTenantCode(c.Request.Context())
 
@@ -43,4 +54,14 @@ func CasbinMiddleware(enforcer *casbin.Enforcer) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// isSuperAdmin 检查是否为超级管理员
+func isSuperAdmin(roles []string) bool {
+	for _, role := range roles {
+		if role == constants.SuperAdmin {
+			return true
+		}
+	}
+	return false
 }

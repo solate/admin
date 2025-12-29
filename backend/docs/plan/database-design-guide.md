@@ -80,9 +80,9 @@ func (r *RoleRepo) GetByCodeWithTenant(ctx context.Context, tenantID, roleCode s
 ```go
 // 推荐：NOT NULL -> string
 type User struct {
-    Name string `gorm:"column:name;not null"`
+    Nickname string `gorm:"column:nickname;not null"`
 }
-if user.Name != "" { }
+if user.Nickname != "" { }
 
 // 必要时：NULL -> *string
 type User struct {

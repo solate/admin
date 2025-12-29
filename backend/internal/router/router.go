@@ -41,10 +41,7 @@ func Setup(r *gin.Engine, app *App) {
 		public := v1.Group("")
 		{
 			// 登录/注册相关接口 - 需要跳过租户检查
-			// 说明：登录时需要跨租户查询用户关联的租户信息，因此使用 SkipTenantCheck 中间件
 			auth := public.Group("/auth")
-			auth.Use(middleware.SkipTenantCheck())
-			auth.Use(middleware.OperationLogMiddleware(app.OperationLogWriter))
 			{
 				auth.GET("/captcha", app.Handlers.CaptchaHandler.Get)   // 获取验证码
 				auth.POST("/login", app.Handlers.AuthHandler.Login)     // 用户登录
@@ -78,11 +75,11 @@ func Setup(r *gin.Engine, app *App) {
 			// 租户接口
 			tenant := authenticated.Group("/tenants")
 			{
-				tenant.POST("", app.Handlers.TenantHandler.CreateTenant)                              // 创建租户
-				tenant.GET("", app.Handlers.TenantHandler.ListTenants)                                // 获取租户列表
-				tenant.GET("/:tenant_id", app.Handlers.TenantHandler.GetTenant)                       // 获取租户详情
-				tenant.PUT("/:tenant_id", app.Handlers.TenantHandler.UpdateTenant)                    // 更新租户
-				tenant.DELETE("/:tenant_id", app.Handlers.TenantHandler.DeleteTenant)                // 删除租户
+				tenant.POST("", app.Handlers.TenantHandler.CreateTenant)                                // 创建租户
+				tenant.GET("", app.Handlers.TenantHandler.ListTenants)                                  // 获取租户列表
+				tenant.GET("/:tenant_id", app.Handlers.TenantHandler.GetTenant)                         // 获取租户详情
+				tenant.PUT("/:tenant_id", app.Handlers.TenantHandler.UpdateTenant)                      // 更新租户
+				tenant.DELETE("/:tenant_id", app.Handlers.TenantHandler.DeleteTenant)                   // 删除租户
 				tenant.PUT("/:tenant_id/status/:status", app.Handlers.TenantHandler.UpdateTenantStatus) // 更新租户状态
 			}
 
@@ -113,15 +110,15 @@ func Setup(r *gin.Engine, app *App) {
 			// 用户菜单接口（基于权限动态加载）
 			userMenu := authenticated.Group("/user")
 			{
-				userMenu.GET("/menu", app.Handlers.UserMenuHandler.GetUserMenu)      // 获取用户菜单树
+				userMenu.GET("/menu", app.Handlers.UserMenuHandler.GetUserMenu)       // 获取用户菜单树
 				userMenu.GET("/buttons", app.Handlers.UserMenuHandler.GetUserButtons) // 获取菜单按钮权限
 			}
 
 			// 操作日志接口
 			operationLog := authenticated.Group("/operation-logs")
 			{
-				operationLog.GET("", app.Handlers.OperationLogHandler.ListOperationLogs)                // 获取操作日志列表
-				operationLog.GET("/:log_id", app.Handlers.OperationLogHandler.GetOperationLog)          // 获取操作日志详情
+				operationLog.GET("", app.Handlers.OperationLogHandler.ListOperationLogs)       // 获取操作日志列表
+				operationLog.GET("/:log_id", app.Handlers.OperationLogHandler.GetOperationLog) // 获取操作日志详情
 			}
 
 		}

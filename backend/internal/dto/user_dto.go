@@ -5,7 +5,7 @@ import "admin/pkg/pagination"
 // CreateUserRequest 创建用户请求
 type CreateUserRequest struct {
 	UserName string `json:"username" binding:"required"`          // 用户名
-	Name     string `json:"name" binding:"omitempty"`             // 姓名/昵称
+	Nickname string `json:"nickname" binding:"omitempty"`         // 昵称/显示名称
 	Password string `json:"password" binding:"required"`          // 密码
 	Phone    string `json:"phone" binding:"omitempty"`            // 手机号
 	Email    string `json:"email" binding:"omitempty"`            // 邮箱
@@ -19,7 +19,7 @@ type UpdateUserRequest struct {
 	Phone    string `json:"phone" binding:"omitempty"`            // 手机号
 	Email    string `json:"email" binding:"omitempty"`            // 邮箱
 	Status   int    `json:"status" binding:"omitempty,oneof=1 2"` // 状态 1:正常 2:禁用
-	Name     string `json:"name" binding:"omitempty"`             // 姓名/昵称
+	Nickname string `json:"nickname" binding:"omitempty"`         // 昵称/显示名称
 	Remark   string `json:"remark" binding:"omitempty"`           // 备注信息
 }
 
@@ -27,7 +27,7 @@ type UpdateUserRequest struct {
 type UserResponse struct {
 	UserID        string `json:"user_id"`         // 用户ID
 	UserName      string `json:"username"`        // 用户名
-	Name          string `json:"name"`            // 姓名/昵称
+	Nickname      string `json:"nickname"`        // 昵称/显示名称
 	Avatar        string `json:"avatar"`          // 头像URL
 	Phone         string `json:"phone"`           // 手机号
 	Email         string `json:"email"`           // 邮箱

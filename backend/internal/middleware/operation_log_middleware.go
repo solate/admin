@@ -42,20 +42,19 @@ func OperationLogMiddleware(writer *operationlog.Writer) gin.HandlerFunc {
 		// 6. 从 context 获取用户信息（AuthMiddleware 已注入）
 		userID := xcontext.GetUserID(c.Request.Context())
 		userName := xcontext.GetUserName(c.Request.Context())
-		userDisplayName := xcontext.GetUserDisplayName(c.Request.Context())
 
 		// 7. 构建日志条目
 		entry := &operationlog.LogEntry{
-			TenantID:        lc.TenantID,
-			UserID:          userID,
-			UserName:        userName,
-			UserDisplayName: userDisplayName,
-			RequestMethod:   c.Request.Method,
-			RequestPath:     c.Request.URL.Path,
-			RequestParams:   requestParams,
-			IPAddress:       clientInfo.IP,
-			UserAgent:       clientInfo.UserAgent,
-			LogContext:      lc,
+			TenantID:      lc.TenantID,
+			UserID:        userID,
+			UserName:      userName,
+			Nickname:      lc.Nickname,
+			RequestMethod: c.Request.Method,
+			RequestPath:   c.Request.URL.Path,
+			RequestParams: requestParams,
+			IPAddress:     clientInfo.IP,
+			UserAgent:     clientInfo.UserAgent,
+			LogContext:    lc,
 		}
 
 		// 8. 根据响应状态更新日志状态

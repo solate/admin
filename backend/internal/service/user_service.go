@@ -61,15 +61,15 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 		UserID:   userID,
 		UserName: req.UserName,
 		Password: hashedPassword,
-		Name:     req.Name,
+		Nickname: req.Nickname,
 		Phone:    req.Phone,
 		Email:    req.Email,
 		Status:   int16(req.Status),
 	}
 
-	// 如果没有传入姓名，使用用户名作为默认值
-	if user.Name == "" {
-		user.Name = req.UserName
+	// 如果没有传入昵称，使用用户名作为默认值
+	if user.Nickname == "" {
+		user.Nickname = req.UserName
 	}
 
 	// 设置默认状态
@@ -83,7 +83,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordCreate(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Name, user)
+	ctx = operationlog.RecordCreate(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Nickname, user)
 
 	// 注意：创建用户后，还需要通过 user_tenant_role 表关联用户和租户
 	// 这里暂时不处理，需要单独的接口来分配角色
@@ -135,8 +135,8 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 	if req.Email != "" {
 		updates["email"] = &req.Email
 	}
-	if req.Name != "" {
-		updates["name"] = req.Name
+	if req.Nickname != "" {
+		updates["nickname"] = req.Nickname
 	}
 	if req.Status != 0 {
 		updates["status"] = req.Status
@@ -158,7 +158,7 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, updatedUser.UserID, updatedUser.Name, oldUser, updatedUser)
+	ctx = operationlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, updatedUser.UserID, updatedUser.Nickname, oldUser, updatedUser)
 
 	return s.toUserResponse(ctx, updatedUser), nil
 }
@@ -180,7 +180,7 @@ func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 	}
 
 	// 记录操作日志
-	operationlog.RecordDelete(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Name, user)
+	operationlog.RecordDelete(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Nickname, user)
 
 	return nil
 }
@@ -228,7 +228,7 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, statu
 	}
 
 	// 记录操作日志
-	operationlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, updatedUser.UserID, updatedUser.Name, oldUser, updatedUser)
+	operationlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, updatedUser.UserID, updatedUser.Nickname, oldUser, updatedUser)
 
 	return nil
 }
@@ -238,7 +238,7 @@ func (s *UserService) toUserResponse(ctx context.Context, user *model.User) *dto
 	return &dto.UserResponse{
 		UserID:        user.UserID,
 		UserName:      user.UserName,
-		Name:          user.Name,
+		Nickname:      user.Nickname,
 		Avatar:        user.Avatar,
 		Phone:         user.Phone,
 		Email:         user.Email,

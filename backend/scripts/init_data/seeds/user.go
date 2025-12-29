@@ -35,7 +35,7 @@ func SeedUser(db *gorm.DB, userID string, tenantID string) (*model.User, error) 
 			TenantID: tenantID,
 			UserName: "admin",
 			Password: hashedPassword,
-			Name:     "默认管理员",
+			Nickname: "默认管理员",
 			Email:    email,
 			Phone:    phone,
 			Status:   1,

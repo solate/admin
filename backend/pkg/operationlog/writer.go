@@ -44,17 +44,17 @@ func (w *Writer) writeLoginLog(entry *LogEntry, lc *LogContext) error {
 	}
 
 	log := &model.LoginLog{
-		LogID:           id,
-		TenantID:        entry.TenantID,
-		UserID:          entry.UserID,
-		UserName:        entry.UserName,
-		UserDisplayName: entry.UserDisplayName,
-		LoginType:       lc.Module,
-		LoginIP:         entry.IPAddress,
-		UserAgent:       entry.UserAgent,
-		Status:          lc.Status,
-		FailReason:      lc.ErrorMessage,
-		CreatedAt:       lc.CreatedAt,
+		LogID:      id,
+		TenantID:   entry.TenantID,
+		UserID:     entry.UserID,
+		UserName:   entry.UserName,
+		Nickname:   entry.Nickname,
+		LoginType:  lc.Module,
+		LoginIP:    entry.IPAddress,
+		UserAgent:  entry.UserAgent,
+		Status:     lc.Status,
+		FailReason: lc.ErrorMessage,
+		CreatedAt:  lc.CreatedAt,
 	}
 
 	go w.db.Create(log)
@@ -69,26 +69,26 @@ func (w *Writer) writeOperationLog(entry *LogEntry, lc *LogContext) error {
 	}
 
 	log := &model.OperationLog{
-		LogID:           id,
-		TenantID:        entry.TenantID,
-		UserID:          entry.UserID,
-		UserName:        entry.UserName,
-		UserDisplayName: entry.UserDisplayName,
-		Module:          lc.Module,
-		OperationType:   lc.OperationType,
-		ResourceType:    lc.ResourceType,
-		ResourceID:      lc.ResourceID,
-		ResourceName:    lc.ResourceName,
-		RequestMethod:   entry.RequestMethod,
-		RequestPath:     entry.RequestPath,
-		RequestParams:   entry.RequestParams,
-		OldValue:        serializeJSON(lc.OldValue),
-		NewValue:        serializeJSON(lc.NewValue),
-		Status:          lc.Status,
-		ErrorMessage:    lc.ErrorMessage,
-		IPAddress:       entry.IPAddress,
-		UserAgent:       entry.UserAgent,
-		CreatedAt:       lc.CreatedAt,
+		LogID:         id,
+		TenantID:      entry.TenantID,
+		UserID:        entry.UserID,
+		UserName:      entry.UserName,
+		Nickname:      entry.Nickname,
+		Module:        lc.Module,
+		OperationType: lc.OperationType,
+		ResourceType:  lc.ResourceType,
+		ResourceID:    lc.ResourceID,
+		ResourceName:  lc.ResourceName,
+		RequestMethod: entry.RequestMethod,
+		RequestPath:   entry.RequestPath,
+		RequestParams: entry.RequestParams,
+		OldValue:      serializeJSON(lc.OldValue),
+		NewValue:      serializeJSON(lc.NewValue),
+		Status:        lc.Status,
+		ErrorMessage:  lc.ErrorMessage,
+		IPAddress:     entry.IPAddress,
+		UserAgent:     entry.UserAgent,
+		CreatedAt:     lc.CreatedAt,
 	}
 
 	go w.db.Create(log)
@@ -105,4 +105,3 @@ func serializeJSON(v any) string {
 	}
 	return string(data)
 }
-

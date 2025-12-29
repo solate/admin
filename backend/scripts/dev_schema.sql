@@ -44,7 +44,7 @@ CREATE TABLE users (
     tenant_id VARCHAR(20) NOT NULL,              -- 租户ID（所有用户都有值，包括超管）
     user_name VARCHAR(100) NOT NULL,             -- 登录账号（租户内唯一）
     password VARCHAR(100) NOT NULL,              -- 密码 (Bcrypt加密)
-    name VARCHAR(100) NOT NULL DEFAULT '',       -- 真实姓名/昵称
+    nickname VARCHAR(100) NOT NULL DEFAULT '',   -- 昵称/显示名称
     avatar VARCHAR(255) NOT NULL DEFAULT '',     -- 头像URL
     phone VARCHAR(20) NOT NULL DEFAULT '',       -- 手机号
     email VARCHAR(100) NOT NULL DEFAULT '',      -- 邮箱
@@ -67,7 +67,7 @@ COMMENT ON COLUMN users.user_id IS '用户ID';
 COMMENT ON COLUMN users.tenant_id IS '租户ID(所有用户都有值)';
 COMMENT ON COLUMN users.user_name IS '用户名(登录账号，租户内唯一)';
 COMMENT ON COLUMN users.password IS '加密密码';
-COMMENT ON COLUMN users.name IS '姓名/昵称';
+COMMENT ON COLUMN users.nickname IS '昵称/显示名称';
 COMMENT ON COLUMN users.avatar IS '头像URL';
 COMMENT ON COLUMN users.phone IS '手机号';
 COMMENT ON COLUMN users.email IS '电子邮箱';
@@ -318,9 +318,9 @@ CREATE TABLE login_logs (
     log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(20) NOT NULL,
-    user_name VARCHAR(100) NOT NULL,                    -- 登录账号
-    user_display_name VARCHAR(100) NOT NULL DEFAULT '', -- 昵称
-    login_type VARCHAR(20) NOT NULL DEFAULT '',         -- PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录
+    user_name VARCHAR(100) NOT NULL,               -- 登录账号
+    nickname VARCHAR(100) NOT NULL DEFAULT '',      -- 昵称
+    login_type VARCHAR(20) NOT NULL DEFAULT '',     -- PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录
     login_ip VARCHAR(50) NOT NULL DEFAULT '',           -- 登录IP地址
     login_location VARCHAR(100) NOT NULL DEFAULT '',    -- 登录位置(IP解析的地理位置)
     user_agent VARCHAR(255) NOT NULL DEFAULT '',        -- 用户代理(浏览器/客户端信息)
@@ -337,7 +337,7 @@ COMMENT ON COLUMN login_logs.log_id IS '日志ID(18位字符串)';
 COMMENT ON COLUMN login_logs.tenant_id IS '租户ID';
 COMMENT ON COLUMN login_logs.user_id IS '用户ID';
 COMMENT ON COLUMN login_logs.user_name IS '登录账号';
-COMMENT ON COLUMN login_logs.user_display_name IS '昵称';
+COMMENT ON COLUMN login_logs.nickname IS '昵称';
 COMMENT ON COLUMN login_logs.login_type IS '登录类型(PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录)';
 COMMENT ON COLUMN login_logs.login_ip IS '登录IP地址';
 COMMENT ON COLUMN login_logs.login_location IS '登录位置(IP解析的地理位置)';
@@ -355,9 +355,9 @@ CREATE TABLE operation_logs (
     log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(20) NOT NULL,
-    user_name VARCHAR(100) NOT NULL,                   -- 登录账号
-    user_display_name VARCHAR(100) NOT NULL DEFAULT '', -- 昵称
-    module VARCHAR(50) NOT NULL DEFAULT '',             -- 模块名
+    user_name VARCHAR(100) NOT NULL,                 -- 登录账号
+    nickname VARCHAR(100) NOT NULL DEFAULT '',        -- 昵称
+    module VARCHAR(50) NOT NULL DEFAULT '',           -- 模块名
     operation_type VARCHAR(20) NOT NULL DEFAULT '',     -- CREATE:创建, UPDATE:更新, DELETE:删除, QUERY:查询
     resource_type VARCHAR(50) NOT NULL DEFAULT '',      -- 资源类型
     resource_id VARCHAR(255) NOT NULL DEFAULT '',       -- 资源ID
@@ -385,7 +385,7 @@ COMMENT ON COLUMN operation_logs.log_id IS '日志ID(18位字符串)';
 COMMENT ON COLUMN operation_logs.tenant_id IS '租户ID';
 COMMENT ON COLUMN operation_logs.user_id IS '操作人用户ID';
 COMMENT ON COLUMN operation_logs.user_name IS '登录账号';
-COMMENT ON COLUMN operation_logs.user_display_name IS '昵称';
+COMMENT ON COLUMN operation_logs.nickname IS '昵称';
 COMMENT ON COLUMN operation_logs.module IS '模块名';
 COMMENT ON COLUMN operation_logs.operation_type IS '操作类型(CREATE:创建, UPDATE:更新, DELETE:删除, QUERY:查询)';
 COMMENT ON COLUMN operation_logs.resource_type IS '资源类型';

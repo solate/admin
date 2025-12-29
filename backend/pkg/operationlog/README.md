@@ -24,13 +24,13 @@ import "admin/pkg/operationlog"
 import "admin/pkg/constants"
 
 // 创建
-ctx = operationlog.RecordCreate(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Name, user)
+ctx = operationlog.RecordCreate(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Nickname, user)
 
 // 更新
-ctx = operationlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Name, oldUser, newUser)
+ctx = operationlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Nickname, oldUser, newUser)
 
 // 删除
-ctx = operationlog.RecordDelete(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Name, user)
+ctx = operationlog.RecordDelete(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.Nickname, user)
 
 // 查询
 ctx = operationlog.RecordQuery(ctx, constants.ModuleUser, constants.ResourceTypeUser)

@@ -75,12 +75,12 @@ func (s *OperationLogService) ListOperationLogs(ctx context.Context, req *dto.Li
 // toOperationLogResponse 转换为操作日志响应格式
 func (s *OperationLogService) toOperationLogResponse(log *model.OperationLog) *dto.OperationLogResponse {
 	resp := &dto.OperationLogResponse{
-		LogID:           log.LogID,
-		TenantID:        log.TenantID,
-		UserID:          log.UserID,
-		UserName:        log.UserName,
-		UserDisplayName: log.UserDisplayName,
-		Module:          log.Module,
+		LogID:     log.LogID,
+		TenantID:  log.TenantID,
+		UserID:    log.UserID,
+		UserName:  log.UserName,
+		Nickname:  log.Nickname,
+		Module:    log.Module,
 		OperationType:   log.OperationType,
 		ResourceType:    log.ResourceType,
 		ResourceID:      log.ResourceID,
