@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"admin/pkg/jwt"
@@ -39,14 +38,7 @@ func AuthMiddleware(jwtManager *jwt.Manager) gin.HandlerFunc {
 		// 验证 token（签名、过期、黑名单）
 		claims, err := jwtManager.VerifyAccessToken(c.Request.Context(), tokenString)
 		if err != nil {
-			// 错误映射：过期 / 黑名单 / 其他无效
-			if errors.Is(err, jwt.ErrTokenExpired) {
-				response.Error(c, xerr.ErrTokenExpired)
-			} else if errors.Is(err, jwt.ErrTokenBlacklisted) {
-				response.Error(c, xerr.ErrTokenInvalid)
-			} else {
-				response.Error(c, xerr.ErrTokenInvalid)
-			}
+			response.Error(c, err)
 			c.Abort()
 			return
 		}

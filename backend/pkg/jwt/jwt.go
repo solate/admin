@@ -41,11 +41,11 @@ type JWTConfig struct {
 // 公开错误变量用于中间件与业务层识别
 var (
 	ErrTokenExpired      = jwt.ErrTokenExpired
-	ErrTokenBlacklisted  = errors.New("token blacklisted")
-	ErrInvalidToken      = errors.New("invalid token")
-	ErrMissingToken      = errors.New("missing token")
-	ErrInvalidClaims     = errors.New("invalid claims")
-	ErrInvalidSignMethod = errors.New("invalid signing method")
+	ErrTokenBlacklisted  = errors.New("令牌已被加入黑名单")
+	ErrInvalidToken      = errors.New("无效的令牌")
+	ErrMissingToken      = errors.New("缺少令牌")
+	ErrInvalidClaims     = errors.New("无效的声明")
+	ErrInvalidSignMethod = errors.New("无效的签名方法")
 )
 
 // GenerateTokenPair 生成令牌对（access + refresh）
