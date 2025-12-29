@@ -88,7 +88,7 @@ COMMENT ON COLUMN users.deleted_at IS '删除时间戳(毫秒,软删除)';
 CREATE TABLE roles (
     role_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,               -- [多租户核心] 角色属于特定租户
-    code VARCHAR(50) NOT NULL,                    -- 角色编码 (如: sales, manager)
+    role_code VARCHAR(50) NOT NULL,               -- 角色编码 (如: sales, manager)
     name VARCHAR(100) NOT NULL,                   -- 角色名称 (如: 销售角色)
     description TEXT NOT NULL DEFAULT '',         -- 角色描述
     status SMALLINT NOT NULL DEFAULT 1,
@@ -98,12 +98,12 @@ CREATE TABLE roles (
 );
 
 -- 租户内角色编码唯一约束
-CREATE UNIQUE INDEX idx_roles_tenant_code ON roles(tenant_id, code) WHERE deleted_at = 0;
+CREATE UNIQUE INDEX idx_roles_tenant_code ON roles(tenant_id, role_code) WHERE deleted_at = 0;
 
 COMMENT ON TABLE roles IS '角色表(租户隔离，继承关系由Casbin g2策略管理)';
 COMMENT ON COLUMN roles.role_id IS '角色ID(18位字符串)';
 COMMENT ON COLUMN roles.tenant_id IS '所属租户ID';
-COMMENT ON COLUMN roles.code IS '角色编码(租户内唯一，用于Casbin策略)';
+COMMENT ON COLUMN roles.role_code IS '角色编码(租户内唯一，用于Casbin策略)';
 COMMENT ON COLUMN roles.name IS '角色名称';
 COMMENT ON COLUMN roles.description IS '角色描述';
 COMMENT ON COLUMN roles.status IS '状态(1:启用, 2:禁用)';
@@ -238,7 +238,6 @@ CREATE TABLE departments (
     tenant_id VARCHAR(20) NOT NULL,
     parent_id VARCHAR(20) NOT NULL DEFAULT '',         -- 父部门ID（用于构建树形结构，根部门为空字符串）
     department_name VARCHAR(100) NOT NULL,            -- 部门名称
-    department_code VARCHAR(50) NOT NULL DEFAULT '',   -- 部门编码
     description TEXT NOT NULL DEFAULT '',              -- 部门描述
     sort INT NOT NULL DEFAULT 0,                      -- 排序权重
     status SMALLINT NOT NULL DEFAULT 1,               -- 状态 (1:启用, 2:禁用)
@@ -249,14 +248,12 @@ CREATE TABLE departments (
 
 -- 索引优化：支持租户内部门和父子关系查询
 CREATE INDEX idx_departments_tenant_parent ON departments(tenant_id, parent_id, deleted_at);
-CREATE INDEX idx_departments_tenant_code ON departments(tenant_id, department_code, deleted_at);
 
 COMMENT ON TABLE departments IS '部门表(按职能划分，支持树形结构)';
 COMMENT ON COLUMN departments.department_id IS '部门ID(18位字符串)';
 COMMENT ON COLUMN departments.tenant_id IS '租户ID';
 COMMENT ON COLUMN departments.parent_id IS '父部门ID(用于构建树形结构)';
 COMMENT ON COLUMN departments.department_name IS '部门名称';
-COMMENT ON COLUMN departments.department_code IS '部门编码';
 COMMENT ON COLUMN departments.description IS '部门描述';
 COMMENT ON COLUMN departments.sort IS '排序权重';
 COMMENT ON COLUMN departments.status IS '状态(1:启用, 2:禁用)';

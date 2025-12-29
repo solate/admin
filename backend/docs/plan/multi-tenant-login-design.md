@@ -53,17 +53,17 @@ CREATE TABLE users (
 CREATE TABLE roles (
     role_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    code VARCHAR(50) NOT NULL,
+    role_code VARCHAR(50) NOT NULL,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     status SMALLINT NOT NULL DEFAULT 1,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0,
-    UNIQUE KEY uk_tenant_code(tenant_id, code) WHERE deleted_at = 0
+    UNIQUE KEY uk_tenant_code(tenant_id, role_code) WHERE deleted_at = 0
 );
 
-INSERT INTO roles (role_id, tenant_id, name, code) VALUES
+INSERT INTO roles (role_id, tenant_id, name, role_code) VALUES
 ('role-super-001', '153547313510524266', '超级管理员', 'super_admin'),
 ('role-sales-001', '153547313510524266', '销售角色', 'sales');
 ```

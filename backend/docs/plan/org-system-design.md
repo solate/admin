@@ -19,15 +19,13 @@ CREATE TABLE departments (
     tenant_id VARCHAR(20) NOT NULL,
     parent_id VARCHAR(20),
     department_name VARCHAR(100) NOT NULL,
-    department_code VARCHAR(50),
     description TEXT,
     sort INT DEFAULT 0,
     status SMALLINT DEFAULT 1,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0,
-    INDEX idx_tenant_parent(tenant_id, parent_id, deleted_at),
-    INDEX idx_tenant_code(tenant_id, department_code, deleted_at)
+    INDEX idx_tenant_parent(tenant_id, parent_id, deleted_at)
 );
 ```
 
@@ -123,7 +121,6 @@ func (s *DeptService) Create(ctx context.Context, req *CreateDeptRequest) error 
         TenantID:       tenantID,
         ParentID:       req.ParentID,
         DepartmentName: req.DepartmentName,
-        DepartmentCode: req.DepartmentCode,
         Status:         1,
     }
     return s.deptRepo.Create(ctx, dept)
