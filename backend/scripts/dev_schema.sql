@@ -13,14 +13,14 @@
 -- 核心表：存储租户的基础信息，全局唯一
 -- ========================================
 CREATE TABLE tenants (
-    tenant_id VARCHAR(20) PRIMARY KEY, -- 18位字符串ID（默认租户：000000000000000000）
-    tenant_code VARCHAR(50) NOT NULL, -- 租户编码（全局唯一，可用于二级域名或URL路径，如：tenant_shanghai）
-    name VARCHAR(200) NOT NULL, -- 租户名称（企业/组织名称）
-    description TEXT,
-    status SMALLINT NOT NULL DEFAULT 1, -- 状态：1-正常, 2-冻结/停用 (影响该租户下所有用户访问)
-    created_at BIGINT NOT NULL,
-    updated_at BIGINT NOT NULL,
-    deleted_at BIGINT DEFAULT 0 -- 软删除标识，0表示未删除
+    tenant_id VARCHAR(20) PRIMARY KEY,                -- 18位字符串ID（默认租户：000000000000000000）
+    tenant_code VARCHAR(50) NOT NULL,                 -- 租户编码（全局唯一，可用于二级域名或URL路径，如：tenant_shanghai）
+    name VARCHAR(200) NOT NULL,                       -- 租户名称（企业/组织名称）
+    description TEXT NOT NULL DEFAULT '',             -- 租户描述
+    status SMALLINT NOT NULL DEFAULT 1,               -- 状态：1-正常, 2-冻结/停用 (影响该租户下所有用户访问)
+    created_at BIGINT NOT NULL,                       -- 创建时间戳(毫秒)
+    updated_at BIGINT NOT NULL,                       -- 更新时间戳(毫秒)
+    deleted_at BIGINT DEFAULT 0                       -- 软删除标识，0表示未删除
 );
 CREATE UNIQUE INDEX idx_tenants_tenant_code ON tenants(tenant_code);
 
@@ -40,19 +40,19 @@ COMMENT ON COLUMN tenants.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- 所有用户都绑定租户，权限由 Casbin 的角色策略控制
 -- ========================================
 CREATE TABLE users (
-    user_id VARCHAR(20) PRIMARY KEY, -- 18位字符串ID
-    tenant_id VARCHAR(20) NOT NULL, -- 租户ID（所有用户都有值，包括超管）
-    user_name VARCHAR(100) NOT NULL, -- 登录账号（租户内唯一）
-    password VARCHAR(100) NOT NULL, -- 密码 (Bcrypt加密)
-    name VARCHAR(100) NOT NULL DEFAULT '', -- 真实姓名/昵称
-    avatar VARCHAR(255), -- 头像URL
-    phone VARCHAR(20), -- 手机号
-    email VARCHAR(100), -- 邮箱
-    department_id VARCHAR(20), -- 所属部门ID
-    position_id VARCHAR(20), -- 主岗位ID
-    status SMALLINT NOT NULL DEFAULT 1, -- 状态 (1:正常, 2:冻结)
-    remark TEXT,
-    last_login_time BIGINT, -- 最后登录时间
+    user_id VARCHAR(20) PRIMARY KEY,             -- 18位字符串ID
+    tenant_id VARCHAR(20) NOT NULL,              -- 租户ID（所有用户都有值，包括超管）
+    user_name VARCHAR(100) NOT NULL,             -- 登录账号（租户内唯一）
+    password VARCHAR(100) NOT NULL,              -- 密码 (Bcrypt加密)
+    name VARCHAR(100) NOT NULL DEFAULT '',       -- 真实姓名/昵称
+    avatar VARCHAR(255) NOT NULL DEFAULT '',     -- 头像URL
+    phone VARCHAR(20) NOT NULL DEFAULT '',       -- 手机号
+    email VARCHAR(100) NOT NULL DEFAULT '',      -- 邮箱
+    department_id VARCHAR(20) NOT NULL DEFAULT '', -- 所属部门ID
+    position_id VARCHAR(20) NOT NULL DEFAULT '',  -- 主岗位ID
+    status SMALLINT NOT NULL DEFAULT 1,          -- 状态 (1:正常, 2:冻结)
+    remark TEXT NOT NULL DEFAULT '',             -- 备注信息
+    last_login_time BIGINT NOT NULL DEFAULT 0,   -- 最后登录时间
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0
@@ -87,10 +87,10 @@ COMMENT ON COLUMN users.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- ========================================
 CREATE TABLE roles (
     role_id VARCHAR(20) PRIMARY KEY,
-    tenant_id VARCHAR(20) NOT NULL,  -- [多租户核心] 角色属于特定租户
-    code VARCHAR(50) NOT NULL,       -- 角色编码 (如: sales, manager)
-    name VARCHAR(100) NOT NULL,      -- 角色名称 (如: 销售角色)
-    description TEXT,
+    tenant_id VARCHAR(20) NOT NULL,               -- [多租户核心] 角色属于特定租户
+    code VARCHAR(50) NOT NULL,                    -- 角色编码 (如: sales, manager)
+    name VARCHAR(100) NOT NULL,                   -- 角色名称 (如: 销售角色)
+    description TEXT NOT NULL DEFAULT '',         -- 角色描述
     status SMALLINT NOT NULL DEFAULT 1,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
@@ -120,20 +120,20 @@ COMMENT ON COLUMN roles.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 CREATE TABLE menus (
     menu_id VARCHAR(20) PRIMARY KEY,
-    parent_id VARCHAR(20),                   -- 父菜单ID（用于构建树形结构）
+    parent_id VARCHAR(20),                            -- 父菜单ID（用于构建树形结构，根菜单为NULL）
 
     -- 菜单基础信息
-    name VARCHAR(100) NOT NULL,               -- 菜单名称
-    path VARCHAR(255),                        -- 前端路由路径
-    component VARCHAR(255),                   -- 前端组件路径
-    redirect VARCHAR(255),                    -- 重定向路径
-    icon VARCHAR(100),                        -- 图标
-    sort INT DEFAULT 0,                       -- 排序权重
+    name VARCHAR(100) NOT NULL,                      -- 菜单名称
+    path VARCHAR(255) NOT NULL DEFAULT '',           -- 前端路由路径
+    component VARCHAR(255) NOT NULL DEFAULT '',      -- 前端组件路径
+    redirect VARCHAR(255) NOT NULL DEFAULT '',       -- 重定向路径
+    icon VARCHAR(100) NOT NULL DEFAULT '',           -- 图标
+    sort INT DEFAULT 0,                              -- 排序权重
 
     -- 状态控制（1=启用且显示, 2=禁用且隐藏）
-    status SMALLINT DEFAULT 1,                -- 状态(1:启用, 2:禁用)
+    status SMALLINT NOT NULL DEFAULT 1,              -- 状态(1:启用, 2:禁用)
 
-    description TEXT,
+    description TEXT NOT NULL DEFAULT '',            -- 描述信息
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0
@@ -164,11 +164,11 @@ COMMENT ON COLUMN menus.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- ========================================
 CREATE TABLE permissions (
     permission_id VARCHAR(20) PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,              -- 权限名称
-    type VARCHAR(20) NOT NULL,               -- 类型: MENU, BUTTON, API
-    resource VARCHAR(255) NOT NULL,          -- 资源标识 (menu:xxx, btn:xxx, /api/v1/xxx)
-    action VARCHAR(50),                      -- 请求方法 (GET, POST, PUT, DELETE)，仅 API 类型有效
-    description TEXT,
+    name VARCHAR(100) NOT NULL,                      -- 权限名称
+    type VARCHAR(20) NOT NULL,                       -- 类型: MENU, BUTTON, API
+    resource VARCHAR(255) NOT NULL,                  -- 资源标识 (menu:xxx, btn:xxx, /api/v1/xxx)
+    action VARCHAR(50) NOT NULL DEFAULT '',          -- 请求方法 (GET, POST, PUT, DELETE)，仅 API 类型有效
+    description TEXT NOT NULL DEFAULT '',            -- 描述信息
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0
@@ -236,12 +236,12 @@ COMMENT ON COLUMN tenant_menus.deleted_at IS '删除时间戳(毫秒,软删除)'
 CREATE TABLE departments (
     department_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    parent_id VARCHAR(20),                    -- 父部门ID（用于构建树形结构）
-    department_name VARCHAR(100) NOT NULL,     -- 部门名称
-    department_code VARCHAR(50),               -- 部门编码
-    description TEXT,                          -- 部门描述
-    sort INT DEFAULT 0,                        -- 排序权重
-    status SMALLINT DEFAULT 1,                 -- 状态 (1:启用, 2:禁用)
+    parent_id VARCHAR(20) NOT NULL DEFAULT '',         -- 父部门ID（用于构建树形结构，根部门为空字符串）
+    department_name VARCHAR(100) NOT NULL,            -- 部门名称
+    department_code VARCHAR(50) NOT NULL DEFAULT '',   -- 部门编码
+    description TEXT NOT NULL DEFAULT '',              -- 部门描述
+    sort INT DEFAULT 0,                               -- 排序权重
+    status SMALLINT NOT NULL DEFAULT 1,               -- 状态 (1:启用, 2:禁用)
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0
@@ -270,12 +270,12 @@ COMMENT ON COLUMN departments.deleted_at IS '删除时间戳(毫秒,软删除)';
 CREATE TABLE positions (
     position_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    position_code VARCHAR(50) NOT NULL,        -- 岗位编码 (DEPT_LEADER, EMPLOYEE, HR 等)
-    position_name VARCHAR(100) NOT NULL,       -- 岗位名称
-    level INT,                                 -- 职级
-    description TEXT,                          -- 岗位描述
-    sort INT DEFAULT 0,                        -- 排序权重
-    status SMALLINT DEFAULT 1,                 -- 状态 (1:启用, 2:禁用)
+    position_code VARCHAR(50) NOT NULL,               -- 岗位编码 (DEPT_LEADER, EMPLOYEE, HR 等)
+    position_name VARCHAR(100) NOT NULL,              -- 岗位名称
+    level INT NOT NULL DEFAULT 0,                     -- 职级
+    description TEXT NOT NULL DEFAULT '',             -- 岗位描述
+    sort INT DEFAULT 0,                               -- 排序权重
+    status SMALLINT NOT NULL DEFAULT 1,               -- 状态 (1:启用, 2:禁用)
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0
@@ -320,15 +320,15 @@ COMMENT ON COLUMN user_positions.is_primary IS '是否为主岗位';
 CREATE TABLE login_logs (
     log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    user_id VARCHAR(20),
-    user_name VARCHAR(100),                  -- 登录账号
-    user_display_name VARCHAR(100),          -- 昵称
-    login_type VARCHAR(20),                  -- PASSWORD, SSO, OAUTH
-    login_ip VARCHAR(50),
-    login_location VARCHAR(100),             -- IP解析的地理位置
-    user_agent VARCHAR(255),
-    status SMALLINT,                         -- 1:成功 0:失败
-    fail_reason VARCHAR(255),                -- 失败原因
+    user_id VARCHAR(20) NOT NULL,
+    user_name VARCHAR(100) NOT NULL,                    -- 登录账号
+    user_display_name VARCHAR(100) NOT NULL DEFAULT '', -- 昵称
+    login_type VARCHAR(20) NOT NULL DEFAULT '',         -- PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录
+    login_ip VARCHAR(50) NOT NULL DEFAULT '',           -- 登录IP地址
+    login_location VARCHAR(100) NOT NULL DEFAULT '',    -- 登录位置(IP解析的地理位置)
+    user_agent VARCHAR(255) NOT NULL DEFAULT '',        -- 用户代理(浏览器/客户端信息)
+    status SMALLINT NOT NULL DEFAULT 1,                 -- 状态(1:成功, 0:失败)
+    fail_reason VARCHAR(255) NOT NULL DEFAULT '',       -- 失败原因
     created_at BIGINT NOT NULL DEFAULT 0
 );
 
@@ -357,23 +357,23 @@ COMMENT ON COLUMN login_logs.created_at IS '创建时间戳(毫秒)';
 CREATE TABLE operation_logs (
     log_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
-    user_id VARCHAR(20),
-    user_name VARCHAR(100),                  -- 登录账号
-    user_display_name VARCHAR(100),          -- 昵称
-    module VARCHAR(50),                      -- 模块名
-    operation_type VARCHAR(20),              -- CREATE, UPDATE, DELETE, QUERY
-    resource_type VARCHAR(50),               -- 资源类型
-    resource_id VARCHAR(255),                -- 资源ID
-    resource_name VARCHAR(255),              -- 资源名称
-    request_method VARCHAR(10),              -- GET, POST, PUT, DELETE
-    request_path VARCHAR(500),               -- 请求路径
-    request_params TEXT,                     -- 请求参数（脱敏）
-    old_value TEXT,                          -- 旧值（JSON）
-    new_value TEXT,                          -- 新值（JSON）
-    status SMALLINT,                         -- 1:成功 2:失败
-    error_message TEXT,                      -- 错误信息
-    ip_address VARCHAR(50),
-    user_agent TEXT,
+    user_id VARCHAR(20) NOT NULL,
+    user_name VARCHAR(100) NOT NULL,                   -- 登录账号
+    user_display_name VARCHAR(100) NOT NULL DEFAULT '', -- 昵称
+    module VARCHAR(50) NOT NULL DEFAULT '',             -- 模块名
+    operation_type VARCHAR(20) NOT NULL DEFAULT '',     -- CREATE:创建, UPDATE:更新, DELETE:删除, QUERY:查询
+    resource_type VARCHAR(50) NOT NULL DEFAULT '',      -- 资源类型
+    resource_id VARCHAR(255) NOT NULL DEFAULT '',       -- 资源ID
+    resource_name VARCHAR(255) NOT NULL DEFAULT '',     -- 资源名称
+    request_method VARCHAR(10) NOT NULL DEFAULT '',     -- 请求方法(GET, POST, PUT, DELETE)
+    request_path VARCHAR(500) NOT NULL DEFAULT '',      -- 请求路径
+    request_params TEXT,                                -- 请求参数（脱敏，可选）
+    old_value TEXT,                                     -- 操作前数据(JSON格式，仅 UPDATE 有)
+    new_value TEXT,                                     -- 操作后数据(JSON格式，仅 CREATE/UPDATE 有)
+    status SMALLINT NOT NULL DEFAULT 1,                 -- 操作状态(1:成功, 2:失败)
+    error_message TEXT NOT NULL DEFAULT '',             -- 错误信息
+    ip_address VARCHAR(50) NOT NULL DEFAULT '',         -- 操作来源IP
+    user_agent TEXT NOT NULL DEFAULT '',                -- 用户代理信息
     created_at BIGINT NOT NULL DEFAULT 0
 );
 
