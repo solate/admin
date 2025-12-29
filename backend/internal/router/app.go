@@ -27,7 +27,7 @@ type App struct {
 	JWT                *jwt.Manager          // JWT管理器
 	Enforcer           *casbin.Enforcer      // Casbin enforce
 	Handlers           *Handlers             // 处理器层容器
-	OperationLogLogger *operationlog.Logger  // 操作日志写入器
+	OperationLogWriter *operationlog.Writer  // 操作日志写入器
 }
 
 // Handlers 处理器层容器
@@ -75,10 +75,8 @@ func NewApp() (*App, error) {
 		return nil, fmt.Errorf("failed to init casbin: %w", err)
 	}
 
-	// 7. 初始化操作日志写入器
-	if err := app.initOperationLogLogger(); err != nil {
-		return nil, fmt.Errorf("failed to init operation log logger: %w", err)
-	}
+	// 7. 初始化操作日志 Writer
+	app.OperationLogWriter = operationlog.NewWriter(app.DB)
 
 	// 8. 初始化处理器层
 	if err := app.initHandlers(); err != nil {
@@ -234,7 +232,7 @@ func (s *App) Close() error {
 
 // initOperationLogLogger 初始化操作日志写入器
 func (s *App) initOperationLogLogger() error {
-	s.OperationLogLogger = operationlog.NewLogger(s.DB)
+	s.OperationLogWriter = operationlog.NewWriter(s.DB)
 	return nil
 }
 
@@ -253,9 +251,9 @@ func (s *App) initHandlers() error {
 	userService := service.NewUserService(userRepo)                                                                     // 初始化用户服务
 	tenantService := service.NewTenantService(tenantRepo)                                                               // 初始化租户服务
 	roleService := service.NewRoleService(roleRepo)                                                                     // 初始化角色服务
-	tenantMemberService := service.NewTenantMemberService(userRepo, roleRepo, userTenantRoleRepo)                      // 初始化租户成员服务
+	tenantMemberService := service.NewTenantMemberService(userRepo, roleRepo, userTenantRoleRepo)                       // 初始化租户成员服务
 	menuService := service.NewMenuService(menuRepo)                                                                     // 初始化菜单服务
-	userMenuService := service.NewUserMenuService(userMenuRepo, s.Enforcer)                                            // 初始化用户菜单服务
+	userMenuService := service.NewUserMenuService(userMenuRepo, s.Enforcer)                                             // 初始化用户菜单服务
 
 	s.Handlers = &Handlers{
 		HealthHandler:       handler.NewHealthHandler(),

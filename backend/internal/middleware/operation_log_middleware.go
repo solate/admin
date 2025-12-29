@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"admin/pkg/bodyreader"
+	"admin/pkg/constants"
 	"admin/pkg/operationlog"
 	"admin/pkg/useragent"
 	"admin/pkg/xcontext"
@@ -11,12 +12,10 @@ import (
 
 // OperationLogMiddleware 操作日志中间件
 // 说明：
-// - 只在业务代码设置了 LogContext 时才记录（通过 operationlog.Record* 函数）
-// - 从 request.Context 获取用户信息（由 AuthMiddleware 注入）
-// - 从 request 读取参数并脱敏处理
-// - 从 useragent 获取 IP 和 User-Agent
-// - 响应后异步写入日志
-func OperationLogMiddleware(logger *operationlog.Logger) gin.HandlerFunc {
+// - 只处理操作日志（CREATE/UPDATE/DELETE/QUERY）
+// - 跳过登录日志（LOGIN/LOGOUT 由 AuthService 直接写入）
+// - 业务代码设置 LogContext 后，中间件自动收集 HTTP 请求信息并写入
+func OperationLogMiddleware(writer *operationlog.Writer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 1. 读取并保存请求参数（需要提前读取，因为 Body 只能读一次）
 		requestParams := extractRequestParams(c)
@@ -35,28 +34,35 @@ func OperationLogMiddleware(logger *operationlog.Logger) gin.HandlerFunc {
 			return // 业务代码没有设置 LogContext，跳过记录
 		}
 
-		// 5. 从 context 获取用户信息（AuthMiddleware 已注入）
-		userID := xcontext.GetUserID(c.Request.Context())
-		userName := xcontext.GetUserName(c.Request.Context())
-
-		// 6. 构建日志条目
-		entry := &operationlog.LogEntry{
-			TenantID:      lc.TenantID,
-			UserID:        userID,
-			UserName:      userName,
-			RequestMethod: c.Request.Method,
-			RequestPath:   c.Request.URL.Path,
-			RequestParams: requestParams,
-			IPAddress:     clientInfo.IP,
-			UserAgent:     clientInfo.UserAgent,
-			LogContext:    lc,
+		// 5. 跳过登录日志（由 AuthService 直接写入）
+		if lc.OperationType == constants.OperationLogin || lc.OperationType == constants.OperationLogout {
+			return
 		}
 
-		// 7. 根据响应状态更新日志状态
+		// 6. 从 context 获取用户信息（AuthMiddleware 已注入）
+		userID := xcontext.GetUserID(c.Request.Context())
+		userName := xcontext.GetUserName(c.Request.Context())
+		userDisplayName := xcontext.GetUserDisplayName(c.Request.Context())
+
+		// 7. 构建日志条目
+		entry := &operationlog.LogEntry{
+			TenantID:        lc.TenantID,
+			UserID:          userID,
+			UserName:        userName,
+			UserDisplayName: userDisplayName,
+			RequestMethod:   c.Request.Method,
+			RequestPath:     c.Request.URL.Path,
+			RequestParams:   requestParams,
+			IPAddress:       clientInfo.IP,
+			UserAgent:       clientInfo.UserAgent,
+			LogContext:      lc,
+		}
+
+		// 8. 根据响应状态更新日志状态
 		updateLogStatusFromResponse(c, lc)
 
-		// 8. 异步写入日志（不阻塞响应）
-		_ = logger.Write(c.Request.Context(), entry)
+		// 9. 异步写入日志（不阻塞响应）
+		_ = writer.Write(c.Request.Context(), entry)
 	}
 }
 
@@ -84,7 +90,8 @@ func extractRequestParams(c *gin.Context) string {
 func updateLogStatusFromResponse(c *gin.Context, lc *operationlog.LogContext) {
 	// 检查是否有错误 (response.Error 会调用 c.Error)
 	if len(c.Errors) > 0 {
-		lc.SetError(c.Errors.Last())
+		lc.Status = 2
+		lc.ErrorMessage = c.Errors.Last().Error()
 	}
 	// 注意：项目统一使用 HTTP 200，错误通过 response.Code 字段区分
 	// 因此不需要检查 HTTP 状态码
