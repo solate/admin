@@ -20,7 +20,6 @@ type OperationLogResponse struct {
 	TenantID      string `json:"tenant_id"`      // 租户ID
 	UserID        string `json:"user_id"`        // 用户ID
 	UserName      string `json:"user_name"`      // 用户名
-	Nickname      string `json:"nickname"`       // 用户显示名称
 	Module        string `json:"module"`         // 模块名
 	OperationType string `json:"operation_type"` // 操作类型
 	ResourceType  string `json:"resource_type"`  // 资源类型
