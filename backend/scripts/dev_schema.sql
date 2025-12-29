@@ -136,9 +136,10 @@ CREATE TABLE menus (
     description TEXT,
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
-    deleted_at BIGINT DEFAULT 0,
-    KEY idx_parent(parent_id, deleted_at)
+    deleted_at BIGINT DEFAULT 0
 );
+
+CREATE INDEX idx_menus_parent ON menus(parent_id, deleted_at);
 
 COMMENT ON TABLE menus IS '菜单元数据表(全局定义，租户边界由tenant_menus表控制)';
 COMMENT ON COLUMN menus.menu_id IS '菜单ID(18位字符串)';
@@ -199,11 +200,11 @@ CREATE TABLE tenant_menus (
     tenant_id VARCHAR(20) NOT NULL,          -- 租户ID
     menu_id VARCHAR(20) NOT NULL,            -- 菜单ID
     created_at BIGINT NOT NULL DEFAULT 0,
-    deleted_at BIGINT DEFAULT 0,
-    UNIQUE KEY uk_tenant_menu(tenant_id, menu_id, deleted_at)
+    deleted_at BIGINT DEFAULT 0
 );
 
 -- 索引优化
+CREATE UNIQUE INDEX uk_tenant_menu ON tenant_menus(tenant_id, menu_id) WHERE deleted_at = 0;
 CREATE INDEX idx_tenant_menus_tenant ON tenant_menus(tenant_id, deleted_at);
 
 COMMENT ON TABLE tenant_menus IS '租户菜单边界表(超管分配租户可用菜单)';
@@ -328,10 +329,11 @@ CREATE TABLE login_logs (
     user_agent VARCHAR(255),
     status SMALLINT,                         -- 1:成功 0:失败
     fail_reason VARCHAR(255),                -- 失败原因
-    created_at BIGINT NOT NULL DEFAULT 0,
-    INDEX idx_tenant_user (tenant_id, user_id),
-    INDEX idx_tenant_time (tenant_id, created_at)
+    created_at BIGINT NOT NULL DEFAULT 0
 );
+
+CREATE INDEX idx_login_logs_tenant_user ON login_logs(tenant_id, user_id);
+CREATE INDEX idx_login_logs_tenant_time ON login_logs(tenant_id, created_at);
 
 COMMENT ON TABLE login_logs IS '登录日志表(记录用户登录行为，用于安全审计)';
 COMMENT ON COLUMN login_logs.log_id IS '日志ID(18位字符串)';
@@ -372,12 +374,14 @@ CREATE TABLE operation_logs (
     error_message TEXT,                      -- 错误信息
     ip_address VARCHAR(50),
     user_agent TEXT,
-    created_at BIGINT NOT NULL DEFAULT 0,
-    INDEX idx_tenant_user (tenant_id, user_id),
-    INDEX idx_tenant_time (tenant_id, created_at),
-    INDEX idx_module (tenant_id, module, created_at),
-    INDEX idx_resource (resource_type, resource_id)
+    created_at BIGINT NOT NULL DEFAULT 0
 );
+
+-- 索引优化: 只保留核心查询索引
+-- 1. 租户时间查询(最常用): 查询某租户某时间段的所有操作日志
+CREATE INDEX idx_operation_logs_tenant_time ON operation_logs(tenant_id, created_at);
+-- 2. 资源追踪(审计需要): 查询某个资源的操作历史
+CREATE INDEX idx_operation_logs_resource ON operation_logs(resource_type, resource_id);
 
 COMMENT ON TABLE operation_logs IS '操作日志表(记录用户操作行为，用于审计和追踪)';
 COMMENT ON COLUMN operation_logs.log_id IS '日志ID(18位字符串)';
