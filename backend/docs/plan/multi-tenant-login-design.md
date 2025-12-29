@@ -3,7 +3,8 @@
 ## 核心设计
 
 - **用户-租户关系**：用户属于单个租户，通过 `tenant_id` 绑定
-- **租户 ID**：默认租户使用 `000000000000000000`（18 个零），其他租户使用 idgen 生成的 Sonyflake ID（18 位）
+- **租户 ID**：所有租户统一使用 idgen 生成的 Sonyflake ID（18 位），包括默认租户
+- **默认租户**：通过 `tenant_code = 'default'` 标识，应用启动时加载到缓存 `cache.Get().Tenant.GetDefaultTenantID()`
 - **权限控制**：Casbin `(username, tenantCode, roleCode)` 三元组
 - **超管判断**：Token 中携带 `roles` 数组，包含 `super_admin` 即为超管
 - **租户隔离**：登录时通过 URL 路径参数，业务接口从 Token 获取
@@ -20,8 +21,8 @@ CREATE TABLE tenants (
 );
 
 INSERT INTO tenants (tenant_id, tenant_code, tenant_name) VALUES
-('000000000000000000', 'default', '默认租户'),
-('153547313510524266', 'company-a', '公司A');
+('153547313510524266', 'default', '默认租户'),
+('268447313510524267', 'company-a', '公司A');
 ```
 
 ### 用户表
@@ -63,8 +64,8 @@ CREATE TABLE roles (
 );
 
 INSERT INTO roles (role_id, tenant_id, name, code) VALUES
-('role-super-001', '000000000000000000', '超级管理员', 'super_admin'),
-('role-sales-001', '000000000000000000', '销售角色', 'sales');
+('role-super-001', '153547313510524266', '超级管理员', 'super_admin'),
+('role-sales-001', '153547313510524266', '销售角色', 'sales');
 ```
 
 ### 用户角色关联表
@@ -138,7 +139,7 @@ authGroup.Use(middlewares.AuthMiddleware())
 {
   "user_id": "user-super-001",
   "username": "admin",
-  "tenant_id": "000000000000000000",
+  "tenant_id": "153547313510524266",
   "tenant_code": "default",
   "roles": ["super_admin", "sales"],
   "exp": 1734567890
@@ -191,13 +192,32 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 ```
 
+## 缓存设计
+
+使用 `pkg/cache` 包管理默认租户缓存：
+
+```go
+// 应用启动时初始化
+cache.Init(db)
+
+// 获取默认租户ID
+tenantID := cache.Get().Tenant.GetDefaultTenantID()
+
+// 判断是否为默认租户
+cache.Get().Tenant.IsDefaultTenant(tenantID)
+```
+
+**优势**：
+- 消除魔法值 `000000000000000000`
+- 默认租户和普通租户使用相同的 ID 生成规则
+- 便于迁移和管理
+
 ## 常量
 
 ```go
 const (
-    DefaultTenantID   = "000000000000000000"
-    DefaultTenantCode = "default"
-    SuperAdminRoleCode = "super_admin"
+    DefaultTenantCode = "default"      // 默认租户编码
+    SuperAdminRoleCode = "super_admin" // 超级管理员角色编码
 )
 ```
 
@@ -207,7 +227,9 @@ const (
 |------|----------|
 | `backend/scripts/dev_schema.sql` | 新增 tenants 表，所有 ID 字段统一为 VARCHAR(20) |
 | `backend/scripts/init_data/main.go` | 插入默认租户和角色记录 |
-| `backend/pkg/constants/system.go` | 添加租户常量 |
+| `backend/pkg/cache/cache.go` | 缓存管理器 |
+| `backend/pkg/cache/tenant.go` | 租户缓存实现 |
+| `backend/pkg/constants/system.go` | 添加租户常量（移除 DefaultTenantID） |
 | `backend/internal/middleware/tenant.go` | 租户中间件 |
 | `backend/internal/middleware/auth.go` | 认证中间件（包含 super_admin 则跳过权限检查） |
 | `backend/internal/model/user.go` | ID 字段改为 VARCHAR(20) |
