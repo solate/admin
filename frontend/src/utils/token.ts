@@ -3,7 +3,7 @@
  * 负责 access_token、refresh_token 和租户信息的存储、获取、刷新
  */
 
-import { authApi, type TenantInfo } from '../api'
+import { authApi, type TenantInfo, type RoleInfo } from '../api'
 
 const TOKEN_KEY = 'access_token'
 const REFRESH_TOKEN_KEY = 'refresh_token'
@@ -11,8 +11,8 @@ const USER_ID_KEY = 'user_id'
 const USERNAME_KEY = 'username'
 const EMAIL_KEY = 'email'
 const PHONE_KEY = 'phone'
-const TENANT_ID_KEY = 'tenant_id'
 const TENANT_INFO_KEY = 'tenant_info' // 完整的租户信息
+const ROLES_INFO_KEY = 'roles_info' // 角色列表
 
 // Token刷新状态管理
 let isRefreshing = false
@@ -28,7 +28,8 @@ export function saveTokens(data: {
   username?: string
   email?: string
   phone?: string
-  current_tenant?: TenantInfo
+  tenant?: TenantInfo
+  roles?: RoleInfo[]
 }) {
   localStorage.setItem(TOKEN_KEY, data.access_token)
   localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token)
@@ -42,9 +43,11 @@ export function saveTokens(data: {
   if (data.phone !== undefined) {
     localStorage.setItem(PHONE_KEY, data.phone || '')
   }
-  if (data.current_tenant) {
-    localStorage.setItem(TENANT_ID_KEY, data.current_tenant.tenant_id)
-    localStorage.setItem(TENANT_INFO_KEY, JSON.stringify(data.current_tenant))
+  if (data.tenant) {
+    localStorage.setItem(TENANT_INFO_KEY, JSON.stringify(data.tenant))
+  }
+  if (data.roles) {
+    localStorage.setItem(ROLES_INFO_KEY, JSON.stringify(data.roles))
   }
 }
 
@@ -73,7 +76,8 @@ export function getUserId(): string | null {
  * 获取租户ID（上次选择的）
  */
 export function getLastTenantId(): string | null {
-  return localStorage.getItem(TENANT_ID_KEY)
+  const tenantInfo = getTenantInfo()
+  return tenantInfo?.tenant_id || null
 }
 
 /**
@@ -92,17 +96,34 @@ export function getTenantInfo(): TenantInfo | null {
 }
 
 /**
+ * 获取角色信息列表
+ */
+export function getRolesInfo(): RoleInfo[] {
+  const info = localStorage.getItem(ROLES_INFO_KEY)
+  if (info) {
+    try {
+      return JSON.parse(info)
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+/**
  * 获取用户信息
  */
 export function getUserInfo() {
   const tenantInfo = getTenantInfo()
+  const rolesInfo = getRolesInfo()
   return {
     user_id: localStorage.getItem(USER_ID_KEY),
     user_name: localStorage.getItem(USERNAME_KEY),
     email: localStorage.getItem(EMAIL_KEY),
     phone: localStorage.getItem(PHONE_KEY),
-    tenant_id: localStorage.getItem(TENANT_ID_KEY),
-    current_tenant: tenantInfo
+    tenant_id: tenantInfo?.tenant_id || null,
+    tenant: tenantInfo,
+    roles: rolesInfo
   }
 }
 
@@ -116,8 +137,8 @@ export function clearTokens() {
   localStorage.removeItem(USERNAME_KEY)
   localStorage.removeItem(EMAIL_KEY)
   localStorage.removeItem(PHONE_KEY)
-  localStorage.removeItem(TENANT_ID_KEY)
   localStorage.removeItem(TENANT_INFO_KEY)
+  localStorage.removeItem(ROLES_INFO_KEY)
 }
 
 /**
@@ -241,9 +262,12 @@ export async function refreshAccessToken(): Promise<string | null> {
     }
 
     // 更新租户信息
-    if (response.current_tenant) {
-      localStorage.setItem(TENANT_ID_KEY, response.current_tenant.tenant_id)
-      localStorage.setItem(TENANT_INFO_KEY, JSON.stringify(response.current_tenant))
+    if (response.tenant) {
+      localStorage.setItem(TENANT_INFO_KEY, JSON.stringify(response.tenant))
+    }
+    // 更新角色信息
+    if (response.roles) {
+      localStorage.setItem(ROLES_INFO_KEY, JSON.stringify(response.roles))
     }
 
     // 通知所有等待的请求
@@ -286,6 +310,7 @@ export default {
   getUserId,
   getLastTenantId,
   getTenantInfo,
+  getRolesInfo,
   getUserInfo,
   clearTokens,
   isTokenExpired,

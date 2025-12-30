@@ -285,7 +285,8 @@ async function onSubmit() {
         username: res.user.username,
         email: res.user.email,
         phone: res.user.phone,
-        current_tenant: res.current_tenant
+        tenant: res.tenant,
+        roles: res.roles
       })
 
       // 记住用户名

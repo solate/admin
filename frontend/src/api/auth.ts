@@ -9,9 +9,17 @@ export interface CaptchaResponse {
 // 租户信息
 export interface TenantInfo {
   tenant_id: string
-  tenant_name: string
   tenant_code: string
-  role_type: number
+  name: string
+  description: string
+}
+
+// 角色信息
+export interface RoleInfo {
+  role_id: string
+  role_code: string
+  name: string
+  description: string
 }
 
 // 登录请求
@@ -44,7 +52,8 @@ export interface LoginResponse {
   refresh_token: string
   expires_in: number
   user: User
-  current_tenant?: TenantInfo
+  tenant: TenantInfo
+  roles: RoleInfo[]
 }
 
 // 选择租户请求
@@ -57,7 +66,8 @@ export interface SelectTenantResponse {
   access_token: string
   refresh_token: string
   expires_in: number
-  current_tenant: TenantInfo
+  tenant: TenantInfo
+  roles: RoleInfo[]
 }
 
 // 注册请求
@@ -85,7 +95,8 @@ export interface RefreshTokenRequest {
 export interface RefreshTokenResponse {
   access_token: string
   refresh_token?: string
-  current_tenant?: TenantInfo
+  tenant?: TenantInfo
+  roles?: RoleInfo[]
 }
 
 // 修改密码请求
