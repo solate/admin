@@ -84,30 +84,15 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Success 200 {object} map[string]string "登出成功"
+// @Success 200 {object} response.Response "登出成功"
 // @Success 200 {object} response.Response "未授权访问"
 // @Success 200 {object} response.Response "服务器内部错误"
 // @Router /auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// 从上下文获取 Claims
-	// claims, exists := c.Get(constants.CtxClaims)
-	// if !exists {
-	// 	response.Error(c, xerr.ErrUnauthorized)
-	// 	return
-	// }
+	if err := h.authService.Logout(c.Request.Context()); err != nil {
+		response.Error(c, err)
+		return
+	}
 
-	// jwtClaims, ok := claims.(*jwt.Claims)
-	// if !ok {
-	// 	response.Error(c, xerr.ErrInternal)
-	// 	return
-	// }
-
-	// // 撤销当前 token (加入黑名单)
-	// err := h.authService.RevokeToken(c.Request.Context(), jwtClaims.TokenID)
-	// if err != nil {
-	// 	response.Error(c, xerr.ErrInternal)
-	// 	return
-	// }
-
-	c.JSON(200, gin.H{"message": "logged out successfully"})
+	response.Success(c, nil)
 }

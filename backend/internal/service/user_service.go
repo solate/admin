@@ -236,16 +236,18 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, statu
 // toUserResponse 转换为用户响应格式
 func (s *UserService) toUserResponse(ctx context.Context, user *model.User) *dto.UserResponse {
 	return &dto.UserResponse{
-		UserID:        user.UserID,
-		UserName:      user.UserName,
-		Nickname:      user.Nickname,
-		Avatar:        user.Avatar,
-		Phone:         user.Phone,
-		Email:         user.Email,
-		Status:        int(user.Status),
-		TenantID:      xcontext.GetTenantID(ctx),
-		LastLoginTime: user.LastLoginTime,
-		CreatedAt:     user.CreatedAt,
-		UpdatedAt:     user.UpdatedAt,
+		User: &dto.User{
+			UserID:        user.UserID,
+			UserName:      user.UserName,
+			Nickname:      user.Nickname,
+			Avatar:        user.Avatar,
+			Phone:         user.Phone,
+			Email:         user.Email,
+			Status:        int(user.Status),
+			TenantID:      xcontext.GetTenantID(ctx),
+			LastLoginTime: user.LastLoginTime,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
+		},
 	}
 }

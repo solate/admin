@@ -67,6 +67,7 @@ func SetAuthContext(ctx context.Context, claims *jwt.Claims) context.Context {
 	ctx = xcontext.SetUserID(ctx, claims.UserID)
 	ctx = xcontext.SetUserName(ctx, claims.UserName)
 	ctx = xcontext.SetRoles(ctx, claims.Roles)
+	ctx = xcontext.SetTokenID(ctx, claims.TokenID)
 
 	return ctx
 }

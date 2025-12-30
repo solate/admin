@@ -65,6 +65,12 @@ func Setup(r *gin.Engine, app *App) {
 		authenticated.Use(middleware.OperationLogMiddleware(app.OperationLogWriter))
 		{
 
+			// 认证接口
+			auth := authenticated.Group("/auth")
+			{
+				auth.POST("/logout", app.Handlers.AuthHandler.Logout) // 用户登出
+			}
+
 			// 用户接口
 			user := authenticated.Group("/users")
 			{

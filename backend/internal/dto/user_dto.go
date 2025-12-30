@@ -40,7 +40,7 @@ type User struct {
 
 // UserResponse 用户响应
 type UserResponse struct {
-	User
+	User *User `json:"user"` // 用户基础信息
 }
 
 // ListUsersRequest 用户列表请求

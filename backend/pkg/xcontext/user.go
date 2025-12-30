@@ -4,9 +4,9 @@ import "context"
 
 const (
 	// 用户相关
-	UserIDKey          contextKey = "user_id"
-	UserNameKey        contextKey = "user_name"
-	UserDisplayNameKey contextKey = "user_display_name"
+	UserIDKey   contextKey = "user_id"
+	UserNameKey contextKey = "user_name"
+	TokenIDKey  contextKey = "token_id"
 )
 
 // UserContext 用户上下文信息
@@ -43,4 +43,19 @@ func GetUserName(ctx context.Context) string {
 	}
 	userName, _ := value.(string)
 	return userName
+}
+
+// SetTokenID 设置TokenID到context
+func SetTokenID(ctx context.Context, tokenID string) context.Context {
+	return context.WithValue(ctx, TokenIDKey, tokenID)
+}
+
+// GetTokenID 从context获取TokenID，如果不存在返回空字符串
+func GetTokenID(ctx context.Context) string {
+	value := ctx.Value(TokenIDKey)
+	if value == nil {
+		return ""
+	}
+	tokenID, _ := value.(string)
+	return tokenID
 }

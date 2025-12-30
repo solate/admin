@@ -159,3 +159,19 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		RefreshToken: tokenPair.RefreshToken,
 	}, nil
 }
+
+// Logout 用户登出
+func (s *AuthService) Logout(ctx context.Context) error {
+	tokenID := xcontext.GetTokenID(ctx)
+	if tokenID == "" {
+		return xerr.ErrUnauthorized
+	}
+
+	// 撤销当前token（加入黑名单并删除refresh token）
+	if err := s.jwt.RevokeToken(ctx, tokenID); err != nil {
+		log.Error().Err(err).Str("token_id", tokenID).Msg("撤销token失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "撤销token失败", err)
+	}
+
+	return nil
+}
