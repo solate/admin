@@ -41,8 +41,8 @@ vue-tsc -b           # 运行 TypeScript 编译器检查，不进行构建
 
 **API 层结构：**
 - 在 `src/api/http.ts` 中配置集中式 HTTP 客户端和拦截器
-- 基于功能的 API 模块（auth、dict、factory、product、stats、user、tenant、role、permission、menu、inventory 等）
-- 所有 API 调用都使用 admin/v1 前缀
+- 基于功能的 API 模块（auth、dict、factory、menu、product、role、permission、stats、tenant、tenantMember、user、userMenu、inventory 等）
+- 所有 API 调用都使用 /api/v1 前缀
 - 后端运行在 8080 端口，前端在开发时代理 `/api` 请求
 
 **状态管理：**
@@ -58,7 +58,9 @@ vue-tsc -b           # 运行 TypeScript 编译器检查，不进行构建
 
 **组件结构：**
 - 布局组件提供主要应用框架，包含侧边栏和头部
-- 基于功能的视图（Dashboard、Factories、Products、Statistics）
+- 基于功能的视图：
+  - 主视图：Dashboard、Factories、Products、Statistics
+  - 系统管理视图（system/）：Users、Roles、Tenants、TenantMembers、Permissions、Menus、Dict、Logs、Monitor
 - 共享组件如 Pagination 用于通用 UI 模式
 
 ### API 配置
@@ -128,3 +130,62 @@ server: {
 
 **HTTP 客户端：**
 - Axios 1.12.2 - 基于 Promise 的 HTTP 客户端
+
+**工具库：**
+- Day.js 1.11.19 - 轻量级日期处理库
+- VueUse 14.1.0 - Vue Composition API 实用工具集
+- ECharts 6.0.0 - 数据可视化图表库
+
+**进度条：**
+- NProgress 0.2.0 - 页面加载进度条
+
+## Chrome DevTools MCP 使用规范
+
+在使用 Chrome DevTools MCP 工具进行前端调试时，为避免超出 token 限制，请遵循以下规范：
+
+### 1. 优先使用文本快照
+```typescript
+// 默认使用 take_snapshot 获取页面结构
+mcp__chrome-devtools__take_snapshot
+```
+- 优点：几乎不消耗 token，返回结构化文本
+- 适用于：页面调试、元素定位、文本分析
+
+### 2. 截图必须保存到文件
+```typescript
+// 使用 filePath 参数，不返回 base64 数据
+mcp__chrome-devtools__take_screenshot filePath="/tmp/screenshot.png"
+```
+- 优点：避免大量 base64 数据占用 token
+- 适用于：需要视觉验证的调试场景
+
+### 3. 需要在对话中查看图片时
+```typescript
+// 使用 JPEG 格式并降低质量
+mcp__chrome-devtools__take_screenshot format="jpeg" quality=60
+```
+- 优点：减少约 70-80% 的 token 消耗
+- 仅在：需要向用户展示页面视觉效果时使用
+
+### 4. 浏览器实例管理
+```bash
+# 浏览器实例冲突时清理
+killall "Google Chrome" 2>/dev/null || true
+lsof -ti:9222 | xargs kill -9 2>/dev/null || true
+```
+
+### 使用决策树
+```
+需要查看页面内容？
+├─ 是 → 需要视觉效果？
+│   ├─ 否 → 使用 take_snapshot
+│   └─ 是 → 仅自己查看？
+│       ├─ 是 → filePath 保存到本地
+│       └─ 否 → 低质量 JPEG 格式
+└─ 否 → 不使用 Chrome DevTools 工具
+```
+
+### 禁止行为
+- ❌ 使用默认参数的 `take_screenshot`（返回 base64）
+- ❌ 使用 PNG 格式截图到对话中
+- ❌ 设置 quality > 70 的截图
