@@ -18,11 +18,6 @@ type LoginResponse struct {
 	Roles        []*RoleInfo `json:"roles"`         // 用户角色列表
 }
 
-// SelectTenantRequest 选择租户请求
-type SelectTenantRequest struct {
-	TenantID string `json:"tenant_id" binding:"required"` // 要选择的租户ID
-}
-
 // RefreshRequest 刷新令牌请求
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"` // 刷新令牌
