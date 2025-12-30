@@ -112,7 +112,12 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 		return nil, fmt.Errorf("初始化用户角色关系失败: %w", err)
 	}
 
-	// 6. 初始化系统菜单
+	// 6. 初始化 Casbin 权限策略
+	if err := seeds.SeedPolicies(db, tenant.TenantCode); err != nil {
+		return nil, fmt.Errorf("初始化权限策略失败: %w", err)
+	}
+
+	// 7. 初始化系统菜单
 	if err := seeds.SeedSystemMenus(db); err != nil {
 		return nil, fmt.Errorf("初始化系统菜单失败: %w", err)
 	}
