@@ -116,6 +116,33 @@
             <el-checkbox v-model="rememberMe">记住用户名</el-checkbox>
             <el-button type="text">忘记密码？</el-button>
           </div>
+
+          <!-- 注册入口 -->
+          <div class="register-hint">
+            <span class="hint-text">还没有账号？</span>
+            <el-button type="text" class="register-link">立即注册</el-button>
+          </div>
+
+          <!-- 分隔线 -->
+          <el-divider class="login-divider">
+            <span class="divider-text">其他登录方式</span>
+          </el-divider>
+
+          <!-- 第三方登录（预留） -->
+          <div class="third-party-login">
+            <el-button class="third-party-btn" disabled title="暂未开放">
+              <el-icon><ChatDotRound /></el-icon>
+              <span>微信登录</span>
+            </el-button>
+            <el-button class="third-party-btn" disabled title="暂未开放">
+              <el-icon><Message /></el-icon>
+              <span>邮箱登录</span>
+            </el-button>
+            <el-button class="third-party-btn" disabled title="暂未开放">
+              <el-icon><Iphone /></el-icon>
+              <span>手机登录</span>
+            </el-button>
+          </div>
         </el-form>
       </div>
     </div>
@@ -482,13 +509,89 @@ async function onSubmit() {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
 
         .el-button--text {
           color: var(--primary-color);
 
           &:hover {
             opacity: 0.8;
+          }
+        }
+      }
+
+      // 注册入口
+      .register-hint {
+        text-align: center;
+        margin: 24px 0 16px 0;
+        font-size: 14px;
+
+        .hint-text {
+          color: var(--text-secondary);
+          margin-right: 4px;
+        }
+
+        .register-link {
+          color: var(--primary-color);
+          font-weight: 500;
+          padding: 0;
+
+          &:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+
+      // 分隔线
+      .login-divider {
+        margin: 20px 0 28px 0;
+
+        :deep(.el-divider__text) {
+          background-color: var(--bg-white);
+          padding: 0 16px;
+        }
+
+        .divider-text {
+          color: var(--text-placeholder);
+          font-size: 13px;
+        }
+      }
+
+      // 第三方登录
+      .third-party-login {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+
+        .third-party-btn {
+          flex: 1;
+          height: 42px;
+          border-radius: var(--border-radius);
+          border: 1px solid var(--border-base);
+          background: var(--bg-light);
+          color: var(--text-secondary);
+          transition: var(--transition-base);
+
+          &:not(.is-disabled):hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background: var(--bg-white);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+          }
+
+          &.is-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
+          .el-icon {
+            margin-right: 6px;
+            font-size: 16px;
+          }
+
+          span {
+            font-size: 13px;
           }
         }
       }
