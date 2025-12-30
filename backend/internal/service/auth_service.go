@@ -117,9 +117,9 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	}
 
 	// 更新最后登录时间
-	now := time.Now()
+	lastLoginTime := time.Now().UnixMilli()
 	if err := s.userRepo.Update(ctx, user.UserID, map[string]interface{}{
-		"last_login_time": now,
+		"last_login_time": lastLoginTime,
 	}); err != nil {
 		log.Error().Err(err).Str("user_id", user.UserID).Msg("更新最后登录时间失败")
 		// 不影响登录流程，继续返回
@@ -137,7 +137,7 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 			Email:         user.Email,
 			Status:        int(user.Status),
 			TenantID:      tenantID,
-			LastLoginTime: now.UnixMilli(),
+			LastLoginTime: lastLoginTime,
 			CreatedAt:     user.CreatedAt,
 			UpdatedAt:     user.UpdatedAt,
 		},
