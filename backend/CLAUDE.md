@@ -40,9 +40,9 @@ make swagger                 # 生成 Swagger 文档
 ```bash
 export DB_HOST=localhost
 export DB_PORT=5432
-export DB_USER=root
-export DB_PASSWORD=root
-export DB_NAME=admin_db      # Makefile 中默认为 content_center
+export DB_USER=postgres      # Makefile 中默认为 postgres
+export DB_PASSWORD=postgres  # Makefile 中默认为 postgres
+export DB_NAME=admin_db      # Makefile 中默认为 admin_db
 ```
 
 ## 架构概览
@@ -77,12 +77,14 @@ backend/
 │   ├── dto/                # 数据传输对象
 │   ├── handler/            # HTTP 处理器/控制器
 │   ├── middleware/         # HTTP 中间件链
+│   ├── repository/         # 数据仓储层
 │   ├── service/            # 业务逻辑层
 │   └── router/             # 路由定义
 ├── pkg/                    # 可复用的包
 ├── config/                 # 配置文件
 ├── migrations/             # 数据库迁移文件
-└── scripts/                # 实用脚本
+├── scripts/                # 实用脚本
+└── docs/                   # API 文档
 ```
 
 ## 开发工作流
@@ -108,7 +110,7 @@ backend/
 
 ### 4. 身份认证与授权
 - JWT 令牌：访问令牌（1小时）+ 刷新令牌（7天）
-- 中间件顺序：Logger → Recovery → CORS → Auth → Casbin
+- 中间件顺序：RequestID → Logger → Recovery → CORS → RateLimit → Auth → Casbin
 - Casbin 策略格式：`sub, dom, obj, act`（用户、租户、资源、操作）
 - 租户上下文由中间件自动注入
 
@@ -140,16 +142,17 @@ backend/
 
 ### 中间件链顺序
 对正常运行至关重要：
-1. RequestID（追踪）
+1. RequestID（请求追踪）
 2. Logger（请求日志）
 3. Recovery（panic 处理）
 4. CORS（跨域）
-5. RateLimit（可选）
+5. RateLimit（可选，根据配置启用）
 6. JWTAuth（身份认证）
 7. Casbin（权限授权）
+8. OperationLog（操作日志记录，仅认证路由）
 
 ### 错误处理
-- 使用 `pkg/errors/` 中的自定义错误类型
+- 使用 `pkg/xerr/` 中的自定义错误类型
 - 通过 `pkg/response/` 实现一致的 JSON 响应格式
 - 适当的 HTTP 状态码和错误详情
 - 使用适当的上下文记录错误
@@ -187,59 +190,6 @@ go test -v ./internal/...   # 详细输出
 - 使用 `make swagger` 生成
 - 输出目录：`docs/`
 - 访问地址：`/swagger/index.html`
-
-## MCP 工具使用规范
-
-### Chrome DevTools MCP 使用原则
-
-为了避免超出 token 限制，必须遵循以下使用规范：
-
-#### 1. 优先使用文本快照
-```bash
-# 默认使用 take_snapshot 获取页面结构
-mcp__chrome-devtools__take_snapshot
-```
-- 优点：几乎不消耗 token，返回结构化文本
-- 适用于：页面调试、元素定位、文本分析
-
-#### 2. 截图必须保存到文件
-```bash
-# 使用 filePath 参数，不返回 base64 数据
-mcp__chrome-devtools__take_screenshot filePath="/tmp/screenshot.png"
-```
-- 优点：避免大量 base64 数据占用 token
-- 适用于：需要视觉验证的调试场景
-
-#### 3. 需要在对话中查看图片时
-```bash
-# 使用 JPEG 格式并降低质量
-mcp__chrome-devtools__take_screenshot format="jpeg" quality=60
-```
-- 优点：减少约 70-80% 的 token 消耗
-- 仅在：需要向用户展示页面视觉效果时使用
-
-#### 4. 浏览器实例管理
-```bash
-# 浏览器实例冲突时清理
-killall "Google Chrome" 2>/dev/null || true
-lsof -ti:9222 | xargs kill -9 2>/dev/null || true
-```
-
-### 使用决策树
-```
-需要查看页面内容？
-├─ 是 → 需要视觉效果？
-│   ├─ 否 → 使用 take_snapshot
-│   └─ 是 → 仅自己查看？
-│       ├─ 是 → filePath 保存到本地
-│       └─ 否 → 低质量 JPEG 格式
-└─ 否 → 不使用 Chrome DevTools 工具
-```
-
-### 禁止行为
-- ❌ 使用默认参数的 `take_screenshot`（返回 base64）
-- ❌ 使用 PNG 格式截图到对话中
-- ❌ 设置 quality > 70 的截图
 
 ## 必需的开发工具
 
