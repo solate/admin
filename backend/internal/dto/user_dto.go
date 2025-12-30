@@ -23,8 +23,8 @@ type UpdateUserRequest struct {
 	Remark   string `json:"remark" binding:"omitempty"`           // 备注信息
 }
 
-// UserResponse 用户响应
-type UserResponse struct {
+// UserInfo 用户基础信息（可复用）
+type User struct {
 	UserID        string `json:"user_id"`         // 用户ID
 	UserName      string `json:"username"`        // 用户名
 	Nickname      string `json:"nickname"`        // 昵称/显示名称
@@ -38,12 +38,17 @@ type UserResponse struct {
 	UpdatedAt     int64  `json:"updated_at"`      // 更新时间
 }
 
+// UserResponse 用户响应
+type UserResponse struct {
+	User
+}
+
 // ListUsersRequest 用户列表请求
 type ListUsersRequest struct {
 	*pagination.Request `json:",inline"`
-	UserName           string `form:"username" binding:"omitempty"`         // 用户名模糊搜索
-	Status             int    `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
-	TenantID           string `form:"tenant_id" binding:"omitempty"`        // 租户ID筛选
+	UserName            string `form:"username" binding:"omitempty"`         // 用户名模糊搜索
+	Status              int    `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
+	TenantID            string `form:"tenant_id" binding:"omitempty"`        // 租户ID筛选
 }
 
 // ListUsersResponse 用户列表响应

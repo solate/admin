@@ -4,7 +4,6 @@ import (
 	"admin/internal/dto"
 	"admin/internal/service"
 	"admin/pkg/response"
-	"admin/pkg/xerr"
 
 	"github.com/gin-gonic/gin"
 )
@@ -50,30 +49,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	response.Success(c, resp)
 }
 
-// SelectTenant 选择租户并完成登录
-// @Summary 选择租户
-// @Description 当用户有多个租户时，选择要登录的租户，返回该租户的访问令牌
-// @Tags 认证
-// @Accept json
-// @Produce json
-// @Param request body dto.SelectTenantRequest true "选择租户请求参数"
-// @Success 200 {object} response.Response{data=dto.SelectTenantResponse} "选择成功"
-// @Success 200 {object} response.Response "请求参数错误"
-// @Success 200 {object} response.Response "无该租户权限"
-// @Success 200 {object} response.Response "服务器内部错误"
-// @Router /auth/select-tenant [post]
-func (h *AuthHandler) SelectTenant(c *gin.Context) {
-	// 新的设计中，登录时直接通过 last_tenant_id 指定租户
-	// 不需要单独的选择租户接口
-	// 保留此接口用于兼容，但返回未实现错误
-	response.Error(c, xerr.New(xerr.ErrInternal.Code, "该接口已废弃，请在登录时通过 last_tenant_id 参数指定租户"))
-}
-
-// RefreshRequest 刷新令牌请求
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-}
-
 // Refresh 处理刷新 token 请求
 // @Summary 刷新访问令牌
 // @Description 使用刷新令牌获取新的访问令牌和刷新令牌
@@ -87,7 +62,7 @@ type RefreshRequest struct {
 // @Success 200 {object} response.Response "服务器内部错误"
 // @Router /auth/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	var req RefreshRequest
+	var req dto.RefreshRequest
 	if err := c.BindJSON(&req); err != nil {
 		response.Error(c, err)
 		return

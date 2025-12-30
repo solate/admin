@@ -43,9 +43,14 @@ func Setup(r *gin.Engine, app *App) {
 			// 登录/注册相关接口 - 需要跳过租户检查
 			auth := public.Group("/auth")
 			{
-				auth.GET("/captcha", app.Handlers.CaptchaHandler.Get)   // 获取验证码
-				auth.POST("/login", app.Handlers.AuthHandler.Login)     // 用户登录
-				auth.POST("/refresh", app.Handlers.AuthHandler.Refresh) // 刷新令牌
+				auth.GET("/captcha", app.Handlers.CaptchaHandler.Get)   // 获取验证码 （无需租户）
+				auth.POST("/refresh", app.Handlers.AuthHandler.Refresh) // 刷新令牌 （无需租户）
+
+				tenantAuth := auth.Group("/:tenant_code")
+				tenantAuth.Use(middleware.TenantFromCode(app.DB)) //中间件
+				{
+					tenantAuth.POST("/login", app.Handlers.AuthHandler.Login) // 用户登录
+				}
 				// auth.POST("/register", func(c *gin.Context) {
 				// 	c.JSON(200, gin.H{"registered": true})
 				// }) // 用户注册

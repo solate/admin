@@ -3,6 +3,7 @@ package repository
 import (
 	"admin/internal/dal/model"
 	"admin/internal/dal/query"
+	"admin/pkg/database"
 	"context"
 
 	"gorm.io/gorm"
@@ -110,4 +111,14 @@ func (r *TenantRepo) GetByIDs(ctx context.Context, tenantIDs []string) (map[stri
 		result[tenant.TenantID] = tenant
 	}
 	return result, nil
+}
+
+// GetByCodeManual 根据租户编码获取租户信息（手动模式，用于跨租户查询）
+// 使用场景：登录时需要通过租户code查询租户，此时还没有当前租户信息
+func (r *TenantRepo) GetByCodeManual(ctx context.Context, tenantCode string) (*model.Tenant, error) {
+	// 跨租户查询：使用 ManualTenantMode 禁止自动添加当前租户过滤
+	ctx = database.ManualTenantMode(ctx)
+	return r.q.Tenant.WithContext(ctx).
+		Where(r.q.Tenant.TenantCode.Eq(tenantCode)).
+		First()
 }

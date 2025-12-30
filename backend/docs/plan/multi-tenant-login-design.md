@@ -221,6 +221,48 @@ const (
 )
 ```
 
+## 实现说明
+
+### 租户查询实现
+
+**方案**：登录接口在 Handler 中直接调用 `TenantRepo.GetByCodeManual()` 查询租户，不使用中间件。
+
+**理由**：
+- 登录是唯一需要从路径获取租户的公开接口（注册、验证码不需要租户信息）
+- 忘记密码等未来可能添加的公开接口可复用相同方式
+- 避免中间件过度设计，代码更直观
+
+**Repo 层封装**：
+```go
+// GetByCodeManual 根据租户编码获取租户信息（手动模式，用于跨租户查询）
+// 使用场景：登录时需要通过租户code查询租户，此时还没有当前租户信息
+func (r *TenantRepo) GetByCodeManual(ctx context.Context, tenantCode string) (*model.Tenant, error) {
+    // 跨租户查询：使用 ManualTenantMode 禁止自动添加当前租户过滤
+    ctx = database.ManualTenantMode(ctx)
+    return r.q.Tenant.WithContext(ctx).
+        Where(r.q.Tenant.TenantCode.Eq(tenantCode)).
+        First()
+}
+```
+
+### 路由差异
+
+| 项目 | 设计文档 | 实际实现 |
+|------|----------|----------|
+| 路径格式 | `/api/v1/:tenant_code/login` | `/api/v1/auth/:tenant_code/login` |
+| 分组结构 | 独立 `/api/v1/:tenant_code` 分组 | `/auth` 分组下，应用 `SkipTenantCheck` 中间件 |
+| 中间件 | `TenantMiddleware` | 不使用租户中间件，Handler 内调用 `GetByCodeManual` |
+
+**实际路由**：
+```go
+auth := public.Group("/auth")
+{
+    auth.GET("/captcha", app.Handlers.CaptchaHandler.Get)            // 无需租户
+    auth.POST("/refresh", app.Handlers.AuthHandler.Refresh)          // 无需租户
+    auth.POST("/:tenant_code/login", app.Handlers.AuthHandler.Login) // Handler 内查询租户
+}
+```
+
 ## 修改清单
 
 | 文件 | 修改内容 |
@@ -230,10 +272,11 @@ const (
 | `backend/pkg/cache/cache.go` | 缓存管理器 |
 | `backend/pkg/cache/tenant.go` | 租户缓存实现 |
 | `backend/pkg/constants/system.go` | 添加租户常量（移除 DefaultTenantID） |
-| `backend/internal/middleware/tenant.go` | 租户中间件 |
+| `backend/internal/middleware/tenant.go` | 租户中间件（设计参考，实际未使用） |
 | `backend/internal/middleware/auth.go` | 认证中间件（包含 super_admin 则跳过权限检查） |
 | `backend/internal/model/user.go` | ID 字段改为 VARCHAR(20) |
 | `backend/internal/model/role.go` | ID 字段改为 VARCHAR(20) |
+| `backend/internal/repository/tenant_repo.go` | 添加 `GetByCodeManual` 方法 |
 | `backend/internal/service/auth_service.go` | 登录时查询用户角色并写入 Token |
 | `frontend/src/api/auth.ts` | 登录 API 添加 tenant_code |
 | `frontend/src/views/Login.vue` | 登录页添加租户输入 |

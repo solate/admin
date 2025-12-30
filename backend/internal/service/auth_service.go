@@ -4,15 +4,17 @@ import (
 	"admin/internal/dto"
 	"admin/internal/repository"
 	"admin/pkg/captcha"
-	"admin/pkg/cache"
 	"admin/pkg/config"
 	"admin/pkg/constants"
 	"admin/pkg/jwt"
 	"admin/pkg/passwordgen"
+	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 	"context"
+	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -50,8 +52,10 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	user, err := s.userRepo.GetByUserName(ctx, req.UserName)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Error().Err(err).Str("username", req.UserName).Msg("用户不存在")
 			return nil, xerr.ErrUserNotFound
 		}
+		log.Error().Err(err).Str("username", req.UserName).Msg("查询用户失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
 	}
 
@@ -65,33 +69,18 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 		return nil, xerr.ErrUserDisabled
 	}
 
-	var tenantID string
-	var tenantCode string
+	tenantID := xcontext.GetTenantID(ctx)
+	tenantCode := xcontext.GetTenantCode(ctx)
 
-	if req.LastTenantID != "" {
-		// 客户端指定了上次登录的租户ID，验证租户是否存在
-		tenant, err := s.tenantRepo.GetByID(ctx, req.LastTenantID)
-		if err != nil {
-			if err == gorm.ErrRecordNotFound {
-				return nil, xerr.ErrNotFound
-			}
-			return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询租户失败", err)
-		}
-		tenantID = tenant.TenantID
-		tenantCode = tenant.TenantCode
-	} else {
-		// 客户端未指定租户，使用默认租户
-		tenantID = cache.Get().Tenant.GetDefaultTenantID()
-		tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
-		if err != nil {
-			return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取默认租户失败", err)
-		}
-		tenantCode = tenant.TenantCode
+	if tenantCode == "" {
+		log.Error().Str("username", user.UserName).Msg("租户编码不能为空")
+		return nil, xerr.ErrTenantCodeRequired
 	}
 
 	// 获取用户在租户中的角色（从 Casbin）
 	roleCodes, err := s.userRoleRepo.GetUserRoles(ctx, user.UserName, tenantCode)
 	if err != nil {
+		log.Error().Err(err).Str("username", user.UserName).Str("tenant_code", tenantCode).Msg("查询用户角色失败")
 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询用户角色失败", err)
 	}
 
@@ -103,6 +92,7 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	// 查询角色详情，只获取活跃的角色
 	roles, err := s.roleRepo.ListByIDs(ctx, roleCodes)
 	if err != nil {
+		log.Error().Err(err).Strs("role_codes", roleCodes).Msg("查询角色详情失败")
 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询角色详情失败", err)
 	}
 
@@ -122,20 +112,35 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	// 生成JWT令牌
 	tokenPair, err := s.jwt.GenerateTokenPair(ctx, tenantID, tenantCode, user.UserID, user.UserName, activeRoleCodes)
 	if err != nil {
+		log.Error().Err(err).Str("user_id", user.UserID).Str("username", user.UserName).Msg("生成JWT令牌失败")
 		return nil, err
+	}
+
+	// 更新最后登录时间
+	now := time.Now()
+	if err := s.userRepo.Update(ctx, user.UserID, map[string]interface{}{
+		"last_login_time": now,
+	}); err != nil {
+		log.Error().Err(err).Str("user_id", user.UserID).Msg("更新最后登录时间失败")
+		// 不影响登录流程，继续返回
 	}
 
 	return &dto.LoginResponse{
 		AccessToken:  tokenPair.AccessToken,
 		RefreshToken: tokenPair.RefreshToken,
 		ExpiresIn:    tokenPair.ExpiresIn,
-		UserID:       user.UserID,
-		CurrentTenant: &dto.TenantInfo{
-			TenantID:   tenantID,
-			TenantCode: tenantCode,
+		User: &dto.User{
+			UserID:        user.UserID,
+			UserName:      user.UserName,
+			Nickname:      user.Nickname,
+			Phone:         user.Phone,
+			Email:         user.Email,
+			Status:        int(user.Status),
+			TenantID:      tenantID,
+			LastLoginTime: now.UnixMilli(),
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
 		},
-		Phone: user.Phone,
-		Email: user.Email,
 	}, nil
 }
 
@@ -145,6 +150,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	// 调用JWT manager刷新token
 	tokenPair, err := s.jwt.VerifyRefreshToken(ctx, refreshToken)
 	if err != nil {
+		log.Error().Err(err).Msg("刷新token失败")
 		return nil, xerr.Wrap(xerr.ErrTokenInvalid.Code, "刷新token失败", err)
 	}
 

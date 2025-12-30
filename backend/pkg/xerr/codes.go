@@ -36,18 +36,24 @@ var (
 	ErrUserTenantAccessDenied = New(2109, "用户无该租户访问权限")
 	ErrUserNoRoles            = New(2110, "用户在租户中无任何角色")
 
-	// 角色错误 2200-2299
-	ErrRoleNotFound   = New(2200, "角色不存在")
-	ErrRoleExists     = New(2201, "角色已存在")
-	ErrRoleCodeExists = New(2202, "角色编码已存在")
-	ErrRoleInUse      = New(2203, "角色正在使用中")
+	// 租户错误 2200-2299
+	ErrTenantCodeRequired = New(2200, "租户编码不能为空")
+	ErrTenantNotFound     = New(2201, "租户不存在")
+	ErrTenantExists       = New(2202, "租户已存在")
+	ErrTenantCodeExists   = New(2203, "租户编码已存在")
 
-	// 菜单错误 2300-2399
-	ErrMenuNotFound        = New(2300, "菜单不存在")
-	ErrMenuExists          = New(2301, "菜单已存在")
-	ErrMenuCodeExists      = New(2302, "菜单编码已存在")
-	ErrMenuInUse           = New(2303, "菜单正在使用中")
-	ErrMenuHasChildren     = New(2304, "菜单下有子菜单，无法删除")
-	ErrMenuInvalidParent   = New(2305, "父菜单无效")
-	ErrMenuCannotMoveToSelf = New(2306, "不能将菜单移动到自己或其子菜单下")
+	// 角色错误 2300-2399
+	ErrRoleNotFound   = New(2300, "角色不存在")
+	ErrRoleExists     = New(2301, "角色已存在")
+	ErrRoleCodeExists = New(2302, "角色编码已存在")
+	ErrRoleInUse      = New(2303, "角色正在使用中")
+
+	// 菜单错误 2400-2499
+	ErrMenuNotFound         = New(2400, "菜单不存在")
+	ErrMenuExists           = New(2401, "菜单已存在")
+	ErrMenuCodeExists       = New(2402, "菜单编码已存在")
+	ErrMenuInUse            = New(2403, "菜单正在使用中")
+	ErrMenuHasChildren      = New(2404, "菜单下有子菜单，无法删除")
+	ErrMenuInvalidParent    = New(2405, "父菜单无效")
+	ErrMenuCannotMoveToSelf = New(2406, "不能将菜单移动到自己或其子菜单下")
 )
