@@ -69,7 +69,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" width="160">
+        <el-table-column label="创建时间" width="180">
           <template #default="{ row }">
             {{ formatTime(row.created_at) }}
           </template>
@@ -177,6 +177,7 @@ import {
   type CreateTenantRequest,
   type UpdateTenantRequest
 } from '../../api/tenant'
+import { formatTime } from '../../utils/date'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -222,19 +223,6 @@ const formRules: FormRules = {
     { min: 2, max: 50, message: '租户编码长度在 2 到 50 个字符', trigger: 'blur' },
     { pattern: /^[a-zA-Z0-9_-]+$/, message: '租户编码只能包含字母、数字、下划线和连字符', trigger: 'blur' }
   ]
-}
-
-// 格式化时间
-function formatTime(timestamp: number) {
-  if (!timestamp) return '-'
-  const date = new Date(timestamp * 1000)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 // 事件处理
