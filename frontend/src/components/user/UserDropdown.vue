@@ -29,18 +29,19 @@
           </div>
         </div>
 
-        <!-- 租户信息卡片 -->
-        <div class="tenant-section-compact">
-          <div class="tenant-switcher-compact">
-            <div class="tenant-current-compact">
-              <div class="tenant-current-icon">
-                <span class="tenant-icon-text">{{ tenant?.name?.charAt(0) || 'T' }}</span>
-              </div>
-              <div class="tenant-current-info">
-                <div class="tenant-current-name">{{ tenant?.name || '默认租户' }}</div>
-                <div class="tenant-current-code">{{ tenant?.tenant_code || 'default' }}</div>
-              </div>
+        <!-- 租户信息卡片 - 可点击切换租户 -->
+        <div class="tenant-section-compact" @click.stop="openTenantDialog">
+          <div class="tenant-current-compact tenant-clickable">
+            <div class="tenant-current-icon">
+              <span class="tenant-icon-text">{{ tenant?.name?.charAt(0) || 'T' }}</span>
             </div>
+            <div class="tenant-current-info">
+              <div class="tenant-current-name">{{ tenant?.name || '默认租户' }}</div>
+              <div class="tenant-current-code">{{ tenant?.tenant_code || 'default' }}</div>
+            </div>
+            <el-icon class="tenant-arrow-icon" :size="14">
+              <ArrowRight />
+            </el-icon>
           </div>
         </div>
 
@@ -66,19 +67,29 @@
       </el-dropdown-menu>
     </template>
   </el-dropdown>
+
+  <!-- 租户选择对话框 - 复用 TenantSelector 组件 -->
+  <TenantSelector
+    ref="tenantSelectorRef"
+    mode="dialog"
+    :current-tenant="tenant"
+    @tenant-changed="handleTenantChanged"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowRight, User, Setting, SwitchButton } from '@element-plus/icons-vue'
 import { authApi } from '../../api'
 import { clearTokens } from '../../utils/token'
+import TenantSelector from '../tenant/TenantSelector.vue'
 
 // 定义 emit
 const emit = defineEmits<{
   command: [command: string]
+  'tenant-changed': [tenant: { tenant_id: string; name: string; tenant_code: string }]
 }>()
 
 // Props
@@ -90,6 +101,7 @@ interface Props {
     phone?: string
   } | null
   tenant?: {
+    tenant_id?: string
     name?: string
     tenant_code?: string
   } | null
@@ -107,9 +119,18 @@ const props = withDefaults(defineProps<Props>(), {
 
 const router = useRouter()
 const isOpen = ref(false)
+const tenantSelectorRef = ref<InstanceType<typeof TenantSelector>>()
 
 function handleVisibleChange(visible: boolean) {
   isOpen.value = visible
+}
+
+function openTenantDialog() {
+  tenantSelectorRef.value?.open()
+}
+
+function handleTenantChanged(tenant: { tenant_id: string; name: string; tenant_code: string }) {
+  emit('tenant-changed', tenant)
 }
 
 async function handleCommand(command: string) {
@@ -275,56 +296,66 @@ async function handleCommand(command: string) {
     margin: 4px 4px 8px;
     padding: 0;
 
-    .tenant-switcher-compact {
+    .tenant-current-compact {
       display: flex;
       align-items: center;
-      justify-content: flex-start;
+      gap: 12px;
       padding: 12px 14px;
       background: linear-gradient(135deg, rgba(66, 133, 244, 0.06) 0%, rgba(66, 133, 244, 0.02) 100%);
       border: 1px solid rgba(66, 133, 244, 0.15);
       border-radius: 12px;
 
-      .tenant-current-compact {
+      &.tenant-clickable {
+        cursor: pointer;
+        transition: var(--transition-base);
+
+        &:hover {
+          background: linear-gradient(135deg, rgba(66, 133, 244, 0.1) 0%, rgba(66, 133, 244, 0.05) 100%);
+          border-color: rgba(66, 133, 244, 0.3);
+        }
+      }
+
+      .tenant-current-icon {
+        width: 38px;
+        height: 38px;
         display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: center;
+        background: var(--gradient-primary);
+        border-radius: 10px;
+        color: white;
+        box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
+        flex-shrink: 0;
 
-        .tenant-current-icon {
-          width: 38px;
-          height: 38px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: var(--gradient-primary);
-          border-radius: 10px;
-          color: white;
-          box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
-          flex-shrink: 0;
+        .tenant-icon-text {
+          font-size: 15px;
+          font-weight: 700;
+        }
+      }
 
-          .tenant-icon-text {
-            font-size: 15px;
-            font-weight: 700;
-          }
+      .tenant-current-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .tenant-current-name {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-primary);
+          line-height: 1.2;
         }
 
-        .tenant-current-info {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-
-          .tenant-current-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-            line-height: 1.2;
-          }
-
-          .tenant-current-code {
-            font-size: 12px;
-            color: var(--text-secondary);
-            font-weight: 500;
-          }
+        .tenant-current-code {
+          font-size: 12px;
+          color: var(--text-secondary);
+          font-weight: 500;
         }
+      }
+
+      .tenant-arrow-icon {
+        color: var(--text-secondary);
+        opacity: 0.6;
       }
     }
   }
