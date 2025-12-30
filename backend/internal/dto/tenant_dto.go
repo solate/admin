@@ -40,3 +40,11 @@ type TenantListResponse struct {
 	*pagination.Response `json:",inline"`
 	List                 []*TenantResponse `json:"list"` // 列表数据
 }
+
+// TenantInfo 租户基础信息（可复用）
+type TenantInfo struct {
+	TenantID    string `json:"tenant_id"`   // 租户ID
+	TenantCode  string `json:"tenant_code"` // 租户编码
+	Name        string `json:"name"`        // 租户名称
+	Description string `json:"description"` // 租户描述
+}

@@ -236,7 +236,7 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, statu
 // toUserResponse 转换为用户响应格式
 func (s *UserService) toUserResponse(ctx context.Context, user *model.User) *dto.UserResponse {
 	return &dto.UserResponse{
-		User: &dto.User{
+		User: &dto.UserInfo{
 			UserID:        user.UserID,
 			UserName:      user.UserName,
 			Nickname:      user.Nickname,

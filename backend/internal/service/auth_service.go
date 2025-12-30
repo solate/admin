@@ -132,14 +132,26 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询租户信息失败", err)
 	}
 
+	// 构建角色信息列表
+	roleInfos := make([]*dto.RoleInfo, 0, len(roles))
+	for _, role := range roles {
+		roleInfos = append(roleInfos, &dto.RoleInfo{
+			RoleID:      role.RoleID,
+			RoleCode:    role.RoleCode,
+			Name:        role.Name,
+			Description: role.Description,
+		})
+	}
+
 	return &dto.LoginResponse{
 		AccessToken:  tokenPair.AccessToken,
 		RefreshToken: tokenPair.RefreshToken,
 		ExpiresIn:    tokenPair.ExpiresIn,
-		User: &dto.User{
+		User: &dto.UserInfo{
 			UserID:        user.UserID,
 			UserName:      user.UserName,
 			Nickname:      user.Nickname,
+			Avatar:        user.Avatar,
 			Phone:         user.Phone,
 			Email:         user.Email,
 			Status:        int(user.Status),
@@ -148,11 +160,13 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 			CreatedAt:     user.CreatedAt,
 			UpdatedAt:     user.UpdatedAt,
 		},
-		CurrentTenant: &dto.TenantInfo{
-			TenantID:   tenant.TenantID,
-			TenantName: tenant.Name,
-			TenantCode: tenant.TenantCode,
+		Tenant: &dto.TenantInfo{
+			TenantID:    tenant.TenantID,
+			TenantCode:  tenant.TenantCode,
+			Name:        tenant.Name,
+			Description: tenant.Description,
 		},
+		Roles: roleInfos,
 	}, nil
 }
 

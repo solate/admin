@@ -41,3 +41,11 @@ type ListRolesResponse struct {
 	*pagination.Response `json:",inline"`
 	List                 []*RoleResponse `json:"list"` // 列表数据
 }
+
+// RoleInfo 角色基础信息（可复用）
+type RoleInfo struct {
+	RoleID      string `json:"role_id"`     // 角色ID
+	RoleCode    string `json:"role_code"`   // 角色编码
+	Name        string `json:"name"`        // 角色名称
+	Description string `json:"description"` // 角色描述
+}

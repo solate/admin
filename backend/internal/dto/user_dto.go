@@ -24,7 +24,7 @@ type UpdateUserRequest struct {
 }
 
 // UserInfo 用户基础信息（可复用）
-type User struct {
+type UserInfo struct {
 	UserID        string `json:"user_id"`         // 用户ID
 	UserName      string `json:"username"`        // 用户名
 	Nickname      string `json:"nickname"`        // 昵称/显示名称
@@ -40,7 +40,7 @@ type User struct {
 
 // UserResponse 用户响应
 type UserResponse struct {
-	User *User `json:"user"` // 用户基础信息
+	User *UserInfo `json:"user"` // 用户基础信息
 }
 
 // ListUsersRequest 用户列表请求
