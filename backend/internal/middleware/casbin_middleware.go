@@ -60,6 +60,24 @@ func CasbinMiddleware(enforcer *casbin.Enforcer) gin.HandlerFunc {
 	}
 }
 
+// SuperAdminMiddleware 超管中间件
+// 只有超级管理员才能访问通过此中间件的路由
+func SuperAdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		roles := xcontext.GetRoles(c.Request.Context())
+
+		if !isSuperAdmin(roles) {
+			response.Error(c, xerr.ErrForbidden)
+			c.Abort()
+			return
+		}
+
+		ctx := database.SkipTenantCheck(c.Request.Context())
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
+}
+
 // isSuperAdmin 检查是否为超级管理员
 func isSuperAdmin(roles []string) bool {
 	for _, role := range roles {

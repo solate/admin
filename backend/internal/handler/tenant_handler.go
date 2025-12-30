@@ -4,6 +4,7 @@ import (
 	"admin/internal/dto"
 	"admin/internal/service"
 	"admin/pkg/response"
+	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 	"strconv"
 
@@ -72,6 +73,30 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 		response.Error(c, xerr.ErrInvalidParams)
 		return
 	}
+
+	resp, err := h.tenantService.GetTenantByID(c.Request.Context(), tenantID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, resp)
+}
+
+// GetCurrentTenant 获取当前登录租户信息
+// @Summary 获取当前租户信息
+// @Description 获取当前登录用户的租户信息（所有角色可用）
+// @Tags 租户管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {object} response.Response{data=dto.TenantResponse} "获取成功"
+// @Failure 200 {object} response.Response "未授权访问"
+// @Failure 200 {object} response.Response "资源不存在"
+// @Failure 200 {object} response.Response "服务器内部错误"
+// @Router /tenants/me [get]
+func (h *TenantHandler) GetCurrentTenant(c *gin.Context) {
+	tenantID := xcontext.GetTenantID(c.Request.Context())
 
 	resp, err := h.tenantService.GetTenantByID(c.Request.Context(), tenantID)
 	if err != nil {

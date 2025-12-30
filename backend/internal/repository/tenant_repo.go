@@ -122,3 +122,12 @@ func (r *TenantRepo) GetByCodeManual(ctx context.Context, tenantCode string) (*m
 		Where(r.q.Tenant.TenantCode.Eq(tenantCode)).
 		First()
 }
+
+// GetByIDManual 根据租户ID获取租户信息（手动模式，用于跨租户查询）
+// 使用场景：需要查询任意租户信息，不受当前用户租户限制
+func (r *TenantRepo) GetByIDManual(ctx context.Context, tenantID string) (*model.Tenant, error) {
+	ctx = database.ManualTenantMode(ctx)
+	return r.q.Tenant.WithContext(ctx).
+		Where(r.q.Tenant.TenantID.Eq(tenantID)).
+		First()
+}
