@@ -125,6 +125,13 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 		// 不影响登录流程，继续返回
 	}
 
+	// 查询租户信息
+	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		log.Error().Err(err).Str("tenant_id", tenantID).Msg("查询租户信息失败")
+		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询租户信息失败", err)
+	}
+
 	return &dto.LoginResponse{
 		AccessToken:  tokenPair.AccessToken,
 		RefreshToken: tokenPair.RefreshToken,
@@ -140,6 +147,11 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 			LastLoginTime: lastLoginTime,
 			CreatedAt:     user.CreatedAt,
 			UpdatedAt:     user.UpdatedAt,
+		},
+		CurrentTenant: &dto.TenantInfo{
+			TenantID:   tenant.TenantID,
+			TenantName: tenant.Name,
+			TenantCode: tenant.TenantCode,
 		},
 	}, nil
 }

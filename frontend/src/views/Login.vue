@@ -284,12 +284,7 @@ async function onSubmit() {
         user_id: res.user.user_id,
         email: res.user.email,
         phone: res.user.phone,
-        current_tenant: res.user.tenant_id ? {
-          tenant_id: res.user.tenant_id,
-          tenant_name: '',
-          tenant_code: tenantCode.value,
-          role_type: 0
-        } : undefined
+        current_tenant: res.current_tenant
       })
 
       // 记住用户名

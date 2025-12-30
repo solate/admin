@@ -7,16 +7,43 @@
     >
       <!-- Logo区域 -->
       <div class="sidebar-header">
-        <div class="logo-container" @click="goHome">
-          <div class="logo-icon">
-            <el-icon size="24">
-              <Promotion />
-            </el-icon>
+        <!-- Logo + 系统名称 + 租户切换器（整体） -->
+        <el-dropdown trigger="click" placement="bottom-start" class="workspace-dropdown">
+          <div class="logo-container" @click="goHome">
+            <div class="logo-icon">
+              <el-icon size="24">
+                <Promotion />
+              </el-icon>
+            </div>
+            <transition name="fade">
+              <div v-show="!isCollapse" class="workspace-info">
+                <div class="logo-text">管理系统</div>
+                <div class="tenant-selector">
+                  <span class="tenant-name">{{ currentTenantName }}</span>
+                  <el-icon class="tenant-arrow" :size="12">
+                    <CaretBottom />
+                  </el-icon>
+                </div>
+              </div>
+            </transition>
           </div>
-          <transition name="fade">
-            <span v-show="!isCollapse" class="logo-text">管理系统</span>
-          </transition>
-        </div>
+          <template #dropdown>
+            <el-dropdown-menu class="workspace-menu">
+              <div class="workspace-list">
+                <div class="workspace-item active">
+                  <div class="workspace-avatar">
+                    <span class="avatar-text">{{ currentTenantName?.charAt(0) }}</span>
+                  </div>
+                  <div class="workspace-details">
+                    <div class="workspace-name">{{ currentTenantName }}</div>
+                    <div class="workspace-code">{{ currentTenantCode }}</div>
+                  </div>
+                  <el-icon class="check-icon"><Check /></el-icon>
+                </div>
+              </div>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
 
 
@@ -136,48 +163,6 @@
             </el-badge>
           </el-tooltip>
 
-          <!-- 租户切换器 -->
-          <div class="tenant-selector-header">
-            <el-popover
-              :width="280"
-              trigger="click"
-              placement="bottom-end"
-            >
-              <template #reference>
-                <div class="tenant-current">
-                  <div class="tenant-avatar">
-                    T
-                  </div>
-                  <span class="tenant-name">{{ currentTenant }}</span>
-                  <el-icon class="dropdown-arrow" :size="14">
-                    <ArrowDown />
-                  </el-icon>
-                </div>
-              </template>
-              <div class="tenant-popover">
-                <div class="popover-header">
-                  <span class="popover-title">切换租户</span>
-                </div>
-                <div class="popover-list">
-                  <div
-                    v-for="tenant in tenants"
-                    :key="tenant.id"
-                    class="popover-item"
-                    :class="{ active: tenant.id === currentTenantId }"
-                    @click="switchTenant(tenant)"
-                  >
-                    <div class="item-info">
-                      <div class="item-name">{{ tenant.name }}</div>
-                      <div class="item-desc">{{ tenant.description }}</div>
-                    </div>
-                    <span class="item-status" :class="tenant.status">
-                      {{ tenant.statusText }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </el-popover>
-          </div>
 
           <!-- 用户信息下拉菜单 -->
           <el-dropdown @command="handleUserCommand" class="user-dropdown">
@@ -274,13 +259,9 @@ const isMobile = ref(window.innerWidth < 768)
 const sidebarWidth = 260
 const sidebarCollapsedWidth = 72
 
-const currentTenantId = ref(1)
-const currentTenant = ref('默认租户')
-const tenants = ref([
-  { id: 1, name: '默认租户', description: '主租户账号', status: 'online', statusText: '运行中' },
-  { id: 2, name: '测试租户', description: '测试环境', status: 'warning', statusText: '维护中' },
-  { id: 3, name: '开发租户', description: '开发环境', status: 'offline', statusText: '已停用' }
-])
+// 从 token 中获取租户信息
+const currentTenantCode = ref(userInfo?.current_tenant?.tenant_code || 'default')
+const currentTenantName = ref(userInfo?.current_tenant?.tenant_name || '默认租户')
 
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
@@ -359,12 +340,6 @@ function markAsRead(item: any) {
   item.read = true
 }
 
-function switchTenant(tenant: any) {
-  currentTenantId.value = tenant.id
-  currentTenant.value = tenant.name
-  ElMessage.success(`已切换到租户：${tenant.name}`)
-}
-
 async function handleUserCommand(command: string) {
   switch (command) {
     case 'profile':
@@ -424,36 +399,96 @@ onUnmounted(() => {
 
     .sidebar-header {
       height: var(--header-height);
-      display: flex;
-      align-items: center;
-      padding: 0 20px;
+      padding: 0 14px;
       border-bottom: 1px solid var(--border-base);
+      background: var(--bg-white);
+
+      .workspace-dropdown {
+        width: 100%;
+        height: 100%;
+
+        :deep(.el-dropdown-link) {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          height: 100%;
+        }
+      }
 
       .logo-container {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 11px;
         cursor: pointer;
         width: 100%;
+        height: 100%;
+        padding: 12px 0;
+        transition: var(--transition-base);
 
         .logo-icon {
-          width: 36px;
-          height: 36px;
+          width: 34px;
+          height: 34px;
           display: flex;
           align-items: center;
           justify-content: center;
           background: var(--gradient-primary);
-          border-radius: var(--border-radius);
+          border-radius: 9px;
           color: white;
           flex-shrink: 0;
+          box-shadow: 0 2px 10px rgba(66, 133, 244, 0.25);
         }
 
-        .logo-text {
+        .workspace-info {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
           flex: 1;
-          font-size: 16px;
-          font-weight: 600;
-          color: var(--text-primary);
-          white-space: nowrap;
+          min-width: 0;
+
+          .logo-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            line-height: 1.3;
+            letter-spacing: -0.3px;
+          }
+
+          .tenant-selector {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            background: rgba(0, 0, 0, 0.04);
+            border-radius: 6px;
+            align-self: flex-start;
+            transition: var(--transition-base);
+            cursor: pointer;
+
+            .tenant-name {
+              font-size: 12px;
+              font-weight: 400;
+              color: var(--text-secondary);
+              white-space: nowrap;
+              line-height: 1.4;
+            }
+
+            .tenant-arrow {
+              color: var(--text-placeholder);
+              opacity: 0.5;
+              transition: var(--transition-base);
+              flex-shrink: 0;
+            }
+
+            &:hover {
+              background: rgba(0, 0, 0, 0.06);
+
+              .tenant-arrow {
+                opacity: 0.8;
+                color: var(--text-secondary);
+              }
+            }
+          }
         }
       }
     }
@@ -521,52 +556,6 @@ onUnmounted(() => {
         display: flex;
         align-items: center;
         gap: 12px;
-
-        .tenant-selector-header {
-          .tenant-current {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 8px;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            transition: var(--transition-base);
-
-            .tenant-avatar {
-              width: 28px;
-              height: 28px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: var(--gradient-primary);
-              border-radius: 50%;
-              color: white;
-              font-size: 13px;
-              font-weight: 600;
-            }
-
-            .tenant-name {
-              font-size: 14px;
-              font-weight: 600;
-              color: var(--text-primary);
-              line-height: 1;
-            }
-
-            .dropdown-arrow {
-              font-size: 14px;
-              color: var(--text-secondary);
-              transition: transform 0.3s;
-            }
-
-            &:hover {
-              background: var(--bg-light);
-
-              .dropdown-arrow {
-                transform: rotate(180deg);
-              }
-            }
-          }
-        }
 
         .search-box .search-input {
           width: 200px;
@@ -665,89 +654,6 @@ onUnmounted(() => {
   }
 }
 
-// 租户选择弹出框样式
-.tenant-popover {
-  .popover-header {
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border-base);
-    margin-bottom: 8px;
-
-    .popover-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-  }
-
-  .popover-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-
-    .popover-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: var(--transition-base);
-
-      .item-info {
-        flex: 1;
-
-        .item-name {
-          font-size: 14px;
-          font-weight: 500;
-          color: var(--text-primary);
-          line-height: 1.4;
-        }
-
-        .item-desc {
-          font-size: 12px;
-          color: var(--text-secondary);
-          margin-top: 2px;
-        }
-      }
-
-      .item-status {
-        font-size: 12px;
-        padding: 2px 8px;
-        border-radius: 4px;
-
-        &.online {
-          color: #67c23a;
-          background: rgba(103, 194, 58, 0.1);
-        }
-
-        &.warning {
-          color: #e6a23c;
-          background: rgba(230, 162, 60, 0.1);
-        }
-
-        &.offline {
-          color: #909399;
-          background: rgba(144, 147, 153, 0.1);
-        }
-      }
-
-      &:hover {
-        background: var(--bg-light);
-      }
-
-      &.active {
-        background: var(--bg-light);
-        border-radius: 6px;
-
-        .item-name {
-          color: var(--primary-color);
-          font-weight: 600;
-        }
-      }
-    }
-  }
-}
-
 .notification-list {
   display: flex;
   flex-direction: column;
@@ -800,6 +706,104 @@ onUnmounted(() => {
   opacity: 0;
 }
 
+// 工作区切换下拉菜单样式
+.workspace-menu {
+  padding: 6px;
+  min-width: 240px;
+  border: 1px solid var(--border-base);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+
+  :deep(.el-dropdown-menu__item) {
+    padding: 0;
+  }
+
+  .workspace-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .workspace-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: var(--transition-base);
+
+      &:hover {
+        background: var(--bg-light);
+      }
+
+      &.active {
+        background: rgba(66, 133, 244, 0.06);
+
+        .workspace-avatar {
+          background: var(--gradient-primary);
+          color: white;
+          box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+        }
+
+        .workspace-name {
+          color: var(--primary-color);
+        }
+      }
+
+      .workspace-avatar {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-light);
+        border-radius: 6px;
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 600;
+        transition: var(--transition-base);
+        flex-shrink: 0;
+
+        .avatar-text {
+          text-transform: uppercase;
+        }
+      }
+
+      .workspace-details {
+        flex: 1;
+        min-width: 0;
+
+        .workspace-name {
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--text-primary);
+          line-height: 1.3;
+          margin-bottom: 1px;
+        }
+
+        .workspace-code {
+          font-size: 12px;
+          color: var(--text-placeholder);
+          font-weight: 400;
+          text-transform: lowercase;
+        }
+      }
+
+      .check-icon {
+        color: var(--primary-color);
+        font-size: 14px;
+        opacity: 0;
+        transition: var(--transition-base);
+      }
+
+      &.active .check-icon {
+        opacity: 1;
+      }
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .admin-layout {
     .sidebar {
@@ -822,16 +826,6 @@ onUnmounted(() => {
 
         .header-right {
           gap: 8px;
-
-          .tenant-selector-header {
-            .tenant-current {
-              padding: 4px 8px;
-
-              .tenant-name {
-                font-size: 12px;
-              }
-            }
-          }
 
           .search-box {
             display: none;

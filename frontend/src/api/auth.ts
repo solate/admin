@@ -44,6 +44,7 @@ export interface LoginResponse {
   refresh_token: string
   expires_in: number
   user: User
+  current_tenant?: TenantInfo
 }
 
 // 选择租户请求

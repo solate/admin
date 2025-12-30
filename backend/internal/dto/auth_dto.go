@@ -17,10 +17,11 @@ type TenantInfo struct {
 
 // LoginResponse 登录响应
 type LoginResponse struct {
-	AccessToken  string `json:"access_token"`  // 访问令牌
-	RefreshToken string `json:"refresh_token"` // 刷新令牌
-	ExpiresIn    int64  `json:"expires_in"`    // 过期时间（秒）
-	User         *User  `json:"user"`
+	AccessToken   string      `json:"access_token"`   // 访问令牌
+	RefreshToken  string      `json:"refresh_token"`  // 刷新令牌
+	ExpiresIn     int64       `json:"expires_in"`     // 过期时间（秒）
+	User          *User       `json:"user"`
+	CurrentTenant *TenantInfo `json:"current_tenant"` // 当前租户信息
 }
 
 // SelectTenantRequest 选择租户请求
@@ -43,6 +44,7 @@ type RefreshRequest struct {
 
 // RefreshResponse 刷新令牌响应
 type RefreshResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken   string      `json:"access_token"`
+	RefreshToken  string      `json:"refresh_token"`
+	CurrentTenant *TenantInfo `json:"current_tenant,omitempty"` // 当前租户信息（刷新时可能没有）
 }

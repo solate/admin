@@ -90,11 +90,13 @@ export function getTenantInfo(): TenantInfo | null {
  * 获取用户信息
  */
 export function getUserInfo() {
+  const tenantInfo = getTenantInfo()
   return {
     user_id: localStorage.getItem(USER_ID_KEY),
     email: localStorage.getItem(EMAIL_KEY),
     phone: localStorage.getItem(PHONE_KEY),
-    tenant_id: localStorage.getItem(TENANT_ID_KEY)
+    tenant_id: localStorage.getItem(TENANT_ID_KEY),
+    current_tenant: tenantInfo
   }
 }
 
