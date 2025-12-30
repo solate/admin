@@ -23,20 +23,27 @@ export interface LoginRequest {
   last_tenant_id?: string // 上次选择的租户ID
 }
 
+// 用户信息
+export interface User {
+  user_id: string
+  username: string
+  nickname: string
+  avatar: string
+  phone: string
+  email: string
+  status: number
+  tenant_id: string
+  last_login_time: number
+  created_at: number
+  updated_at: number
+}
+
 // 登录响应
 export interface LoginResponse {
-  // 需要选择租户的情况
-  need_select_tenant: boolean
-  user_id: string
-  tenants?: TenantInfo[] // 用户有权限的租户列表（需要选择时返回）
-
-  // 直接登录成功的情况
-  access_token?: string
-  refresh_token?: string
-  expires_in?: number
-  current_tenant?: TenantInfo
-  phone?: string
-  email?: string
+  access_token: string
+  refresh_token: string
+  expires_in: number
+  user: User
 }
 
 // 选择租户请求
@@ -105,9 +112,9 @@ export const authApi = {
     })
   },
 
-  // 用户登录
-  login: (data: LoginRequest): Promise<LoginResponse> => {
-    return http.post('/api/v1/auth/login', data)
+  // 用户登录（需要提供租户编码）
+  login: (tenantCode: string, data: LoginRequest): Promise<LoginResponse> => {
+    return http.post(`/api/v1/auth/${tenantCode}/login`, data)
   },
 
   // 选择租户

@@ -91,6 +91,14 @@ func (r *RoleRepo) ListByIDs(ctx context.Context, roleIDs []string) ([]*model.Ro
 		Find()
 }
 
+// ListByCodes 根据角色编码列表获取角色列表（跳过租户过滤，支持角色继承）
+func (r *RoleRepo) ListByCodes(ctx context.Context, roleCodes []string) ([]*model.Role, error) {
+	ctx = database.ManualTenantMode(ctx)
+	return r.q.Role.WithContext(ctx).
+		Where(r.q.Role.RoleCode.In(roleCodes...)).
+		Find()
+}
+
 // ListWithFilters 根据筛选条件分页获取角色列表
 func (r *RoleRepo) ListWithFilters(ctx context.Context, tenantID string, offset, limit int, keywordFilter string, statusFilter int) ([]*model.Role, int64, error) {
 	query := r.q.Role.WithContext(ctx).Where(r.q.Role.TenantID.Eq(tenantID))

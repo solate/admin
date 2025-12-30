@@ -3,6 +3,8 @@ package cache
 import (
 	"admin/internal/dal/model"
 	"admin/pkg/constants"
+	"admin/pkg/database"
+	"context"
 	"fmt"
 	"sync"
 
@@ -20,7 +22,9 @@ func (c *TenantCache) Init(db *gorm.DB) error {
 	var err error
 	c.once.Do(func() {
 		var tenant model.Tenant
-		if dbErr := db.Where("tenant_code = ?", constants.DefaultTenantCode).First(&tenant).Error; dbErr != nil {
+		// 跳过租户检查，查询默认租户
+		ctx := database.SkipTenantCheck(context.Background())
+		if dbErr := db.WithContext(ctx).Where("tenant_code = ?", constants.DefaultTenantCode).First(&tenant).Error; dbErr != nil {
 			err = fmt.Errorf("failed to load default tenant: %w", dbErr)
 			return
 		}
@@ -45,7 +49,9 @@ func (c *TenantCache) IsDefaultTenant(tenantID string) bool {
 // Reload 重新加载缓存
 func (c *TenantCache) Reload(db *gorm.DB) error {
 	var tenant model.Tenant
-	if err := db.Where("tenant_code = ?", constants.DefaultTenantCode).First(&tenant).Error; err != nil {
+	// 跳过租户检查，查询默认租户
+	ctx := database.SkipTenantCheck(context.Background())
+	if err := db.WithContext(ctx).Where("tenant_code = ?", constants.DefaultTenantCode).First(&tenant).Error; err != nil {
 		return fmt.Errorf("failed to reload default tenant: %w", err)
 	}
 	c.tenant = &tenant

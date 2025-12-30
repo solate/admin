@@ -36,7 +36,6 @@
           :rules="rules"
           class="login-form-inner"
           @keyup.enter="onSubmit"
-          v-if="loginStep === 'credentials'"
         >
           <el-form-item prop="username">
             <el-input
@@ -118,50 +117,13 @@
             <el-button type="text">忘记密码？</el-button>
           </div>
         </el-form>
-
-        <!-- 租户选择区域 -->
-        <div v-else-if="loginStep === 'select_tenant'" class="tenant-selector">
-          <div class="tenant-selector-header">
-            <el-icon class="selector-icon" size="40"><OfficeBuilding /></el-icon>
-            <h2>选择租户</h2>
-            <p>检测到您属于多个租户，请选择要登录的租户</p>
-          </div>
-
-          <div class="tenant-list">
-            <div
-              v-for="tenant in availableTenants"
-              :key="tenant.tenant_id"
-              class="tenant-card"
-              :class="{ 'is-loading': selectingTenant === tenant.tenant_id }"
-              @click="selectTenant(tenant)"
-            >
-              <div class="tenant-avatar">
-                <el-icon :size="28"><OfficeBuilding /></el-icon>
-              </div>
-              <div class="tenant-info">
-                <div class="tenant-name">{{ tenant.tenant_name }}</div>
-                <div class="tenant-code">{{ tenant.tenant_code }}</div>
-              </div>
-              <el-icon v-if="selectingTenant === tenant.tenant_id" class="is-loading-icon">
-                <Loading />
-              </el-icon>
-              <el-icon v-else class="arrow-icon">
-                <ArrowRight />
-              </el-icon>
-            </div>
-          </div>
-
-          <el-button text @click="backToLogin" class="back-button">
-            <el-icon><ArrowLeft /></el-icon>
-            返回登录
-          </el-button>
-        </div>
       </div>
     </div>
 
     <!-- 版权信息 -->
     <div class="copyright">
       <p>&copy; 2025 Multi-Tenant Management System. All rights reserved.</p>
+      <p>当前租户: {{ tenantCode || 'default' }}</p>
     </div>
   </div>
 </template>
@@ -171,10 +133,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { useThemeStore } from '../stores/theme'
-import { authApi, type TenantInfo } from '../api'
-import { saveTokens, getLastTenantId } from '../utils/token'
-
-type LoginStep = 'credentials' | 'select_tenant'
+import { authApi } from '../api'
+import { saveTokens } from '../utils/token'
 
 interface LoginForm {
   username: string
@@ -186,15 +146,15 @@ const router = useRouter()
 const themeStore = useThemeStore()
 const formRef = ref<FormInstance>()
 
-// 登录步骤
-const loginStep = ref<LoginStep>('credentials')
-
 // 表单数据
 const form = ref<LoginForm>({
   username: '',
   password: '',
   captcha: ''
 })
+
+// 当前租户编码（从路由获取）
+const tenantCode = ref('')
 
 // 状态变量
 const showPassword = ref(false)
@@ -203,11 +163,6 @@ const loadingCaptcha = ref(false)
 const rememberMe = ref(false)
 const captchaId = ref('')
 const captchaUrl = ref('')
-
-// 租户选择相关
-const pendingUserId = ref('')
-const availableTenants = ref<TenantInfo[]>([])
-const selectingTenant = ref('')
 
 // 表单验证规则
 const rules = {
@@ -225,14 +180,29 @@ const rules = {
   ]
 }
 
+// 检查租户编码
+function checkTenantCode() {
+  const code = router.currentRoute.value.params.tenantCode as string
+  if (!code) {
+    ElMessage.warning('请输入租户编码，例如: /login/default')
+    router.push('/login/default')
+    return false
+  }
+  tenantCode.value = code
+  return true
+}
+
 onMounted(() => {
+  // 检查租户编码
+  if (!checkTenantCode()) return
+
   loadCaptcha()
 
   // 如果URL中有username参数，自动填充
   const usernameParam = router.currentRoute.value.query.username as string
   if (usernameParam) {
     form.value.username = usernameParam
-    router.replace({ path: '/login', query: {} })
+    router.replace({ path: `/login/${tenantCode.value}`, query: {} })
   }
 
   // 如果有记住的用户名，自动填充
@@ -258,88 +228,41 @@ async function loadCaptcha() {
   }
 }
 
-// 返回登录页面
-function backToLogin() {
-  loginStep.value = 'credentials'
-  pendingUserId.value = ''
-  availableTenants.value = []
-}
-
-// 选择租户
-async function selectTenant(tenant: TenantInfo) {
-  if (!pendingUserId.value) return
-
-  selectingTenant.value = tenant.tenant_id
-
-  try {
-    const res = await authApi.selectTenant(pendingUserId.value, { tenant_id: tenant.tenant_id })
-
-    // 保存token和租户信息
-    saveTokens({
-      access_token: res.access_token,
-      refresh_token: res.refresh_token,
-      user_id: pendingUserId.value,
-      current_tenant: res.current_tenant
-    })
-
-    // 记住用户名
-    if (rememberMe.value) {
-      localStorage.setItem('remember_username', form.value.username)
-    } else {
-      localStorage.removeItem('remember_username')
-    }
-
-    ElMessage.success(`登录成功！欢迎来到 ${res.current_tenant.tenant_name}`)
-
-    // 跳转到首页或重定向页面
-    const redirect = (router.currentRoute.value.query.redirect as string) || '/'
-    router.push(redirect)
-  } catch (error: any) {
-    console.error('选择租户失败:', error)
-    ElMessage.error(error.message || '选择租户失败，请重试')
-  } finally {
-    selectingTenant.value = ''
-  }
-}
-
 // 登录提交
 async function onSubmit() {
   if (!formRef.value) return
+
+  // 检查租户编码
+  if (!tenantCode.value) {
+    ElMessage.error('租户编码不能为空')
+    return
+  }
 
   await formRef.value.validate()
   loading.value = true
 
   try {
-    // 获取上次选择的租户ID
-    const lastTenantId = getLastTenantId() || undefined
-
-    const res = await authApi.login({
+    const res = await authApi.login(tenantCode.value, {
       username: form.value.username,
       password: form.value.password,
       captcha_id: captchaId.value,
-      captcha: form.value.captcha,
-      last_tenant_id: lastTenantId
+      captcha: form.value.captcha
     })
 
-    // 检查是否需要选择租户
-    if (res.need_select_tenant) {
-      // 显示租户选择界面
-      loginStep.value = 'select_tenant'
-      pendingUserId.value = res.user_id
-      availableTenants.value = res.tenants || []
-      ElMessage.info('请选择要登录的租户')
-      return
-    }
-
     // 直接登录成功
-    if (res.access_token && res.current_tenant) {
+    if (res.access_token && res.user) {
       saveTokens({
         access_token: res.access_token,
         refresh_token: res.refresh_token!,
-        user_id: res.user_id,
-        email: res.email,
-        phone: res.phone,
-        current_tenant: res.current_tenant
+        user_id: res.user.user_id,
+        email: res.user.email,
+        phone: res.user.phone,
+        current_tenant: res.user.tenant_id ? {
+          tenant_id: res.user.tenant_id,
+          tenant_name: '',
+          tenant_code: tenantCode.value,
+          role_type: 0
+        } : undefined
       })
 
       // 记住用户名

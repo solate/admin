@@ -22,7 +22,8 @@ const SystemLogs = () => import('../views/system/Logs.vue')
 const SystemMonitor = () => import('../views/system/Monitor.vue')
 
 const routes = [
-  { path: '/login', name: 'login', component: Login, meta: { public: true, title: '登录' } },
+  { path: '/login/:tenantCode', name: 'login', component: Login, meta: { public: true, title: '登录' } },
+  { path: '/login', redirect: '/login/default' },  // 默认重定向到 /login/default
   { path: '/register', name: 'register', component: Register, meta: { public: true, title: '注册' } },
   {
     path: '/',
@@ -54,7 +55,7 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   if (to.meta.public) return next()
   const token = localStorage.getItem('access_token')  // 修改为 access_token
-  if (!token) return next({ path: '/login', query: { redirect: to.fullPath } })
+  if (!token) return next({ path: '/login/default', query: { redirect: to.fullPath } })
   next()
 })
 

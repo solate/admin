@@ -60,7 +60,7 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	}
 
 	// 验证密码
-	if !passwordgen.VerifyPassword(user.Password, req.Password) {
+	if !passwordgen.VerifyPassword(req.Password, user.Password) {
 		return nil, xerr.ErrInvalidCredentials
 	}
 
@@ -90,7 +90,7 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	}
 
 	// 查询角色详情，只获取活跃的角色
-	roles, err := s.roleRepo.ListByIDs(ctx, roleCodes)
+	roles, err := s.roleRepo.ListByCodes(ctx, roleCodes)
 	if err != nil {
 		log.Error().Err(err).Strs("role_codes", roleCodes).Msg("查询角色详情失败")
 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询角色详情失败", err)

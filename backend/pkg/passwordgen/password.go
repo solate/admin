@@ -105,7 +105,10 @@ func Argon2Hash(password string, saltBase64 string) (string, error) {
 // VerifyPassword 验证密码与哈希是否匹配
 func VerifyPassword(password, encodedHash string) bool {
     // 解析哈希参数
+    // 格式: $argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s
     parts := strings.Split(encodedHash, "$")
+    // parts[0] = "", parts[1] = "argon2id", parts[2] = "v=19",
+    // parts[3] = "m=...,t=...,p=...", parts[4] = salt, parts[5] = hash
     if len(parts) != 6 || parts[1] != "argon2id" {
         return false
     }
@@ -122,7 +125,7 @@ func VerifyPassword(password, encodedHash string) bool {
         return false
     }
 
-    // 解析算法参数
+    // 解析算法参数 (parts[3] = "m=65536,t=3,p=2")
     params := strings.Split(parts[3], ",")
     if len(params) != 3 {
         return false
