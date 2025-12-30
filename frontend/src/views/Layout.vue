@@ -5,8 +5,8 @@
       :width="isCollapse ? `${sidebarCollapsedWidth}px` : `${sidebarWidth}px`"
       class="sidebar"
     >
-      <!-- 租户选择区域 -->
-      <div class="sidebar-header">
+      <!-- 租户选择区域 (暂时注释，一个用户只在一个租户) -->
+      <!-- <div class="sidebar-header">
         <el-dropdown
           trigger="click"
           placement="bottom-start"
@@ -76,8 +76,24 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-      </div>
+      </div> -->
 
+      <!-- 简化的侧边栏标题区域 (只显示系统名称和当前租户) -->
+      <div class="sidebar-header">
+        <div class="tenant-trigger-static" :class="{ 'is-collapsed': isCollapse }">
+          <div class="tenant-avatar">
+            <el-icon size="20">
+              <Promotion />
+            </el-icon>
+          </div>
+          <transition name="fade">
+            <div v-show="!isCollapse" class="tenant-meta">
+              <div class="tenant-title">后端管理系统</div>
+              <div class="tenant-subtitle">{{ currentTenantName }}</div>
+            </div>
+          </transition>
+        </div>
+      </div>
 
       <!-- 菜单 -->
       <el-scrollbar class="sidebar-scrollbar">
@@ -227,7 +243,7 @@
 
                 <!-- 租户切换卡片 -->
                 <div class="tenant-section-compact">
-                  <div class="tenant-switcher-compact" @click.stop="handleTenantSwitch">
+                  <div class="tenant-switcher-compact">
                     <div class="tenant-current-compact">
                       <div class="tenant-current-icon">
                         <span class="tenant-icon-text">{{ currentTenantName?.charAt(0) || 'T' }}</span>
@@ -237,7 +253,6 @@
                         <div class="tenant-current-name">{{ currentTenantName }}</div>
                       </div>
                     </div>
-                    <el-icon class="tenant-switch-icon"><ArrowRight /></el-icon>
                   </div>
                 </div>
 
@@ -302,8 +317,8 @@
       </div>
     </el-drawer>
 
-    <!-- 租户选择对话框 -->
-    <el-dialog
+    <!-- 租户选择对话框 (暂时注释，一个用户只在一个租户) -->
+    <!-- <el-dialog
       v-model="tenantSelectorVisible"
       title="切换租户"
       width="420px"
@@ -337,7 +352,7 @@
           </div>
         </div>
       </div>
-    </el-dialog>
+    </el-dialog> -->
   </el-container>
 </template>
 
@@ -371,13 +386,14 @@ const currentTenantCode = ref(userInfo?.current_tenant?.tenant_code || 'default'
 const currentTenantName = ref(userInfo?.current_tenant?.tenant_name || '默认租户')
 const currentTenantId = ref(userInfo?.tenant_id || '')
 
-const tenantDropdownOpen = ref(false)
-const tenantList = ref<Array<{ tenant_id: string; name: string; code: string; status: number }>>([
-  { tenant_id: '1', name: '默认租户', code: 'default', status: 1 },
-  { tenant_id: '2', name: '测试租户A', code: 'tenant-a', status: 1 },
-  { tenant_id: '3', name: '测试租户B', code: 'tenant-b', status: 1 },
-  { tenant_id: '4', name: '开发环境', code: 'dev', status: 1 }
-])
+// 租户切换相关 (暂时注释，一个用户只在一个租户)
+// const tenantDropdownOpen = ref(false)
+// const tenantList = ref<Array<{ tenant_id: string; name: string; code: string; status: number }>>([
+//   { tenant_id: '1', name: '默认租户', code: 'default', status: 1 },
+//   { tenant_id: '2', name: '测试租户A', code: 'tenant-a', status: 1 },
+//   { tenant_id: '3', name: '测试租户B', code: 'tenant-b', status: 1 },
+//   { tenant_id: '4', name: '开发环境', code: 'dev', status: 1 }
+// ])
 
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
@@ -430,43 +446,44 @@ function toggleCollapse() {
   isCollapse.value = !isCollapse.value
 }
 
-function handleTenantVisibleChange(visible: boolean) {
-  tenantDropdownOpen.value = visible
-}
-
-async function handleTenantCommand(command: string) {
-  if (command === '__manage_tenants__') {
-    router.push('/system/tenants')
-    return
-  }
-
-  if (command === currentTenantId.value) return
-
-  if (!userInfo?.user_id) {
-    ElMessage.error('用户信息缺失，请重新登录')
-    return
-  }
-
-  try {
-    const response = await authApi.selectTenant(userInfo.user_id, { tenant_id: command })
-    saveTokens({
-      access_token: response.access_token,
-      refresh_token: response.refresh_token,
-      user_id: userInfo.user_id,
-      username: userInfo.user_name || undefined,
-      email: userInfo.email || undefined,
-      phone: userInfo.phone || undefined,
-      current_tenant: response.current_tenant
-    })
-    currentTenantId.value = response.current_tenant.tenant_id
-    currentTenantName.value = response.current_tenant.tenant_name
-    currentTenantCode.value = response.current_tenant.tenant_code
-    ElMessage.success('租户切换成功')
-    location.reload()
-  } catch (error: any) {
-    ElMessage.error(error?.message || '租户切换失败')
-  }
-}
+// 侧边栏租户切换相关函数 (暂时注释，一个用户只在一个租户)
+// function handleTenantVisibleChange(visible: boolean) {
+//   tenantDropdownOpen.value = visible
+// }
+//
+// async function handleTenantCommand(command: string) {
+//   if (command === '__manage_tenants__') {
+//     router.push('/system/tenants')
+//     return
+//   }
+//
+//   if (command === currentTenantId.value) return
+//
+//   if (!userInfo?.user_id) {
+//     ElMessage.error('用户信息缺失，请重新登录')
+//     return
+//   }
+//
+//   try {
+//     const response = await authApi.selectTenant(userInfo.user_id, { tenant_id: command })
+//     saveTokens({
+//       access_token: response.access_token,
+//       refresh_token: response.refresh_token,
+//       user_id: userInfo.user_id,
+//       username: userInfo.user_name || undefined,
+//       email: userInfo.email || undefined,
+//       phone: userInfo.phone || undefined,
+//       current_tenant: response.current_tenant
+//     })
+//     currentTenantId.value = response.current_tenant.tenant_id
+//     currentTenantName.value = response.current_tenant.tenant_name
+//     currentTenantCode.value = response.current_tenant.tenant_code
+//     ElMessage.success('租户切换成功')
+//     location.reload()
+//   } catch (error: any) {
+//     ElMessage.error(error?.message || '租户切换失败')
+//   }
+// }
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
@@ -515,46 +532,45 @@ async function handleUserCommand(command: string) {
   }
 }
 
-function handleTenantSwitch() {
-  userDropdownOpen.value = false
-  // 打开租户选择对话框
-  showTenantSelector()
-}
-
-// 租户选择器对话框
-const tenantSelectorVisible = ref(false)
-
-function showTenantSelector() {
-  tenantSelectorVisible.value = true
-}
-
-async function handleTenantSelect(tenantId: string) {
-  if (!userInfo?.user_id) {
-    ElMessage.error('用户信息缺失，请重新登录')
-    return
-  }
-
-  try {
-    const response = await authApi.selectTenant(userInfo.user_id, { tenant_id: tenantId })
-    saveTokens({
-      access_token: response.access_token,
-      refresh_token: response.refresh_token,
-      user_id: userInfo.user_id,
-      username: userInfo.user_name || undefined,
-      email: userInfo.email || undefined,
-      phone: userInfo.phone || undefined,
-      current_tenant: response.current_tenant
-    })
-    currentTenantId.value = response.current_tenant.tenant_id
-    currentTenantName.value = response.current_tenant.tenant_name
-    currentTenantCode.value = response.current_tenant.tenant_code
-    ElMessage.success('租户切换成功')
-    tenantSelectorVisible.value = false
-    setTimeout(() => location.reload(), 300)
-  } catch (error: any) {
-    ElMessage.error(error?.message || '租户切换失败')
-  }
-}
+// 租户切换相关函数 (暂时注释，一个用户只在一个租户)
+// function handleTenantSwitch() {
+//   userDropdownOpen.value = false
+//   showTenantSelector()
+// }
+//
+// const tenantSelectorVisible = ref(false)
+//
+// function showTenantSelector() {
+//   tenantSelectorVisible.value = true
+// }
+//
+// async function handleTenantSelect(tenantId: string) {
+//   if (!userInfo?.user_id) {
+//     ElMessage.error('用户信息缺失，请重新登录')
+//     return
+//   }
+//
+//   try {
+//     const response = await authApi.selectTenant(userInfo.user_id, { tenant_id: tenantId })
+//     saveTokens({
+//       access_token: response.access_token,
+//       refresh_token: response.refresh_token,
+//       user_id: userInfo.user_id,
+//       username: userInfo.user_name || undefined,
+//       email: userInfo.email || undefined,
+//       phone: userInfo.phone || undefined,
+//       current_tenant: response.current_tenant
+//     })
+//     currentTenantId.value = response.current_tenant.tenant_id
+//     currentTenantName.value = response.current_tenant.tenant_name
+//     currentTenantCode.value = response.current_tenant.tenant_code
+//     ElMessage.success('租户切换成功')
+//     tenantSelectorVisible.value = false
+//     setTimeout(() => location.reload(), 300)
+//   } catch (error: any) {
+//     ElMessage.error(error?.message || '租户切换失败')
+//   }
+// }
 
 function handleResize() {
   isMobile.value = window.innerWidth < 768
@@ -600,25 +616,17 @@ onUnmounted(() => {
         height: 100%;
       }
 
-      .tenant-trigger {
+      // 静态版本 (移除租户切换功能后使用)
+      .tenant-trigger-static {
         display: flex;
         align-items: center;
         gap: 12px;
-        cursor: pointer;
         width: 100%;
         height: 100%;
         padding: 10px 10px;
         border-radius: 12px;
         border: 1px solid transparent;
         transition: var(--transition-base);
-
-        &:hover {
-          background: rgba(0, 0, 0, 0.03);
-        }
-
-        &:active {
-          transform: translateY(0);
-        }
 
         &.is-collapsed {
           justify-content: center;
@@ -666,23 +674,92 @@ onUnmounted(() => {
             opacity: 0.9;
           }
         }
-
-        .tenant-caret {
-          color: var(--text-secondary);
-          transition: transform 0.22s ease, opacity 0.22s ease;
-          opacity: 0.7;
-          flex-shrink: 0;
-        }
-
-        .tenant-caret.open {
-          transform: rotate(180deg);
-          opacity: 1;
-        }
-
-        &.is-collapsed .tenant-caret {
-          display: none;
-        }
       }
+
+      // 原租户切换样式 (已注释)
+      // .tenant-trigger {
+      //   display: flex;
+      //   align-items: center;
+      //   gap: 12px;
+      //   cursor: pointer;
+      //   width: 100%;
+      //   height: 100%;
+      //   padding: 10px 10px;
+      //   border-radius: 12px;
+      //   border: 1px solid transparent;
+      //   transition: var(--transition-base);
+      //
+      //   &:hover {
+      //     background: rgba(0, 0, 0, 0.03);
+      //   }
+      //
+      //   &:active {
+      //     transform: translateY(0);
+      //   }
+      //
+      //   &.is-collapsed {
+      //     justify-content: center;
+      //     padding: 10px 0;
+      //   }
+      //
+      //   .tenant-avatar {
+      //     width: 38px;
+      //     height: 38px;
+      //     display: flex;
+      //     align-items: center;
+      //     justify-content: center;
+      //     background: var(--gradient-primary);
+      //     border-radius: 10px;
+      //     color: white;
+      //     flex-shrink: 0;
+      //     box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
+      //   }
+      //
+      //   .tenant-meta {
+      //     display: flex;
+      //     flex-direction: column;
+      //     gap: 4px;
+      //     flex: 1;
+      //     min-width: 0;
+      //
+      //     .tenant-title {
+      //       font-size: 15px;
+      //       font-weight: 600;
+      //       color: var(--text-primary);
+      //       white-space: nowrap;
+      //       overflow: hidden;
+      //       text-overflow: ellipsis;
+      //       line-height: 1.3;
+      //       letter-spacing: -0.3px;
+      //     }
+      //
+      //     .tenant-subtitle {
+      //       font-size: 12px;
+      //       font-weight: 500;
+      //       color: var(--text-secondary);
+      //       white-space: nowrap;
+      //       overflow: hidden;
+      //       text-overflow: ellipsis;
+      //       opacity: 0.9;
+      //     }
+      //   }
+      //
+      //   .tenant-caret {
+      //     color: var(--text-secondary);
+      //     transition: transform 0.22s ease, opacity 0.22s ease;
+      //     opacity: 0.7;
+      //     flex-shrink: 0;
+      //   }
+      //
+      //   .tenant-caret.open {
+      //     transform: rotate(180deg);
+      //     opacity: 1;
+      //   }
+      //
+      //   &.is-collapsed .tenant-caret {
+      //     display: none;
+      //   }
+      // }
     }
 
     .sidebar-scrollbar {
@@ -1305,20 +1382,11 @@ onUnmounted(() => {
     .tenant-switcher-compact {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       padding: 12px 14px;
       background: linear-gradient(135deg, rgba(66, 133, 244, 0.06) 0%, rgba(66, 133, 244, 0.02) 100%);
       border: 1px solid rgba(66, 133, 244, 0.15);
       border-radius: 12px;
-      cursor: pointer;
-      transition: var(--transition-base);
-
-      &:hover {
-        background: linear-gradient(135deg, rgba(66, 133, 244, 0.1) 0%, rgba(66, 133, 244, 0.04) 100%);
-        border-color: rgba(66, 133, 244, 0.3);
-        box-shadow: 0 4px 16px rgba(66, 133, 244, 0.12);
-        transform: translateY(-1px);
-      }
 
       .tenant-current-compact {
         display: flex;
@@ -1363,19 +1431,6 @@ onUnmounted(() => {
             line-height: 1.2;
           }
         }
-      }
-
-      .tenant-switch-icon {
-        font-size: 16px;
-        color: var(--primary-color);
-        opacity: 0.7;
-        transition: transform 0.2s, opacity 0.2s;
-        flex-shrink: 0;
-      }
-
-      &:hover .tenant-switch-icon {
-        opacity: 1;
-        transform: translateX(3px);
       }
     }
   }
