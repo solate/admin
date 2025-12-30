@@ -4,9 +4,6 @@
       <el-avatar :size="36" class="user-avatar">
         {{ userInfo?.user_name?.charAt(0).toUpperCase() || 'A' }}
       </el-avatar>
-      <el-icon class="dropdown-icon" :size="14" :class="{ 'is-rotated': isOpen }">
-        <ArrowDown />
-      </el-icon>
     </div>
     <template #dropdown>
       <el-dropdown-menu class="user-dropdown-menu">
@@ -24,14 +21,13 @@
                   {{ role.name }}
                 </span>
               </div>
-              <div class="user-profile-email">{{ userInfo?.email || userInfo?.phone || '未设置联系方式' }}</div>
             </div>
           </div>
         </div>
 
-        <!-- 租户信息卡片 - 可点击切换租户 -->
-        <div class="tenant-section-compact" @click.stop="openTenantDialog">
-          <div class="tenant-current-compact tenant-clickable">
+        <!-- 租户信息卡片 -->
+        <div class="tenant-section-compact">
+          <div class="tenant-current-compact">
             <div class="tenant-current-icon">
               <span class="tenant-icon-text">{{ tenant?.name?.charAt(0) || 'T' }}</span>
             </div>
@@ -39,9 +35,6 @@
               <div class="tenant-current-name">{{ tenant?.name || '默认租户' }}</div>
               <div class="tenant-current-code">{{ tenant?.tenant_code || 'default' }}</div>
             </div>
-            <el-icon class="tenant-arrow-icon" :size="14">
-              <ArrowRight />
-            </el-icon>
           </div>
         </div>
 
@@ -67,29 +60,19 @@
       </el-dropdown-menu>
     </template>
   </el-dropdown>
-
-  <!-- 租户选择对话框 - 复用 TenantSelector 组件 -->
-  <TenantSelector
-    ref="tenantSelectorRef"
-    mode="dialog"
-    :current-tenant="tenant"
-    @tenant-changed="handleTenantChanged"
-  />
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, ArrowRight, User, Setting, SwitchButton } from '@element-plus/icons-vue'
+import { User, Setting, SwitchButton } from '@element-plus/icons-vue'
 import { authApi } from '../../api'
 import { clearTokens } from '../../utils/token'
-import TenantSelector from '../tenant/TenantSelector.vue'
 
 // 定义 emit
 const emit = defineEmits<{
   command: [command: string]
-  'tenant-changed': [tenant: { tenant_id: string; name: string; tenant_code: string }]
 }>()
 
 // Props
@@ -119,18 +102,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const router = useRouter()
 const isOpen = ref(false)
-const tenantSelectorRef = ref<InstanceType<typeof TenantSelector>>()
 
 function handleVisibleChange(visible: boolean) {
   isOpen.value = visible
-}
-
-function openTenantDialog() {
-  tenantSelectorRef.value?.open()
-}
-
-function handleTenantChanged(tenant: { tenant_id: string; name: string; tenant_code: string }) {
-  emit('tenant-changed', tenant)
 }
 
 async function handleCommand(command: string) {
@@ -166,12 +140,10 @@ async function handleCommand(command: string) {
   .user-info {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 8px;
-    border-radius: 12px;
+    padding: 4px;
+    border-radius: 50%;
     cursor: pointer;
     transition: var(--transition-base);
-    border: 1px solid transparent;
 
     &:hover {
       background: rgba(0, 0, 0, 0.03);
@@ -179,24 +151,11 @@ async function handleCommand(command: string) {
 
     &.is-active {
       background: rgba(0, 0, 0, 0.04);
-      border-color: rgba(66, 133, 244, 0.15);
     }
 
     .user-avatar {
       background: var(--gradient-primary);
       box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
-    }
-
-    .dropdown-icon {
-      font-size: 14px;
-      color: var(--text-secondary);
-      transition: transform 0.3s;
-      opacity: 0.7;
-
-      &.is-rotated {
-        transform: rotate(180deg);
-        opacity: 1;
-      }
     }
   }
 }
@@ -250,12 +209,15 @@ async function handleCommand(command: string) {
       .user-profile-info {
         flex: 1;
         min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
 
         .user-profile-name {
           font-size: 15px;
           font-weight: 700;
           color: var(--text-primary);
-          line-height: 1.3;
+          line-height: 1.4;
           margin-bottom: 6px;
         }
 
@@ -263,7 +225,6 @@ async function handleCommand(command: string) {
           display: flex;
           flex-wrap: wrap;
           gap: 6px;
-          margin-bottom: 6px;
 
           .role-tag-inline {
             display: inline-flex;
@@ -277,15 +238,6 @@ async function handleCommand(command: string) {
             color: var(--primary-color);
             line-height: 1.2;
           }
-        }
-
-        .user-profile-email {
-          font-size: 13px;
-          color: var(--text-secondary);
-          line-height: 1.3;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
         }
       }
     }
@@ -304,16 +256,6 @@ async function handleCommand(command: string) {
       background: linear-gradient(135deg, rgba(66, 133, 244, 0.06) 0%, rgba(66, 133, 244, 0.02) 100%);
       border: 1px solid rgba(66, 133, 244, 0.15);
       border-radius: 12px;
-
-      &.tenant-clickable {
-        cursor: pointer;
-        transition: var(--transition-base);
-
-        &:hover {
-          background: linear-gradient(135deg, rgba(66, 133, 244, 0.1) 0%, rgba(66, 133, 244, 0.05) 100%);
-          border-color: rgba(66, 133, 244, 0.3);
-        }
-      }
 
       .tenant-current-icon {
         width: 38px;
@@ -351,11 +293,6 @@ async function handleCommand(command: string) {
           color: var(--text-secondary);
           font-weight: 500;
         }
-      }
-
-      .tenant-arrow-icon {
-        color: var(--text-secondary);
-        opacity: 0.6;
       }
     }
   }
