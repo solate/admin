@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ensureValidToken, clearTokens } from '../utils/token'
 
 // 动态导入组件
 const Login = () => import('../views/Login.vue')
@@ -52,10 +53,24 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
+  // 公开路由直接放行
   if (to.meta.public) return next()
-  const token = localStorage.getItem('access_token')  // 修改为 access_token
-  if (!token) return next({ path: '/login/default', query: { redirect: to.fullPath } })
+
+  // 检查 token 是否存在
+  const token = localStorage.getItem('access_token')
+  if (!token) {
+    return next({ path: '/login/default', query: { redirect: to.fullPath } })
+  }
+
+  // 确保 token 有效（自动刷新过期或即将过期的 token）
+  const isValid = await ensureValidToken()
+  if (!isValid) {
+    // token 刷新失败，清除并跳转登录
+    clearTokens()
+    return next({ path: '/login/default', query: { redirect: to.fullPath } })
+  }
+
   next()
 })
 

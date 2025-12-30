@@ -115,16 +115,20 @@ export function clearTokens() {
 
 /**
  * 解析JWT token获取过期时间
+ * @throws 如果 token 格式无效则抛出错误
  */
 function parseJwt(token: string): { exp?: number } {
   try {
-    const parts = token.split('.')
+    // 去除 Bearer 前缀
+    const cleanToken = token.replace(/^Bearer\s+/i, '').trim()
+
+    const parts = cleanToken.split('.')
     if (parts.length !== 3) {
-      return {}
+      throw new Error('Invalid token format: token must have 3 parts separated by dots')
     }
     const base64Url = parts[1]
     if (!base64Url) {
-      return {}
+      throw new Error('Invalid token format: missing payload')
     }
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
     const jsonPayload = decodeURIComponent(
@@ -135,7 +139,7 @@ function parseJwt(token: string): { exp?: number } {
     )
     return JSON.parse(jsonPayload)
   } catch (e) {
-    return {}
+    throw new Error(`Failed to parse JWT token: ${e instanceof Error ? e.message : 'Unknown error'}`)
   }
 }
 
@@ -146,14 +150,19 @@ export function isTokenExpiringSoon(): boolean {
   const token = getAccessToken()
   if (!token) return true
 
-  const payload = parseJwt(token)
-  if (!payload.exp) return true
+  try {
+    const payload = parseJwt(token)
+    if (!payload.exp) return true
 
-  const now = Math.floor(Date.now() / 1000)
-  const timeLeft = payload.exp - now
+    const now = Math.floor(Date.now() / 1000)
+    const timeLeft = payload.exp - now
 
-  // 如果剩余时间少于5分钟，认为即将过期
-  return timeLeft < 300
+    // 如果剩余时间少于5分钟，认为即将过期
+    return timeLeft < 300
+  } catch {
+    // token 格式无效，视为需要刷新
+    return true
+  }
 }
 
 /**
@@ -163,11 +172,16 @@ export function isTokenExpired(): boolean {
   const token = getAccessToken()
   if (!token) return true
 
-  const payload = parseJwt(token)
-  if (!payload.exp) return true
+  try {
+    const payload = parseJwt(token)
+    if (!payload.exp) return true
 
-  const now = Math.floor(Date.now() / 1000)
-  return payload.exp <= now
+    const now = Math.floor(Date.now() / 1000)
+    return payload.exp <= now
+  } catch {
+    // token 格式无效，视为已过期
+    return true
+  }
 }
 
 /**
@@ -192,6 +206,7 @@ function onTokenRefreshed(token: string) {
 export async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = getRefreshToken()
   if (!refreshToken) {
+    console.warn('刷新token失败: refresh_token 不存在')
     return null
   }
 
