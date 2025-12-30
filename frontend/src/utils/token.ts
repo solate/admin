@@ -8,6 +8,7 @@ import { authApi, type TenantInfo } from '../api'
 const TOKEN_KEY = 'access_token'
 const REFRESH_TOKEN_KEY = 'refresh_token'
 const USER_ID_KEY = 'user_id'
+const USERNAME_KEY = 'username'
 const EMAIL_KEY = 'email'
 const PHONE_KEY = 'phone'
 const TENANT_ID_KEY = 'tenant_id'
@@ -24,6 +25,7 @@ export function saveTokens(data: {
   access_token: string
   refresh_token: string
   user_id: string
+  username?: string
   email?: string
   phone?: string
   current_tenant?: TenantInfo
@@ -31,6 +33,9 @@ export function saveTokens(data: {
   localStorage.setItem(TOKEN_KEY, data.access_token)
   localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token)
   localStorage.setItem(USER_ID_KEY, data.user_id)
+  if (data.username !== undefined) {
+    localStorage.setItem(USERNAME_KEY, data.username || '')
+  }
   if (data.email !== undefined) {
     localStorage.setItem(EMAIL_KEY, data.email || '')
   }
@@ -93,6 +98,7 @@ export function getUserInfo() {
   const tenantInfo = getTenantInfo()
   return {
     user_id: localStorage.getItem(USER_ID_KEY),
+    user_name: localStorage.getItem(USERNAME_KEY),
     email: localStorage.getItem(EMAIL_KEY),
     phone: localStorage.getItem(PHONE_KEY),
     tenant_id: localStorage.getItem(TENANT_ID_KEY),
@@ -107,6 +113,7 @@ export function clearTokens() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(REFRESH_TOKEN_KEY)
   localStorage.removeItem(USER_ID_KEY)
+  localStorage.removeItem(USERNAME_KEY)
   localStorage.removeItem(EMAIL_KEY)
   localStorage.removeItem(PHONE_KEY)
   localStorage.removeItem(TENANT_ID_KEY)

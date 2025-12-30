@@ -282,6 +282,7 @@ async function onSubmit() {
         access_token: res.access_token,
         refresh_token: res.refresh_token!,
         user_id: res.user.user_id,
+        username: res.user.username,
         email: res.user.email,
         phone: res.user.phone,
         current_tenant: res.current_tenant
