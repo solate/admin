@@ -5,42 +5,74 @@
       :width="isCollapse ? `${sidebarCollapsedWidth}px` : `${sidebarWidth}px`"
       class="sidebar"
     >
-      <!-- Logo区域 -->
+      <!-- 租户选择区域 -->
       <div class="sidebar-header">
-        <!-- Logo + 系统名称 + 租户切换器（整体） -->
-        <el-dropdown trigger="click" placement="bottom-start" class="workspace-dropdown">
-          <div class="logo-container" @click="goHome">
-            <div class="logo-icon">
-              <el-icon size="24">
+        <el-dropdown
+          trigger="click"
+          placement="bottom-start"
+          class="workspace-dropdown"
+          @command="handleTenantCommand"
+          @visible-change="handleTenantVisibleChange"
+        >
+          <div class="tenant-trigger" :class="{ 'is-collapsed': isCollapse }">
+            <div class="tenant-avatar">
+              <el-icon size="20">
                 <Promotion />
               </el-icon>
             </div>
             <transition name="fade">
-              <div v-show="!isCollapse" class="workspace-info">
-                <div class="logo-text">管理系统</div>
-                <div class="tenant-selector">
-                  <span class="tenant-name">{{ currentTenantName }}</span>
-                  <el-icon class="tenant-arrow" :size="12">
-                    <CaretBottom />
-                  </el-icon>
-                </div>
+              <div v-show="!isCollapse" class="tenant-meta">
+                <div class="tenant-title">后端管理系统</div>
+                <div class="tenant-subtitle">{{ currentTenantName }}</div>
               </div>
             </transition>
+            <el-icon class="tenant-caret" :class="{ open: tenantDropdownOpen }" :size="14">
+              <CaretBottom />
+            </el-icon>
           </div>
           <template #dropdown>
             <el-dropdown-menu class="workspace-menu">
-              <div class="workspace-list">
-                <div class="workspace-item active">
-                  <div class="workspace-avatar">
-                    <span class="avatar-text">{{ currentTenantName?.charAt(0) }}</span>
-                  </div>
-                  <div class="workspace-details">
-                    <div class="workspace-name">{{ currentTenantName }}</div>
-                    <div class="workspace-code">{{ currentTenantCode }}</div>
-                  </div>
-                  <el-icon class="check-icon"><Check /></el-icon>
-                </div>
+              <div class="workspace-menu-header">
+                <div class="workspace-menu-title">选择租户</div>
               </div>
+
+              <el-scrollbar max-height="320px" class="workspace-scroll">
+                <div class="workspace-list">
+                  <el-dropdown-item
+                    v-for="tenant in tenantList"
+                    :key="tenant.tenant_id"
+                    :command="tenant.tenant_id"
+                    class="workspace-dropdown-item"
+                  >
+                    <div class="workspace-item" :class="{ active: tenant.tenant_id === currentTenantId }">
+                      <div class="workspace-avatar">
+                        <span class="avatar-text">{{ tenant.name?.charAt(0)?.toUpperCase() || 'T' }}</span>
+                      </div>
+                      <div class="workspace-details">
+                        <div class="workspace-name">{{ tenant.name }}</div>
+                        <div class="workspace-code">{{ tenant.code }}</div>
+                      </div>
+                      <div class="workspace-right">
+                        <span class="workspace-badge" :class="{ danger: tenant.status === 2 }">
+                          {{ tenant.status === 2 ? '禁用' : '正常' }}
+                        </span>
+                        <div class="workspace-check">
+                          <el-icon class="check-icon"><Check /></el-icon>
+                        </div>
+                      </div>
+                    </div>
+                  </el-dropdown-item>
+                </div>
+              </el-scrollbar>
+
+              <el-dropdown-item divided command="__manage_tenants__" class="workspace-dropdown-item">
+                <div class="workspace-add">
+                  <div class="workspace-add-icon">
+                    <el-icon><Plus /></el-icon>
+                  </div>
+                  <div class="workspace-add-text">添加新租户</div>
+                </div>
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -241,8 +273,8 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useThemeStore } from '../stores/theme'
-import { authApi } from '../api'
-import { clearTokens, getUserInfo } from '../utils/token'
+import { authApi, tenantApi } from '../api'
+import { clearTokens, getUserInfo, saveTokens } from '../utils/token'
 import NProgress from 'nprogress'
 
 const route = useRoute()
@@ -262,6 +294,15 @@ const sidebarCollapsedWidth = 72
 // 从 token 中获取租户信息
 const currentTenantCode = ref(userInfo?.current_tenant?.tenant_code || 'default')
 const currentTenantName = ref(userInfo?.current_tenant?.tenant_name || '默认租户')
+const currentTenantId = ref(userInfo?.tenant_id || '')
+
+const tenantDropdownOpen = ref(false)
+const tenantList = ref<Array<{ tenant_id: string; name: string; code: string; status: number }>>([
+  { tenant_id: '1', name: '默认租户', code: 'default', status: 1 },
+  { tenant_id: '2', name: '测试租户A', code: 'tenant-a', status: 1 },
+  { tenant_id: '3', name: '测试租户B', code: 'tenant-b', status: 1 },
+  { tenant_id: '4', name: '开发环境', code: 'dev', status: 1 }
+])
 
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
@@ -314,8 +355,41 @@ function toggleCollapse() {
   isCollapse.value = !isCollapse.value
 }
 
-function goHome() {
-  router.push('/')
+function handleTenantVisibleChange(visible: boolean) {
+  tenantDropdownOpen.value = visible
+}
+
+async function handleTenantCommand(command: string) {
+  if (command === '__manage_tenants__') {
+    router.push('/system/tenants')
+    return
+  }
+
+  if (command === currentTenantId.value) return
+
+  if (!userInfo?.user_id) {
+    ElMessage.error('用户信息缺失，请重新登录')
+    return
+  }
+
+  try {
+    const response = await authApi.selectTenant(userInfo.user_id, { tenant_id: command })
+    saveTokens({
+      access_token: response.access_token,
+      refresh_token: response.refresh_token,
+      user_id: userInfo.user_id,
+      email: userInfo.email || undefined,
+      phone: userInfo.phone || undefined,
+      current_tenant: response.current_tenant
+    })
+    currentTenantId.value = response.current_tenant.tenant_id
+    currentTenantName.value = response.current_tenant.tenant_name
+    currentTenantCode.value = response.current_tenant.tenant_code
+    ElMessage.success('租户切换成功')
+    location.reload()
+  } catch (error: any) {
+    ElMessage.error(error?.message || '租户切换失败')
+  }
 }
 
 function toggleFullscreen() {
@@ -406,89 +480,89 @@ onUnmounted(() => {
       .workspace-dropdown {
         width: 100%;
         height: 100%;
-
-        :deep(.el-dropdown-link) {
-          display: flex;
-          align-items: center;
-          width: 100%;
-          height: 100%;
-        }
       }
 
-      .logo-container {
+      .tenant-trigger {
         display: flex;
         align-items: center;
-        gap: 11px;
+        gap: 12px;
         cursor: pointer;
         width: 100%;
         height: 100%;
-        padding: 12px 0;
+        padding: 10px 10px;
+        border-radius: 12px;
+        border: 1px solid transparent;
         transition: var(--transition-base);
 
-        .logo-icon {
-          width: 34px;
-          height: 34px;
+        &:hover {
+          background: rgba(0, 0, 0, 0.03);
+        }
+
+        &:active {
+          transform: translateY(0);
+        }
+
+        &.is-collapsed {
+          justify-content: center;
+          padding: 10px 0;
+        }
+
+        .tenant-avatar {
+          width: 38px;
+          height: 38px;
           display: flex;
           align-items: center;
           justify-content: center;
           background: var(--gradient-primary);
-          border-radius: 9px;
+          border-radius: 10px;
           color: white;
           flex-shrink: 0;
-          box-shadow: 0 2px 10px rgba(66, 133, 244, 0.25);
+          box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
         }
 
-        .workspace-info {
+        .tenant-meta {
           display: flex;
           flex-direction: column;
-          gap: 1px;
+          gap: 4px;
           flex: 1;
           min-width: 0;
 
-          .logo-text {
-            font-size: 16px;
+          .tenant-title {
+            font-size: 15px;
             font-weight: 600;
             color: var(--text-primary);
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
             line-height: 1.3;
             letter-spacing: -0.3px;
           }
 
-          .tenant-selector {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 8px;
-            background: rgba(0, 0, 0, 0.04);
-            border-radius: 6px;
-            align-self: flex-start;
-            transition: var(--transition-base);
-            cursor: pointer;
-
-            .tenant-name {
-              font-size: 12px;
-              font-weight: 400;
-              color: var(--text-secondary);
-              white-space: nowrap;
-              line-height: 1.4;
-            }
-
-            .tenant-arrow {
-              color: var(--text-placeholder);
-              opacity: 0.5;
-              transition: var(--transition-base);
-              flex-shrink: 0;
-            }
-
-            &:hover {
-              background: rgba(0, 0, 0, 0.06);
-
-              .tenant-arrow {
-                opacity: 0.8;
-                color: var(--text-secondary);
-              }
-            }
+          .tenant-subtitle {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 0.9;
           }
+        }
+
+        .tenant-caret {
+          color: var(--text-secondary);
+          transition: transform 0.22s ease, opacity 0.22s ease;
+          opacity: 0.7;
+          flex-shrink: 0;
+        }
+
+        .tenant-caret.open {
+          transform: rotate(180deg);
+          opacity: 1;
+        }
+
+        &.is-collapsed .tenant-caret {
+          display: none;
         }
       }
     }
@@ -706,44 +780,83 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-// 工作区切换下拉菜单样式
+// 租户切换下拉菜单样式
 .workspace-menu {
-  padding: 6px;
-  min-width: 240px;
+  padding: 10px;
+  min-width: 290px;
   border: 1px solid var(--border-base);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
+  box-shadow: 0 22px 64px rgba(15, 23, 42, 0.14);
+  border-radius: 14px;
   overflow: hidden;
 
   :deep(.el-dropdown-menu__item) {
     padding: 0;
+    line-height: normal;
+  }
+  :deep(.el-dropdown-menu__item:hover) {
+    background: transparent;
+    color: inherit;
+  }
+
+  .workspace-menu-header {
+    padding: 4px 6px 10px;
+    border-bottom: 1px solid var(--border-base);
+    margin-bottom: 8px;
+
+    .workspace-menu-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .workspace-menu-subtitle {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--text-placeholder);
+      line-height: 1.2;
+    }
+  }
+
+  .workspace-scroll {
+    padding: 2px 2px 8px;
+
+    :deep(.el-scrollbar__view) {
+      padding-right: 6px;
+    }
   }
 
   .workspace-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 10px;
 
     .workspace-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 8px 10px;
-      border-radius: 6px;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 14px;
       cursor: pointer;
       transition: var(--transition-base);
+      background: var(--bg-white);
+      border: 1px solid var(--border-base);
+      width: 100%;
 
       &:hover {
-        background: var(--bg-light);
+        border-color: rgba(66, 133, 244, 0.25);
+        box-shadow: 0 14px 30px rgba(66, 133, 244, 0.12);
+        transform: translateY(-1px);
       }
 
       &.active {
         background: rgba(66, 133, 244, 0.06);
+        border-color: rgba(66, 133, 244, 0.3);
 
         .workspace-avatar {
           background: var(--gradient-primary);
           color: white;
-          box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+          box-shadow: 0 14px 28px rgba(66, 133, 244, 0.22);
         }
 
         .workspace-name {
@@ -752,16 +865,16 @@ onUnmounted(() => {
       }
 
       .workspace-avatar {
-        width: 32px;
-        height: 32px;
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: var(--bg-light);
-        border-radius: 6px;
+        border-radius: 14px;
         color: var(--text-secondary);
-        font-size: 14px;
-        font-weight: 600;
+        font-size: 15px;
+        font-weight: 700;
         transition: var(--transition-base);
         flex-shrink: 0;
 
@@ -776,30 +889,119 @@ onUnmounted(() => {
 
         .workspace-name {
           font-size: 14px;
-          font-weight: 500;
+          font-weight: 700;
           color: var(--text-primary);
           line-height: 1.3;
-          margin-bottom: 1px;
+          margin-bottom: 2px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .workspace-code {
           font-size: 12px;
-          color: var(--text-placeholder);
-          font-weight: 400;
+          color: var(--text-secondary);
+          font-weight: 500;
           text-transform: lowercase;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
       }
 
-      .check-icon {
-        color: var(--primary-color);
-        font-size: 14px;
-        opacity: 0;
+      .workspace-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      .workspace-badge {
+        height: 20px;
+        padding: 0 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 20px;
+        border: 1px solid var(--border-base);
+        background: var(--bg-light);
+        color: var(--text-secondary);
+
+        &.danger {
+          border-color: rgba(239, 68, 68, 0.22);
+          background: rgba(239, 68, 68, 0.1);
+          color: var(--danger-color);
+        }
+      }
+
+      .workspace-check {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1.5px solid var(--border-base);
         transition: var(--transition-base);
       }
 
-      &.active .check-icon {
-        opacity: 1;
+      .check-icon {
+        font-size: 14px;
+        opacity: 0;
+        color: white;
+        transition: var(--transition-base);
       }
+
+      &.active {
+        .workspace-check {
+          background: var(--gradient-primary);
+          border-color: transparent;
+          box-shadow: 0 10px 22px rgba(66, 133, 244, 0.25);
+        }
+
+        .check-icon {
+          opacity: 1;
+        }
+      }
+    }
+  }
+
+  .workspace-add {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px dashed rgba(66, 133, 244, 0.35);
+    background: rgba(66, 133, 244, 0.08);
+    transition: var(--transition-base);
+
+    &:hover {
+      background: rgba(66, 133, 244, 0.12);
+      border-color: rgba(66, 133, 244, 0.5);
+      box-shadow: 0 14px 30px rgba(66, 133, 244, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .workspace-add-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-white);
+      border: 1px solid rgba(66, 133, 244, 0.18);
+      color: var(--primary-color);
+      flex-shrink: 0;
+    }
+
+    .workspace-add-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary-color);
+      line-height: 1.2;
     }
   }
 }
