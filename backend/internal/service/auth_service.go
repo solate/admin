@@ -89,84 +89,25 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 		return nil, xerr.ErrUserNoRoles
 	}
 
-	// 查询角色详情，只获取活跃的角色
-	roles, err := s.roleRepo.ListByCodes(ctx, roleCodes)
-	if err != nil {
-		log.Error().Err(err).Strs("role_codes", roleCodes).Msg("查询角色详情失败")
-		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询角色详情失败", err)
-	}
-
-	// 过滤出活跃的角色编码
-	activeRoleCodes := make([]string, 0, len(roles))
-	for _, role := range roles {
-		if role.Status == constants.StatusEnabled {
-			activeRoleCodes = append(activeRoleCodes, role.RoleCode)
-		}
-	}
-
-	// 检查是否有活跃的角色
-	if len(activeRoleCodes) == 0 {
-		return nil, xerr.ErrUserNoRoles
-	}
-
 	// 生成JWT令牌
-	tokenPair, err := s.jwt.GenerateTokenPair(ctx, tenantID, tenantCode, user.UserID, user.UserName, activeRoleCodes)
+	tokenPair, err := s.jwt.GenerateTokenPair(ctx, tenantID, tenantCode, user.UserID, user.UserName, roleCodes)
 	if err != nil {
 		log.Error().Err(err).Str("user_id", user.UserID).Str("username", user.UserName).Msg("生成JWT令牌失败")
 		return nil, err
 	}
 
 	// 更新最后登录时间
-	lastLoginTime := time.Now().UnixMilli()
 	if err := s.userRepo.Update(ctx, user.UserID, map[string]interface{}{
-		"last_login_time": lastLoginTime,
+		"last_login_time": time.Now().UnixMilli(),
 	}); err != nil {
 		log.Error().Err(err).Str("user_id", user.UserID).Msg("更新最后登录时间失败")
 		// 不影响登录流程，继续返回
-	}
-
-	// 查询租户信息
-	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
-	if err != nil {
-		log.Error().Err(err).Str("tenant_id", tenantID).Msg("查询租户信息失败")
-		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询租户信息失败", err)
-	}
-
-	// 构建角色信息列表
-	roleInfos := make([]*dto.RoleInfo, 0, len(roles))
-	for _, role := range roles {
-		roleInfos = append(roleInfos, &dto.RoleInfo{
-			RoleID:      role.RoleID,
-			RoleCode:    role.RoleCode,
-			Name:        role.Name,
-			Description: role.Description,
-		})
 	}
 
 	return &dto.LoginResponse{
 		AccessToken:  tokenPair.AccessToken,
 		RefreshToken: tokenPair.RefreshToken,
 		ExpiresIn:    tokenPair.ExpiresIn,
-		User: &dto.UserInfo{
-			UserID:        user.UserID,
-			UserName:      user.UserName,
-			Nickname:      user.Nickname,
-			Avatar:        user.Avatar,
-			Phone:         user.Phone,
-			Email:         user.Email,
-			Status:        int(user.Status),
-			TenantID:      tenantID,
-			LastLoginTime: lastLoginTime,
-			CreatedAt:     user.CreatedAt,
-			UpdatedAt:     user.UpdatedAt,
-		},
-		Tenant: &dto.TenantInfo{
-			TenantID:    tenant.TenantID,
-			TenantCode:  tenant.TenantCode,
-			Name:        tenant.Name,
-			Description: tenant.Description,
-		},
-		Roles: roleInfos,
 	}, nil
 }
 
