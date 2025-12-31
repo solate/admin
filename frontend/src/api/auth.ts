@@ -46,11 +46,15 @@ export interface User {
   updated_at: number
 }
 
-// 登录响应
+// 登录响应（只返回 token）
 export interface LoginResponse {
   access_token: string
   refresh_token: string
   expires_in: number
+}
+
+// 用户档案响应
+export interface ProfileResponse {
   user: User
   tenant: TenantInfo
   roles: RoleInfo[]
@@ -127,6 +131,11 @@ export const authApi = {
   // 用户登录（需要提供租户编码）
   login: (tenantCode: string, data: LoginRequest): Promise<LoginResponse> => {
     return http.post(`/api/v1/auth/${tenantCode}/login`, data)
+  },
+
+  // 获取当前用户信息
+  getProfile: (): Promise<ProfileResponse> => {
+    return http.get('/api/v1/profile')
   },
 
   // 选择租户

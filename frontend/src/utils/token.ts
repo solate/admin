@@ -24,7 +24,7 @@ let refreshSubscribers: Array<(token: string) => void> = []
 export function saveTokens(data: {
   access_token: string
   refresh_token: string
-  user_id: string
+  user_id?: string // 改为可选，支持先保存 token 再获取用户信息
   username?: string
   email?: string
   phone?: string
@@ -33,7 +33,9 @@ export function saveTokens(data: {
 }) {
   localStorage.setItem(TOKEN_KEY, data.access_token)
   localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token)
-  localStorage.setItem(USER_ID_KEY, data.user_id)
+  if (data.user_id !== undefined) {
+    localStorage.setItem(USER_ID_KEY, data.user_id)
+  }
   if (data.username !== undefined) {
     localStorage.setItem(USERNAME_KEY, data.username || '')
   }

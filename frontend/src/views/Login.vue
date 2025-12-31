@@ -269,39 +269,48 @@ async function onSubmit() {
   loading.value = true
 
   try {
-    const res = await authApi.login(tenantCode.value, {
+    // 1. 登录获取 token
+    const loginRes = await authApi.login(tenantCode.value, {
       username: form.value.username,
       password: form.value.password,
       captcha_id: captchaId.value,
       captcha: form.value.captcha
     })
 
-    // 直接登录成功
-    if (res.access_token && res.user) {
-      saveTokens({
-        access_token: res.access_token,
-        refresh_token: res.refresh_token!,
-        user_id: res.user.user_id,
-        username: res.user.username,
-        email: res.user.email,
-        phone: res.user.phone,
-        tenant: res.tenant,
-        roles: res.roles
-      })
+    // 2. 先保存 token（临时）
+    saveTokens({
+      access_token: loginRes.access_token,
+      refresh_token: loginRes.refresh_token!,
+      user_id: '' // 临时占位，后面会从 profile 获取
+    })
 
-      // 记住用户名
-      if (rememberMe.value) {
-        localStorage.setItem('remember_username', form.value.username)
-      } else {
-        localStorage.removeItem('remember_username')
-      }
+    // 3. 获取用户信息
+    const profileRes = await authApi.getProfile()
 
-      ElMessage.success('登录成功！欢迎回来')
+    // 4. 更新完整的用户信息
+    saveTokens({
+      access_token: loginRes.access_token,
+      refresh_token: loginRes.refresh_token!,
+      user_id: profileRes.user.user_id,
+      username: profileRes.user.username,
+      email: profileRes.user.email,
+      phone: profileRes.user.phone,
+      tenant: profileRes.tenant,
+      roles: profileRes.roles
+    })
 
-      // 跳转到首页或重定向页面
-      const redirect = (router.currentRoute.value.query.redirect as string) || '/'
-      router.push(redirect)
+    // 记住用户名
+    if (rememberMe.value) {
+      localStorage.setItem('remember_username', form.value.username)
+    } else {
+      localStorage.removeItem('remember_username')
     }
+
+    ElMessage.success('登录成功！欢迎回来')
+
+    // 跳转到首页或重定向页面
+    const redirect = (router.currentRoute.value.query.redirect as string) || '/'
+    router.push(redirect)
   } catch (error: any) {
     console.error('登录失败:', error)
     // 登录失败，刷新验证码
