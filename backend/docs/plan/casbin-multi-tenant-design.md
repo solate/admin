@@ -374,67 +374,90 @@ token := jwt.WithClaims("roles", roles)
 
 | 方案 | 示例 | Service 改动 | 复杂度 | 推荐度 |
 |------|------|-------------|--------|--------|
-| **租户切换模式** | `X-Target-Tenant: tenant_a` | ✅ 零改动 | 低 | ⭐⭐⭐ |
+| **请求租户ID模式** | Header/Query/Path 传参 | ✅ 零改动 | 低 | ⭐⭐⭐ |
 | **请求体传 tenant_id** | body 中 `tenant_id` | 每个方法判断 | 高 | ⭐⭐ |
-| **Path 参数** | `/tenants/{id}/users` | 单独路由 | 中 | ⭐ |
 | **两套接口** | `/super-admin/users` | 双倍代码 | 高 | ❌ |
 
-### 9.3 推荐方案：租户切换模式
+### 9.3 推荐方案：请求租户ID模式
 
-**核心思想**：超管通过 Header 切换到目标租户上下文，之后所有操作和租户管理员完全一样。
-
-#### 中间件实现
+**核心思想**：中间件统一解析请求中的租户参数，超管可切换租户，租户管理员强制使用 JWT 中的租户。
 
 ```go
-// TenantSwitchMiddleware - 处理超管租户切换
-func TenantSwitchMiddleware(db *gorm.DB) gin.HandlerFunc {
+// TenantResolverMiddleware - 统一租户解析中间件
+func TenantResolverMiddleware(db *gorm.DB) gin.HandlerFunc {
     tenantRepo := repository.NewTenantRepo(db)
 
     return func(c *gin.Context) {
         ctx := c.Request.Context()
 
-        // 只有超管才能切换租户
+        // 1. 获取请求的目标租户（优先级: Header > Query > Path）
+        var requestTenantCode string
+        if header := c.GetHeader("X-Target-Tenant"); header != "" {
+            requestTenantCode = header
+        } else if query := c.Query("tenant"); query != "" {
+            requestTenantCode = query
+        } else if path := c.Param("tenant"); path != "" {
+            requestTenantCode = path
+        }
+
+        // 2. 决定最终使用的租户ID
+        var finalTenantID, finalTenantCode string
+
         if xcontext.IsSuperAdmin(ctx) {
-            if targetTenantCode := c.GetHeader("X-Target-Tenant"); targetTenantCode != "" {
-                // 验证租户存在
-                tenant, err := tenantRepo.GetByCode(ctx, targetTenantCode)
+            // 超管: 使用请求的租户ID
+            if requestTenantCode != "" {
+                tenant, err := tenantRepo.GetByCode(ctx, requestTenantCode)
                 if err != nil {
                     response.Error(c, xerr.ErrTenantNotFound)
                     c.Abort()
                     return
                 }
-
-                // 直接覆盖 tenant_id，后续所有操作统一处理
-                ctx = xcontext.SetTenantID(ctx, tenant.TenantID)
-                ctx = xcontext.SetTenantCode(ctx, tenant.TenantCode)
-                c.Request = c.Request.WithContext(ctx)
+                finalTenantID = tenant.TenantID
+                finalTenantCode = tenant.TenantCode
+            } else {
+                // 超管未指定租户，使用 JWT 中的默认租户
+                finalTenantID = xcontext.GetTenantID(ctx)
+                finalTenantCode = xcontext.GetTenantCode(ctx)
             }
+        } else {
+            // 租户管理员: 忽略请求租户ID，强制使用 JWT 中的
+            finalTenantID = xcontext.GetTenantID(ctx)
+            finalTenantCode = xcontext.GetTenantCode(ctx)
         }
 
+        // 3. 设置最终租户ID到 Context
+        ctx = xcontext.SetTenantID(ctx, finalTenantID)
+        ctx = xcontext.SetTenantCode(ctx, finalTenantCode)
+        c.Request = c.Request.WithContext(ctx)
         c.Next()
     }
 }
 ```
 
-#### API 使用示例
+### 9.4 API 使用示例
 
 ```bash
-# 超管切换到租户 A 后创建用户
-POST /api/v1/users
-Headers:
-  Authorization: Bearer <super_admin_token>
-  X-Target-Tenant: tenant_a
-Body: { "user_name": "bob", "password": "xxx" }
+# 超管通过 Header 切换租户
+GET /api/v1/users
+Headers: X-Target-Tenant: tenant_a
+
+# 超管通过 Query 参数切换租户
+GET /api/v1/users?tenant=tenant_a
+
+# 超管通过 Path 参数切换租户
+GET /api/v1/tenants/tenant_a/users
+
+# 租户管理员（所有租户参数都被忽略，强制使用 JWT 中的）
+GET /api/v1/users?tenant=tenant_a  # tenant_a 被忽略
 ```
 
-### 9.4 核心优势
+### 9.5 核心优势
 
 | 特性 | 说明 |
 |------|------|
 | **Service 层零改动** | 统一从 context 获取租户ID |
-| **中间件自动处理** | 无需业务代码关心 |
-| **前端友好** | 一个租户选择器搞定 |
-| **安全可控** | 审计日志记录所有跨租户操作 |
+| **多种传参方式** | Header/Query/Path 灵活选择 |
+| **安全可控** | 租户管理员无法越权 |
 
 ---
 
