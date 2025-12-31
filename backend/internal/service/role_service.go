@@ -167,14 +167,10 @@ func (s *RoleService) DeleteRole(ctx context.Context, roleID string) error {
 // - 租户管理员只能查询本租户角色
 // - 普通用户无权限访问此接口，由 Casbin 中间件拦截
 func (s *RoleService) ListRoles(ctx context.Context, req *dto.ListRolesRequest) (*dto.ListRolesResponse, error) {
-	var roles []*model.Role
-	var total int64
-	var err error
-
 	// 超管和租户管理员使用同一个查询方法
 	// - 超管：context 中有 SkipTenantCheck，Repository 自动跳过租户过滤
 	// - 租户管理员：Repository 自动添加 tenant_id 过滤
-	roles, total, err = s.roleRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Keyword, req.Status)
+	roles, total, err := s.roleRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Keyword, req.Status)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询角色列表失败", err)
 	}

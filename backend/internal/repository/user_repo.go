@@ -30,12 +30,6 @@ func (r *UserRepo) GetByID(ctx context.Context, userID string) (*model.User, err
 	return r.q.User.WithContext(ctx).Where(r.q.User.UserID.Eq(userID)).First()
 }
 
-// GetByUserName 根据用户名获取用户（全局查询，用于登录）
-func (r *UserRepo) GetByUserName(ctx context.Context, userName string) (*model.User, error) {
-	// 用户表已与租户解耦，用户名全局唯一，直接查询即可
-	return r.q.User.WithContext(ctx).Where(r.q.User.UserName.Eq(userName)).First()
-}
-
 // GetByTenantAndUserName 根据租户ID和用户名获取用户（用于登录）
 func (r *UserRepo) GetByTenantAndUserName(ctx context.Context, tenantID, userName string) (*model.User, error) {
 	return r.q.User.WithContext(ctx).
@@ -90,10 +84,12 @@ func (r *UserRepo) UpdateStatus(ctx context.Context, userID string, status int) 
 	return err
 }
 
-// CheckExists 检查用户是否存在（全局唯一）
-func (r *UserRepo) CheckExists(ctx context.Context, userName string) (bool, error) {
-	// 用户名已全局唯一
-	count, err := r.q.User.WithContext(ctx).Where(r.q.User.UserName.Eq(userName)).Count()
+// CheckExists 检查用户是否存在（租户内唯一）
+func (r *UserRepo) CheckExists(ctx context.Context, tenantID, userName string) (bool, error) {
+	count, err := r.q.User.WithContext(ctx).
+		Where(r.q.User.TenantID.Eq(tenantID)).
+		Where(r.q.User.UserName.Eq(userName)).
+		Count()
 	if err != nil {
 		return false, err
 	}

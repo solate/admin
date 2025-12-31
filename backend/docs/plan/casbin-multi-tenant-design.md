@@ -364,7 +364,87 @@ token := jwt.WithClaims("roles", roles)
 
 ---
 
-## 9. 实现清单
+## 9. 超管跨租户操作设计
+
+### 9.1 核心问题
+
+超管需要为任何租户创建用户，而租户管理员只能为自己租户创建用户。
+
+### 9.2 方案对比
+
+| 方案 | 示例 | Service 改动 | 复杂度 | 推荐度 |
+|------|------|-------------|--------|--------|
+| **租户切换模式** | `X-Target-Tenant: tenant_a` | ✅ 零改动 | 低 | ⭐⭐⭐ |
+| **请求体传 tenant_id** | body 中 `tenant_id` | 每个方法判断 | 高 | ⭐⭐ |
+| **Path 参数** | `/tenants/{id}/users` | 单独路由 | 中 | ⭐ |
+| **两套接口** | `/super-admin/users` | 双倍代码 | 高 | ❌ |
+
+### 9.3 推荐方案：租户切换模式
+
+**核心思想**：超管通过 Header 切换到目标租户上下文，之后所有操作和租户管理员完全一样。
+
+#### 中间件实现
+
+```go
+// TenantSwitchMiddleware - 处理超管租户切换
+func TenantSwitchMiddleware(db *gorm.DB) gin.HandlerFunc {
+    tenantRepo := repository.NewTenantRepo(db)
+
+    return func(c *gin.Context) {
+        ctx := c.Request.Context()
+
+        // 只有超管才能切换租户
+        if xcontext.IsSuperAdmin(ctx) {
+            if targetTenantCode := c.GetHeader("X-Target-Tenant"); targetTenantCode != "" {
+                // 验证租户存在
+                tenant, err := tenantRepo.GetByCode(ctx, targetTenantCode)
+                if err != nil {
+                    response.Error(c, xerr.ErrTenantNotFound)
+                    c.Abort()
+                    return
+                }
+
+                // 直接覆盖 tenant_id，后续所有操作统一处理
+                ctx = xcontext.SetTenantID(ctx, tenant.TenantID)
+                ctx = xcontext.SetTenantCode(ctx, tenant.TenantCode)
+                c.Request = c.Request.WithContext(ctx)
+            }
+        }
+
+        c.Next()
+    }
+}
+```
+
+#### API 使用示例
+
+```bash
+# 超管切换到租户 A 后创建用户
+POST /api/v1/users
+Headers:
+  Authorization: Bearer <super_admin_token>
+  X-Target-Tenant: tenant_a
+Body: { "user_name": "bob", "password": "xxx" }
+```
+
+### 9.4 核心优势
+
+| 特性 | 说明 |
+|------|------|
+| **Service 层零改动** | 统一从 context 获取租户ID |
+| **中间件自动处理** | 无需业务代码关心 |
+| **前端友好** | 一个租户选择器搞定 |
+| **安全可控** | 审计日志记录所有跨租户操作 |
+
+---
+
+## 附录 A：备选方案
+
+**请求体中 tenant_id**：超管在请求体传入 `tenant_id`，Service 层判断角色。适合超管操作频率较低的场景。
+
+---
+
+## 10. 实现清单
 
 - [ ] JWT Token 包含角色列表
 - [ ] AuthMiddleware 解析 Token → Context
@@ -372,3 +452,4 @@ token := jwt.WithClaims("roles", roles)
 - [ ] GET /profile 接口
 - [ ] Handler/Service 自动从 Context 获取 tenant_id
 - [ ] 新租户自动初始化默认角色和权限
+- [ ] 租户切换功能（TenantSwitchMiddleware + xcontext 扩展）

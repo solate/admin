@@ -48,14 +48,22 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 		return nil, xerr.ErrCaptchaInvalid
 	}
 
-	// 查询用户（用户名全局唯一）
-	user, err := s.userRepo.GetByUserName(ctx, req.UserName)
+	// 获取租户信息
+	tenantID := xcontext.GetTenantID(ctx)
+	tenantCode := xcontext.GetTenantCode(ctx)
+	if tenantCode == "" {
+		log.Error().Str("username", req.UserName).Msg("租户编码不能为空")
+		return nil, xerr.ErrTenantCodeRequired
+	}
+
+	// 查询用户（租户内用户名唯一）
+	user, err := s.userRepo.GetByTenantAndUserName(ctx, tenantID, req.UserName)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			log.Error().Err(err).Str("username", req.UserName).Msg("用户不存在")
+			log.Error().Err(err).Str("username", req.UserName).Str("tenant_id", tenantID).Msg("用户不存在")
 			return nil, xerr.ErrUserNotFound
 		}
-		log.Error().Err(err).Str("username", req.UserName).Msg("查询用户失败")
+		log.Error().Err(err).Str("username", req.UserName).Str("tenant_id", tenantID).Msg("查询用户失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
 	}
 
@@ -67,14 +75,6 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	// 检查用户状态
 	if user.Status != constants.StatusEnabled {
 		return nil, xerr.ErrUserDisabled
-	}
-
-	tenantID := xcontext.GetTenantID(ctx)
-	tenantCode := xcontext.GetTenantCode(ctx)
-
-	if tenantCode == "" {
-		log.Error().Str("username", user.UserName).Msg("租户编码不能为空")
-		return nil, xerr.ErrTenantCodeRequired
 	}
 
 	// 获取用户在租户中的角色（从 Casbin）

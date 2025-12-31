@@ -35,8 +35,13 @@ func NewUserService(userRepo *repository.UserRepo, roleRepo *repository.RoleRepo
 
 // CreateUser 创建用户
 func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest) (*dto.UserResponse, error) {
-	// 检查用户名是否已存在（全局唯一）
-	exists, err := s.userRepo.CheckExists(ctx, req.UserName)
+	tenantID := xcontext.GetTenantID(ctx)
+	if tenantID == "" {
+		return nil, xerr.ErrUnauthorized
+	}
+
+	// 检查用户名是否已存在（租户内唯一）
+	exists, err := s.userRepo.CheckExists(ctx, tenantID, req.UserName)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "检查用户是否存在失败", err)
 	}
@@ -60,9 +65,10 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "密码加密失败", err)
 	}
 
-	// 创建用户模型（用户表与租户解耦）
+	// 创建用户模型
 	user := &model.User{
 		UserID:   userID,
+		TenantID: tenantID,
 		UserName: req.UserName,
 		Password: hashedPassword,
 		Nickname: req.Nickname,
@@ -88,9 +94,6 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 
 	// 记录操作日志
 	ctx = operationlog.RecordCreate(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.UserName, user)
-
-	// 注意：创建用户后，还需要通过 user_tenant_role 表关联用户和租户
-	// 这里暂时不处理，需要单独的接口来分配角色
 
 	return s.toUserResponse(ctx, user), nil
 }
