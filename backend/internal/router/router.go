@@ -71,10 +71,10 @@ func Setup(r *gin.Engine, app *App) {
 				auth.POST("/logout", app.Handlers.AuthHandler.Logout) // 用户登出
 			}
 
-			// ========== 当前用户信息 ==========
+			// 当前用户信息
 			authenticated.GET("/profile", app.Handlers.UserHandler.GetProfile) // 获取当前用户信息（含角色）
 
-			// ========== 租户管理（仅超管）==========
+			// 租户管理（仅超管）
 			tenant := authenticated.Group("/tenants")
 			tenant.Use(middleware.SuperAdminMiddleware())
 			{
@@ -86,7 +86,7 @@ func Setup(r *gin.Engine, app *App) {
 				tenant.PUT("/:tenant_id/status/:status", app.Handlers.TenantHandler.UpdateTenantStatus) // 更新租户状态
 			}
 
-			// ========== 用户管理（租户管理员+超管）==========
+			// 用户管理（租户管理员+超管）
 			user := authenticated.Group("/users")
 			{
 				user.POST("", app.Handlers.UserHandler.CreateUser)                              // 创建用户
@@ -97,7 +97,7 @@ func Setup(r *gin.Engine, app *App) {
 				user.PUT("/:user_id/status/:status", app.Handlers.UserHandler.UpdateUserStatus) // 更新用户状态
 			}
 
-			// ========== 角色管理（租户管理员+超管）==========
+			// 角色管理（租户管理员+超管）
 			role := authenticated.Group("/roles")
 			{
 				role.POST("", app.Handlers.RoleHandler.CreateRole)                              // 创建角色
