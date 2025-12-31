@@ -1,0 +1,81 @@
+# Casbin 权限策略配置文件
+# 格式说明:
+#   p, 角色, 租户, 资源路径, HTTP方法  - 权限策略
+#   g, 用户名, 角色, 租户              - 用户角色绑定
+
+# ========== 超级管理员策略 ==========
+p, super_admin, {tenant}, /api/v1/*, *
+
+# ========== 租户管理员策略 ==========
+# 当前用户信息
+p, admin, {tenant}, /api/v1/profile, GET
+
+# 用户管理
+p, admin, {tenant}, /api/v1/users, GET
+p, admin, {tenant}, /api/v1/users, POST
+p, admin, {tenant}, /api/v1/users/*, GET
+p, admin, {tenant}, /api/v1/users/*, PUT
+p, admin, {tenant}, /api/v1/users/*, DELETE
+p, admin, {tenant}, /api/v1/users/*/status/*, PUT
+
+# 角色管理
+p, admin, {tenant}, /api/v1/roles, GET
+p, admin, {tenant}, /api/v1/roles, POST
+p, admin, {tenant}, /api/v1/roles/*, GET
+p, admin, {tenant}, /api/v1/roles/*, PUT
+p, admin, {tenant}, /api/v1/roles/*, DELETE
+p, admin, {tenant}, /api/v1/roles/*/status/*, PUT
+
+# 菜单管理
+p, admin, {tenant}, /api/v1/menus, GET
+p, admin, {tenant}, /api/v1/menus, POST
+p, admin, {tenant}, /api/v1/menus/all, GET
+p, admin, {tenant}, /api/v1/menus/tree, GET
+p, admin, {tenant}, /api/v1/menus/*, GET
+p, admin, {tenant}, /api/v1/menus/*, PUT
+p, admin, {tenant}, /api/v1/menus/*, DELETE
+p, admin, {tenant}, /api/v1/menus/*/status/*, PUT
+
+# 用户菜单
+p, admin, {tenant}, /api/v1/user/menu, GET
+p, admin, {tenant}, /api/v1/user/buttons, GET
+
+# 操作日志
+p, admin, {tenant}, /api/v1/operation-logs, GET
+p, admin, {tenant}, /api/v1/operation-logs/*, GET
+
+# 认证相关
+p, admin, {tenant}, /api/v1/auth/logout, POST
+
+# ========== 普通用户策略 ==========
+# 当前用户信息
+p, user, {tenant}, /api/v1/profile, GET
+
+# 用户列表查看
+p, user, {tenant}, /api/v1/users, GET
+
+# 角色查看（只能看到自己的角色）
+p, user, {tenant}, /api/v1/roles, GET
+p, user, {tenant}, /api/v1/roles/*, GET
+
+# 菜单查看
+p, user, {tenant}, /api/v1/menus, GET
+p, user, {tenant}, /api/v1/menus/all, GET
+p, user, {tenant}, /api/v1/menus/tree, GET
+p, user, {tenant}, /api/v1/menus/*, GET
+
+# 用户菜单
+p, user, {tenant}, /api/v1/user/menu, GET
+p, user, {tenant}, /api/v1/user/buttons, GET
+
+# 操作日志
+p, user, {tenant}, /api/v1/operation-logs, GET
+p, user, {tenant}, /api/v1/operation-logs/*, GET
+
+# 认证相关
+p, user, {tenant}, /api/v1/auth/logout, POST
+
+# ========== 用户角色绑定示例 ==========
+# 取消注释下面行来绑定用户到角色
+# g, alice, admin, tenant_a
+# g, bob, user, tenant_a

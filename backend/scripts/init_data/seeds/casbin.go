@@ -2,10 +2,16 @@ package seeds
 
 import (
 	"admin/pkg/casbin"
+	"bufio"
+	_ "embed"
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 )
+
+//go:embed policies.csv
+var policiesCSV string
 
 // InitCasbinTable 初始化 Casbin 表（如果不存在）
 func InitCasbinTable(db *gorm.DB) error {
@@ -46,43 +52,87 @@ func SeedUserRoles(db *gorm.DB, userName, roleCode, tenantCode string) error {
 	return nil
 }
 
-// PolicyDefinition 策略定义
-type PolicyDefinition struct {
-	Sub   string // 主体：用户名或角色代码
-	Domain string // 域：租户代码
-	Obj   string // 对象：资源路径
-	Act   string // 操作：HTTP 方法
-}
-
-// SeedPolicies 初始化 Casbin 权限策略
+// SeedPolicies 初始化 Casbin 权限策略（从内嵌的 CSV 读取）
 func SeedPolicies(db *gorm.DB, tenantCode string) error {
+	// 从内嵌的 CSV 读取策略
+	records, err := parseCSV(policiesCSV)
+	if err != nil {
+		return fmt.Errorf("解析 CSV 失败: %w", err)
+	}
+
 	// 使用本地包创建执行器（会自动 LoadPolicy）
 	enforcer, err := casbin.NewEnforcerManager(db, casbin.DefaultModel())
 	if err != nil {
 		return fmt.Errorf("创建 Casbin 执行器失败: %w", err)
 	}
 
-	// 定义默认策略
-	policies := getDefaultPolicies(tenantCode)
-
 	// 添加策略（如果不存在）
 	addedCount := 0
-	for _, policy := range policies {
-		// 检查策略是否已存在
-		hasPolicy, err := enforcer.HasPolicy(policy.Sub, policy.Domain, policy.Obj, policy.Act)
-		if err != nil {
-			return fmt.Errorf("检查策略失败: %w", err)
+	for _, record := range records {
+		// 替换 {tenant} 占位符
+		for i := range record {
+			record[i] = strings.ReplaceAll(record[i], "{tenant}", tenantCode)
 		}
 
-		if hasPolicy {
+		// 跳过空行和注释
+		if len(record) == 0 || record[0] == "#" {
 			continue
 		}
 
-		// 添加策略
-		if _, err := enforcer.AddPolicy(policy.Sub, policy.Domain, policy.Obj, policy.Act); err != nil {
-			return fmt.Errorf("添加策略失败 sub=%s obj=%s act=%s: %w", policy.Sub, policy.Obj, policy.Act, err)
+		// 检查策略类型
+		policyType := record[0]
+
+		switch policyType {
+		case "p", "P":
+			// 权限策略: p, sub, dom, obj, act
+			if len(record) < 5 {
+				continue
+			}
+			sub, dom, obj, act := record[1], record[2], record[3], record[4]
+
+			// 检查策略是否已存在
+			hasPolicy, err := enforcer.HasPolicy(sub, dom, obj, act)
+			if err != nil {
+				return fmt.Errorf("检查策略失败: %w", err)
+			}
+
+			if hasPolicy {
+				continue
+			}
+
+			// 添加策略
+			if _, err := enforcer.AddPolicy(sub, dom, obj, act); err != nil {
+				return fmt.Errorf("添加策略失败 sub=%s obj=%s act=%s: %w", sub, obj, act, err)
+			}
+			addedCount++
+
+		case "g", "G":
+			// 用户角色绑定: g, user, role, tenant
+			if len(record) < 4 {
+				continue
+			}
+			user, role, tenant := record[1], record[2], record[3]
+
+			// 检查策略是否已存在
+			hasPolicy, err := enforcer.HasGroupingPolicy(user, role, tenant)
+			if err != nil {
+				return fmt.Errorf("检查用户角色策略失败: %w", err)
+			}
+
+			if hasPolicy {
+				continue
+			}
+
+			// 添加用户角色绑定
+			if _, err := enforcer.AddGroupingPolicy(user, role, tenant); err != nil {
+				return fmt.Errorf("添加用户角色绑定失败 user=%s role=%s: %w", user, role, err)
+			}
+			addedCount++
+
+		default:
+			// 跳过不识别的类型
+			continue
 		}
-		addedCount++
 	}
 
 	if addedCount > 0 {
@@ -94,79 +144,43 @@ func SeedPolicies(db *gorm.DB, tenantCode string) error {
 	return nil
 }
 
-// getDefaultPolicies 获取默认策略定义
-func getDefaultPolicies(tenantCode string) []PolicyDefinition {
-	return []PolicyDefinition{
-		// ========== 超级管理员策略 ==========
-		// 超管拥有所有权限（使用通配符）
-		{Sub: "super_admin", Domain: tenantCode, Obj: "/api/v1/*", Act: "*"},
-		{Sub: "super_admin", Domain: tenantCode, Obj: "/api/v1/*/*", Act: "*"},
-		{Sub: "super_admin", Domain: tenantCode, Obj: "/api/v1/*/*/*", Act: "*"},
-		{Sub: "super_admin", Domain: tenantCode, Obj: "/api/v1/*/*/*/*", Act: "*"},
-
-		// ========== 租户管理员策略 ==========
-		// 用户管理
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/users", Act: "GET"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/users", Act: "POST"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/users/:user_id", Act: "GET"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/users/:user_id", Act: "PUT"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/users/:user_id", Act: "DELETE"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/users/:user_id/status/:status", Act: "PUT"},
-
-		// 角色管理
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/roles", Act: "GET"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/roles", Act: "POST"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/roles/:role_id", Act: "GET"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/roles/:role_id", Act: "PUT"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/roles/:role_id", Act: "DELETE"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/roles/:role_id/status/:status", Act: "PUT"},
-
-		// 菜单管理
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/menus", Act: "GET"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/menus", Act: "POST"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/menus/all", Act: "GET"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/menus/tree", Act: "GET"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/menus/:menu_id", Act: "GET"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/menus/:menu_id", Act: "PUT"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/menus/:menu_id", Act: "DELETE"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/menus/:menu_id/status/:status", Act: "PUT"},
-
-		// 用户菜单
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/user/menu", Act: "GET"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/user/buttons", Act: "GET"},
-
-		// 操作日志
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/operation-logs", Act: "GET"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/operation-logs/:log_id", Act: "GET"},
-
-		// 认证相关
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/auth/logout", Act: "POST"},
-		{Sub: "admin", Domain: tenantCode, Obj: "/api/v1/auth/refresh", Act: "POST"},
-
-		// ========== 普通用户策略 ==========
-		// 用户只能查看和修改自己的信息
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/users", Act: "GET"},
-
-		// 角色查看（只能看到自己的角色）
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/roles", Act: "GET"},
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/roles/:role_id", Act: "GET"},
-
-		// 菜单查看
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/menus", Act: "GET"},
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/menus/all", Act: "GET"},
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/menus/tree", Act: "GET"},
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/menus/:menu_id", Act: "GET"},
-
-		// 用户菜单
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/user/menu", Act: "GET"},
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/user/buttons", Act: "GET"},
-
-		// 操作日志
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/operation-logs", Act: "GET"},
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/operation-logs/:log_id", Act: "GET"},
-
-		// 认证相关
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/auth/logout", Act: "POST"},
-		{Sub: "user", Domain: tenantCode, Obj: "/api/v1/auth/refresh", Act: "POST"},
+// parseCSV 解析 CSV 字符串
+func parseCSV(csvContent string) ([][]string, error) {
+	var records [][]string
+	scanner := bufio.NewScanner(strings.NewReader(csvContent))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		// 跳过注释行
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		// 解析 CSV 行
+		record := parseCSVLine(line)
+		if len(record) > 0 {
+			records = append(records, record)
+		}
 	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+// parseCSVLine 解析单行 CSV
+func parseCSVLine(line string) []string {
+	// 简单 CSV 解析：按逗号分割，去除空白
+	parts := strings.Split(line, ",")
+	var result []string
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
