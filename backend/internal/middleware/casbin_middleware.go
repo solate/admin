@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"admin/pkg/casbin"
-	"admin/pkg/constants"
 	"admin/pkg/database"
 	"admin/pkg/response"
 	"admin/pkg/xcontext"
@@ -17,10 +16,8 @@ import (
 // - 普通用户通过 Casbin 验证 (username, tenantCode, path, method)，并受租户 scope 限制
 func CasbinMiddleware(enforcer *casbin.Enforcer) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		roles := xcontext.GetRoles(c.Request.Context())
-
 		// 超管跳过权限检查和租户检查
-		if isSuperAdmin(roles) {
+		if xcontext.IsSuperAdmin(c.Request.Context()) {
 			ctx := database.SkipTenantCheck(c.Request.Context())
 			c.Request = c.Request.WithContext(ctx)
 			c.Next()
@@ -64,9 +61,7 @@ func CasbinMiddleware(enforcer *casbin.Enforcer) gin.HandlerFunc {
 // 只有超级管理员才能访问通过此中间件的路由
 func SuperAdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		roles := xcontext.GetRoles(c.Request.Context())
-
-		if !isSuperAdmin(roles) {
+		if !xcontext.IsSuperAdmin(c.Request.Context()) {
 			response.Error(c, xerr.ErrForbidden)
 			c.Abort()
 			return
@@ -76,14 +71,4 @@ func SuperAdminMiddleware() gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
-}
-
-// isSuperAdmin 检查是否为超级管理员
-func isSuperAdmin(roles []string) bool {
-	for _, role := range roles {
-		if role == constants.SuperAdmin {
-			return true
-		}
-	}
-	return false
 }

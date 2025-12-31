@@ -2,28 +2,26 @@ package constants
 
 // 模块名称常量
 const (
-	ModuleUser         = "user"          // 用户管理
-	ModuleRole         = "role"          // 角色管理
-	ModulePermission   = "permission"    // 权限管理
-	ModuleTenant       = "tenant"        // 租户管理
-	ModuleSystem       = "system"        // 系统设置
-	ModuleMenu         = "menu"          // 菜单管理
-	ModuleDict         = "dict"          // 字典管理
-	ModuleLog          = "log"           // 日志管理
-	ModuleFile         = "file"          // 文件管理
-	ModuleAuth         = "auth"          // 认证相关 (登录、登出等)
-	ModuleTenantMember = "tenant_member" // 租户成员管理
+	ModuleUser       = "user"       // 用户管理
+	ModuleRole       = "role"       // 角色管理
+	ModulePermission = "permission" // 权限管理
+	ModuleTenant     = "tenant"     // 租户管理
+	ModuleSystem     = "system"     // 系统设置
+	ModuleMenu       = "menu"       // 菜单管理
+	ModuleDict       = "dict"       // 字典管理
+	ModuleLog        = "log"        // 日志管理
+	ModuleFile       = "file"       // 文件管理
+	ModuleAuth       = "auth"       // 认证相关 (登录、登出等)
 )
 
 // 资源类型常量（用于操作日志记录）
 const (
-	ResourceTypeUser         = "user"          // 用户资源
-	ResourceTypeRole         = "role"          // 角色资源
-	ResourceTypePermission   = "permission"    // 权限资源
-	ResourceTypeTenant       = "tenant"        // 租户资源
-	ResourceTypeMenu         = "menu"          // 菜单资源
-	ResourceTypeDict         = "dict"          // 字典资源
-	ResourceTypeTenantMember = "tenant_member" // 租户成员资源
+	ResourceTypeUser       = "user"       // 用户资源
+	ResourceTypeRole       = "role"       // 角色资源
+	ResourceTypePermission = "permission" // 权限资源
+	ResourceTypeTenant     = "tenant"     // 租户资源
+	ResourceTypeMenu       = "menu"       // 菜单资源
+	ResourceTypeDict       = "dict"       // 字典资源
 )
 
 // 操作类型常量

@@ -30,7 +30,6 @@ func NewRoleService(roleRepo *repository.RoleRepo) *RoleService {
 
 // CreateRole 创建角色
 func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (*dto.RoleResponse, error) {
-	// 获取租户ID
 	tenantID := xcontext.GetTenantID(ctx)
 	if tenantID == "" {
 		return nil, xerr.ErrUnauthorized
@@ -77,6 +76,9 @@ func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest
 }
 
 // GetRoleByID 获取角色详情
+// 说明：
+// - 超管通过 SkipTenantCheck 可查询任意租户角色
+// - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能查询本租户角色
 func (s *RoleService) GetRoleByID(ctx context.Context, roleID string) (*dto.RoleResponse, error) {
 	role, err := s.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
@@ -90,6 +92,9 @@ func (s *RoleService) GetRoleByID(ctx context.Context, roleID string) (*dto.Role
 }
 
 // UpdateRole 更新角色
+// 说明：
+// - 超管通过 SkipTenantCheck 可更新任意租户角色
+// - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能更新本租户角色
 func (s *RoleService) UpdateRole(ctx context.Context, roleID string, req *dto.UpdateRoleRequest) (*dto.RoleResponse, error) {
 	// 检查角色是否存在，获取旧值用于日志
 	oldRole, err := s.roleRepo.GetByID(ctx, roleID)
@@ -131,6 +136,9 @@ func (s *RoleService) UpdateRole(ctx context.Context, roleID string, req *dto.Up
 }
 
 // DeleteRole 删除角色
+// 说明：
+// - 超管通过 SkipTenantCheck 可删除任意租户角色
+// - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能删除本租户角色
 func (s *RoleService) DeleteRole(ctx context.Context, roleID string) error {
 	// 检查角色是否存在，获取角色信息用于日志
 	role, err := s.roleRepo.GetByID(ctx, roleID)
@@ -153,15 +161,20 @@ func (s *RoleService) DeleteRole(ctx context.Context, roleID string) error {
 }
 
 // ListRoles 获取角色列表
+// 说明：
+// - 通过 context 自动获取租户信息，Repository 层自动添加租户过滤
+// - 超管通过 SkipTenantCheck 可查询所有租户角色
+// - 租户管理员只能查询本租户角色
+// - 普通用户无权限访问此接口，由 Casbin 中间件拦截
 func (s *RoleService) ListRoles(ctx context.Context, req *dto.ListRolesRequest) (*dto.ListRolesResponse, error) {
-	// 获取租户ID
-	tenantID := xcontext.GetTenantID(ctx)
-	if tenantID == "" {
-		return nil, xerr.ErrUnauthorized
-	}
+	var roles []*model.Role
+	var total int64
+	var err error
 
-	// 获取角色列表和总数，支持筛选条件
-	roles, total, err := s.roleRepo.ListWithFilters(ctx, tenantID, req.GetOffset(), req.GetLimit(), req.Keyword, req.Status)
+	// 超管和租户管理员使用同一个查询方法
+	// - 超管：context 中有 SkipTenantCheck，Repository 自动跳过租户过滤
+	// - 租户管理员：Repository 自动添加 tenant_id 过滤
+	roles, total, err = s.roleRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Keyword, req.Status)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询角色列表失败", err)
 	}
@@ -179,6 +192,9 @@ func (s *RoleService) ListRoles(ctx context.Context, req *dto.ListRolesRequest) 
 }
 
 // UpdateRoleStatus 更新角色状态
+// 说明：
+// - 超管通过 SkipTenantCheck 可更新任意租户角色状态
+// - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能更新本租户角色状态
 func (s *RoleService) UpdateRoleStatus(ctx context.Context, roleID string, status int) error {
 	// 检查角色是否存在，获取旧值用于日志
 	oldRole, err := s.roleRepo.GetByID(ctx, roleID)

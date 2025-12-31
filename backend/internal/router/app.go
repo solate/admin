@@ -255,10 +255,10 @@ func (s *App) initHandlers() error {
 	operationLogRepo := repository.NewOperationLogRepo(s.DB)
 
 	// 初始化服务层
-	authService := service.NewAuthService(userRepo, userRoleRepo, s.JWT, s.Redis, s.Config) // 初始化认证服务
-	userService := service.NewUserService(userRepo, roleRepo, tenantRepo) // 初始化用户服务
+	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Config) // 初始化认证服务
+	userService := service.NewUserService(userRepo, roleRepo, tenantRepo)                                         // 初始化用户服务
 	tenantService := service.NewTenantService(tenantRepo)                                                         // 初始化租户服务
-	roleService := service.NewRoleService(roleRepo, userRoleRepo)                                                 // 初始化角色服务
+	roleService := service.NewRoleService(roleRepo)                                                               // 初始化角色服务
 	menuService := service.NewMenuService(menuRepo)                                                               // 初始化菜单服务
 	userMenuService := service.NewUserMenuService(permissionRepo, tenantMenuRepo, s.Enforcer)                     // 初始化用户菜单服务
 	operationLogService := service.NewOperationLogService(operationLogRepo)                                       // 初始化操作日志服务

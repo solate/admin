@@ -66,6 +66,33 @@ func (r *RoleRepo) List(ctx context.Context, offset, limit int) ([]*model.Role, 
 	return r.q.Role.WithContext(ctx).FindByPage(offset, limit)
 }
 
+// ListWithFilters 根据筛选条件分页获取角色列表（支持自动租户过滤）
+// 说明：
+// - 如果 context 中有 SkipTenantCheck，则查询所有租户的角色（超管使用）
+// - 否则自动添加当前租户的过滤条件（普通用户使用）
+func (r *RoleRepo) ListWithFilters(ctx context.Context, offset, limit int, keywordFilter string, statusFilter int) ([]*model.Role, int64, error) {
+	query := r.q.Role.WithContext(ctx)
+
+	// 应用筛选条件
+	if keywordFilter != "" {
+		query = query.Where(r.q.Role.Name.Like("%"+keywordFilter+"%")).
+			Or(r.q.Role.RoleCode.Like("%"+keywordFilter+"%"))
+	}
+	if statusFilter != 0 {
+		query = query.Where(r.q.Role.Status.Eq(int16(statusFilter)))
+	}
+
+	// 获取总数
+	total, err := query.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 分页查询
+	roles, err := query.Order(r.q.Role.CreatedAt.Desc()).Offset(offset).Limit(limit).Find()
+	return roles, total, err
+}
+
 // UpdateStatus 更新角色状态
 func (r *RoleRepo) UpdateStatus(ctx context.Context, roleID string, status int) error {
 	_, err := r.q.Role.WithContext(ctx).Where(r.q.Role.RoleID.Eq(roleID)).Update(r.q.Role.Status, int16(status))
@@ -97,30 +124,6 @@ func (r *RoleRepo) ListByCodes(ctx context.Context, roleCodes []string) ([]*mode
 	return r.q.Role.WithContext(ctx).
 		Where(r.q.Role.RoleCode.In(roleCodes...)).
 		Find()
-}
-
-// ListWithFilters 根据筛选条件分页获取角色列表
-func (r *RoleRepo) ListWithFilters(ctx context.Context, tenantID string, offset, limit int, keywordFilter string, statusFilter int) ([]*model.Role, int64, error) {
-	query := r.q.Role.WithContext(ctx).Where(r.q.Role.TenantID.Eq(tenantID))
-
-	// 应用筛选条件
-	if keywordFilter != "" {
-		query = query.Where(r.q.Role.Name.Like("%"+keywordFilter+"%")).
-			Or(r.q.Role.RoleCode.Like("%"+keywordFilter+"%"))
-	}
-	if statusFilter != 0 {
-		query = query.Where(r.q.Role.Status.Eq(int16(statusFilter)))
-	}
-
-	// 获取总数
-	total, err := query.Count()
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// 分页查询
-	roles, err := query.Order(r.q.Role.CreatedAt.Desc()).Offset(offset).Limit(limit).Find()
-	return roles, total, err
 }
 
 // CheckExistsByID 检查角色编码是否存在（排除指定ID）

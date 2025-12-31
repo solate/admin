@@ -637,18 +637,16 @@ Status int `json:"status"`
 ```go
 // 模块常量
 const (
-    ModuleUser         = "user"
-    ModuleRole         = "role"
-    ModuleTenant       = "tenant"
-    ModuleTenantMember = "tenant_member"
+    ModuleUser   = "user"
+    ModuleRole   = "role"
+    ModuleTenant = "tenant"
 )
 
 // 资源类型常量
 const (
-    ResourceTypeUser         = "user"
-    ResourceTypeRole         = "role"
-    ResourceTypeTenant       = "tenant"
-    ResourceTypeTenantMember = "tenant_member"
+    ResourceTypeUser   = "user"
+    ResourceTypeRole   = "role"
+    ResourceTypeTenant = "tenant"
 )
 ```
 
