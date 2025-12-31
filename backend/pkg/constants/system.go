@@ -3,8 +3,10 @@ package constants
 const (
 	// DefaultTenantCode 默认租户编码（超管租户，用于 Casbin domain）
 	DefaultTenantCode = "default"
-	// SuperAdminRole 超级管理员角色code
+	// SuperAdmin 超级管理员角色code
 	SuperAdmin = "super_admin"
+	// Admin 租户管理员角色code
+	Admin = "admin"
 )
 
 // roleType 管理员类型(1:普通用户, 2:租户管理员, 3:平台超级管理员)

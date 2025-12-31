@@ -167,3 +167,25 @@ func (h *UserHandler) UpdateUserStatus(c *gin.Context) {
 
 	response.Success(c, gin.H{"updated": true})
 }
+
+// GetProfile 获取当前登录用户信息
+// @Summary 获取当前用户信息
+// @Description 获取当前登录用户的详细信息、角色和租户信息
+// @Tags 用户管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {object} response.Response{data=dto.ProfileResponse} "获取成功"
+// @Failure 200 {object} response.Response "未授权访问"
+// @Failure 200 {object} response.Response "服务器内部错误"
+// @Router /profile [get]
+func (h *UserHandler) GetProfile(c *gin.Context) {
+	// 获取当前用户信息（从 context 中获取）
+	user, err := h.userService.GetProfile(c.Request.Context())
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, user)
+}

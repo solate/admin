@@ -71,7 +71,22 @@ func Setup(r *gin.Engine, app *App) {
 				auth.POST("/logout", app.Handlers.AuthHandler.Logout) // 用户登出
 			}
 
-			// 用户接口
+			// ========== 当前用户信息 ==========
+			authenticated.GET("/profile", app.Handlers.UserHandler.GetProfile) // 获取当前用户信息（含角色）
+
+			// ========== 租户管理（仅超管）==========
+			tenant := authenticated.Group("/tenants")
+			tenant.Use(middleware.SuperAdminMiddleware())
+			{
+				tenant.POST("", app.Handlers.TenantHandler.CreateTenant)                                // 创建租户
+				tenant.GET("", app.Handlers.TenantHandler.ListTenants)                                  // 获取租户列表
+				tenant.GET("/:tenant_id", app.Handlers.TenantHandler.GetTenant)                         // 获取租户详情
+				tenant.PUT("/:tenant_id", app.Handlers.TenantHandler.UpdateTenant)                      // 更新租户
+				tenant.DELETE("/:tenant_id", app.Handlers.TenantHandler.DeleteTenant)                   // 删除租户
+				tenant.PUT("/:tenant_id/status/:status", app.Handlers.TenantHandler.UpdateTenantStatus) // 更新租户状态
+			}
+
+			// ========== 用户管理（租户管理员+超管）==========
 			user := authenticated.Group("/users")
 			{
 				user.POST("", app.Handlers.UserHandler.CreateUser)                              // 创建用户
@@ -80,29 +95,9 @@ func Setup(r *gin.Engine, app *App) {
 				user.PUT("/:user_id", app.Handlers.UserHandler.UpdateUser)                      // 更新用户
 				user.DELETE("/:user_id", app.Handlers.UserHandler.DeleteUser)                   // 删除用户
 				user.PUT("/:user_id/status/:status", app.Handlers.UserHandler.UpdateUserStatus) // 更新用户状态
-
 			}
 
-			// 租户接口
-			tenant := authenticated.Group("/tenants")
-			{
-				// 个人接口 - 所有认证用户可访问
-				tenant.GET("/me", app.Handlers.TenantHandler.GetCurrentTenant) // 获取当前租户信息
-
-				// 管理接口 - 仅超管可访问
-				tenantAdmin := tenant.Group("")
-				tenantAdmin.Use(middleware.SuperAdminMiddleware())
-				{
-					tenantAdmin.POST("", app.Handlers.TenantHandler.CreateTenant)                                // 创建租户
-					tenantAdmin.GET("", app.Handlers.TenantHandler.ListTenants)                                  // 获取租户列表
-					tenantAdmin.GET("/:tenant_id", app.Handlers.TenantHandler.GetTenant)                         // 获取租户详情
-					tenantAdmin.PUT("/:tenant_id", app.Handlers.TenantHandler.UpdateTenant)                      // 更新租户
-					tenantAdmin.DELETE("/:tenant_id", app.Handlers.TenantHandler.DeleteTenant)                   // 删除租户
-					tenantAdmin.PUT("/:tenant_id/status/:status", app.Handlers.TenantHandler.UpdateTenantStatus) // 更新租户状态
-				}
-			}
-
-			// 角色接口
+			// ========== 角色管理（租户管理员+超管）==========
 			role := authenticated.Group("/roles")
 			{
 				role.POST("", app.Handlers.RoleHandler.CreateRole)                              // 创建角色
@@ -139,14 +134,11 @@ func Setup(r *gin.Engine, app *App) {
 				operationLog.GET("", app.Handlers.OperationLogHandler.ListOperationLogs)       // 获取操作日志列表
 				operationLog.GET("/:log_id", app.Handlers.OperationLogHandler.GetOperationLog) // 获取操作日志详情
 			}
-
 		}
-
 	}
 
 	// 设置嵌入的前端静态文件
 	setupEmbedFrontend(r)
-
 }
 
 // setupEmbedFrontend 设置嵌入的前端静态文件

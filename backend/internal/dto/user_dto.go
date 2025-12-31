@@ -56,3 +56,10 @@ type ListUsersResponse struct {
 	*pagination.Response `json:",inline"`
 	List                 []*UserResponse `json:"list"` // 列表数据
 }
+
+// ProfileResponse 用户档案响应（含角色和租户信息）
+type ProfileResponse struct {
+	User   *UserInfo   `json:"user"`   // 当前用户信息
+	Tenant *TenantInfo `json:"tenant"` // 当前租户信息
+	Roles  []*RoleInfo `json:"roles"`  // 用户角色列表
+}

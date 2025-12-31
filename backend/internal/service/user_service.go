@@ -19,13 +19,17 @@ import (
 
 // UserService 用户服务
 type UserService struct {
-	userRepo *repository.UserRepo
+	userRepo   *repository.UserRepo
+	roleRepo   *repository.RoleRepo
+	tenantRepo *repository.TenantRepo
 }
 
 // NewUserService 创建用户服务
-func NewUserService(userRepo *repository.UserRepo) *UserService {
+func NewUserService(userRepo *repository.UserRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo) *UserService {
 	return &UserService{
-		userRepo: userRepo,
+		userRepo:   userRepo,
+		roleRepo:   roleRepo,
+		tenantRepo: tenantRepo,
 	}
 }
 
@@ -102,6 +106,69 @@ func (s *UserService) GetUserByID(ctx context.Context, userID string) (*dto.User
 	}
 
 	return s.toUserResponse(ctx, user), nil
+}
+
+// GetProfile 获取当前用户档案（含角色和租户信息）
+func (s *UserService) GetProfile(ctx context.Context) (*dto.ProfileResponse, error) {
+	// 从 context 获取当前用户信息
+	userID := xcontext.GetUserID(ctx)
+	roleCodes := xcontext.GetRoles(ctx)
+	tenantID := xcontext.GetTenantID(ctx)
+
+	// 获取用户信息
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, xerr.ErrUserNotFound
+		}
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
+	}
+
+	// 获取租户信息
+	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	if err != nil {
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询租户信息失败", err)
+	}
+
+	// 获取角色详情
+	roles, err := s.roleRepo.ListByCodes(ctx, roleCodes)
+	if err != nil {
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询角色详情失败", err)
+	}
+
+	// 构建角色信息列表
+	roleInfos := make([]*dto.RoleInfo, 0, len(roles))
+	for _, role := range roles {
+		roleInfos = append(roleInfos, &dto.RoleInfo{
+			RoleID:      role.RoleID,
+			RoleCode:    role.RoleCode,
+			Name:        role.Name,
+			Description: role.Description,
+		})
+	}
+
+	return &dto.ProfileResponse{
+		User: &dto.UserInfo{
+			UserID:        user.UserID,
+			UserName:      user.UserName,
+			Nickname:      user.Nickname,
+			Avatar:        user.Avatar,
+			Phone:         user.Phone,
+			Email:         user.Email,
+			Status:        int(user.Status),
+			TenantID:      tenantID,
+			LastLoginTime: user.LastLoginTime,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
+		},
+		Tenant: &dto.TenantInfo{
+			TenantID:    tenant.TenantID,
+			TenantCode:  tenant.TenantCode,
+			Name:        tenant.Name,
+			Description: tenant.Description,
+		},
+		Roles: roleInfos,
+	}, nil
 }
 
 // UpdateUser 更新用户
