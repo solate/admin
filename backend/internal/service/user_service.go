@@ -74,6 +74,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 		Nickname: req.Nickname,
 		Phone:    req.Phone,
 		Email:    req.Email,
+		Remark:   req.Remark,
 		Status:   int16(req.Status),
 	}
 

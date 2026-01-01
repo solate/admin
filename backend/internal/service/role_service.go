@@ -52,11 +52,12 @@ func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest
 
 	// 构建角色模型
 	role := &model.Role{
-		RoleID:   roleID,
-		TenantID: tenantID,
-		RoleCode: req.RoleCode,
-		Name:     req.Name,
-		Status:   int16(req.Status),
+		RoleID:      roleID,
+		TenantID:    tenantID,
+		RoleCode:    req.RoleCode,
+		Name:        req.Name,
+		Description: req.Description,
+		Status:      int16(req.Status),
 	}
 
 	// 设置默认状态

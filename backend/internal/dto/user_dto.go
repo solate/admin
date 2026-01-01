@@ -9,6 +9,7 @@ type CreateUserRequest struct {
 	Password string `json:"password" binding:"required"`          // 密码
 	Phone    string `json:"phone" binding:"omitempty"`            // 手机号
 	Email    string `json:"email" binding:"omitempty"`            // 邮箱
+	Remark   string `json:"remark" binding:"omitempty"`           // 备注信息
 	Status   int    `json:"status" binding:"omitempty,oneof=1 2"` // 状态 1:正常 2:禁用
 	TenantID string `json:"tenant_id"`                            // 租户ID（可选，从上下文获取）
 }
