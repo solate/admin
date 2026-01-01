@@ -78,10 +78,36 @@ npm run build
 
 API基础配置在 `src/api/http.ts` 中：
 
-- 基础URL: 开发环境使用 Vite 代理，生产环境由 Nginx 处理
+- 基础URL: 开发环境直接连接后端 `http://localhost:8080`，生产环境由 Nginx 处理
 - 超时时间: 15秒
-- 请求拦截器: 自动添加 Authorization 头
+- 请求拦截器: 自动添加 Authorization 头（重要：不会覆盖已设置的 Authorization）
 - 响应拦截器: 统一错误处理和成功响应处理
+
+**重要配置说明**：
+
+开发环境需要直连后端（不使用 Vite 代理），避免代理缓存问题。`src/api/http.ts` 配置如下：
+
+```typescript
+// 开发环境直接连接后端，避免代理问题
+// 生产环境使用空字符串，由 Nginx 处理代理
+const baseURL = import.meta.env.DEV ? 'http://localhost:8080' : ''
+```
+
+**请求拦截器关键逻辑**：当请求已经设置了 `Authorization` header 时，拦截器不会覆盖它。这允许在登录后立即使用新获取的 token 调用 API：
+
+```typescript
+// 如果请求已经设置了 Authorization header，不要覆盖它
+if (!config.headers.Authorization) {
+  const token = getAccessToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+}
+```
+
+**请勿修改**：
+- 不要将 `baseURL` 改回空字符串（会导致代理问题）
+- 不要移除 `!config.headers.Authorization` 的检查（会导致登录后获取用户信息失败）
 
 ### Vite 代理配置
 
@@ -245,13 +271,44 @@ server {
 
 检查样式文件是否正确导入，scoped属性是否正确使用。
 
-### 4. Vite 代理问题（API 返回 HTML 而不是 JSON）
+### 4. 登录后报错"获取用户信息失败"
 
-**症状**：API 请求返回 HTML 页面而不是预期的 JSON 数据。
+**症状**：登录成功后，前端抛出"获取用户信息失败"错误。
 
-**原因**：Vite 开发服务器缓存或 HMR 问题导致代理配置没有正确生效。
+**原因**：请求拦截器覆盖了手动传入的 Authorization header，导致登录后调用 `/api/v1/profile` 时使用的是旧的 token（或没有 token）。
 
-**快速解决方案**：
+**解决方案**：
+
+确保 `src/api/http.ts` 中的请求拦截器包含以下逻辑（已默认配置）：
+
+```typescript
+// 如果请求已经设置了 Authorization header，不要覆盖它
+if (!config.headers.Authorization) {
+  const token = getAccessToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+}
+```
+
+同时确保 `src/api/auth.ts` 中的 `getProfile` 方法正确实现：
+
+```typescript
+getProfile: (token?: string): Promise<ProfileResponse> => {
+  if (token) {
+    // 使用传入的 token
+    return http.get('/api/v1/profile', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+  }
+  // 使用 localStorage 中的 token
+  return http.get('/api/v1/profile')
+}
+```
+
+### 5. 开发环境缓存问题
+
+如果遇到奇怪的缓存问题，可以尝试：
 
 ```bash
 # 1. 完全停止所有 Node 进程
@@ -264,14 +321,6 @@ rm -rf node_modules/.vite
 npm run dev
 
 # 4. 浏览器强制刷新（Cmd+Shift+R 或 Ctrl+Shift+R）
-```
-
-**或使用直连方案**（如果后端已配置 CORS）：
-
-修改 `src/api/http.ts`：
-```typescript
-// 开发环境直接连接后端
-const baseURL = import.meta.env.DEV ? 'http://localhost:8080' : ''
 ```
 
 ## 📞 技术支持
