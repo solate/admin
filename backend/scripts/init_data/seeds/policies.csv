@@ -75,6 +75,39 @@ p, user, {tenant}, /api/v1/operation-logs/*, GET
 # 认证相关
 p, user, {tenant}, /api/v1/auth/logout, POST
 
+# ========== 审计员策略 ==========
+# 当前用户信息
+p, auditor, {tenant}, /api/v1/profile, GET
+
+# 用户查看（只读）
+p, auditor, {tenant}, /api/v1/users, GET
+p, auditor, {tenant}, /api/v1/users/*, GET
+
+# 角色查看（只读）
+p, auditor, {tenant}, /api/v1/roles, GET
+p, auditor, {tenant}, /api/v1/roles/*, GET
+
+# 菜单查看（只读）
+p, auditor, {tenant}, /api/v1/menus, GET
+p, auditor, {tenant}, /api/v1/menus/all, GET
+p, auditor, {tenant}, /api/v1/menus/tree, GET
+p, auditor, {tenant}, /api/v1/menus/*, GET
+
+# 用户菜单
+p, auditor, {tenant}, /api/v1/user/menu, GET
+p, auditor, {tenant}, /api/v1/user/buttons, GET
+
+# 操作日志
+p, auditor, {tenant}, /api/v1/operation-logs, GET
+p, auditor, {tenant}, /api/v1/operation-logs/*, GET
+
+# 认证相关
+p, auditor, {tenant}, /api/v1/auth/logout, POST
+
+# 租户切换（审计员可以在有权限的租户之间切换）
+p, auditor, {tenant}, /api/v1/auth/available-tenants, GET
+p, auditor, {tenant}, /api/v1/auth/switch-tenant, POST
+
 # ========== 用户角色绑定示例 ==========
 # 取消注释下面行来绑定用户到角色
 # g, alice, admin, tenant_a

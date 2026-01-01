@@ -1,8 +1,6 @@
 package xcontext
 
 import (
-	"admin/pkg/constants"
-
 	"context"
 )
 
@@ -24,28 +22,6 @@ func GetRoles(ctx context.Context) []string {
 	}
 	roles, _ := value.([]string)
 	return roles
-}
-
-// IsSuperAdmin 判断是否为超级管理员
-func IsSuperAdmin(ctx context.Context) bool {
-	roles := GetRoles(ctx)
-	for _, role := range roles {
-		if role == constants.SuperAdmin {
-			return true
-		}
-	}
-	return false
-}
-
-// IsTenantAdmin 判断是否为租户管理员
-func IsTenantAdmin(ctx context.Context) bool {
-	roles := GetRoles(ctx)
-	for _, role := range roles {
-		if role == constants.Admin {
-			return true
-		}
-	}
-	return false
 }
 
 // HasRole 判断是否拥有指定角色
