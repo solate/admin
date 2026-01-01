@@ -6,7 +6,7 @@ import (
 	"admin/internal/repository"
 	"admin/pkg/constants"
 	"admin/pkg/idgen"
-	"admin/pkg/operationlog"
+	"admin/pkg/auditlog"
 	"admin/pkg/pagination"
 	"admin/pkg/passwordgen"
 	"admin/pkg/xcontext"
@@ -94,7 +94,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordCreate(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.UserName, user)
+	ctx = auditlog.RecordCreate(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.UserName, user)
 
 	return s.toUserResponse(ctx, user), nil
 }
@@ -229,7 +229,7 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, updatedUser.UserID, updatedUser.UserName, oldUser, updatedUser)
+	ctx = auditlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, updatedUser.UserID, updatedUser.UserName, oldUser, updatedUser)
 
 	return s.toUserResponse(ctx, updatedUser), nil
 }
@@ -251,7 +251,7 @@ func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 	}
 
 	// 记录操作日志
-	operationlog.RecordDelete(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.UserName, user)
+	auditlog.RecordDelete(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.UserName, user)
 
 	return nil
 }
@@ -299,7 +299,7 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, statu
 	}
 
 	// 记录操作日志
-	operationlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, updatedUser.UserID, updatedUser.UserName, oldUser, updatedUser)
+	auditlog.RecordUpdate(ctx, constants.ModuleUser, constants.ResourceTypeUser, updatedUser.UserID, updatedUser.UserName, oldUser, updatedUser)
 
 	return nil
 }

@@ -4,9 +4,9 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
+	"admin/pkg/auditlog"
 	"admin/pkg/constants"
 	"admin/pkg/idgen"
-	"admin/pkg/operationlog"
 	"admin/pkg/pagination"
 	"admin/pkg/xerr"
 	"context"
@@ -71,7 +71,7 @@ func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordCreate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, menu.MenuID, menu.Name, menu)
+	ctx = auditlog.RecordCreate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, menu.MenuID, menu.Name, menu)
 
 	return s.toMenuInfo(menu), nil
 }
@@ -157,7 +157,7 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordUpdate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, updatedMenu.MenuID, updatedMenu.Name, oldMenu, updatedMenu)
+	ctx = auditlog.RecordUpdate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, updatedMenu.MenuID, updatedMenu.Name, oldMenu, updatedMenu)
 
 	return s.toMenuInfo(updatedMenu), nil
 }
@@ -188,7 +188,7 @@ func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) error {
 	}
 
 	// 记录操作日志
-	operationlog.RecordDelete(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, menu.MenuID, menu.Name, menu)
+	auditlog.RecordDelete(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, menu.MenuID, menu.Name, menu)
 
 	return nil
 }
@@ -275,7 +275,7 @@ func (s *MenuService) UpdateMenuStatus(ctx context.Context, menuID string, statu
 	}
 
 	// 记录操作日志
-	operationlog.RecordUpdate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, updatedMenu.MenuID, updatedMenu.Name, oldMenu, updatedMenu)
+	auditlog.RecordUpdate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, updatedMenu.MenuID, updatedMenu.Name, oldMenu, updatedMenu)
 
 	return nil
 }

@@ -3,7 +3,7 @@ package middleware
 import (
 	"admin/pkg/bodyreader"
 	"admin/pkg/constants"
-	"admin/pkg/operationlog"
+	"admin/pkg/auditlog"
 	"admin/pkg/useragent"
 	"admin/pkg/xcontext"
 
@@ -15,7 +15,7 @@ import (
 // - 只处理操作日志（CREATE/UPDATE/DELETE/QUERY）
 // - 跳过登录日志（LOGIN/LOGOUT 由 AuthService 直接写入）
 // - 业务代码设置 LogContext 后，中间件自动收集 HTTP 请求信息并写入
-func OperationLogMiddleware(writer *operationlog.Writer) gin.HandlerFunc {
+func OperationLogMiddleware(writer *auditlog.Writer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 1. 读取并保存请求参数（需要提前读取，因为 Body 只能读一次）
 		requestParams := extractRequestParams(c)
@@ -29,7 +29,7 @@ func OperationLogMiddleware(writer *operationlog.Writer) gin.HandlerFunc {
 		c.Next()
 
 		// 4. 请求处理完成后，检查是否需要记录操作日志
-		lc, exists := operationlog.GetLogContext(c.Request.Context())
+		lc, exists := auditlog.GetLogContext(c.Request.Context())
 		if !exists {
 			return // 业务代码没有设置 LogContext，跳过记录
 		}
@@ -44,7 +44,7 @@ func OperationLogMiddleware(writer *operationlog.Writer) gin.HandlerFunc {
 		userName := xcontext.GetUserName(c.Request.Context())
 
 		// 7. 构建日志条目
-		entry := &operationlog.LogEntry{
+		entry := &auditlog.LogEntry{
 			TenantID:      lc.TenantID,
 			UserID:        userID,
 			UserName:      userName,
@@ -85,7 +85,7 @@ func extractRequestParams(c *gin.Context) string {
 }
 
 // updateLogStatusFromResponse 根据响应状态更新日志状态
-func updateLogStatusFromResponse(c *gin.Context, lc *operationlog.LogContext) {
+func updateLogStatusFromResponse(c *gin.Context, lc *auditlog.LogContext) {
 	// 检查是否有错误 (response.Error 会调用 c.Error)
 	if len(c.Errors) > 0 {
 		lc.Status = 2

@@ -1,4 +1,4 @@
-package operationlog
+package auditlog
 
 import (
 	"admin/internal/dal/model"

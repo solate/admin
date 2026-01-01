@@ -6,7 +6,7 @@ import (
 	"admin/internal/repository"
 	"admin/pkg/constants"
 	"admin/pkg/idgen"
-	"admin/pkg/operationlog"
+	"admin/pkg/auditlog"
 	"admin/pkg/pagination"
 	"admin/pkg/xerr"
 	"context"
@@ -59,7 +59,7 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *dto.TenantCreateR
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordCreate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, tenant.TenantID, tenant.Name, tenant)
+	ctx = auditlog.RecordCreate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, tenant.TenantID, tenant.Name, tenant)
 
 	return s.toTenantResponse(tenant), nil
 }
@@ -116,7 +116,7 @@ func (s *TenantService) UpdateTenant(ctx context.Context, tenantID string, req *
 	}
 
 	// 记录操作日志
-	ctx = operationlog.RecordUpdate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
+	ctx = auditlog.RecordUpdate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
 
 	return s.toTenantResponse(updatedTenant), nil
 }
@@ -144,7 +144,7 @@ func (s *TenantService) DeleteTenant(ctx context.Context, tenantID string) error
 	}
 
 	// 记录操作日志
-	operationlog.RecordDelete(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, tenant.TenantID, tenant.Name, tenant)
+	auditlog.RecordDelete(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, tenant.TenantID, tenant.Name, tenant)
 
 	return nil
 }
@@ -193,7 +193,7 @@ func (s *TenantService) UpdateTenantStatus(ctx context.Context, tenantID string,
 	}
 
 	// 记录操作日志
-	operationlog.RecordUpdate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
+	auditlog.RecordUpdate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
 
 	return nil
 }

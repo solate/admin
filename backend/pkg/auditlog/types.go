@@ -1,4 +1,4 @@
-package operationlog
+package auditlog
 
 // LogContext 日志上下文
 type LogContext struct {

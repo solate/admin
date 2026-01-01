@@ -4,13 +4,13 @@ import (
 	"admin/internal/handler"
 	"admin/internal/repository"
 	"admin/internal/service"
+	"admin/pkg/auditlog"
 	"admin/pkg/cache"
 	"admin/pkg/casbin"
 	"admin/pkg/config"
 	"admin/pkg/database"
 	"admin/pkg/jwt"
 	"admin/pkg/logger"
-	"admin/pkg/operationlog"
 	"admin/pkg/xredis"
 	"fmt"
 
@@ -21,14 +21,14 @@ import (
 )
 
 type App struct {
-	Config             *config.Config        // 配置
-	Router             *gin.Engine           // 路由
-	DB                 *gorm.DB              // 数据库连接
-	Redis              redis.UniversalClient // Redis连接
-	JWT                *jwt.Manager          // JWT管理器
-	Enforcer           *casbin.Enforcer      // Casbin enforce
-	Handlers           *Handlers             // 处理器层容器
-	OperationLogWriter *operationlog.Writer  // 操作日志写入器
+	Config         *config.Config        // 配置
+	Router         *gin.Engine           // 路由
+	DB             *gorm.DB              // 数据库连接
+	Redis          redis.UniversalClient // Redis连接
+	JWT            *jwt.Manager          // JWT管理器
+	Enforcer       *casbin.Enforcer      // Casbin enforce
+	Handlers       *Handlers             // 处理器层容器
+	AuditLogWriter *auditlog.Writer      // 审计日志写入器
 }
 
 // Handlers 处理器层容器
@@ -82,7 +82,7 @@ func NewApp() (*App, error) {
 	}
 
 	// 7. 初始化操作日志 Writer
-	app.OperationLogWriter = operationlog.NewWriter(app.DB)
+	app.AuditLogWriter = auditlog.NewWriter(app.DB)
 
 	// 8. 初始化处理器层
 	if err := app.initHandlers(); err != nil {
@@ -236,9 +236,9 @@ func (s *App) Close() error {
 	return nil
 }
 
-// initOperationLogLogger 初始化操作日志写入器
-func (s *App) initOperationLogLogger() error {
-	s.OperationLogWriter = operationlog.NewWriter(s.DB)
+// initAuditLogLogger 初始化操作日志写入器
+func (s *App) initAuditLogLogger() error {
+	s.AuditLogWriter = auditlog.NewWriter(s.DB)
 	return nil
 }
 
@@ -255,13 +255,13 @@ func (s *App) initHandlers() error {
 	operationLogRepo := repository.NewOperationLogRepo(s.DB)
 
 	// 初始化服务层
-	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, s.Config, s.OperationLogWriter) // 初始化认证服务
-	userService := service.NewUserService(userRepo, roleRepo, tenantRepo)                                         // 初始化用户服务
-	tenantService := service.NewTenantService(tenantRepo)                                                         // 初始化租户服务
-	roleService := service.NewRoleService(roleRepo)                                                               // 初始化角色服务
-	menuService := service.NewMenuService(menuRepo)                                                               // 初始化菜单服务
-	userMenuService := service.NewUserMenuService(menuRepo, permissionRepo, tenantMenuRepo, s.Enforcer)       // 初始化用户菜单服务
-	operationLogService := service.NewOperationLogService(operationLogRepo)                                       // 初始化操作日志服务
+	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, s.Config, s.AuditLogWriter) // 初始化认证服务
+	userService := service.NewUserService(userRepo, roleRepo, tenantRepo)                                                                       // 初始化用户服务
+	tenantService := service.NewTenantService(tenantRepo)                                                                                       // 初始化租户服务
+	roleService := service.NewRoleService(roleRepo)                                                                                             // 初始化角色服务
+	menuService := service.NewMenuService(menuRepo)                                                                                             // 初始化菜单服务
+	userMenuService := service.NewUserMenuService(menuRepo, permissionRepo, tenantMenuRepo, s.Enforcer)                                         // 初始化用户菜单服务
+	operationLogService := service.NewOperationLogService(operationLogRepo)                                                                     // 初始化操作日志服务
 
 	s.Handlers = &Handlers{
 		HealthHandler:       handler.NewHealthHandler(),

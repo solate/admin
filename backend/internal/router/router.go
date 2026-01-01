@@ -62,7 +62,7 @@ func Setup(r *gin.Engine, app *App) {
 		authorized := v1.Group("")
 		authorized.Use(middleware.AuthMiddleware(app.JWT))
 		authorized.Use(middleware.CasbinMiddleware(app.Enforcer)) // 权限校验（超管跳过，其他走 Casbin）
-		authorized.Use(middleware.OperationLogMiddleware(app.OperationLogWriter))
+		authorized.Use(middleware.OperationLogMiddleware(app.AuditLogWriter))
 		{
 			// 当前用户信息
 			authorized.GET("/profile", app.Handlers.UserHandler.GetProfile) // 获取当前用户信息（含角色）
