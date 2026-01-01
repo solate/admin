@@ -461,6 +461,12 @@ async function onSubmit() {
 
         .el-input {
           flex: 1;
+          min-width: 0; // 防止内容溢出
+          max-width: calc(100% - 132px); // 减去图片宽度(120px) + 间距(12px)
+
+          :deep(.el-input__wrapper) {
+            width: 100%;
+          }
         }
 
         .captcha-image {
