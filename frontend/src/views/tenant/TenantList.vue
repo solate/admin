@@ -64,8 +64,8 @@
         <el-table-column label="描述" prop="description" min-width="200" show-overflow-tooltip />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="Number(row.status) === 1 ? 'success' : 'info'">
-              {{ Number(row.status) === 1 ? '正常' : '禁用' }}
+            <el-tag :type="StatusUtils.getTagType(row.status)">
+              {{ StatusUtils.getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -83,12 +83,12 @@
               </el-button>
               <el-button
                 size="small"
-                :type="Number(row.status) === 1 ? 'warning' : 'success'"
+                :type="StatusUtils.getButtonType(row.status, 'warning', 'success')"
                 plain
                 @click="handleToggleStatus(row)"
               >
-                <el-icon><component :is="Number(row.status) === 1 ? 'Lock' : 'Unlock'" /></el-icon>
-                {{ Number(row.status) === 1 ? '禁用' : '启用' }}
+                <el-icon><component :is="StatusUtils.isActive(row.status) ? 'Lock' : 'Unlock'" /></el-icon>
+                {{ StatusUtils.getToggleActionText(row.status) }}
               </el-button>
               <el-button size="small" type="danger" plain @click="handleDelete(row)">
                 <el-icon><Delete /></el-icon>
@@ -178,6 +178,7 @@ import {
   type UpdateTenantRequest
 } from '../../api/tenant'
 import { formatTime } from '../../utils/date'
+import { StatusUtils } from '../../utils/status'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -298,8 +299,8 @@ const handleSubmit = async () => {
 }
 
 const handleToggleStatus = async (tenant: TenantInfo) => {
-  const newStatus = tenant.status === 1 ? 2 : 1
-  const action = newStatus === 1 ? '启用' : '禁用'
+  const newStatus = StatusUtils.toggleStatus(tenant.status)
+  const action = StatusUtils.getToggleActionText(newStatus, '启用', '禁用')
 
   try {
     await ElMessageBox.confirm(

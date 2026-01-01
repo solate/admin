@@ -73,8 +73,8 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="Number(row.status) === 1 ? 'success' : 'info'">
-              {{ Number(row.status) === 1 ? '上架' : '下架' }}
+            <el-tag :type="StatusUtils.getTagType(row.status)">
+              {{ StatusUtils.getStatusText(row.status, '上架', '下架') }}
             </el-tag>
           </template>
         </el-table-column>
@@ -87,12 +87,12 @@
               </el-button>
               <el-button
                 size="small"
-                :type="Number(row.status) === 1 ? 'warning' : 'success'"
+                :type="StatusUtils.getButtonType(row.status, 'warning', 'success')"
                 plain
                 @click="handleToggleStatus(row)"
               >
-                <el-icon><component :is="Number(row.status) === 1 ? 'Lock' : 'Unlock'" /></el-icon>
-                {{ Number(row.status) === 1 ? '下架' : '上架' }}
+                <el-icon><component :is="StatusUtils.isActive(row.status) ? 'Lock' : 'Unlock'" /></el-icon>
+                {{ StatusUtils.getToggleActionText(row.status, '下架', '上架') }}
               </el-button>
               <el-button size="small" type="danger" plain @click="handleDelete(row)">
                 <el-icon><Delete /></el-icon>
@@ -196,6 +196,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Search, Refresh, Edit, Delete } from '@element-plus/icons-vue'
+import { StatusUtils } from '../../utils/status'
 
 const loading = ref(false)
 const submitLoading = ref(false)

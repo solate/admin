@@ -47,7 +47,7 @@
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="Number(row.status) === 1 ? 'success' : 'info'">
+            <el-tag :type="StatusUtils.getTagType(row.status)">
               {{ Number(row.status) === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
@@ -146,6 +146,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Edit, Delete, Plus, Search } from '@element-plus/icons-vue'
+import { StatusUtils } from '../../utils/status'
 import {
   roleApi,
   type RoleInfo,

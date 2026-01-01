@@ -78,7 +78,7 @@
         <el-table-column prop="sort" label="排序" width="80" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="Number(row.status) === 1 ? 'success' : 'info'" size="small">
+            <el-tag :type="StatusUtils.getTagType(row.status)" size="small">
               {{ Number(row.status) === 1 ? '显示' : '隐藏' }}
             </el-tag>
           </template>
@@ -137,7 +137,7 @@
         <el-table-column prop="sort" label="排序" width="80" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="Number(row.status) === 1 ? 'success' : 'info'" size="small">
+            <el-tag :type="StatusUtils.getTagType(row.status)" size="small">
               {{ Number(row.status) === 1 ? '显示' : '隐藏' }}
             </el-tag>
           </template>
@@ -254,6 +254,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Edit, Delete, Plus, Search, Lock, Unlock, List, Grid } from '@element-plus/icons-vue'
+import { StatusUtils } from '../../utils/status'
 import { menuApi, type MenuInfo, type MenuTreeNode, type CreateMenuRequest, type UpdateMenuRequest } from '@/api/menu'
 
 const viewMode = ref<'list' | 'tree'>('list')
