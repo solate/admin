@@ -145,6 +145,7 @@
             :tenant="userInfo?.tenant || null"
             :roles="userRoles"
             @command="handleUserCommand"
+            @tenant-changed="handleTenantChanged"
           />
         </div>
       </el-header>
@@ -297,6 +298,16 @@ function handleUserCommand(command: string) {
     case 'settings':
       ElMessage.info('功能开发中...')
       break
+  }
+}
+
+function handleTenantChanged(tenant: { tenant_id: string; name: string; tenant_code: string }) {
+  // 更新当前租户信息
+  currentTenantCode.value = tenant.tenant_code
+  currentTenantName.value = tenant.name
+  // 更新用户信息中的租户信息
+  if (userInfo.value) {
+    userInfo.value.tenant = tenant
   }
 }
 

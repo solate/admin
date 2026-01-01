@@ -103,6 +103,23 @@ export interface RefreshTokenResponse {
   roles?: RoleInfo[]
 }
 
+// 切换租户请求
+export interface SwitchTenantRequest {
+  tenant_id: string
+}
+
+// 切换租户响应（只返回 token，需要调用 getProfile 获取完整信息）
+export interface SwitchTenantResponse {
+  access_token: string
+  refresh_token: string
+  expires_in: number
+}
+
+// 可用租户列表响应
+export interface AvailableTenantsResponse {
+  tenants: TenantInfo[]
+}
+
 // 修改密码请求
 export interface ChangePasswordRequest {
   old_password: string
@@ -180,5 +197,15 @@ export const authApi = {
   // 获取当前用户活跃设备数量
   getActiveDevices: (): Promise<ActiveDevicesResponse> => {
     return http.get('/admin/v1/auth/devices/active')
+  },
+
+  // 切换租户
+  switchTenant: (data: SwitchTenantRequest): Promise<SwitchTenantResponse> => {
+    return http.post('/api/v1/auth/switch-tenant', data)
+  },
+
+  // 获取可切换的租户列表
+  getAvailableTenants: (): Promise<AvailableTenantsResponse> => {
+    return http.get('/api/v1/auth/available-tenants')
   }
 }

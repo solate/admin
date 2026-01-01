@@ -27,7 +27,7 @@
 
         <!-- 租户信息卡片 -->
         <div class="tenant-section-compact">
-          <div class="tenant-current-compact">
+          <div class="tenant-current-compact" @click="handleOpenTenantSelector">
             <div class="tenant-current-icon">
               <span class="tenant-icon-text">{{ tenant?.name?.charAt(0) || 'T' }}</span>
             </div>
@@ -35,6 +35,9 @@
               <div class="tenant-current-name">{{ tenant?.name || '默认租户' }}</div>
               <div class="tenant-current-code">{{ tenant?.tenant_code || 'default' }}</div>
             </div>
+            <el-icon class="tenant-switch-icon" :size="14">
+              <ArrowRight />
+            </el-icon>
           </div>
         </div>
 
@@ -60,19 +63,28 @@
       </el-dropdown-menu>
     </template>
   </el-dropdown>
+
+  <!-- 租户选择器对话框 -->
+  <TenantSelector
+    ref="tenantSelectorRef"
+    :current-tenant="tenant"
+    @tenant-changed="handleTenantChanged"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, Setting, SwitchButton } from '@element-plus/icons-vue'
+import { User, Setting, SwitchButton, ArrowRight } from '@element-plus/icons-vue'
 import { authApi } from '../../api'
 import { clearTokens } from '../../utils/token'
+import TenantSelector from '../tenant/TenantSelector.vue'
 
 // 定义 emit
 const emit = defineEmits<{
   command: [command: string]
+  'tenant-changed': [tenant: { tenant_id: string; name: string; tenant_code: string }]
 }>()
 
 // Props
@@ -102,9 +114,29 @@ const props = withDefaults(defineProps<Props>(), {
 
 const router = useRouter()
 const isOpen = ref(false)
+const tenantSelectorRef = ref<InstanceType<typeof TenantSelector>>()
 
 function handleVisibleChange(visible: boolean) {
   isOpen.value = visible
+}
+
+function handleOpenTenantSelector() {
+  // 关闭当前下拉菜单
+  isOpen.value = false
+  // 打开租户选择器对话框
+  try {
+    tenantSelectorRef.value?.open()
+  } catch (error) {
+    console.error('打开租户选择器失败:', error)
+  }
+}
+
+function handleTenantChanged(tenant: { tenant_id: string; name: string; tenant_code: string }) {
+  try {
+    emit('tenant-changed', tenant)
+  } catch (error) {
+    console.error('租户切换事件处理失败:', error)
+  }
 }
 
 async function handleCommand(command: string) {
@@ -256,6 +288,13 @@ async function handleCommand(command: string) {
       background: linear-gradient(135deg, rgba(66, 133, 244, 0.06) 0%, rgba(66, 133, 244, 0.02) 100%);
       border: 1px solid rgba(66, 133, 244, 0.15);
       border-radius: 12px;
+      cursor: pointer;
+      transition: var(--transition-base);
+
+      &:hover {
+        background: linear-gradient(135deg, rgba(66, 133, 244, 0.1) 0%, rgba(66, 133, 244, 0.04) 100%);
+        border-color: rgba(66, 133, 244, 0.25);
+      }
 
       .tenant-current-icon {
         width: 38px;
@@ -293,6 +332,12 @@ async function handleCommand(command: string) {
           color: var(--text-secondary);
           font-weight: 500;
         }
+      }
+
+      .tenant-switch-icon {
+        color: var(--text-secondary);
+        flex-shrink: 0;
+        transition: transform 0.2s;
       }
     }
   }

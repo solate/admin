@@ -26,12 +26,9 @@
           </div>
           <div class="tenant-selector-info">
             <div class="tenant-selector-name">{{ tenant.name }}</div>
-            <div class="tenant-selector-code">{{ tenant.code }}</div>
+            <div class="tenant-selector-code">{{ tenant.tenant_code }}</div>
           </div>
           <div class="tenant-selector-status">
-            <span class="tenant-selector-badge" :class="{ danger: tenant.status === 2 }">
-              {{ tenant.status === 2 ? '禁用' : '正常' }}
-            </span>
             <el-icon v-if="tenant.tenant_id === currentTenant?.tenant_id" class="tenant-selector-check">
               <Check />
             </el-icon>
@@ -46,7 +43,7 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Check, Loading } from '@element-plus/icons-vue'
-import { authApi } from '../../api'
+import { authApi, type TenantInfo } from '../../api'
 import { saveTokens, getUserInfo } from '../../utils/token'
 
 // Props
@@ -70,31 +67,18 @@ const emit = defineEmits<{
 const userInfo = getUserInfo()
 const dialogVisible = ref(false)
 const loading = ref(false)
-const tenantList = ref<Array<{
-  tenant_id: string
-  name: string
-  code: string
-  status: number
-}>>([])
+const tenantList = ref<TenantInfo[]>([])
 
 // 加载租户列表
 async function loadTenantList() {
   loading.value = true
   try {
-    // TODO: 临时假数据，实际应该调用 API
-    // const response = await authApi.getUserTenants(userInfo.user_id)
-    // tenantList.value = response.data || []
-
-    // 假数据
-    tenantList.value = [
-      { tenant_id: '1', name: '默认租户', code: 'default', status: 1 },
-      { tenant_id: '2', name: '测试租户A', code: 'tenant-a', status: 1 },
-      { tenant_id: '3', name: '生产租户B', code: 'tenant-b', status: 1 },
-      { tenant_id: '4', name: '开发租户C', code: 'tenant-c', status: 2 }
-    ]
-  } catch (error) {
+    const response = await authApi.getAvailableTenants()
+    tenantList.value = response.tenants || []
+  } catch (error: any) {
     console.error('获取租户列表失败:', error)
-    ElMessage.error('获取租户列表失败')
+    ElMessage.error(error.message || '获取租户列表失败')
+    tenantList.value = []
   } finally {
     loading.value = false
   }
@@ -128,21 +112,31 @@ async function handleTenantSelect(tenantId: string) {
 
   loading.value = true
   try {
-    const response = await authApi.selectTenant(userInfo.user_id, { tenant_id: tenantId })
+    // 1. 调用切换租户接口获取新 token
+    const switchResponse = await authApi.switchTenant({ tenant_id: tenantId })
+
+    // 2. 保存新 token
+    localStorage.setItem('access_token', switchResponse.access_token)
+    localStorage.setItem('refresh_token', switchResponse.refresh_token)
+
+    // 3. 调用 profile 接口获取完整的用户信息（包括新租户信息）
+    const profileResponse = await authApi.getProfile()
+
+    // 4. 保存完整的用户信息
     saveTokens({
-      access_token: response.access_token,
-      refresh_token: response.refresh_token,
-      user_id: userInfo.user_id,
-      username: userInfo.user_name || undefined,
-      email: userInfo.email || undefined,
-      phone: userInfo.phone || undefined,
-      tenant: response.tenant,
-      roles: response.roles
+      access_token: switchResponse.access_token,
+      refresh_token: switchResponse.refresh_token,
+      user_id: profileResponse.user.user_id,
+      username: profileResponse.user.username,
+      email: profileResponse.user.email,
+      phone: profileResponse.user.phone,
+      tenant: profileResponse.tenant,
+      roles: profileResponse.roles
     })
 
-    emit('tenant-changed', response.tenant)
+    emit('tenant-changed', profileResponse.tenant)
     close()
-    ElMessage.success('租户切换成功')
+    ElMessage.success(`已切换到 ${profileResponse.tenant.name}`)
     location.reload()
   } catch (error: any) {
     ElMessage.error(error?.message || '租户切换失败')
@@ -274,22 +268,6 @@ defineExpose({
           align-items: center;
           gap: 10px;
           flex-shrink: 0;
-
-          .tenant-selector-badge {
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            background: rgba(103, 194, 58, 0.1);
-            color: var(--success-color);
-            border: 1px solid rgba(103, 194, 58, 0.2);
-
-            &.danger {
-              background: rgba(239, 68, 68, 0.1);
-              color: var(--danger-color);
-              border-color: rgba(239, 68, 68, 0.2);
-            }
-          }
 
           .tenant-selector-check {
             width: 22px;
