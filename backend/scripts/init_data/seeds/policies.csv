@@ -40,6 +40,10 @@ p, admin, {tenant}, /api/v1/menus/*/status/*, PUT
 p, admin, {tenant}, /api/v1/user/menu, GET
 p, admin, {tenant}, /api/v1/user/buttons, GET
 
+# 登录日志
+p, admin, {tenant}, /api/v1/login-logs, GET
+p, admin, {tenant}, /api/v1/login-logs/*, GET
+
 # 操作日志
 p, admin, {tenant}, /api/v1/operation-logs, GET
 p, admin, {tenant}, /api/v1/operation-logs/*, GET
@@ -67,6 +71,10 @@ p, user, {tenant}, /api/v1/menus/*, GET
 # 用户菜单
 p, user, {tenant}, /api/v1/user/menu, GET
 p, user, {tenant}, /api/v1/user/buttons, GET
+
+# 登录日志
+p, user, {tenant}, /api/v1/login-logs, GET
+p, user, {tenant}, /api/v1/login-logs/*, GET
 
 # 操作日志
 p, user, {tenant}, /api/v1/operation-logs, GET
@@ -96,6 +104,10 @@ p, auditor, {tenant}, /api/v1/menus/*, GET
 # 用户菜单
 p, auditor, {tenant}, /api/v1/user/menu, GET
 p, auditor, {tenant}, /api/v1/user/buttons, GET
+
+# 登录日志
+p, auditor, {tenant}, /api/v1/login-logs, GET
+p, auditor, {tenant}, /api/v1/login-logs/*, GET
 
 # 操作日志
 p, auditor, {tenant}, /api/v1/operation-logs, GET

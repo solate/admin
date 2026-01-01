@@ -19,7 +19,8 @@ const SystemTenants = () => import('../views/system/Tenants.vue')
 const SystemTenantMembers = () => import('../views/system/TenantMembers.vue')
 const SystemPermissions = () => import('../views/system/Permissions.vue')
 const SystemDict = () => import('../views/system/Dict.vue')
-const SystemLogs = () => import('../views/system/Logs.vue')
+const SystemLoginLogs = () => import('../views/system/LoginLogs.vue')
+const SystemOperationLogs = () => import('../views/system/OperationLogs.vue')
 const SystemMonitor = () => import('../views/system/Monitor.vue')
 
 const routes = [
@@ -31,6 +32,8 @@ const routes = [
     component: Layout,
     children: [
       { path: '', name: 'dashboard', component: Dashboard, meta: { title: '仪表盘' } },
+      { path: 'login-logs', name: 'login-logs', component: SystemLoginLogs, meta: { title: '登录日志' } },
+      { path: 'operation-logs', name: 'operation-logs', component: SystemOperationLogs, meta: { title: '操作日志' } },
       { path: 'system/users', name: 'users', component: SystemUsers, meta: { title: '用户管理' } },
       { path: 'system/roles', name: 'roles', component: SystemRoles, meta: { title: '角色管理' } },
       { path: 'system/tenants', name: 'tenants', component: SystemTenants, meta: { title: '租户管理' } },
@@ -39,7 +42,6 @@ const routes = [
       { path: 'system/permissions/api', name: 'permissions-api', component: SystemPermissions, meta: { title: '接口权限' } },
       { path: 'system/permissions/data', name: 'permissions-data', component: SystemPermissions, meta: { title: '数据权限' } },
       { path: 'system/dict', name: 'system-dict', component: SystemDict, meta: { title: '字典管理' } },
-      { path: 'system/logs', name: 'system-logs', component: SystemLogs, meta: { title: '操作日志' } },
       { path: 'system/monitor', name: 'system-monitor', component: SystemMonitor, meta: { title: '系统监控' } },
       { path: 'factories', name: 'factories', component: Factories, meta: { title: '工厂管理' } },
       { path: 'products', name: 'products', component: Products, meta: { title: '商品管理' } },

@@ -288,6 +288,10 @@ async function onSubmit() {
     const profileRes = await authApi.getProfile()
 
     // 4. 更新完整的用户信息
+    if (!profileRes || !profileRes.user || !profileRes.user.user_id) {
+      throw new Error('获取用户信息失败')
+    }
+
     saveTokens({
       access_token: loginRes.access_token,
       refresh_token: loginRes.refresh_token!,

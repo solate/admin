@@ -4,9 +4,9 @@ import { ElMessage } from 'element-plus'
 import { getAccessToken, refreshAccessToken, clearTokens } from '../utils/token'
 
 // API 基础 URL 配置
-// 开发环境：直接使用后端地址（绕过 Vite 代理问题）
+// 开发环境：空字符串，使用 Vite 代理
 // 生产环境：空字符串，由 Nginx 处理代理
-const baseURL = import.meta.env.DEV ? 'http://localhost:8080' : ''
+const baseURL = ''
 
 const http: AxiosInstance = axios.create({
   baseURL,

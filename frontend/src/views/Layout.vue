@@ -38,6 +38,15 @@
             <template #title>仪表盘</template>
           </el-menu-item>
 
+          <el-sub-menu index="/audit-logs">
+            <template #title>
+              <el-icon><Document /></el-icon>
+              <span>审计日志</span>
+            </template>
+            <el-menu-item index="/login-logs">登录日志</el-menu-item>
+            <el-menu-item index="/operation-logs">操作日志</el-menu-item>
+          </el-sub-menu>
+
           <el-sub-menu index="/system">
             <template #title>
               <el-icon><Setting /></el-icon>
@@ -50,7 +59,6 @@
             <el-menu-item index="/system/permissions/api">接口权限</el-menu-item>
             <el-menu-item index="/system/permissions/data">数据权限</el-menu-item>
             <el-menu-item index="/system/dict">字典管理</el-menu-item>
-            <el-menu-item index="/system/logs">操作日志</el-menu-item>
             <el-menu-item index="/system/monitor">系统监控</el-menu-item>
           </el-sub-menu>
 
@@ -221,6 +229,9 @@ const unreadCount = computed(() => notifications.value.filter(n => !n.read).leng
 
 const breadcrumbConfig: Record<string, { title: string }> = {
   '/': { title: '首页' },
+  '/audit-logs': { title: '审计日志' },
+  '/login-logs': { title: '登录日志' },
+  '/operation-logs': { title: '操作日志' },
   '/system': { title: '系统管理' },
   '/system/users': { title: '用户管理' },
   '/system/roles': { title: '角色管理' },
@@ -230,7 +241,6 @@ const breadcrumbConfig: Record<string, { title: string }> = {
   '/system/permissions/api': { title: '接口权限' },
   '/system/permissions/data': { title: '数据权限' },
   '/system/dict': { title: '字典管理' },
-  '/system/logs': { title: '操作日志' },
   '/system/monitor': { title: '系统监控' },
   '/factories': { title: '工厂管理' },
   '/products': { title: '商品管理' },
