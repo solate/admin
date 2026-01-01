@@ -104,40 +104,16 @@ type Claims struct {
 
 ### 3.2 登录时 Token 生成
 
-```go
-// internal/service/auth_service.go
+登录流程：`POST /api/v1/auth/:tenant_code/login`
 
-func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
-    // 1. 验证用户凭据（跨租户查询）
-    ctx = database.SkipTenantCheck(ctx)
-    user, err := s.userRepo.GetByUserName(ctx, req.UserName)
-    if err != nil {
-        return nil, err
-    }
-
-    // 2. 获取用户在当前租户下的角色
-    roles, err := s.casbinService.GetRolesForUserInDomain(ctx, user.UserName, user.TenantCode)
-    if err != nil {
-        return nil, err
-    }
-
-    // 3. 生成 Token
-    tokenPair, err := s.jwtManager.GenerateTokenPair(
-        user.TenantID,
-        user.TenantCode,
-        user.UserID,
-        user.UserName,
-        roles,
-    )
-
-    return &dto.LoginResponse{
-        AccessToken:  tokenPair.AccessToken,
-        RefreshToken: tokenPair.RefreshToken,
-        ExpiresIn:    tokenPair.ExpiresIn,
-        Roles:        roles,
-    }, nil
-}
-```
+1. **TenantFromCode 中间件**：从 URL 获取租户编码，查询租户信息并注入到 context
+2. **AuthService.Login**：[auth_service.go:48](backend/internal/service/auth_service.go#L48)
+   - 验证码校验
+   - 从 context 获取租户信息
+   - 查询用户（租户内唯一）
+   - 验证密码和状态
+   - 从 Casbin 获取用户角色
+   - 生成 JWT Token
 
 ---
 
@@ -198,124 +174,135 @@ p, viewer, tenant_c, /api/v1/audit/*, GET
 ```go
 // internal/router/router.go
 
-func SetupRouter(r *gin.Engine, db *gorm.DB, enforcer *casbin.Enforcer, jwtManager *jwt.Manager) {
-    api := r.Group("/api/v1")
+func Setup(r *gin.Engine, app *App) {
+    // 全局中间件
+    r.Use(middleware.RequestIDMiddleware())
+    r.Use(middleware.LoggerMiddleware())
+    r.Use(middleware.RecoveryMiddleware())
+    r.Use(middleware.CORSMiddleware())
+    r.Use(middleware.RateLimitMiddleware(...))
 
-    // ========== 公开接口（无需认证）==========
-    public := api.Group("")
+    // 公开接口（无需认证）
+    public := r.Group("/api/v1")
     {
-        public.POST("/login", handlers.Login)
-        public.POST("/refresh", handlers.RefreshToken)
-    }
-
-    // ========== 认证接口（需 JWT 验证）==========
-    authenticated := api.Group("")
-    authenticated.Use(middleware.AuthMiddleware(jwtManager))
-    {
-        // ========== 超管专用接口（可选）==========
-        admin := authenticated.Group("/admin")
-        admin.Use(middleware.SuperAdminOnly())
+        // 登录需要从 URL 获取租户编码
+        auth := public.Group("/auth/:tenant_code")
+        auth.Use(middleware.TenantFromCode(app.DB))
         {
-            admin.GET("/tenants", handlers.ListAllTenants)
-            admin.POST("/tenants", handlers.CreateTenant)
+            auth.POST("/login", app.Handlers.AuthHandler.Login)
         }
 
-        // ========== RoleMiddleware（核心）==========
-        // 根据角色处理租户切换和数据层检查
-        authenticated.Use(middleware.RoleMiddleware(db))
+        // 其他公开接口
+        public.GET("/auth/captcha", app.Handlers.CaptchaHandler.Get)
+        public.POST("/auth/refresh", app.Handlers.AuthHandler.Refresh)
+    }
 
-        // ========== Casbin 权限检查 ==========
-        authenticated.Use(middleware.CasbinMiddleware(enforcer))
+    // 认证接口（需 JWT + Casbin 权限检查）
+    authorized := r.Group("/api/v1")
+    authorized.Use(middleware.AuthMiddleware(app.JWT))
+    authorized.Use(middleware.CasbinMiddleware(app.Enforcer))
+    authorized.Use(middleware.OperationLogMiddleware(app.OperationLogWriter))
+    {
+        // 业务接口
+        authorized.GET("/profile", app.Handlers.UserHandler.GetProfile)
 
-        // ========== 业务接口 ==========
-        authenticated.GET("/roles", handlers.ListRoles)
-        authenticated.POST("/roles", handlers.CreateRole)
+        // 租户切换（超管/审计员）
+        authorized.POST("/auth/switch-tenant", app.Handlers.AuthHandler.SwitchTenant)
+        authorized.GET("/auth/available-tenants", app.Handlers.AuthHandler.GetAvailableTenants)
+
+        // 租户管理
+        authorized.POST("/tenants", app.Handlers.TenantHandler.CreateTenant)
         // ...
     }
 }
 ```
 
-### 5.2 RoleMiddleware 中间件（核心）
+### 5.2 AuthMiddleware（JWT 认证）
 
 ```go
-// internal/middleware/role_middleware.go
+// internal/middleware/auth_middleware.go
 
-// RoleMiddleware 根据用户角色设置租户上下文
-// - 超管(super_admin)：可切换任意租户，跳过数据层检查
-// - 监管方(auditor)：可切换授权租户列表
-// - 其他角色：强制使用 JWT 中的租户
-func RoleMiddleware(db *gorm.DB) gin.HandlerFunc {
-    tenantRepo := repository.NewTenantRepo(db)
-
+func AuthMiddleware(jwtManager *jwt.Manager) gin.HandlerFunc {
     return func(c *gin.Context) {
-        ctx := c.Request.Context()
-        roles := xcontext.GetRoles(ctx)
-
-        // 默认使用 JWT 中的租户
-        finalTenantID := xcontext.GetTenantID(ctx)
-        finalTenantCode := xcontext.GetTenantCode(ctx)
-
-        // 获取请求的目标租户
-        targetTenant := c.GetHeader("X-Target-Tenant")
-        if targetTenant != "" {
-            // 超管：可以切换任意租户
-            if hasRole(roles, constants.SuperAdmin) {
-                tenant, err := tenantRepo.GetByCode(ctx, targetTenant)
-                if err != nil {
-                    response.Error(c, xerr.ErrTenantNotFound)
-                    c.Abort()
-                    return
-                }
-                finalTenantID = tenant.TenantID
-                finalTenantCode = tenant.TenantCode
-            }
-            // 监管方：只能切换授权的租户列表
-            else if hasRole(roles, constants.Auditor) {
-                allowedTenants := s.getAllowedTenants(ctx, xcontext.GetUserID(ctx))
-                if contains(allowedTenants, targetTenant) {
-                    tenant, err := tenantRepo.GetByCode(ctx, targetTenant)
-                    if err != nil {
-                        response.Error(c, xerr.ErrTenantNotFound)
-                        c.Abort()
-                        return
-                    }
-                    finalTenantID = tenant.TenantID
-                    finalTenantCode = tenant.TenantCode
-                } else {
-                    response.Error(c, xerr.ErrForbidden)
-                    c.Abort()
-                    return
-                }
-            }
-            // 其他角色：忽略 X-Target-Tenant，使用 JWT 租户
+        token := c.GetHeader("Authorization")
+        if token == "" {
+            response.Error(c, xerr.ErrUnauthorized)
+            c.Abort()
+            return
         }
 
-        // 更新 Context
-        ctx = xcontext.SetTenantID(ctx, finalTenantID)
-        ctx = xcontext.SetTenantCode(ctx, finalTenantCode)
-
-        // 超管跳过数据层租户检查
-        if hasRole(roles, constants.SuperAdmin) {
-            ctx = database.SkipTenantCheck(ctx)
+        // 解析 "Bearer <token>" 格式
+        parts := strings.SplitN(token, " ", 2)
+        if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+            response.Error(c, xerr.ErrTokenInvalid)
+            c.Abort()
+            return
         }
 
-        c.Request = c.Request.WithContext(ctx)
+        // 验证 token（签名、过期、黑名单）
+        claims, err := jwtManager.VerifyAccessToken(c.Request.Context(), parts[1])
+        if err != nil {
+            response.Error(c, err)
+            c.Abort()
+            return
+        }
+
+        // 将认证信息注入到 context（租户、用户、角色等）
+        requestCtx := SetAuthContext(c.Request.Context(), claims)
+        c.Request = c.Request.WithContext(requestCtx)
+
         c.Next()
     }
 }
 
-// hasRole 检查用户是否拥有指定角色
-func hasRole(roles []string, targetRole string) bool {
-    for _, role := range roles {
-        if role == targetRole {
-            return true
-        }
-    }
-    return false
+// SetAuthContext 一次性设置所有认证信息到context
+func SetAuthContext(ctx context.Context, claims *jwt.Claims) context.Context {
+    ctx = xcontext.SetTenantID(ctx, claims.TenantID)
+    ctx = xcontext.SetTenantCode(ctx, claims.TenantCode)
+    ctx = xcontext.SetUserID(ctx, claims.UserID)
+    ctx = xcontext.SetUserName(ctx, claims.UserName)
+    ctx = xcontext.SetRoles(ctx, claims.Roles)
+    ctx = xcontext.SetTokenID(ctx, claims.TokenID)
+    return ctx
 }
 ```
 
-### 5.3 CasbinMiddleware（简化版）
+### 5.3 TenantFromCode（登录时从 URL 获取租户）
+
+```go
+// internal/middleware/tenant_middleware.go
+
+func TenantFromCode(db *gorm.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // 从 URL 路径参数获取租户编码
+        tenantCode := c.Param("tenant_code")
+        if tenantCode == "" {
+            response.Error(c, xerr.New(xerr.ErrInvalidParams.Code, "租户编码不能为空"))
+            c.Abort()
+            return
+        }
+
+        // 查询租户信息（使用 Manual 模式，不自动添加租户过滤）
+        tenant, err := repository.NewTenantRepo(db).GetByCodeManual(c.Request.Context(), tenantCode)
+        if err != nil {
+            response.Error(c, xerr.New(xerr.ErrNotFound.Code, "租户不存在"))
+            c.Abort()
+            return
+        }
+
+        // 将租户信息注入到 context
+        ctx := c.Request.Context()
+        ctx = database.WithTenantID(ctx, tenant.TenantID)
+        ctx = xcontext.SetTenantID(ctx, tenant.TenantID)
+        ctx = xcontext.SetTenantCode(ctx, tenant.TenantCode)
+        c.Request = c.Request.WithContext(ctx)
+
+        c.Next()
+    }
+}
+```
+
+### 5.4 CasbinMiddleware（权限检查）
 
 ```go
 // internal/middleware/casbin_middleware.go
@@ -326,7 +313,7 @@ func CasbinMiddleware(enforcer *casbin.Enforcer) gin.HandlerFunc {
         roles := xcontext.GetRoles(ctx)
 
         // 超管跳过 Casbin 检查
-        if hasRole(roles, constants.SuperAdmin) {
+        if xcontext.HasRole(ctx, constants.SuperAdmin) {
             c.Next()
             return
         }
@@ -339,7 +326,7 @@ func CasbinMiddleware(enforcer *casbin.Enforcer) gin.HandlerFunc {
             c.Request.Method,
         )
 
-        if !ok {
+        if !ok || err != nil {
             response.Error(c, xerr.ErrForbidden)
             c.Abort()
             return
@@ -442,51 +429,40 @@ func (r *UserRepo) ListByTenantCodes(ctx context.Context, tenantCodes []string) 
 type contextKey string
 
 const (
-    TenantIDKey      contextKey = "tenant_id"
-    TenantCodeKey    contextKey = "tenant_code"
-    UserIDKey        contextKey = "user_id"
-    UserNameKey      contextKey = "user_name"
-    RolesKey         contextKey = "roles"
-    AllowedTenantsKey contextKey = "allowed_tenants" // 授权租户列表（监管方）
+    TenantIDKey   contextKey = "tenant_id"
+    TenantCodeKey contextKey = "tenant_code"
+    UserIDKey     contextKey = "user_id"
+    UserNameKey   contextKey = "user_name"
+    RolesKey      contextKey = "roles"
+    TokenIDKey    contextKey = "token_id"
 )
-
-// SetAllowedTenants 设置授权租户列表
-func SetAllowedTenants(ctx context.Context, tenants []string) context.Context {
-    return context.WithValue(ctx, AllowedTenantsKey, tenants)
-}
-
-// GetAllowedTenants 获取授权租户列表
-func GetAllowedTenants(ctx context.Context) []string {
-    if tenants, ok := ctx.Value(AllowedTenantsKey).([]string); ok {
-        return tenants
-    }
-    return nil
-}
 ```
+
+**实现**：[tenant.go:1](backend/pkg/xcontext/tenant.go)
 
 ### 7.2 传递策略
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  HTTP Request                                               │
-│  Headers: Authorization + X-Target-Tenant (可选)            │
+│  URL: /api/v1/auth/:tenant_code/login                       │
+│  Headers: Authorization                                     │
+└────────────────┬────────────────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│  TenantFromCode (仅登录)                                    │
+│  ├─ 从 URL 获取租户编码                                      │
+│  ├─ 查询租户信息                                             │
+│  └─ 注入: TenantID, TenantCode                              │
 └────────────────┬────────────────────────────────────────────┘
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  AuthMiddleware                                             │
 │  ├─ 解析 JWT → Claims                                       │
-│  ├─ 设置: UserID, TenantID, Roles                           │
+│  ├─ SetAuthContext 一次性设置所有信息                        │
 │  └─ Context → request.Context                               │
-└────────────────┬────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│  RoleMiddleware                                              │
-│  ├─ 检查角色是否允许切换租户                                 │
-│  ├─ 解析 X-Target-Tenant (如果有)                            │
-│  ├─ 验证租户权限（超管任意/监管方授权）                       │
-│  └─ 更新: TenantID, TenantCode                              │
 └────────────────┬────────────────────────────────────────────┘
                  │
                  ▼
@@ -499,7 +475,7 @@ func GetAllowedTenants(ctx context.Context) []string {
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Handler → Service → Repository                             │
-│  └─ 所有组件通过 context.Value() 获取租户信息                 │
+│  └─ 通过 xcontext.GetXxx(ctx) 获取租户/用户信息              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -512,47 +488,51 @@ func GetAllowedTenants(ctx context.Context) []string {
 | 原则 | 说明 | 示例 |
 |------|------|------|
 | **Context 优先** | 租户ID从 Context 获取，不传参数 | `GET /api/v1/users` |
-| **Header 切换** | 超管通过 Header 切换目标租户 | `X-Target-Tenant: tenant_a` |
-| **路径可选** | 特定场景支持 Path 参数 | `GET /api/v1/tenants/:code/users` |
+| **URL 获取租户** | 登录时从 URL 路径获取租户 | `POST /api/v1/auth/:tenant_code/login` |
+| **API 切换租户** | 超管/审计员通过专用 API 切换租户 | `POST /api/v1/auth/switch-tenant` |
 | **业务无关** | Handler/Service 不关心租户逻辑 | 所有角色共用一套接口 |
 
 ### 8.2 接口示例
 
 ```bash
+# ========== 登录（通过 URL 指定租户）==========
+POST /api/v1/auth/tenant_a/login
+Body: { "username": "alice", "password": "xxx", "captcha_id": "xxx", "captcha": "xxx" }
+
 # ========== 普通用户/租户管理员 ==========
 # 获取当前租户用户列表（自动使用 JWT 租户）
 GET /api/v1/users
 Headers: Authorization: Bearer <token>
 
 # ========== 超级管理员 ==========
-# 切换到租户 A 查看用户
-GET /api/v1/users
-Headers:
-  Authorization: Bearer <super_admin_token>
-  X-Target-Tenant: tenant_a
-
-# 查看平台所有租户（不需要租户上下文）
-GET /api/v1/admin/tenants
+# 查看平台所有租户
+GET /api/v1/tenants
 Headers: Authorization: Bearer <super_admin_token>
 
-# 为租户 B 创建用户
-POST /api/v1/users
-Headers:
-  Authorization: Bearer <super_admin_token>
-  X-Target-Tenant: tenant_b
-Body: { "username": "new_user", ... }
+# 获取可切换的租户列表（超管返回所有租户）
+GET /api/v1/auth/available-tenants
+Headers: Authorization: Bearer <super_admin_token>
 
-# ========== 监管方 ==========
-# 查看授权租户列表（范围限制）
-GET /api/v1/audit/tenants
+# 切换到租户 A（返回新的 Token）
+POST /api/v1/auth/switch-tenant
+Headers: Authorization: Bearer <super_admin_token>
+Body: { "tenant_id": "tenant_a_id" }
+# 返回: { "access_token": "...", "refresh_token": "...", "expires_in": 3600 }
+
+# 切换后，使用新 Token 访问租户 A 的数据
+GET /api/v1/users
+Headers: Authorization: Bearer <new_token>
+
+# ========== 审计员 ==========
+# 获取可切换的租户列表（只返回有权限的租户）
+GET /api/v1/auth/available-tenants
 Headers: Authorization: Bearer <auditor_token>
-# 返回: tenant_b, tenant_c, tenant_d
+# 返回: [{ "tenant_id": "...", "tenant_code": "tenant_b", ... }, ...]
 
-# 查看授权租户的数据
-GET /api/v1/audit/logs
-Headers:
-  Authorization: Bearer <auditor_token>
-  X-Target-Tenant: tenant_c
+# 切换到有权限的租户
+POST /api/v1/auth/switch-tenant
+Headers: Authorization: Bearer <auditor_token>
+Body: { "tenant_id": "tenant_b_id" }
 ```
 
 ### 8.3 Handler 实现（无租户逻辑）
@@ -591,7 +571,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 // internal/service/user_service.go
 
 func (s *UserService) Create(ctx context.Context, req *dto.CreateUserRequest) (*model.User, error) {
-    // 自动从 context 获取租户ID（由 RoleMiddleware 设置）
+    // 自动从 context 获取租户ID（由 JWT 设置）
     tenantID := xcontext.GetTenantID(ctx)
 
     user := &model.User{
@@ -612,74 +592,49 @@ func (s *UserService) Create(ctx context.Context, req *dto.CreateUserRequest) (*
 
 ### 9.1 场景一：用户登录
 
-```go
-// 1. 用户登录（需要跨租户查询用户）
-POST /api/v1/login
-Body: { "username": "alice", "password": "xxx" }
-
-// Handler
-func (h *AuthHandler) Login(c *gin.Context) {
-    // 使用 SkipTenantCheck，因为登录时还不知道租户
-    ctx := database.SkipTenantCheck(c.Request.Context())
-    tokenPair, err := h.authService.Login(ctx, &req)
-    // ...
-}
-
-// 2. 返回 Token（包含当前租户信息）
-{
-  "access_token": "xxx",
-  "refresh_token": "yyy",
-  "expires_in": 3600,
-  "roles": ["tenant_admin"]  // 或 ["super_admin"]（超管）
-}
+```bash
+# 通过 URL 指定租户
+POST /api/v1/auth/tenant_a/login
+Body: { "username": "alice", "password": "xxx", "captcha_id": "xxx", "captcha": "xxx" }
 ```
+
+**流程**：
+1. `TenantFromCode` 中间件从 URL 获取租户编码 → 查询租户 → 注入 context
+2. `AuthService.Login` [auth_service.go:48](backend/internal/service/auth_service.go#L48) 验证并生成 Token
+3. 返回 Token（包含租户信息和角色）
 
 ### 9.2 场景二：超管跨租户操作
 
 ```bash
-# 超管为租户 A 添加用户
-POST /api/v1/users
-Headers:
-  Authorization: Bearer <super_admin_token>  # roles = ["super_admin"]
-  X-Target-Tenant: tenant_a
-Body: { "username": "bob", "password": "xxx" }
+# 1. 获取可切换的租户列表
+GET /api/v1/auth/available-tenants
+Headers: Authorization: Bearer <super_admin_token>
 
-# 流程：
-# 1. AuthMiddleware → 解析 Token, roles = ["super_admin"]
-# 2. RoleMiddleware → 解析 X-Target-Tenant → 更新 Context.TenantID = tenant_a
-# 3. CasbinMiddleware → 角色为超管 → 跳过检查
-# 4. UserService.Create → 从 Context 获取 tenant_a → 创建用户
+# 2. 切换到租户 A
+POST /api/v1/auth/switch-tenant
+Headers: Authorization: Bearer <super_admin_token>
+Body: { "tenant_id": "tenant_a_id" }
+
+# 3. 使用新 Token 访问租户 A 的数据
+GET /api/v1/users
+Headers: Authorization: Bearer <new_token>
 ```
 
-### 9.3 场景三：监管方查看多租户数据
+**实现**：[auth_service.go:151](backend/internal/service/auth_service.go#L151) - SwitchTenant
 
-```go
-// 登录时设置授权租户列表
-func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
-    // ...
-    // 查询用户授权的租户列表
-    allowedTenants := s.auditService.GetAllowedTenants(ctx, user.UserID)
+### 9.3 场景三：审计员查看多租户数据
 
-    tokenPair, err := s.jwtManager.GenerateTokenPair(
-        // ...,
-        allowedTenants=allowedTenants,
-    )
-    // ...
-}
+```bash
+# 1. 获取有权限的租户列表（从 Casbin g 策略获取）
+GET /api/v1/auth/available-tenants
+Headers: Authorization: Bearer <auditor_token>
 
-// 查看时验证
-GET /api/v1/audit/logs
-Headers:
-  Authorization: Bearer <auditor_token>  # roles = ["auditor"]
-  X-Target-Tenant: tenant_c
-
-// RoleMiddleware 中验证：
-// if hasRole(roles, "auditor") {
-//     if !contains(allowedTenants, requestTenantCode) {
-//         return ErrForbidden
-//     }
-// }
+# 2. 切换到有权限的租户
+POST /api/v1/auth/switch-tenant
+Body: { "tenant_id": "tenant_b_id" }
 ```
+
+**实现**：[auth_service.go:236](backend/internal/service/auth_service.go#L236) - GetAvailableTenants
 
 ---
 
@@ -782,14 +737,16 @@ if len(claims.Roles) > 0 && contains(claims.Roles, "super_admin") {
 本设计方案通过以下方式实现多租户 SaaS 平台的复杂权限需求：
 
 1. **JWT Roles 字段**：通过角色列表判断用户权限（super_admin/tenant_admin/auditor）
-2. **RoleMiddleware 中间件**：统一处理租户切换逻辑，Handler 无感知
+2. **SetAuthContext 统一设置**：AuthMiddleware 一次性注入所有认证信息到 context
 3. **Casbin 智能跳过**：超管跳过检查，其他角色走策略
-4. **GORM 三种模式**：Auto/Skip/Manual 灵活控制数据层过滤
-5. **Context 传递**：租户信息在整个调用链中透明传递
+4. **GORM 两种模式**：Auto/Skip 灵活控制数据层过滤（Manual 模式用于登录查询租户）
+5. **租户切换 API**：通过 `/auth/switch-tenant` 专用接口实现租户切换，返回新 Token
+6. **Context 传递**：租户信息在整个调用链中透明传递
 
 **核心优势**：
 - ✅ 单套接口服务所有角色
 - ✅ Handler/Service 完全不感知租户逻辑
-- ✅ 支持超管、租户管理员、监管方三种角色
+- ✅ 支持超管、租户管理员、审计员三种角色
 - ✅ 安全可控，多层防御
-- ✅ 性能优化，缓存友好
+- ✅ 租户切换返回新 Token，无状态设计
+- ✅ 登录时通过 URL 指定租户，语义清晰
