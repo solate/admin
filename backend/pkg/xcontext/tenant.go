@@ -6,8 +6,8 @@ import "context"
 type contextKey string
 
 const (
-	// 租户相关 - 与database包使用相同的key
-	TenantIDKey   contextKey = "tenant_id" // 与database包保持一致
+	// 租户相关
+	TenantIDKey   contextKey = "tenant_id"
 	TenantCodeKey contextKey = "tenant_code"
 )
 

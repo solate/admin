@@ -2,6 +2,7 @@ package auditlog
 
 import (
 	"admin/pkg/constants"
+	"admin/pkg/database"
 	"admin/pkg/useragent"
 	"admin/pkg/xcontext"
 	"context"
@@ -68,18 +69,18 @@ func RecordError(ctx context.Context, err error) {
 	}
 }
 
-// RecordLogin 记录登录日志（无需走中间件）
+// RecordLogin 记录登录日志（无需走中间件，异步写入）
 // err 为 nil 表示登录成功，否则表示登录失败
-func RecordLogin(writer *Writer, r *http.Request, tenantID, userID, userName string, err error) error {
+func RecordLogin(writer *Writer, r *http.Request, tenantID, userID, userName string, err error) {
 	clientInfo := useragent.GetClientInfo(r)
-	lc := Record(context.Background(), constants.ModuleAuth, constants.OperationLogin)
-	lc.TenantID = tenantID
+
+	// 使用 Background 创建独立的 context，设置 SkipTenantCheck
+	ctx := database.SkipTenantCheck(context.Background())
+	lc := Record(ctx, constants.ModuleAuth, constants.OperationLogin)
 
 	if err != nil {
 		lc.Status = 2
 		lc.ErrorMessage = err.Error()
-	} else {
-		lc.Status = 1
 	}
 
 	entry := &LogEntry{
@@ -90,15 +91,18 @@ func RecordLogin(writer *Writer, r *http.Request, tenantID, userID, userName str
 		UserAgent:  clientInfo.UserAgent,
 		LogContext: lc,
 	}
-	return writer.Write(context.Background(), entry)
+
+	// 异步写入，不阻塞请求
+	go writer.Write(ctx, entry)
 }
 
-// RecordLogout 记录登出日志（无需走中间件）
-func RecordLogout(writer *Writer, r *http.Request, tenantID, userID, userName string) error {
+// RecordLogout 记录登出日志（无需走中间件，异步写入）
+func RecordLogout(writer *Writer, r *http.Request, tenantID, userID, userName string) {
 	clientInfo := useragent.GetClientInfo(r)
-	lc := Record(context.Background(), constants.ModuleAuth, constants.OperationLogout)
-	lc.TenantID = tenantID
-	lc.Status = 1
+
+	// 使用 Background 创建独立的 context，设置 SkipTenantCheck
+	ctx := database.SkipTenantCheck(context.Background())
+	lc := Record(ctx, constants.ModuleAuth, constants.OperationLogout)
 
 	entry := &LogEntry{
 		TenantID:   tenantID,
@@ -108,5 +112,7 @@ func RecordLogout(writer *Writer, r *http.Request, tenantID, userID, userName st
 		UserAgent:  clientInfo.UserAgent,
 		LogContext: lc,
 	}
-	return writer.Write(context.Background(), entry)
+
+	// 异步写入，不阻塞请求
+	go writer.Write(ctx, entry)
 }

@@ -3,9 +3,11 @@ package middleware
 import (
 	"admin/pkg/bodyreader"
 	"admin/pkg/constants"
+	"admin/pkg/database"
 	"admin/pkg/auditlog"
 	"admin/pkg/useragent"
 	"admin/pkg/xcontext"
+	"context"
 
 	"github.com/gin-gonic/gin"
 )
@@ -60,7 +62,9 @@ func OperationLogMiddleware(writer *auditlog.Writer) gin.HandlerFunc {
 		updateLogStatusFromResponse(c, lc)
 
 		// 9. 异步写入日志（不阻塞响应）
-		_ = writer.Write(c.Request.Context(), entry)
+		// 创建独立的 context 并设置 SkipTenantCheck，避免随 HTTP 请求结束而取消
+		ctx := database.SkipTenantCheck(context.Background())
+		go writer.Write(ctx, entry)
 	}
 }
 
