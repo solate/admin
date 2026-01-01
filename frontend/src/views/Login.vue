@@ -276,6 +276,7 @@ async function onSubmit() {
       captcha_id: captchaId.value,
       captcha: form.value.captcha
     })
+    console.log('[Login] 登录成功:', loginRes)
 
     // 2. 先保存 token（临时）
     saveTokens({
@@ -285,10 +286,13 @@ async function onSubmit() {
     })
 
     // 3. 获取用户信息（直接传入 token，避免异步时序问题）
+    console.log('[Login] 准备获取用户信息...')
     const profileRes = await authApi.getProfile(loginRes.access_token)
+    console.log('[Login] 获取用户信息成功:', profileRes)
 
     // 4. 更新完整的用户信息
     if (!profileRes || !profileRes.user || !profileRes.user.user_id) {
+      console.error('[Login] 用户信息数据不完整:', profileRes)
       throw new Error('获取用户信息失败')
     }
 

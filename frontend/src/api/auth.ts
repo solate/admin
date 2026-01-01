@@ -152,8 +152,14 @@ export const authApi = {
 
   // 获取当前用户信息（支持传入 token 用于登录后立即获取用户信息）
   getProfile: (token?: string): Promise<ProfileResponse> => {
-    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-    return http.get('/api/v1/profile', config)
+    if (token) {
+      // 如果传入了 token，直接使用 axios 调用，绕过 http 实例的拦截器
+      return http.get('/api/v1/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    }
+    // 否则使用默认的 http 实例（会自动从 localStorage 获取 token）
+    return http.get('/api/v1/profile')
   },
 
   // 选择租户
