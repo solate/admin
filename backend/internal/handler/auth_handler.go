@@ -40,7 +40,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.authService.Login(c.Request.Context(), &req)
+	resp, err := h.authService.Login(c.Request.Context(), c.Request, &req)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -89,7 +89,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Success 200 {object} response.Response "服务器内部错误"
 // @Router /auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	if err := h.authService.Logout(c.Request.Context()); err != nil {
+	if err := h.authService.Logout(c.Request.Context(), c.Request); err != nil {
 		response.Error(c, err)
 		return
 	}

@@ -2,8 +2,10 @@ package operationlog
 
 import (
 	"admin/pkg/constants"
+	"admin/pkg/useragent"
 	"admin/pkg/xcontext"
 	"context"
+	"net/http"
 	"time"
 )
 
@@ -56,24 +58,6 @@ func RecordQuery(ctx context.Context, module, resourceType string) context.Conte
 	return WithLogContext(ctx, lc)
 }
 
-// RecordLogin 记录登录操作
-func RecordLogin(ctx context.Context, userID, userName string) context.Context {
-	lc := Record(ctx, constants.ModuleAuth, constants.OperationLogin)
-	lc.ResourceType = "user"
-	lc.ResourceID = userID
-	lc.ResourceName = userName
-	return WithLogContext(ctx, lc)
-}
-
-// RecordLogout 记录登出操作
-func RecordLogout(ctx context.Context, userID, userName string) context.Context {
-	lc := Record(ctx, constants.ModuleAuth, constants.OperationLogout)
-	lc.ResourceType = "user"
-	lc.ResourceID = userID
-	lc.ResourceName = userName
-	return WithLogContext(ctx, lc)
-}
-
 // RecordError 记录操作失败
 func RecordError(ctx context.Context, err error) {
 	if lc, ok := GetLogContext(ctx); ok {
@@ -82,4 +66,47 @@ func RecordError(ctx context.Context, err error) {
 			lc.ErrorMessage = err.Error()
 		}
 	}
+}
+
+// RecordLogin 记录登录日志（无需走中间件）
+// err 为 nil 表示登录成功，否则表示登录失败
+func RecordLogin(writer *Writer, r *http.Request, tenantID, userID, userName string, err error) error {
+	clientInfo := useragent.GetClientInfo(r)
+	lc := Record(context.Background(), constants.ModuleAuth, constants.OperationLogin)
+	lc.TenantID = tenantID
+
+	if err != nil {
+		lc.Status = 2
+		lc.ErrorMessage = err.Error()
+	} else {
+		lc.Status = 1
+	}
+
+	entry := &LogEntry{
+		TenantID:   tenantID,
+		UserID:     userID,
+		UserName:   userName,
+		IPAddress:  clientInfo.IP,
+		UserAgent:  clientInfo.UserAgent,
+		LogContext: lc,
+	}
+	return writer.Write(context.Background(), entry)
+}
+
+// RecordLogout 记录登出日志（无需走中间件）
+func RecordLogout(writer *Writer, r *http.Request, tenantID, userID, userName string) error {
+	clientInfo := useragent.GetClientInfo(r)
+	lc := Record(context.Background(), constants.ModuleAuth, constants.OperationLogout)
+	lc.TenantID = tenantID
+	lc.Status = 1
+
+	entry := &LogEntry{
+		TenantID:   tenantID,
+		UserID:     userID,
+		UserName:   userName,
+		IPAddress:  clientInfo.IP,
+		UserAgent:  clientInfo.UserAgent,
+		LogContext: lc,
+	}
+	return writer.Write(context.Background(), entry)
 }

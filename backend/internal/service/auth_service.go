@@ -9,10 +9,12 @@ import (
 	"admin/pkg/config"
 	"admin/pkg/constants"
 	"admin/pkg/jwt"
+	"admin/pkg/operationlog"
 	"admin/pkg/passwordgen"
 	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -29,10 +31,11 @@ type AuthService struct {
 	jwt          *jwt.Manager
 	captcha      *captcha.Manager
 	enforcer     *casbin.Enforcer
+	logWriter    *operationlog.Writer
 }
 
 // NewAuthService 创建认证服务
-func NewAuthService(userRepo *repository.UserRepo, userRoleRepo *repository.UserRoleRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, jwt *jwt.Manager, rdb redis.UniversalClient, enforcer *casbin.Enforcer, config *config.Config) *AuthService {
+func NewAuthService(userRepo *repository.UserRepo, userRoleRepo *repository.UserRoleRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, jwt *jwt.Manager, rdb redis.UniversalClient, enforcer *casbin.Enforcer, config *config.Config, logWriter *operationlog.Writer) *AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
 		userRoleRepo: userRoleRepo,
@@ -41,23 +44,24 @@ func NewAuthService(userRepo *repository.UserRepo, userRoleRepo *repository.User
 		jwt:          jwt,
 		captcha:      captcha.NewManager(rdb),
 		enforcer:     enforcer,
+		logWriter:    logWriter,
 	}
 }
 
 // Login 用户登录
-func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
-
-	// 验证码校验
-	if !s.captcha.Verify(req.CaptchaID, req.Captcha) {
-		return nil, xerr.ErrCaptchaInvalid
-	}
-
-	// 获取租户信息
+func (s *AuthService) Login(ctx context.Context, r *http.Request, req *dto.LoginRequest) (*dto.LoginResponse, error) {
+	// 获取租户信息（由 TenantFromCode 中间件设置）
 	tenantID := xcontext.GetTenantID(ctx)
 	tenantCode := xcontext.GetTenantCode(ctx)
 	if tenantCode == "" {
-		log.Error().Str("username", req.UserName).Msg("租户编码不能为空")
+		log.Error().Str("tenantCode", tenantCode).Msg("租户编码不能为空")
 		return nil, xerr.ErrTenantCodeRequired
+	}
+
+	// 验证码校验
+	if !s.captcha.Verify(req.CaptchaID, req.Captcha) {
+		_ = operationlog.RecordLogin(s.logWriter, r, tenantID, "", req.UserName, xerr.ErrCaptchaInvalid)
+		return nil, xerr.ErrCaptchaInvalid
 	}
 
 	// 查询用户（租户内用户名唯一）
@@ -65,19 +69,23 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Error().Err(err).Str("username", req.UserName).Str("tenant_id", tenantID).Msg("用户不存在")
+			_ = operationlog.RecordLogin(s.logWriter, r, tenantID, "", req.UserName, xerr.ErrUserNotFound)
 			return nil, xerr.ErrUserNotFound
 		}
 		log.Error().Err(err).Str("username", req.UserName).Str("tenant_id", tenantID).Msg("查询用户失败")
+		_ = operationlog.RecordLogin(s.logWriter, r, tenantID, "", req.UserName, xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err))
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
 	}
 
 	// 验证密码
 	if !passwordgen.VerifyPassword(req.Password, user.Password) {
+		_ = operationlog.RecordLogin(s.logWriter, r, tenantID, user.UserID, user.UserName, xerr.ErrInvalidCredentials)
 		return nil, xerr.ErrInvalidCredentials
 	}
 
 	// 检查用户状态
 	if user.Status != constants.StatusEnabled {
+		_ = operationlog.RecordLogin(s.logWriter, r, tenantID, user.UserID, user.UserName, xerr.ErrUserDisabled)
 		return nil, xerr.ErrUserDisabled
 	}
 
@@ -85,11 +93,13 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	roleCodes, err := s.userRoleRepo.GetUserRoles(ctx, user.UserName, tenantCode)
 	if err != nil {
 		log.Error().Err(err).Str("username", user.UserName).Str("tenant_code", tenantCode).Msg("查询用户角色失败")
+		_ = operationlog.RecordLogin(s.logWriter, r, tenantID, user.UserID, user.UserName, xerr.Wrap(xerr.ErrQueryError.Code, "查询用户角色失败", err))
 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询用户角色失败", err)
 	}
 
 	// 检查用户是否有角色
 	if len(roleCodes) == 0 {
+		_ = operationlog.RecordLogin(s.logWriter, r, tenantID, user.UserID, user.UserName, xerr.ErrUserNoRoles)
 		return nil, xerr.ErrUserNoRoles
 	}
 
@@ -97,6 +107,7 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	tokenPair, err := s.jwt.GenerateTokenPair(ctx, tenantID, tenantCode, user.UserID, user.UserName, roleCodes)
 	if err != nil {
 		log.Error().Err(err).Str("user_id", user.UserID).Str("username", user.UserName).Msg("生成JWT令牌失败")
+		_ = operationlog.RecordLogin(s.logWriter, r, tenantID, user.UserID, user.UserName, err)
 		return nil, err
 	}
 
@@ -107,6 +118,9 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 		log.Error().Err(err).Str("user_id", user.UserID).Msg("更新最后登录时间失败")
 		// 不影响登录流程，继续返回
 	}
+
+	// 记录登录成功日志
+	_ = operationlog.RecordLogin(s.logWriter, r, tenantID, user.UserID, user.UserName, nil)
 
 	return &dto.LoginResponse{
 		AccessToken:  tokenPair.AccessToken,
@@ -132,7 +146,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 }
 
 // Logout 用户登出
-func (s *AuthService) Logout(ctx context.Context) error {
+func (s *AuthService) Logout(ctx context.Context, r *http.Request) error {
 	tokenID := xcontext.GetTokenID(ctx)
 	if tokenID == "" {
 		return xerr.ErrUnauthorized
@@ -143,6 +157,12 @@ func (s *AuthService) Logout(ctx context.Context) error {
 		log.Error().Err(err).Str("token_id", tokenID).Msg("撤销token失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "撤销token失败", err)
 	}
+
+	// 记录登出日志
+	tenantID := xcontext.GetTenantID(ctx)
+	userID := xcontext.GetUserID(ctx)
+	userName := xcontext.GetUserName(ctx)
+	_ = operationlog.RecordLogout(s.logWriter, r, tenantID, userID, userName)
 
 	return nil
 }
