@@ -33,29 +33,80 @@
           class="sidebar-menu"
           :collapse-transition="false"
         >
+          <!-- 工作台 -->
           <el-menu-item index="/">
-            <el-icon><House /></el-icon>
-            <template #title>仪表盘</template>
+            <el-icon><DataBoard /></el-icon>
+            <template #title>工作台</template>
           </el-menu-item>
 
-          <el-sub-menu index="/audit-logs">
+          <!-- 租户管理 -->
+          <el-sub-menu index="/tenant">
+            <template #title>
+              <el-icon><OfficeBuilding /></el-icon>
+              <span>租户管理</span>
+            </template>
+            <el-menu-item index="/tenant/list">租户列表</el-menu-item>
+            <el-menu-item index="/tenant/packages">套餐管理</el-menu-item>
+            <el-menu-item index="/tenant/subscription">订阅管理</el-menu-item>
+            <el-menu-item index="/tenant/billing">账单管理</el-menu-item>
+          </el-sub-menu>
+
+          <!-- 组织架构 -->
+          <el-sub-menu index="/organization">
+            <template #title>
+              <el-icon><Share /></el-icon>
+              <span>组织架构</span>
+            </template>
+            <el-menu-item index="/organization/departments">部门管理</el-menu-item>
+            <el-menu-item index="/organization/positions">岗位管理</el-menu-item>
+          </el-sub-menu>
+
+          <!-- 用户与权限 -->
+          <el-sub-menu index="/access">
+            <template #title>
+              <el-icon><Lock /></el-icon>
+              <span>用户与权限</span>
+            </template>
+            <el-menu-item index="/access/users">用户管理</el-menu-item>
+            <el-menu-item index="/access/roles">角色管理</el-menu-item>
+            <el-menu-item index="/access/menus">菜单权限</el-menu-item>
+            <el-menu-item index="/access/data-permissions">数据权限</el-menu-item>
+          </el-sub-menu>
+
+          <!-- 业务管理（预留） -->
+          <el-sub-menu index="/business">
+            <template #title>
+              <el-icon><Briefcase /></el-icon>
+              <span>业务管理</span>
+            </template>
+            <el-menu-item index="/business/factories">工厂管理</el-menu-item>
+            <el-menu-item index="/business/products">商品管理</el-menu-item>
+            <el-menu-item index="/business/orders">订单管理</el-menu-item>
+            <el-menu-item index="/business/statistics">数据统计</el-menu-item>
+          </el-sub-menu>
+
+          <!-- 审计日志 -->
+          <el-sub-menu index="/audit">
             <template #title>
               <el-icon><Document /></el-icon>
               <span>审计日志</span>
             </template>
-            <el-menu-item index="/login-logs">登录日志</el-menu-item>
-            <el-menu-item index="/operation-logs">操作日志</el-menu-item>
+            <el-menu-item index="/audit/login">登录日志</el-menu-item>
+            <el-menu-item index="/audit/operation">操作日志</el-menu-item>
+            <el-menu-item index="/audit/data">数据变更</el-menu-item>
           </el-sub-menu>
 
-          <el-sub-menu index="/system">
+          <!-- 系统设置 -->
+          <el-sub-menu index="/settings">
             <template #title>
               <el-icon><Setting /></el-icon>
-              <span>系统管理</span>
+              <span>系统设置</span>
             </template>
-            <el-menu-item index="/system/users">用户管理</el-menu-item>
-            <el-menu-item index="/system/roles">角色管理</el-menu-item>
-            <el-menu-item index="/system/menus">菜单管理</el-menu-item>
-            <el-menu-item index="/system/tenants">租户管理</el-menu-item>
+            <el-menu-item index="/settings/dictionary">字典管理</el-menu-item>
+            <el-menu-item index="/settings/parameters">系统参数</el-menu-item>
+            <el-menu-item index="/settings/notifications">通知配置</el-menu-item>
+            <el-menu-item index="/settings/storage">存储配置</el-menu-item>
+            <el-menu-item index="/settings/monitor">系统监控</el-menu-item>
           </el-sub-menu>
         </el-menu>
       </el-scrollbar>
@@ -209,23 +260,35 @@ const userRoles = ref(userInfo?.roles || [])
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
 const breadcrumbConfig: Record<string, { title: string }> = {
-  '/': { title: '首页' },
-  '/audit-logs': { title: '审计日志' },
-  '/login-logs': { title: '登录日志' },
-  '/operation-logs': { title: '操作日志' },
-  '/system': { title: '系统管理' },
-  '/system/users': { title: '用户管理' },
-  '/system/roles': { title: '角色管理' },
-  '/system/tenants': { title: '租户管理' },
-  '/system/permissions': { title: '权限管理' },
-  '/system/permissions/menu': { title: '菜单权限' },
-  '/system/permissions/api': { title: '接口权限' },
-  '/system/permissions/data': { title: '数据权限' },
-  '/system/dict': { title: '字典管理' },
-  '/system/monitor': { title: '系统监控' },
-  '/factories': { title: '工厂管理' },
-  '/products': { title: '商品管理' },
-  '/statistics': { title: '数据统计' }
+  '/': { title: '工作台' },
+  '/tenant': { title: '租户管理' },
+  '/tenant/list': { title: '租户列表' },
+  '/tenant/packages': { title: '套餐管理' },
+  '/tenant/subscription': { title: '订阅管理' },
+  '/tenant/billing': { title: '账单管理' },
+  '/organization': { title: '组织架构' },
+  '/organization/departments': { title: '部门管理' },
+  '/organization/positions': { title: '岗位管理' },
+  '/access': { title: '用户与权限' },
+  '/access/users': { title: '用户管理' },
+  '/access/roles': { title: '角色管理' },
+  '/access/menus': { title: '菜单权限' },
+  '/access/data-permissions': { title: '数据权限' },
+  '/business': { title: '业务管理' },
+  '/business/factories': { title: '工厂管理' },
+  '/business/products': { title: '商品管理' },
+  '/business/orders': { title: '订单管理' },
+  '/business/statistics': { title: '数据统计' },
+  '/audit': { title: '审计日志' },
+  '/audit/login': { title: '登录日志' },
+  '/audit/operation': { title: '操作日志' },
+  '/audit/data': { title: '数据变更' },
+  '/settings': { title: '系统设置' },
+  '/settings/dictionary': { title: '字典管理' },
+  '/settings/parameters': { title: '系统参数' },
+  '/settings/notifications': { title: '通知配置' },
+  '/settings/storage': { title: '存储配置' },
+  '/settings/monitor': { title: '系统监控' }
 }
 
 const activeMenu = computed(() => route.path)
