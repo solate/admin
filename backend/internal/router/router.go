@@ -129,7 +129,14 @@ func Setup(r *gin.Engine, app *App) {
 				userMenu.GET("/buttons", app.Handlers.UserMenuHandler.GetUserButtons) // 获取菜单按钮权限
 			}
 
-			// 操作日志接口
+			// 审计日志接口
+			// 登录日志
+			loginLog := authorized.Group("/login-logs")
+			{
+				loginLog.GET("", app.Handlers.LoginLogHandler.ListLoginLogs)       // 获取登录日志列表
+				loginLog.GET("/:log_id", app.Handlers.LoginLogHandler.GetLoginLog) // 获取登录日志详情
+			}
+			// 操作日志
 			operationLog := authorized.Group("/operation-logs")
 			{
 				operationLog.GET("", app.Handlers.OperationLogHandler.ListOperationLogs)       // 获取操作日志列表

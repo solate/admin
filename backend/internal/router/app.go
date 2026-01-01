@@ -41,6 +41,7 @@ type Handlers struct {
 	RoleHandler         *handler.RoleHandler
 	MenuHandler         *handler.MenuHandler
 	UserMenuHandler     *handler.UserMenuHandler
+	LoginLogHandler     *handler.LoginLogHandler
 	OperationLogHandler *handler.OperationLogHandler
 }
 
@@ -252,6 +253,7 @@ func (s *App) initHandlers() error {
 	menuRepo := repository.NewMenuRepo(s.DB)
 	permissionRepo := repository.NewPermissionRepo(s.DB)
 	tenantMenuRepo := repository.NewTenantMenuRepo(s.DB)
+	loginLogRepo := repository.NewLoginLogRepo(s.DB)
 	operationLogRepo := repository.NewOperationLogRepo(s.DB)
 
 	// 初始化服务层
@@ -261,6 +263,7 @@ func (s *App) initHandlers() error {
 	roleService := service.NewRoleService(roleRepo)                                                                                             // 初始化角色服务
 	menuService := service.NewMenuService(menuRepo)                                                                                             // 初始化菜单服务
 	userMenuService := service.NewUserMenuService(menuRepo, permissionRepo, tenantMenuRepo, s.Enforcer)                                         // 初始化用户菜单服务
+	loginLogService := service.NewLoginLogService(loginLogRepo)                                                                                 // 初始化登录日志服务
 	operationLogService := service.NewOperationLogService(operationLogRepo)                                                                     // 初始化操作日志服务
 
 	s.Handlers = &Handlers{
@@ -272,6 +275,7 @@ func (s *App) initHandlers() error {
 		RoleHandler:         handler.NewRoleHandler(roleService),
 		MenuHandler:         handler.NewMenuHandler(menuService),
 		UserMenuHandler:     handler.NewUserMenuHandler(userMenuService),
+		LoginLogHandler:     handler.NewLoginLogHandler(loginLogService),
 		OperationLogHandler: handler.NewOperationLogHandler(operationLogService),
 	}
 	return nil
