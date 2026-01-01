@@ -6,7 +6,7 @@
       class="sidebar"
     >
 
-      <!-- 简化的侧边栏标题区域 (只显示系统名称和当前租户) -->
+      <!-- 侧边栏标题区域 -->
       <div class="sidebar-header">
         <div class="tenant-trigger-static" :class="{ 'is-collapsed': isCollapse }">
           <div class="tenant-avatar">
@@ -17,7 +17,6 @@
           <transition name="fade">
             <div v-show="!isCollapse" class="tenant-meta">
               <div class="tenant-title">后端管理系统</div>
-              <div class="tenant-subtitle">{{ currentTenantName }}</div>
             </div>
           </transition>
         </div>
