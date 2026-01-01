@@ -50,7 +50,11 @@ http.interceptors.response.use(
       ElMessage.error(data.msg || data.message || '请求失败')
       return Promise.reject(data)
     }
-    return data?.data ?? data
+    // 确保 data.data 存在时才返回，否则返回完整的 data
+    if (data && typeof data === 'object' && 'data' in data) {
+      return data.data
+    }
+    return data
   },
   async (error) => {
     const originalRequest = error.config

@@ -17,7 +17,8 @@ export default defineConfig({
       // 代理所有后端 API 到 8080 端口
       '/api': {
         target: 'http://localhost:8080',
-        changeOrigin: true
+        changeOrigin: true,
+        rewrite: (path) => path // 保持原路径
       }
     }
   }

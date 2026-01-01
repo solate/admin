@@ -150,9 +150,10 @@ export const authApi = {
     return http.post(`/api/v1/auth/${tenantCode}/login`, data)
   },
 
-  // 获取当前用户信息
-  getProfile: (): Promise<ProfileResponse> => {
-    return http.get('/api/v1/profile')
+  // 获取当前用户信息（支持传入 token 用于登录后立即获取用户信息）
+  getProfile: (token?: string): Promise<ProfileResponse> => {
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+    return http.get('/api/v1/profile', config)
   },
 
   // 选择租户

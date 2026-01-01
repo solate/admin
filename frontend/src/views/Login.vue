@@ -284,8 +284,8 @@ async function onSubmit() {
       user_id: '' // 临时占位，后面会从 profile 获取
     })
 
-    // 3. 获取用户信息
-    const profileRes = await authApi.getProfile()
+    // 3. 获取用户信息（直接传入 token，避免异步时序问题）
+    const profileRes = await authApi.getProfile(loginRes.access_token)
 
     // 4. 更新完整的用户信息
     if (!profileRes || !profileRes.user || !profileRes.user.user_id) {

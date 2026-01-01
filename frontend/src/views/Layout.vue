@@ -54,28 +54,9 @@
             </template>
             <el-menu-item index="/system/users">用户管理</el-menu-item>
             <el-menu-item index="/system/roles">角色管理</el-menu-item>
+            <el-menu-item index="/system/menus">菜单管理</el-menu-item>
             <el-menu-item index="/system/tenants">租户管理</el-menu-item>
-            <el-menu-item index="/system/permissions/menu">菜单权限</el-menu-item>
-            <el-menu-item index="/system/permissions/api">接口权限</el-menu-item>
-            <el-menu-item index="/system/permissions/data">数据权限</el-menu-item>
-            <el-menu-item index="/system/dict">字典管理</el-menu-item>
-            <el-menu-item index="/system/monitor">系统监控</el-menu-item>
           </el-sub-menu>
-
-          <el-menu-item index="/factories">
-            <el-icon><OfficeBuilding /></el-icon>
-            <template #title>工厂管理</template>
-          </el-menu-item>
-
-          <el-menu-item index="/products">
-            <el-icon><Box /></el-icon>
-            <template #title>商品管理</template>
-          </el-menu-item>
-
-          <el-menu-item index="/statistics">
-            <el-icon><TrendCharts /></el-icon>
-            <template #title>数据统计</template>
-          </el-menu-item>
         </el-menu>
       </el-scrollbar>
     </el-aside>

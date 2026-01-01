@@ -56,7 +56,9 @@ func (w *Writer) writeLoginLog(entry *LogEntry, lc *LogContext) error {
 		CreatedAt:  lc.CreatedAt,
 	}
 
-	go w.db.Create(log)
+	if err := w.db.Create(log).Error; err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -89,7 +91,9 @@ func (w *Writer) writeOperationLog(entry *LogEntry, lc *LogContext) error {
 		CreatedAt:     lc.CreatedAt,
 	}
 
-	go w.db.Create(log)
+	if err := w.db.Create(log).Error; err != nil {
+		return err
+	}
 	return nil
 }
 
