@@ -75,9 +75,9 @@
             <span :class="{ 'text-danger': row.status === 0 }">{{ row.fail_reason || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="登录时间" width="170">
+        <el-table-column prop="created_at" label="登录时间" width="180">
           <template #default="{ row }">
-            {{ formatTimestamp(row.created_at) }}
+            {{ formatTime(row.created_at) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="80" fixed="right">
@@ -124,7 +124,7 @@
           <span class="text-danger">{{ currentLog?.fail_reason }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="用户代理" :span="2">{{ currentLog?.user_agent }}</el-descriptions-item>
-        <el-descriptions-item label="登录时间">{{ formatTimestamp(currentLog?.created_at) }}</el-descriptions-item>
+        <el-descriptions-item label="登录时间">{{ formatTime(currentLog?.created_at) }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>
@@ -133,6 +133,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { auditLogApi, type LoginLogInfo, type LoginLogListParams } from '@/api/auditLog'
+import { formatTime } from '@/utils/date'
 
 const filterForm = reactive<LoginLogListParams>({
   user_name: '',
@@ -170,19 +171,6 @@ function getLoginTypeTagType(type: string): string {
     OAUTH: 'warning'
   }
   return typeMap[type] || ''
-}
-
-function formatTimestamp(timestamp: number | undefined): string {
-  if (!timestamp) return '-'
-  return new Date(timestamp * 1000).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  })
 }
 
 async function loadLogs() {

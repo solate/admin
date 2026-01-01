@@ -5,6 +5,7 @@ import (
 	filesystem "admin/static"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -161,16 +162,15 @@ func setupEmbedFrontend(r *gin.Engine) {
 
 	// 处理 SPA 前端路由（NoRoute 必须在最后注册）
 	r.NoRoute(func(c *gin.Context) {
-		// path := c.Request.URL.Path
+		path := c.Request.URL.Path
 		// API 路由返回 404 JSON
-		// if strings.HasPrefix(path, "/api") {
-		// 	c.JSON(http.StatusNotFound, gin.H{"error": "API endpoint not found"})
-		// 	return
-		// }
+		if strings.HasPrefix(path, "/api") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "API endpoint not found", "path": path})
+			return
+		}
 		// 其他路由返回前端 index.html（SPA 路由）
-		// c.FileFromFS("/index.html", frontendFS)
-		fmt.Printf("%s doesn't exists, redirect on /\n", c.Request.URL.Path)
-		c.Redirect(http.StatusMovedPermanently, "/")
+		fmt.Printf("[NoRoute] %s doesn't exist, serving index.html\n", path)
+		c.FileFromFS("/index.html", frontendFS)
 	})
 
 }

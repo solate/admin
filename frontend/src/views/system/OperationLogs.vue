@@ -90,9 +90,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="操作时间" width="170">
+        <el-table-column prop="created_at" label="操作时间" width="180">
           <template #default="{ row }">
-            {{ formatTimestamp(row.created_at) }}
+            {{ formatTime(row.created_at) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="80" fixed="right">
@@ -146,7 +146,7 @@
         </el-descriptions-item>
         <el-descriptions-item label="请求路径" :span="2">{{ currentLog?.request_path }}</el-descriptions-item>
         <el-descriptions-item label="IP地址">{{ currentLog?.ip_address }}</el-descriptions-item>
-        <el-descriptions-item label="操作时间">{{ formatTimestamp(currentLog?.created_at) }}</el-descriptions-item>
+        <el-descriptions-item label="操作时间">{{ formatTime(currentLog?.created_at) }}</el-descriptions-item>
         <el-descriptions-item label="请求参数" :span="2">
           <pre class="json-content">{{ formatJson(currentLog?.request_params) }}</pre>
         </el-descriptions-item>
@@ -168,6 +168,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { auditLogApi, type OperationLogInfo, type OperationLogListParams } from '@/api/auditLog'
+import { formatTime } from '@/utils/date'
 
 const filterForm = reactive<OperationLogListParams>({
   module: '',
@@ -242,19 +243,6 @@ function formatJson(json: string | undefined): string {
   } catch {
     return json
   }
-}
-
-function formatTimestamp(timestamp: number | undefined): string {
-  if (!timestamp) return '-'
-  return new Date(timestamp * 1000).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  })
 }
 
 async function loadLogs() {
