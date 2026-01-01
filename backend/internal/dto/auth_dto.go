@@ -15,6 +15,11 @@ type LoginResponse struct {
 	ExpiresIn    int64  `json:"expires_in"`    // 过期时间（秒）
 }
 
+// SwitchTenantRequest 切换租户请求
+type SwitchTenantRequest struct {
+	TenantID string `json:"tenant_id" binding:"required"` // 切换租户ID
+}
+
 // RefreshRequest 刷新令牌请求
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"` // 刷新令牌
@@ -24,4 +29,9 @@ type RefreshRequest struct {
 type RefreshResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+}
+
+// AvailableTenantsResponse 可用租户列表响应
+type AvailableTenantsResponse struct {
+	Tenants []*TenantInfo `json:"tenants"` // 租户列表
 }

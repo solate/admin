@@ -58,28 +58,29 @@ func Setup(r *gin.Engine, app *App) {
 
 		}
 
-		// 需要认证的路由
-		authenticated := v1.Group("")
-		authenticated.Use(middleware.AuthMiddleware(app.JWT))
-		authenticated.Use(middleware.CasbinMiddleware(app.Enforcer))
-		authenticated.Use(middleware.OperationLogMiddleware(app.OperationLogWriter))
+		// 需要认证 + Casbin 权限检查的路由
+		authorized := v1.Group("")
+		authorized.Use(middleware.AuthMiddleware(app.JWT))
+		authorized.Use(middleware.CasbinMiddleware(app.Enforcer)) // 权限校验（超管跳过，其他走 Casbin）
+		authorized.Use(middleware.OperationLogMiddleware(app.OperationLogWriter))
 		{
+			// 当前用户信息
+			authorized.GET("/profile", app.Handlers.UserHandler.GetProfile) // 获取当前用户信息（含角色）
 
-			// 认证接口
-			auth := authenticated.Group("/auth")
+			// 认证接口（无需 Casbin 权限检查）
+			auth := authorized.Group("/auth")
 			{
-				auth.POST("/logout", app.Handlers.AuthHandler.Logout) // 用户登出
+				auth.POST("/logout", app.Handlers.AuthHandler.Logout)                        // 用户登出
+				auth.POST("/switch-tenant", app.Handlers.AuthHandler.SwitchTenant)           // 切换租户
+				auth.GET("/available-tenants", app.Handlers.AuthHandler.GetAvailableTenants) // 获取可切换租户（当前用户视角）
+
 			}
 
-			// 当前用户信息
-			authenticated.GET("/profile", app.Handlers.UserHandler.GetProfile) // 获取当前用户信息（含角色）
-
 			// 租户管理（仅超管）
-			tenant := authenticated.Group("/tenants")
-			tenant.Use(middleware.SuperAdminMiddleware())
+			tenant := authorized.Group("/tenants")
 			{
 				tenant.POST("", app.Handlers.TenantHandler.CreateTenant)                                // 创建租户
-				tenant.GET("", app.Handlers.TenantHandler.ListTenants)                                  // 获取租户列表
+				tenant.GET("", app.Handlers.TenantHandler.ListTenants)                                  // 获取租户列表（管理视角）
 				tenant.GET("/:tenant_id", app.Handlers.TenantHandler.GetTenant)                         // 获取租户详情
 				tenant.PUT("/:tenant_id", app.Handlers.TenantHandler.UpdateTenant)                      // 更新租户
 				tenant.DELETE("/:tenant_id", app.Handlers.TenantHandler.DeleteTenant)                   // 删除租户
@@ -87,7 +88,7 @@ func Setup(r *gin.Engine, app *App) {
 			}
 
 			// 用户管理（租户管理员+超管）
-			user := authenticated.Group("/users")
+			user := authorized.Group("/users")
 			{
 				user.POST("", app.Handlers.UserHandler.CreateUser)                              // 创建用户
 				user.GET("", app.Handlers.UserHandler.ListUsers)                                // 获取用户列表
@@ -98,7 +99,7 @@ func Setup(r *gin.Engine, app *App) {
 			}
 
 			// 角色管理（租户管理员+超管）
-			role := authenticated.Group("/roles")
+			role := authorized.Group("/roles")
 			{
 				role.POST("", app.Handlers.RoleHandler.CreateRole)                              // 创建角色
 				role.GET("", app.Handlers.RoleHandler.ListRoles)                                // 获取角色列表
@@ -109,7 +110,7 @@ func Setup(r *gin.Engine, app *App) {
 			}
 
 			// 菜单接口
-			menu := authenticated.Group("/menus")
+			menu := authorized.Group("/menus")
 			{
 				menu.POST("", app.Handlers.MenuHandler.CreateMenu)                              // 创建菜单
 				menu.GET("", app.Handlers.MenuHandler.ListMenus)                                // 获取菜单列表（分页）
@@ -122,14 +123,14 @@ func Setup(r *gin.Engine, app *App) {
 			}
 
 			// 用户菜单接口（基于权限动态加载）
-			userMenu := authenticated.Group("/user")
+			userMenu := authorized.Group("/user")
 			{
 				userMenu.GET("/menu", app.Handlers.UserMenuHandler.GetUserMenu)       // 获取用户菜单树
 				userMenu.GET("/buttons", app.Handlers.UserMenuHandler.GetUserButtons) // 获取菜单按钮权限
 			}
 
 			// 操作日志接口
-			operationLog := authenticated.Group("/operation-logs")
+			operationLog := authorized.Group("/operation-logs")
 			{
 				operationLog.GET("", app.Handlers.OperationLogHandler.ListOperationLogs)       // 获取操作日志列表
 				operationLog.GET("/:log_id", app.Handlers.OperationLogHandler.GetOperationLog) // 获取操作日志详情

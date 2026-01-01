@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"admin/pkg/casbin"
+	"admin/pkg/constants"
 	"admin/pkg/database"
 	"admin/pkg/response"
 	"admin/pkg/xcontext"
@@ -10,22 +11,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CasbinMiddleware creates a middleware that enforces Casbin RBAC policies
-// 说明：
-// - 超管（super_admin 角色）跳过权限检查和租户检查
-// - 普通用户通过 Casbin 验证 (username, tenantCode, path, method)，并受租户 scope 限制
+// CasbinMiddleware Casbin权限中间件
+// 职责：
+//  1. 超管（super_admin 角色）：跳过权限检查和数据层租户检查
+//  2. 普通用户：通过 Casbin 验证 (username, tenantCode, path, method)
+//
+// 执行顺序：RoleMiddleware（租户校验） → CasbinMiddleware（权限校验）
 func CasbinMiddleware(enforcer *casbin.Enforcer) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		// 超管跳过权限检查和租户检查
-		if xcontext.IsSuperAdmin(c.Request.Context()) {
-			ctx := database.SkipTenantCheck(c.Request.Context())
+		if xcontext.HasRole(ctx, constants.SuperAdmin) {
+			ctx := database.SkipTenantCheck(ctx)
 			c.Request = c.Request.WithContext(ctx)
 			c.Next()
 			return
 		}
 
-		userName := xcontext.GetUserName(c.Request.Context())
-		tenantCode := xcontext.GetTenantCode(c.Request.Context())
+		userName := xcontext.GetUserName(ctx)
+		tenantCode := xcontext.GetTenantCode(ctx)
 
 		if userName == "" || tenantCode == "" {
 			response.Error(c, xerr.ErrUnauthorized)
@@ -53,22 +57,6 @@ func CasbinMiddleware(enforcer *casbin.Enforcer) gin.HandlerFunc {
 			return
 		}
 
-		c.Next()
-	}
-}
-
-// SuperAdminMiddleware 超管中间件
-// 只有超级管理员才能访问通过此中间件的路由
-func SuperAdminMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if !xcontext.IsSuperAdmin(c.Request.Context()) {
-			response.Error(c, xerr.ErrForbidden)
-			c.Abort()
-			return
-		}
-
-		ctx := database.SkipTenantCheck(c.Request.Context())
-		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
 }

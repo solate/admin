@@ -131,3 +131,21 @@ func (r *TenantRepo) GetByIDManual(ctx context.Context, tenantID string) (*model
 		Where(r.q.Tenant.TenantID.Eq(tenantID)).
 		First()
 }
+
+// GetByCodes 根据租户编码列表批量获取租户信息（手动模式，用于跨租户查询）
+// 使用场景：需要查询任意租户信息，不受当前用户租户限制
+func (r *TenantRepo) GetByCodes(ctx context.Context, tenantCodes []string) ([]*model.Tenant, error) {
+	// 跨租户查询：使用 ManualTenantMode 禁止自动添加当前租户过滤
+	ctx = database.ManualTenantMode(ctx)
+	return r.q.Tenant.WithContext(ctx).Where(r.q.Tenant.TenantCode.In(tenantCodes...)).Find()
+}
+
+// ListAll 获取所有启用的租户列表（手动模式，用于跨租户查询）
+// 使用场景：超管需要查看所有可切换的租户
+func (r *TenantRepo) ListAll(ctx context.Context) ([]*model.Tenant, error) {
+	// 跨租户查询：使用 ManualTenantMode 禁止自动添加当前租户过滤
+	ctx = database.ManualTenantMode(ctx)
+	return r.q.Tenant.WithContext(ctx).
+		Where(r.q.Tenant.Status.Eq(int16(1))). // 1 = 启用状态
+		Find()
+}
