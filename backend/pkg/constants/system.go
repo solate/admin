@@ -7,8 +7,8 @@ const (
 	SuperAdmin = "super_admin"
 	// Admin 租户管理员角色code
 	Admin = "admin"
-	// Reviewer 审核员角色code
-	Reviewer = "reviewer"
+	// Auditor 审计员/监管员角色code
+	Auditor = "auditor"
 	// User 普通用户角色code
 	User = "user"
 )
