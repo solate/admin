@@ -460,9 +460,8 @@ async function onSubmit() {
         align-items: center;
 
         .el-input {
-          flex: 1;
-          min-width: 0; // 防止内容溢出
-          max-width: calc(100% - 132px); // 减去图片宽度(120px) + 间距(12px)
+          width: 200px; // 固定宽度，防止因清除按钮等导致宽度变化
+          flex-shrink: 0; // 防止被压缩
 
           :deep(.el-input__wrapper) {
             width: 100%;
