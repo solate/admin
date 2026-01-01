@@ -7,14 +7,10 @@ const (
 	SuperAdmin = "super_admin"
 	// Admin 租户管理员角色code
 	Admin = "admin"
-)
-
-// roleType 管理员类型(1:普通用户, 2:租户管理员, 3:平台超级管理员)
-
-const (
-	RoleTypeUser        = 1 // 普通用户
-	RoleTypeTenantAdmin = 2 // 租户管理员
-	RoleTypeSuperAdmin  = 3 // 平台超级管理员
+	// Reviewer 审核员角色code
+	Reviewer = "reviewer"
+	// User 普通用户角色code
+	User = "user"
 )
 
 // 权限类型常量
