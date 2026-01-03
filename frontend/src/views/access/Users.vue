@@ -40,16 +40,15 @@
             <el-select v-model="searchForm.status" placeholder="全部状态" clearable style="width: 120px;">
               <el-option label="正常" value="active" />
               <el-option label="禁用" value="disabled" />
-              <el-option label="待激活" value="pending" />
             </el-select>
           </el-form-item>
           <el-form-item label="角色">
             <el-select v-model="searchForm.roleId" placeholder="全部角色" clearable style="width: 150px;">
               <el-option
                 v-for="role in roleOptions"
-                :key="role.id"
+                :key="role.role_id"
                 :label="role.name"
-                :value="role.id"
+                :value="role.role_id"
               />
             </el-select>
           </el-form-item>
@@ -95,20 +94,30 @@
         <el-table-column label="用户信息" min-width="200">
           <template #default="{ row }">
             <div class="user-info">
-              <el-avatar :size="40" :src="row.avatar">
-                {{ row.username.charAt(0).toUpperCase() }}
+              <el-avatar :size="40">
+                <template v-if="row.avatar">
+                  <img :src="row.avatar" />
+                </template>
+                <template v-else>
+                  {{ row.user_name?.charAt(0)?.toUpperCase() || '?' }}
+                </template>
               </el-avatar>
               <div class="user-details">
-                <div class="user-name">{{ row.username }}</div>
-                <div class="user-email">{{ row.email }}</div>
+                <div class="user-name">{{ row.user_name || '-' }}</div>
+                <div class="user-email">{{ row.email || '-' }}</div>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="角色" width="120">
+        <el-table-column label="真实姓名" width="120">
           <template #default="{ row }">
-            <el-tag v-for="role in row.roles" :key="role" size="small">
-              {{ getRoleName(role) }}
+            {{ row.name }}
+          </template>
+        </el-table-column>
+        <el-table-column label="角色" width="150">
+          <template #default="{ row }">
+            <el-tag v-for="role in row.role_list" :key="role.role_id" size="small">
+              {{ role.name }}
             </el-tag>
           </template>
         </el-table-column>
@@ -119,14 +128,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="最后登录" width="150">
-          <template #default="{ row }">
-            {{ formatDate(row.lastLoginTime) }}
-          </template>
-        </el-table-column>
         <el-table-column label="创建时间" width="150">
           <template #default="{ row }">
-            {{ formatDate(row.createdAt) }}
+            {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
@@ -147,10 +151,10 @@
                   <el-dropdown-item command="permissions">权限设置</el-dropdown-item>
                   <el-dropdown-item command="logs">操作日志</el-dropdown-item>
                   <el-dropdown-item
-                    :command="row.status === 'active' ? 'disable' : 'enable'"
-                    :divided="row.status === 'active'"
+                    :command="row.status === 1 ? 'disable' : 'enable'"
+                    :divided="row.status === 1"
                   >
-                    {{ row.status === 'active' ? '禁用账户' : '启用账户' }}
+                    {{ row.status === 1 ? '禁用账户' : '启用账户' }}
                   </el-dropdown-item>
                   <el-dropdown-item command="delete" divided class="danger-item">
                     删除用户
@@ -175,34 +179,39 @@
           >
             <div class="user-card">
               <div class="user-card-header">
-                <el-avatar :size="60" :src="user.avatar">
-                  {{ user.username.charAt(0).toUpperCase() }}
+                <el-avatar :size="60">
+                  <template v-if="user.avatar">
+                    <img :src="user.avatar" />
+                  </template>
+                  <template v-else>
+                    {{ user.user_name?.charAt(0)?.toUpperCase() || '?' }}
+                  </template>
                 </el-avatar>
                 <el-tag :type="getStatusType(user.status)" size="small">
                   {{ getStatusText(user.status) }}
                 </el-tag>
               </div>
               <div class="user-card-body">
-                <h4 class="user-card-name">{{ user.username }}</h4>
+                <h4 class="user-card-name">{{ user.user_name }}</h4>
                 <p class="user-card-email">{{ user.email }}</p>
                 <div class="user-card-roles">
                   <el-tag
-                    v-for="role in user.roles"
-                    :key="role"
+                    v-for="role in user.role_list"
+                    :key="role.role_id"
                     size="small"
                     class="role-tag"
                   >
-                    {{ getRoleName(role) }}
+                    {{ role.name }}
                   </el-tag>
                 </div>
                 <div class="user-card-meta">
                   <div class="meta-item">
-                    <span class="meta-label">最后登录</span>
-                    <span class="meta-value">{{ formatDate(user.lastLoginTime) }}</span>
+                    <span class="meta-label">真实姓名</span>
+                    <span class="meta-value">{{ user.name }}</span>
                   </div>
                   <div class="meta-item">
                     <span class="meta-label">创建时间</span>
-                    <span class="meta-value">{{ formatDate(user.createdAt) }}</span>
+                    <span class="meta-value">{{ formatDate(user.created_at) }}</span>
                   </div>
                 </div>
               </div>
@@ -223,10 +232,10 @@
                       <el-dropdown-item command="permissions">权限设置</el-dropdown-item>
                       <el-dropdown-item command="logs">操作日志</el-dropdown-item>
                       <el-dropdown-item
-                        :command="user.status === 'active' ? 'disable' : 'enable'"
-                        :divided="user.status === 'active'"
+                        :command="user.status === 1 ? 'disable' : 'enable'"
+                        :divided="user.status === 1"
                       >
-                        {{ user.status === 'active' ? '禁用账户' : '启用账户' }}
+                        {{ user.status === 1 ? '禁用账户' : '启用账户' }}
                       </el-dropdown-item>
                       <el-dropdown-item command="delete" divided class="danger-item">
                         删除用户
@@ -264,22 +273,22 @@
       <el-form
         ref="formRef"
         :model="formData"
-        :rules="formRules"
+        :rules="dialogType === 'create' ? formRules : editFormRules"
         label-width="100px"
       >
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="用户名" prop="username">
+            <el-form-item label="用户名" prop="user_name">
               <el-input
-                v-model="formData.username"
+                v-model="formData.user_name"
                 placeholder="请输入用户名"
                 :disabled="dialogType === 'edit'"
               />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="邮箱" prop="email">
-              <el-input v-model="formData.email" placeholder="请输入邮箱" />
+            <el-form-item label="真实姓名" prop="name">
+              <el-input v-model="formData.name" placeholder="请输入真实姓名" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -290,47 +299,50 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="真实姓名" prop="realName">
-              <el-input v-model="formData.realName" placeholder="请输入真实姓名" />
+            <el-form-item label="邮箱" prop="email">
+              <el-input v-model="formData.email" placeholder="请输入邮箱" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="角色" prop="roleIds">
+            <el-form-item label="密码" prop="password">
+              <el-input
+                v-model="formData.password"
+                type="password"
+                placeholder="请输入密码"
+                :disabled="dialogType === 'edit'"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="角色" prop="role_ids">
               <el-select
-                v-model="formData.roleIds"
+                v-model="formData.role_ids"
                 placeholder="请选择角色"
                 multiple
                 style="width: 100%"
               >
                 <el-option
                   v-for="role in roleOptions"
-                  :key="role.id"
+                  :key="role.role_id"
                   :label="role.name"
-                  :value="role.id"
+                  :value="role.role_id"
                 />
               </el-select>
             </el-form-item>
           </el-col>
+        </el-row>
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="formData.status">
-                <el-radio label="active">正常</el-radio>
-                <el-radio label="disabled">禁用</el-radio>
-                <el-radio label="pending">待激活</el-radio>
+                <el-radio :value="1">正常</el-radio>
+                <el-radio :value="0">禁用</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="备注" prop="remark">
-          <el-input
-            v-model="formData.remark"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入备注信息"
-          />
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -343,29 +355,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import dayjs from 'dayjs'
+import { userApi, type UserInfo, type UserListParams } from '@/api/user'
+import { roleApi, type RoleInfo } from '@/api/role'
 
 // 接口定义
 interface User {
-  id: number
-  username: string
-  email: string
+  user_id: string
+  user_name: string
+  name: string
   phone: string
-  realName: string
+  email: string
   avatar?: string
-  roles: string[]
-  status: 'active' | 'disabled' | 'pending'
-  lastLoginTime: string
-  createdAt: string
-  remark?: string
+  role_list: RoleListInfo[]
+  status: number
+  created_at: number
 }
 
-interface Role {
-  id: string
+interface RoleListInfo {
+  role_id: string
   name: string
-  description?: string
+  code: string
+  sort: number
 }
 
 // 响应式数据
@@ -393,107 +406,74 @@ const pagination = reactive({
 
 // 用户表单
 const formData = reactive({
-  id: 0,
-  username: '',
+  user_id: '',
+  user_name: '',
   email: '',
   phone: '',
-  realName: '',
-  roleIds: [] as string[],
-  status: 'active' as 'active' | 'disabled' | 'pending',
-  remark: ''
+  name: '',
+  password: '',
+  role_ids: [] as string[],
+  status: 1,
+  avatar: '',
+  sex: 0
 })
 
 // 表单验证规则
 const formRules = {
-  username: [
+  user_name: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
     { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' }
   ],
+  name: [
+    { required: true, message: '请输入真实姓名', trigger: 'blur' }
+  ],
   email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
   ],
   phone: [
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
   ],
-  roleIds: [
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' }
+  ],
+  role_ids: [
     { required: true, message: '请选择角色', trigger: 'change' }
   ]
 }
 
+// 编辑时的表单验证规则（密码不需要）
+const editFormRules = {
+  name: [
+    { required: true, message: '请输入真实姓名', trigger: 'blur' }
+  ],
+  email: [
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  phone: [
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+  ]
+}
+
 // 角色选项
-const roleOptions = ref<Role[]>([
-  { id: '1', name: '超级管理员', description: '系统超级管理员' },
-  { id: '2', name: '管理员', description: '系统管理员' },
-  { id: '3', name: '运营', description: '运营人员' },
-  { id: '4', name: '普通用户', description: '普通用户' }
-])
+const roleOptions = ref<RoleInfo[]>([])
 
 // 用户数据
-const tableData = ref<User[]>([
-  {
-    id: 1,
-    username: 'admin',
-    email: 'admin@example.com',
-    phone: '13800138000',
-    realName: '系统管理员',
-    roles: ['1'],
-    status: 'active',
-    lastLoginTime: '2025-12-22 10:30:00',
-    createdAt: '2025-01-01 09:00:00'
-  },
-  {
-    id: 2,
-    username: 'zhangsan',
-    email: 'zhangsan@example.com',
-    phone: '13800138001',
-    realName: '张三',
-    roles: ['2', '3'],
-    status: 'active',
-    lastLoginTime: '2025-12-22 09:15:00',
-    createdAt: '2025-01-15 14:20:00'
-  },
-  {
-    id: 3,
-    username: 'lisi',
-    email: 'lisi@example.com',
-    phone: '13800138002',
-    realName: '李四',
-    roles: ['4'],
-    status: 'disabled',
-    lastLoginTime: '2025-12-20 16:45:00',
-    createdAt: '2025-02-01 11:30:00'
-  }
-])
+const tableData = ref<User[]>([])
 
 const formRef = ref<FormInstance>()
 
-// 计算属性
-const getStatusType = (status: string) => {
-  const types: Record<string, string> = {
-    active: 'success',
-    disabled: 'danger',
-    pending: 'warning'
-  }
-  return types[status] || 'info'
+// 工具函数
+const getStatusType = (status: number) => {
+  return status === 1 ? 'success' : 'danger'
 }
 
-const getStatusText = (status: string) => {
-  const texts: Record<string, string> = {
-    active: '正常',
-    disabled: '禁用',
-    pending: '待激活'
-  }
-  return texts[status] || '未知'
+const getStatusText = (status: number) => {
+  return status === 1 ? '正常' : '禁用'
 }
 
-const getRoleName = (roleId: string) => {
-  const role = roleOptions.value.find(r => r.id === roleId)
-  return role?.name || roleId
-}
-
-const formatDate = (date: string) => {
-  return dayjs(date).format('YYYY-MM-DD HH:mm')
+const formatDate = (timestamp: number) => {
+  return dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm')
 }
 
 // 事件处理
@@ -521,14 +501,16 @@ const handleCreate = () => {
 const handleEdit = (user: User) => {
   dialogType.value = 'edit'
   Object.assign(formData, {
-    id: user.id,
-    username: user.username,
-    email: user.email,
+    user_id: user.user_id,
+    user_name: user.user_name,
+    email: user.email || '',
     phone: user.phone,
-    realName: user.realName,
-    roleIds: user.roles,
+    name: user.name,
+    password: '',
+    role_ids: user.role_list.map(r => r.role_id),
     status: user.status,
-    remark: user.remark || ''
+    avatar: user.avatar || '',
+    sex: 0
   })
   dialogVisible.value = true
 }
@@ -540,45 +522,33 @@ const handleSubmit = async () => {
   submitLoading.value = true
 
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
     if (dialogType.value === 'create') {
       // 创建用户
-      const newUser: User = {
-        id: Date.now(),
-        username: formData.username,
-        email: formData.email,
+      await userApi.create({
+        user_name: formData.user_name,
+        name: formData.name,
+        password: formData.password,
         phone: formData.phone,
-        realName: formData.realName,
-        roles: formData.roleIds,
+        email: formData.email || undefined,
         status: formData.status,
-        lastLoginTime: '',
-        createdAt: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-        remark: formData.remark
-      }
-      tableData.value.unshift(newUser)
+        role_ids: formData.role_ids.length > 0 ? formData.role_ids : undefined
+      })
       ElMessage.success('用户创建成功')
     } else {
       // 编辑用户
-      const index = tableData.value.findIndex(u => u.id === formData.id)
-      if (index !== -1) {
-        Object.assign(tableData.value[index], {
-          email: formData.email,
-          phone: formData.phone,
-          realName: formData.realName,
-          roles: formData.roleIds,
-          status: formData.status,
-          remark: formData.remark
-        })
-        ElMessage.success('用户更新成功')
-      }
+      await userApi.update(formData.user_id, {
+        name: formData.name,
+        email: formData.email || undefined,
+        status: formData.status,
+        role_code_list: formData.role_ids
+      })
+      ElMessage.success('用户更新成功')
     }
 
     dialogVisible.value = false
     fetchUsers()
-  } catch (error) {
-    ElMessage.error('操作失败')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '操作失败')
   } finally {
     submitLoading.value = false
   }
@@ -587,7 +557,7 @@ const handleSubmit = async () => {
 const handleResetPassword = async (user: User) => {
   try {
     await ElMessageBox.confirm(
-      `确定要重置用户 "${user.username}" 的密码吗？新密码将发送到用户邮箱。`,
+      `确定要重置用户 "${user.user_name}" 的密码吗？新密码将发送到用户邮箱。`,
       '重置密码',
       {
         confirmButtonText: '确定',
@@ -596,9 +566,8 @@ const handleResetPassword = async (user: User) => {
       }
     )
 
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    ElMessage.success('密码重置成功，新密码已发送到用户邮箱')
+    // TODO: 调用重置密码API
+    ElMessage.info('重置密码功能开发中...')
   } catch {
     // 用户取消
   }
@@ -619,7 +588,7 @@ const handleMoreAction = async (command: string, user: User) => {
     case 'disable':
       try {
         await ElMessageBox.confirm(
-          `确定要${command === 'enable' ? '启用' : '禁用'}用户 "${user.username}" 吗？`,
+          `确定要${command === 'enable' ? '启用' : '禁用'}用户 "${user.user_name}" 吗？`,
           `${command === 'enable' ? '启用' : '禁用'}用户`,
           {
             confirmButtonText: '确定',
@@ -628,16 +597,20 @@ const handleMoreAction = async (command: string, user: User) => {
           }
         )
 
-        user.status = command === 'enable' ? 'active' : 'disabled'
+        const newStatus = command === 'enable' ? 1 : 0
+        await userApi.update(user.user_id, { status: newStatus })
         ElMessage.success(`用户${command === 'enable' ? '启用' : '禁用'}成功`)
-      } catch {
-        // 用户取消
+        fetchUsers()
+      } catch (error: any) {
+        if (error !== 'cancel') {
+          ElMessage.error(error?.message || '操作失败')
+        }
       }
       break
     case 'delete':
       try {
         await ElMessageBox.confirm(
-          `确定要删除用户 "${user.username}" 吗？此操作不可恢复！`,
+          `确定要删除用户 "${user.user_name}" 吗？此操作不可恢复！`,
           '删除用户',
           {
             confirmButtonText: '确定删除',
@@ -646,14 +619,13 @@ const handleMoreAction = async (command: string, user: User) => {
           }
         )
 
-        const index = tableData.value.findIndex(u => u.id === user.id)
-        if (index !== -1) {
-          tableData.value.splice(index, 1)
-          ElMessage.success('用户删除成功')
-          fetchUsers()
+        await userApi.delete(user.user_id)
+        ElMessage.success('用户删除成功')
+        fetchUsers()
+      } catch (error: any) {
+        if (error !== 'cancel') {
+          ElMessage.error(error?.message || '删除失败')
         }
-      } catch {
-        // 用户取消
       }
       break
   }
@@ -687,33 +659,73 @@ const handleDialogClose = () => {
 
 const resetFormData = () => {
   Object.assign(formData, {
-    id: 0,
-    username: '',
+    user_id: '',
+    user_name: '',
     email: '',
     phone: '',
-    realName: '',
-    roleIds: [],
-    status: 'active',
-    remark: ''
+    name: '',
+    password: '',
+    role_ids: [],
+    status: 1,
+    avatar: '',
+    sex: 0
   })
 }
 
+// 获取用户列表
 const fetchUsers = async () => {
   loading.value = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
-    pagination.total = tableData.value.length
-  } catch (error) {
-    ElMessage.error('获取用户列表失败')
+    const params: UserListParams = {
+      page: pagination.page,
+      page_size: pagination.size
+    }
+
+    if (searchForm.keyword) {
+      params.name = searchForm.keyword
+    }
+    if (searchForm.phone) {
+      params.phone = searchForm.phone
+    }
+    if (searchForm.status !== '') {
+      params.status = searchForm.status === 'active' ? 1 : 0
+    }
+
+    const response = await userApi.getList(params)
+    // 将后端返回的 { user: {...} } 结构转换为前端期望的格式
+    tableData.value = response.list.map(item => ({
+      user_id: item.user.user_id,
+      user_name: item.user.username,
+      name: item.user.nickname,
+      phone: item.user.phone,
+      email: item.user.email,
+      avatar: item.user.avatar,
+      status: item.user.status,
+      created_at: item.user.created_at,
+      role_list: [] // 后端暂未返回角色列表
+    }))
+    pagination.total = response.page.total
+  } catch (error: any) {
+    ElMessage.error(error?.message || '获取用户列表失败')
   } finally {
     loading.value = false
+  }
+}
+
+// 获取角色列表
+const fetchRoles = async () => {
+  try {
+    const response = await roleApi.getAllRoles()
+    roleOptions.value = response.list
+  } catch (error: any) {
+    ElMessage.error(error?.message || '获取角色列表失败')
   }
 }
 
 // 生命周期
 onMounted(() => {
   fetchUsers()
+  fetchRoles()
 })
 </script>
 

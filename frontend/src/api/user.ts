@@ -9,7 +9,27 @@ export interface RoleListInfo {
   sort: number
 }
 
-// 用户信息
+// 用户信息（后端返回的原始结构）
+export interface UserResponse {
+  user_id: string
+  username: string
+  nickname: string
+  avatar: string
+  phone: string
+  email: string
+  status: number
+  tenant_id: string
+  last_login_time: number
+  created_at: number
+  updated_at: number
+}
+
+// 用户包装结构
+export interface UserWrapper {
+  user: UserResponse
+}
+
+// 用户信息（前端使用的简化结构）
 export interface UserInfo {
   user_id: string
   user_name: string
@@ -31,10 +51,10 @@ export interface UserListParams {
   status?: number
 }
 
-// 用户列表响应
+// 用户列表响应（后端返回的原始结构）
 export interface UserListResponse {
   page: PageResponse
-  list: UserInfo[]
+  list: UserWrapper[]
 }
 
 // 创建用户请求
@@ -97,37 +117,37 @@ export interface LoginLogListResponse {
 export const userApi = {
   // 获取用户列表
   getList: (params: UserListParams): Promise<UserListResponse> => {
-    return http.get('/admin/v1/users', { params })
+    return http.get('/api/v1/users', { params })
   },
 
   // 创建用户
   create: (data: CreateUserRequest): Promise<CreateUserResponse> => {
-    return http.post('/admin/v1/users', data)
+    return http.post('/api/v1/users', data)
   },
 
   // 获取用户详情
   getDetail: (userId: string): Promise<UserInfo> => {
-    return http.get(`/admin/v1/users/${userId}`)
+    return http.get(`/api/v1/users/${userId}`)
   },
 
   // 获取当前用户信息
   getCurrentUser: (): Promise<UserInfo> => {
-    return http.get('/admin/v1/users/me')
+    return http.get('/api/v1/users/me')
   },
 
   // 更新用户
   update: (userId: string, data: UpdateUserRequest): Promise<boolean> => {
-    return http.put(`/admin/v1/users/${userId}`, data)
+    return http.put(`/api/v1/users/${userId}`, data)
   },
 
   // 删除用户
   delete: (userId: string): Promise<boolean> => {
-    return http.delete(`/admin/v1/users/${userId}`, {})
+    return http.delete(`/api/v1/users/${userId}`, {})
   },
 
   // 查询登录记录
   getLoginLogs: (params: LoginLogListParams): Promise<LoginLogListResponse> => {
-    return http.get('/admin/v1/login-logs', { params })
+    return http.get('/api/v1/login-logs', { params })
   }
 }
 
