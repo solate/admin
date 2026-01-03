@@ -130,6 +130,19 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	if err := seeds.SeedSystemMenus(db, menuDefs); err != nil {
 		return nil, fmt.Errorf("初始化系统菜单失败: %w", err)
 	}
+
+	// 7.1. 为角色分配菜单权限
+	// 提取所有菜单ID
+	menuIDs := ids[idIndex : idIndex+29]
+	// 为 super_admin 和 admin 角色分配所有菜单权限
+	roleMenus := map[string][]string{
+		"super_admin": menuIDs, // super_admin 角色拥有所有菜单权限
+		"admin":       menuIDs, // admin 角色拥有所有菜单权限
+	}
+	if err := seeds.SeedRoleMenus(db, roleMenus, tenant.TenantCode); err != nil {
+		return nil, fmt.Errorf("初始化角色菜单权限失败: %w", err)
+	}
+
 	idIndex += 29
 
 	// 8. 初始化组织架构 - 部门

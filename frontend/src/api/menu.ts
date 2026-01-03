@@ -2,10 +2,9 @@ import http from './http'
 
 // 菜单信息（与后端 DTO 对应）
 export interface MenuInfo {
-  permission_id: string
-  tenant_id: string
+  menu_id: string
   name: string
-  type: string
+  type?: string
   parent_id?: string
   resource?: string
   action?: string
@@ -16,16 +15,16 @@ export interface MenuInfo {
   sort?: number
   status: number
   description?: string
+  api_paths?: string // JSON 字符串，存储关联的 API 路径
   created_at: number
   updated_at: number
 }
 
 // 菜单树节点
 export interface MenuTreeNode {
-  permission_id: string
-  tenant_id: string
+  menu_id: string
   name: string
-  type: string
+  type?: string
   parent_id?: string
   resource?: string
   action?: string
@@ -36,6 +35,7 @@ export interface MenuTreeNode {
   sort?: number
   status: number
   description?: string
+  api_paths?: string
   created_at: number
   updated_at: number
   children?: MenuTreeNode[]
@@ -73,7 +73,6 @@ export interface MenuListResponse {
 // 创建菜单请求
 export interface CreateMenuRequest {
   name: string
-  type: 'MENU' | 'BUTTON'
   parent_id?: string
   path?: string
   component?: string
@@ -81,8 +80,8 @@ export interface CreateMenuRequest {
   icon?: string
   sort?: number
   status?: number
-  action?: string
-  resource?: string
+  description?: string
+  api_paths?: string // JSON 字符串格式
 }
 
 // 更新菜单请求
@@ -95,8 +94,14 @@ export interface UpdateMenuRequest {
   icon?: string
   sort?: number
   status?: number
-  action?: string
-  resource?: string
+  description?: string
+  api_paths?: string
+}
+
+// API 路径配置
+export interface ApiPath {
+  path: string
+  methods: string[]
 }
 
 export const menuApi = {
@@ -130,13 +135,26 @@ export const menuApi = {
     return http.get('/api/v1/menus/all')
   },
 
-  // 获取菜单树
+  // 获取菜单树（管理后台用）
   getMenuTree: (): Promise<MenuTreeResponse> => {
     return http.get('/api/v1/menus/tree')
   },
 
   // 更新菜单状态
   updateStatus: (menuId: string, status: number): Promise<{ updated: boolean }> => {
-    return http.put(`/api/v1/menus/${menuId}/status/${status}`)
+    return http.put(`/api/v1/menus/${menuId}/status`, { status })
+  }
+}
+
+// 用户菜单 API
+export const userMenuApi = {
+  // 获取当前用户的菜单（树形结构）
+  getUserMenus: (): Promise<MenuTreeResponse> => {
+    return http.get('/api/v1/user/menus')
+  },
+
+  // 获取指定菜单的按钮权限
+  getMenuButtons: (menuId: string): Promise<{ list: any[] }> => {
+    return http.get(`/api/v1/user/buttons/${menuId}`)
   }
 }

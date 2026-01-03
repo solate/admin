@@ -37,8 +37,8 @@ p, admin, {tenant}, /api/v1/menus/*, DELETE
 p, admin, {tenant}, /api/v1/menus/*/status/*, PUT
 
 # 用户菜单
-p, admin, {tenant}, /api/v1/user/menu, GET
-p, admin, {tenant}, /api/v1/user/buttons, GET
+p, admin, {tenant}, /api/v1/user/menus, GET
+p, admin, {tenant}, /api/v1/user/buttons/*, GET
 
 # 登录日志
 p, admin, {tenant}, /api/v1/login-logs, GET
@@ -69,8 +69,8 @@ p, user, {tenant}, /api/v1/menus/tree, GET
 p, user, {tenant}, /api/v1/menus/*, GET
 
 # 用户菜单
-p, user, {tenant}, /api/v1/user/menu, GET
-p, user, {tenant}, /api/v1/user/buttons, GET
+p, user, {tenant}, /api/v1/user/menus, GET
+p, user, {tenant}, /api/v1/user/buttons/*, GET
 
 # 登录日志
 p, user, {tenant}, /api/v1/login-logs, GET
@@ -102,8 +102,8 @@ p, auditor, {tenant}, /api/v1/menus/tree, GET
 p, auditor, {tenant}, /api/v1/menus/*, GET
 
 # 用户菜单
-p, auditor, {tenant}, /api/v1/user/menu, GET
-p, auditor, {tenant}, /api/v1/user/buttons, GET
+p, auditor, {tenant}, /api/v1/user/menus, GET
+p, auditor, {tenant}, /api/v1/user/buttons/*, GET
 
 # 登录日志
 p, auditor, {tenant}, /api/v1/login-logs, GET

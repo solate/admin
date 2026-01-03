@@ -156,8 +156,8 @@ func Setup(r *gin.Engine, app *App) {
 			// 用户菜单接口（基于权限动态加载）
 			userMenu := authorized.Group("/user")
 			{
-				userMenu.GET("/menu", app.Handlers.UserMenuHandler.GetUserMenu)       // 获取用户菜单树
-				userMenu.GET("/buttons", app.Handlers.UserMenuHandler.GetUserButtons) // 获取菜单按钮权限
+				userMenu.GET("/menus", app.Handlers.UserMenuHandler.GetUserMenu)               // 获取用户菜单树
+				userMenu.GET("/buttons/:menu_id", app.Handlers.UserMenuHandler.GetUserButtons) // 获取菜单按钮权限
 			}
 
 			// 字典管理接口

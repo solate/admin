@@ -4,6 +4,7 @@ import (
 	"admin/internal/dto"
 	"admin/internal/service"
 	"admin/pkg/response"
+	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 	"strconv"
 
@@ -258,13 +259,12 @@ func NewUserMenuHandler(userMenuService *service.UserMenuService) *UserMenuHandl
 // @Produce json
 // @Security ApiKeyAuth
 // @Success 200 {object} response.Response{data=dto.UserMenuResponse} "获取成功"
-// @Router /user/menu [get]
+// @Router /user/menus [get]
 func (h *UserMenuHandler) GetUserMenu(c *gin.Context) {
 	// 从上下文获取用户名和租户编码
-	// 这些信息应该从 JWT token 中获取
-	// 暂时使用默认值
-	userName := c.GetHeader("X-User-Name")
-	tenantCode := c.GetHeader("X-Tenant-Code")
+	// 这些信息由 Auth 中间件从 JWT token 中提取并设置到 context
+	userName := xcontext.GetUserName(c.Request.Context())
+	tenantCode := xcontext.GetTenantCode(c.Request.Context())
 
 	if userName == "" || tenantCode == "" {
 		response.Error(c, xerr.ErrUnauthorized)
@@ -287,19 +287,20 @@ func (h *UserMenuHandler) GetUserMenu(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param menu_id query string true "菜单ID"
+// @Param menu_id path string true "菜单ID"
 // @Success 200 {object} response.Response{data=dto.UserButtonsResponse} "获取成功"
-// @Router /user/buttons [get]
+// @Router /user/buttons/{menu_id} [get]
 func (h *UserMenuHandler) GetUserButtons(c *gin.Context) {
-	menuID := c.Query("menu_id")
+	menuID := c.Param("menu_id")
 	if menuID == "" {
 		response.Error(c, xerr.ErrInvalidParams)
 		return
 	}
 
 	// 从上下文获取用户名和租户编码
-	userName := c.GetHeader("X-User-Name")
-	tenantCode := c.GetHeader("X-Tenant-Code")
+	// 这些信息由 Auth 中间件从 JWT token 中提取并设置到 context
+	userName := xcontext.GetUserName(c.Request.Context())
+	tenantCode := xcontext.GetTenantCode(c.Request.Context())
 
 	if userName == "" || tenantCode == "" {
 		response.Error(c, xerr.ErrUnauthorized)

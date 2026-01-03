@@ -184,3 +184,42 @@ func parseCSVLine(line string) []string {
 	}
 	return result
 }
+
+// SeedRoleMenus 为角色分配菜单权限
+// roleMenus: map[roleCode][]menuID
+func SeedRoleMenus(db *gorm.DB, roleMenus map[string][]string, tenantCode string) error {
+	enforcer, err := casbin.NewEnforcerManager(db, casbin.DefaultModel())
+	if err != nil {
+		return fmt.Errorf("创建 Casbin 执行器失败: %w", err)
+	}
+
+	addedCount := 0
+	for roleCode, menuIDs := range roleMenus {
+		for _, menuID := range menuIDs {
+			// 检查策略是否已存在
+			resource := "menu:" + menuID
+			hasPolicy, err := enforcer.HasPolicy(roleCode, tenantCode, resource, "*")
+			if err != nil {
+				return fmt.Errorf("检查策略失败: %w", err)
+			}
+
+			if hasPolicy {
+				continue
+			}
+
+			// 添加菜单权限策略
+			if _, err := enforcer.AddPolicy(roleCode, tenantCode, resource, "*"); err != nil {
+				return fmt.Errorf("添加角色菜单权限失败 role=%s menu=%s: %w", roleCode, menuID, err)
+			}
+			addedCount++
+		}
+	}
+
+	if addedCount > 0 {
+		fmt.Printf("✅ 角色菜单权限初始化成功，添加 %d 条策略\n", addedCount)
+	} else {
+		fmt.Println("ℹ️  角色菜单权限已存在，跳过初始化")
+	}
+
+	return nil
+}
