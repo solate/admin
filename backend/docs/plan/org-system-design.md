@@ -57,11 +57,18 @@ ALTER TABLE users ADD COLUMN position_id VARCHAR(20);
 
 ### 用户多岗关联表 (user_positions) - 可选
 
+**说明：支持一人多岗（兼职、代理、临时授权场景）**
+
+- `users.position_id` = 主岗位（日常主要岗位）
+- `user_positions` = 额外岗位（兼职岗位、临时授权）
+
+**示例：** 张三主岗位是"高级工程师"，同时兼任"测试主管"
+
 ```sql
 CREATE TABLE user_positions (
     user_id VARCHAR(20) NOT NULL,
     position_id VARCHAR(20) NOT NULL,
-    is_primary BOOLEAN DEFAULT TRUE,
+    is_primary SMALLINT DEFAULT 2,  -- 1=主岗位, 2=额外岗位
     PRIMARY KEY (user_id, position_id)
 );
 ```
