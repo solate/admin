@@ -159,10 +159,11 @@ func DefaultDictTypeDefinitions() []DictTypeDefinition {
 }
 
 // SeedDicts 初始化字典数据
-func SeedDicts(db *gorm.DB, dictDefs []DictTypeDefinition, tenantID string) ([]*model.DictType, error) {
+func SeedDicts(db *gorm.DB, dictDefs []DictTypeDefinition, tenantID string, ids []string) ([]*model.DictType, error) {
 	fmt.Println("📚 开始初始化系统字典")
 
 	var dictTypes []*model.DictType
+	idIndex := 0
 
 	for _, dictDef := range dictDefs {
 		// 检查字典类型是否已存在
@@ -171,19 +172,28 @@ func SeedDicts(db *gorm.DB, dictDefs []DictTypeDefinition, tenantID string) ([]*
 		if err == nil {
 			fmt.Printf("   ⏭️  字典类型 %s 已存在，跳过\n", dictDef.TypeCode)
 			dictTypes = append(dictTypes, &existingType)
+			// 跳过已存在字典的项ID
+			idIndex += len(dictDef.Items)
 			continue
 		} else if err != gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("检查字典类型失败: %w", err)
 		}
 
+		// 检查ID数量是否足够
+		requiredIDs := 1 + len(dictDef.Items) // 1个类型ID + N个项ID
+		if idIndex+requiredIDs > len(ids) {
+			return nil, fmt.Errorf("ID数量不足，需要 %d 个，剩余 %d 个", requiredIDs, len(ids)-idIndex)
+		}
+
 		// 创建字典类型
 		dictType := &model.DictType{
-			TypeID:      generateDictID(),
+			TypeID:      ids[idIndex],
 			TenantID:    tenantID,
 			TypeCode:    dictDef.TypeCode,
 			TypeName:    dictDef.TypeName,
 			Description: dictDef.Description,
 		}
+		idIndex++
 
 		if err := db.Create(dictType).Error; err != nil {
 			return nil, fmt.Errorf("创建字典类型失败: %w", err)
@@ -192,13 +202,14 @@ func SeedDicts(db *gorm.DB, dictDefs []DictTypeDefinition, tenantID string) ([]*
 		// 创建字典项
 		for _, itemDef := range dictDef.Items {
 			dictItem := &model.DictItem{
-				ItemID:   generateDictID(),
+				ItemID:   ids[idIndex],
 				TypeID:   dictType.TypeID,
 				TenantID: tenantID,
 				Label:    itemDef.Label,
 				Value:    itemDef.Value,
 				Sort:     int32(itemDef.Sort),
 			}
+			idIndex++
 
 			if err := db.Create(dictItem).Error; err != nil {
 				return nil, fmt.Errorf("创建字典项失败: %w", err)
@@ -211,19 +222,4 @@ func SeedDicts(db *gorm.DB, dictDefs []DictTypeDefinition, tenantID string) ([]*
 
 	fmt.Printf("   📊 共初始化 %d 个字典类型\n", len(dictTypes))
 	return dictTypes, nil
-}
-
-// generateDictID 生成字典ID（简化版，实际应使用统一的ID生成器）
-func generateDictID() string {
-	return "dict_" + generateRandomString(16)
-}
-
-// generateRandomString 生成随机字符串
-func generateRandomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[i%len(charset)]
-	}
-	return string(b)
 }

@@ -78,8 +78,8 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	}
 
 	// 生成所需的ID
-	// 5个基础ID (租户、用户、3个角色) + 19个部门ID + 37个岗位ID = 61个ID
-	ids, err := idgen.GenerateUUIDs(61)
+	// 5个基础ID (租户、用户、3个角色) + 19个部门ID + 37个岗位ID + 52个字典ID (13个类型+39个项) = 113个ID
+	ids, err := idgen.GenerateUUIDs(113)
 	if err != nil {
 		return nil, fmt.Errorf("生成ID失败: %w", err)
 	}
@@ -151,7 +151,7 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	// 10. 初始化系统字典
 	fmt.Println("\n📚 开始初始化系统字典")
 	dictDefs := seeds.DefaultDictTypeDefinitions()
-	dictTypes, err := seeds.SeedDicts(db, dictDefs, tenant.TenantID)
+	dictTypes, err := seeds.SeedDicts(db, dictDefs, tenant.TenantID, ids[idIndex:])
 	if err != nil {
 		return nil, fmt.Errorf("初始化字典失败: %w", err)
 	}
