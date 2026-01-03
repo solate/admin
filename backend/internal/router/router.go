@@ -126,25 +126,25 @@ func Setup(r *gin.Engine, app *App) {
 			// 部门管理（租户管理员+超管）
 			dept := authorized.Group("/departments")
 			{
-				dept.POST("", app.Handlers.DepartmentHandler.CreateDepartment)                                // 创建部门
-				dept.GET("", app.Handlers.DepartmentHandler.ListDepartments)                                  // 获取部门列表
-				dept.GET("/tree", app.Handlers.DepartmentHandler.GetDepartmentTree)                           // 获取部门树
-				dept.GET("/:department_id", app.Handlers.DepartmentHandler.GetDepartment)                     // 获取部门详情
-				dept.PUT("/:department_id", app.Handlers.DepartmentHandler.UpdateDepartment)                  // 更新部门
-				dept.DELETE("/:department_id", app.Handlers.DepartmentHandler.DeleteDepartment)               // 删除部门
+				dept.POST("", app.Handlers.DepartmentHandler.CreateDepartment)                                    // 创建部门
+				dept.GET("", app.Handlers.DepartmentHandler.ListDepartments)                                      // 获取部门列表
+				dept.GET("/tree", app.Handlers.DepartmentHandler.GetDepartmentTree)                               // 获取部门树
+				dept.GET("/:department_id", app.Handlers.DepartmentHandler.GetDepartment)                         // 获取部门详情
+				dept.PUT("/:department_id", app.Handlers.DepartmentHandler.UpdateDepartment)                      // 更新部门
+				dept.DELETE("/:department_id", app.Handlers.DepartmentHandler.DeleteDepartment)                   // 删除部门
 				dept.PUT("/:department_id/status/:status", app.Handlers.DepartmentHandler.UpdateDepartmentStatus) // 更新部门状态
-				dept.GET("/:department_id/children", app.Handlers.DepartmentHandler.GetChildren)              // 获取子部门
+				dept.GET("/:department_id/children", app.Handlers.DepartmentHandler.GetChildren)                  // 获取子部门
 			}
 
 			// 岗位管理（租户管理员+超管）
 			position := authorized.Group("/positions")
 			{
-				position.POST("", app.Handlers.PositionHandler.CreatePosition)                              // 创建岗位
-				position.GET("", app.Handlers.PositionHandler.ListPositions)                                // 获取岗位列表
-				position.GET("/all", app.Handlers.PositionHandler.ListAllPositions)                        // 获取所有岗位（不分页）
-				position.GET("/:position_id", app.Handlers.PositionHandler.GetPosition)                     // 获取岗位详情
-				position.PUT("/:position_id", app.Handlers.PositionHandler.UpdatePosition)                  // 更新岗位
-				position.DELETE("/:position_id", app.Handlers.PositionHandler.DeletePosition)               // 删除岗位
+				position.POST("", app.Handlers.PositionHandler.CreatePosition)                                  // 创建岗位
+				position.GET("", app.Handlers.PositionHandler.ListPositions)                                    // 获取岗位列表
+				position.GET("/all", app.Handlers.PositionHandler.ListAllPositions)                             // 获取所有岗位（不分页）
+				position.GET("/:position_id", app.Handlers.PositionHandler.GetPosition)                         // 获取岗位详情
+				position.PUT("/:position_id", app.Handlers.PositionHandler.UpdatePosition)                      // 更新岗位
+				position.DELETE("/:position_id", app.Handlers.PositionHandler.DeletePosition)                   // 删除岗位
 				position.PUT("/:position_id/status/:status", app.Handlers.PositionHandler.UpdatePositionStatus) // 更新岗位状态
 			}
 
@@ -154,6 +154,24 @@ func Setup(r *gin.Engine, app *App) {
 				userMenu.GET("/menu", app.Handlers.UserMenuHandler.GetUserMenu)       // 获取用户菜单树
 				userMenu.GET("/buttons", app.Handlers.UserMenuHandler.GetUserButtons) // 获取菜单按钮权限
 			}
+
+			// 字典管理接口
+			dict := authorized.Group("/dict")
+			{
+				dict.GET("/:type_code", app.Handlers.DictHandler.GetDict)                       // 获取字典（合并系统+覆盖）
+				dict.PUT("/items", app.Handlers.DictHandler.BatchUpdateDictItems)               // 批量更新字典项
+				dict.DELETE("/:type_code/items/:value", app.Handlers.DictHandler.ResetDictItem) // 恢复系统默认值
+			}
+			// 系统字典管理接口（超管专用）
+			systemDict := authorized.Group("/system/dict")
+			{
+				systemDict.POST("", app.Handlers.DictHandler.CreateSystemDict)              // 创建系统字典
+				systemDict.GET("", app.Handlers.DictHandler.ListSystemDictTypes)            // 获取系统字典列表
+				systemDict.PUT("/:type_code", app.Handlers.DictHandler.UpdateSystemDict)    // 更新系统字典
+				systemDict.DELETE("/:type_code", app.Handlers.DictHandler.DeleteSystemDict) // 删除系统字典
+			}
+			// 字典类型列表接口
+			authorized.GET("/dict-types", app.Handlers.DictHandler.ListDictTypes) // 获取字典类型列表
 
 			// 审计日志接口
 			// 登录日志

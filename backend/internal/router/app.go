@@ -45,6 +45,7 @@ type Handlers struct {
 	OperationLogHandler *handler.OperationLogHandler
 	DepartmentHandler   *handler.DepartmentHandler
 	PositionHandler     *handler.PositionHandler
+	DictHandler         *handler.DictHandler
 }
 
 func NewApp() (*App, error) {
@@ -259,6 +260,8 @@ func (s *App) initHandlers() error {
 	operationLogRepo := repository.NewOperationLogRepo(s.DB)
 	departmentRepo := repository.NewDepartmentRepo(s.DB)
 	positionRepo := repository.NewPositionRepo(s.DB)
+	dictTypeRepo := repository.NewDictTypeRepo(s.DB)
+	dictItemRepo := repository.NewDictItemRepo(s.DB)
 
 	// 初始化服务层
 	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, s.Config, s.AuditLogWriter) // 初始化认证服务
@@ -271,6 +274,7 @@ func (s *App) initHandlers() error {
 	operationLogService := service.NewOperationLogService(operationLogRepo)                                                                     // 初始化操作日志服务
 	departmentService := service.NewDepartmentService(departmentRepo, userRepo)                                                                  // 初始化部门服务
 	positionService := service.NewPositionService(positionRepo)                                                                                 // 初始化岗位服务
+	dictService := service.NewDictService(dictTypeRepo, dictItemRepo, cache.Get().Tenant)                                                      // 初始化字典服务
 
 	s.Handlers = &Handlers{
 		HealthHandler:       handler.NewHealthHandler(),
@@ -285,6 +289,7 @@ func (s *App) initHandlers() error {
 		OperationLogHandler: handler.NewOperationLogHandler(operationLogService),
 		DepartmentHandler:   handler.NewDepartmentHandler(departmentService),
 		PositionHandler:     handler.NewPositionHandler(positionService),
+		DictHandler:         handler.NewDictHandler(dictService),
 	}
 	return nil
 }

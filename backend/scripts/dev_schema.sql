@@ -399,6 +399,68 @@ COMMENT ON COLUMN operation_logs.user_agent IS '用户代理信息';
 COMMENT ON COLUMN operation_logs.created_at IS '操作时间戳(毫秒)';
 
 
+-- ========================================
+-- 11. 字典系统 (Dictionary System)
+-- 支持系统字典模板和租户自定义覆盖
+-- 详细设计见: docs/plan/dict-system-design.md
+-- ========================================
+
+-- 11.1 字典类型表 (Dict Types)
+CREATE TABLE dict_types (
+    type_id VARCHAR(20) PRIMARY KEY,
+    tenant_id VARCHAR(20) NOT NULL,
+    type_code VARCHAR(50) NOT NULL,
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0
+);
+
+-- 租户内字典编码唯一约束
+CREATE UNIQUE INDEX uk_dict_types_tenant_code ON dict_types(tenant_id, type_code) WHERE deleted_at = 0;
+CREATE INDEX idx_dict_types_type_code ON dict_types(type_code);
+
+COMMENT ON TABLE dict_types IS '字典类型表(支持系统字典模板和租户自定义)';
+COMMENT ON COLUMN dict_types.type_id IS '字典类型ID(18位字符串)';
+COMMENT ON COLUMN dict_types.tenant_id IS '租户ID(默认租户为系统模板)';
+COMMENT ON COLUMN dict_types.type_code IS '字典编码(如：order_status)';
+COMMENT ON COLUMN dict_types.type_name IS '字典名称(如：订单状态)';
+COMMENT ON COLUMN dict_types.description IS '字典描述';
+COMMENT ON COLUMN dict_types.created_at IS '创建时间戳(毫秒)';
+COMMENT ON COLUMN dict_types.updated_at IS '更新时间戳(毫秒)';
+COMMENT ON COLUMN dict_types.deleted_at IS '删除时间戳(毫秒,软删除)';
+
+
+-- 11.2 字典项表 (Dict Items)
+CREATE TABLE dict_items (
+    item_id VARCHAR(20) PRIMARY KEY,
+    type_id VARCHAR(20) NOT NULL,
+    tenant_id VARCHAR(20) NOT NULL,
+    label VARCHAR(100) NOT NULL,
+    value VARCHAR(100) NOT NULL,
+    sort INT NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    deleted_at BIGINT DEFAULT 0
+);
+
+-- 索引优化：支持按类型和租户查询，以及覆盖匹配
+CREATE INDEX idx_dict_items_type_id ON dict_items(type_id);
+CREATE INDEX idx_dict_items_type_value ON dict_items(type_id, tenant_id, value);
+
+COMMENT ON TABLE dict_items IS '字典项表(租户可覆盖系统默认值)';
+COMMENT ON COLUMN dict_items.item_id IS '字典项ID(18位字符串)';
+COMMENT ON COLUMN dict_items.type_id IS '字典类型ID';
+COMMENT ON COLUMN dict_items.tenant_id IS '租户ID(默认租户为系统模板)';
+COMMENT ON COLUMN dict_items.label IS '显示文本';
+COMMENT ON COLUMN dict_items.value IS '实际值(不可变，用于匹配覆盖)';
+COMMENT ON COLUMN dict_items.sort IS '排序权重';
+COMMENT ON COLUMN dict_items.created_at IS '创建时间戳(毫秒)';
+COMMENT ON COLUMN dict_items.updated_at IS '更新时间戳(毫秒)';
+COMMENT ON COLUMN dict_items.deleted_at IS '删除时间戳(毫秒,软删除)';
+
+
 -- -- ========================================
 -- -- (会自动建表，无需自己建)
 -- -- 5. Casbin 策略表 (Casbin Rules)

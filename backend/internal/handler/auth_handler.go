@@ -55,7 +55,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Tags 认证
 // @Accept json
 // @Produce json
-// @Param request body RefreshRequest true "刷新令牌请求参数"
+// @Param request body dto.RefreshRequest true "刷新令牌请求参数"
 // @Success 200 {object} response.Response{data=dto.RefreshResponse} "刷新成功"
 // @Success 200 {object} response.Response "请求参数错误"
 // @Success 200 {object} response.Response "刷新令牌无效或已过期"
