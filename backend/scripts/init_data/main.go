@@ -78,8 +78,8 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	}
 
 	// 生成所需的ID
-	// 5个基础ID (租户、用户、3个角色) + 19个部门ID + 37个岗位ID + 52个字典ID (13个类型+39个项) = 113个ID
-	ids, err := idgen.GenerateUUIDs(113)
+	// 5个基础ID (租户、用户、3个角色) + 29个菜单ID + 19个部门ID + 37个岗位ID + 52个字典ID (13个类型+39个项) = 142个ID
+	ids, err := idgen.GenerateUUIDs(142)
 	if err != nil {
 		return nil, fmt.Errorf("生成ID失败: %w", err)
 	}
@@ -126,9 +126,11 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	}
 
 	// 7. 初始化系统菜单
-	if err := seeds.SeedSystemMenus(db); err != nil {
+	menuDefs := seeds.DefaultMenuDefinitions(ids[idIndex : idIndex+29])
+	if err := seeds.SeedSystemMenus(db, menuDefs); err != nil {
 		return nil, fmt.Errorf("初始化系统菜单失败: %w", err)
 	}
+	idIndex += 29
 
 	// 8. 初始化组织架构 - 部门
 	fmt.Println("\n📁 开始初始化组织架构")

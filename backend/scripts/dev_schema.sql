@@ -115,7 +115,7 @@ COMMENT ON COLUMN roles.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- ========================================
 -- 4. 菜单表 (Menus)
 -- 全局菜单元数据定义表（不区分租户）
--- 菜单的租户边界通过 tenant_menus 表控制
+-- 菜单权限通过 Casbin p 策略直接关联角色
 -- ========================================
 
 CREATE TABLE menus (
@@ -133,6 +133,9 @@ CREATE TABLE menus (
     -- 状态控制（1=启用且显示, 2=禁用且隐藏）
     status SMALLINT NOT NULL DEFAULT 1,              -- 状态(1:启用, 2:禁用)
 
+    -- API 权限关联（用于解决菜单权限粒度问题）
+    api_paths TEXT NOT NULL DEFAULT '',              -- API 路径列表 (JSON 数组格式，用于关联菜单和 API 权限)
+
     description TEXT NOT NULL DEFAULT '',            -- 描述信息
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
@@ -141,7 +144,7 @@ CREATE TABLE menus (
 
 CREATE INDEX idx_menus_parent ON menus(parent_id, deleted_at);
 
-COMMENT ON TABLE menus IS '菜单元数据表(全局定义，租户边界由tenant_menus表控制)';
+COMMENT ON TABLE menus IS '菜单元数据表(全局定义，菜单权限通过Casbin策略直接关联角色)';
 COMMENT ON COLUMN menus.menu_id IS '菜单ID(18位字符串)';
 COMMENT ON COLUMN menus.parent_id IS '父菜单ID(用于构建树形结构)';
 COMMENT ON COLUMN menus.name IS '菜单名称';
@@ -151,6 +154,7 @@ COMMENT ON COLUMN menus.redirect IS '重定向路径';
 COMMENT ON COLUMN menus.icon IS '图标';
 COMMENT ON COLUMN menus.sort IS '显示排序';
 COMMENT ON COLUMN menus.status IS '状态(1:启用, 2:禁用)';
+COMMENT ON COLUMN menus.api_paths IS 'API 路径列表 (JSON 数组格式，用于关联菜单和 API 权限，示例: [{\"path\":\"/api/v1/users\",\"methods\":[\"GET\",\"POST\"]}])';
 COMMENT ON COLUMN menus.description IS '描述信息';
 COMMENT ON COLUMN menus.created_at IS '创建时间戳(毫秒)';
 COMMENT ON COLUMN menus.updated_at IS '更新时间戳(毫秒)';
@@ -191,32 +195,7 @@ COMMENT ON COLUMN permissions.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- ========================================
--- 6. 租户菜单边界表 (Tenant Menus)
--- 超管给租户分配的可用菜单范围
--- 租户角色的菜单权限必须在此范围内
--- ========================================
-CREATE TABLE tenant_menus (
-    id VARCHAR(20) PRIMARY KEY,
-    tenant_id VARCHAR(20) NOT NULL,          -- 租户ID
-    menu_id VARCHAR(20) NOT NULL,            -- 菜单ID
-    created_at BIGINT NOT NULL DEFAULT 0,
-    deleted_at BIGINT DEFAULT 0
-);
-
--- 索引优化
-CREATE UNIQUE INDEX uk_tenant_menu ON tenant_menus(tenant_id, menu_id) WHERE deleted_at = 0;
-CREATE INDEX idx_tenant_menus_tenant ON tenant_menus(tenant_id, deleted_at);
-
-COMMENT ON TABLE tenant_menus IS '租户菜单边界表(超管分配租户可用菜单)';
-COMMENT ON COLUMN tenant_menus.id IS '主键ID(18位字符串)';
-COMMENT ON COLUMN tenant_menus.tenant_id IS '租户ID';
-COMMENT ON COLUMN tenant_menus.menu_id IS '菜单ID';
-COMMENT ON COLUMN tenant_menus.created_at IS '创建时间戳(毫秒)';
-COMMENT ON COLUMN tenant_menus.deleted_at IS '删除时间戳(毫秒,软删除)';
-
-
--- ========================================
--- 7. Casbin 策略表 (Casbin Rules)
+-- 6. Casbin 策略表 (Casbin Rules)
 -- 由 Casbin gorm-adapter 自动创建，用于 RBAC 模型持久化
 -- 支持带租户的 RBAC 模型 (RBAC with Domains)
 -- ptype='p': 权限策略 p(sub, dom, obj, act)
@@ -227,12 +206,12 @@ COMMENT ON COLUMN tenant_menus.deleted_at IS '删除时间戳(毫秒,软删除)'
 
 
 -- ========================================
--- 8. 组织结构系统 (Departments & Positions)
+-- 7. 组织结构系统 (Departments & Positions)
 -- 部门按职能划分，岗位按职责定义，支持一人多岗
 -- 详细设计见: docs/plan/org-system-design.md
 -- ========================================
 
--- 8.1 部门表 (Departments)
+-- 7.1 部门表 (Departments)
 CREATE TABLE departments (
     department_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
@@ -262,7 +241,7 @@ COMMENT ON COLUMN departments.updated_at IS '更新时间戳(毫秒)';
 COMMENT ON COLUMN departments.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
--- 8.2 岗位表 (Positions)
+-- 7.2 岗位表 (Positions)
 -- 岗位编码（如 DEPT_LEADER, EMPLOYEE）与 Casbin 角色对应
 CREATE TABLE positions (
     position_id VARCHAR(20) PRIMARY KEY,
@@ -295,7 +274,7 @@ COMMENT ON COLUMN positions.updated_at IS '更新时间戳(毫秒)';
 COMMENT ON COLUMN positions.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
--- 8.3 用户多岗关联表 (User Positions) - 可选
+-- 7.3 用户多岗关联表 (User Positions) - 可选
 -- 支持用户兼任多个岗位
 CREATE TABLE user_positions (
     user_id VARCHAR(20) NOT NULL,
@@ -311,7 +290,7 @@ COMMENT ON COLUMN user_positions.is_primary IS '是否为主岗位(1:是, 2:否)
 
 
 -- ========================================
--- 9. 登录日志表 (Login Logs)
+-- 8. 登录日志表 (Login Logs)
 -- 记录用户登录行为，用于安全审计
 -- ========================================
 CREATE TABLE login_logs (
@@ -346,7 +325,7 @@ COMMENT ON COLUMN login_logs.created_at IS '创建时间戳(毫秒)';
 
 
 -- ========================================
--- 10. 操作日志表 (Operation Logs)
+-- 9. 操作日志表 (Operation Logs)
 -- 记录用户在系统中的操作行为，用于审计和追踪
 -- ========================================
 CREATE TABLE operation_logs (
@@ -400,12 +379,12 @@ COMMENT ON COLUMN operation_logs.created_at IS '操作时间戳(毫秒)';
 
 
 -- ========================================
--- 11. 字典系统 (Dictionary System)
+-- 10. 字典系统 (Dictionary System)
 -- 支持系统字典模板和租户自定义覆盖
 -- 详细设计见: docs/plan/dict-system-design.md
 -- ========================================
 
--- 11.1 字典类型表 (Dict Types)
+-- 10.1 字典类型表 (Dict Types)
 CREATE TABLE dict_types (
     type_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
@@ -432,7 +411,7 @@ COMMENT ON COLUMN dict_types.updated_at IS '更新时间戳(毫秒)';
 COMMENT ON COLUMN dict_types.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
--- 11.2 字典项表 (Dict Items)
+-- 10.2 字典项表 (Dict Items)
 CREATE TABLE dict_items (
     item_id VARCHAR(20) PRIMARY KEY,
     type_id VARCHAR(20) NOT NULL,

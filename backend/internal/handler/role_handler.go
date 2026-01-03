@@ -198,3 +198,86 @@ func (h *RoleHandler) UpdateRoleStatus(c *gin.Context) {
 
 	response.Success(c, gin.H{"updated": true})
 }
+
+// AssignPermissions 为角色分配权限（菜单+按钮）
+// @Summary 为角色分配权限
+// @Description 为指定角色分配菜单和按钮权限
+// @Tags 角色管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param role_id path string true "角色ID"
+// @Param request body dto.AssignPermissionsRequest true "权限列表"
+// @Success 200 {object} response.Response "分配成功"
+// @Router /roles/:role_id/permissions [put]
+func (h *RoleHandler) AssignPermissions(c *gin.Context) {
+	roleID := c.Param("role_id")
+	if roleID == "" {
+		response.Error(c, xerr.ErrInvalidParams)
+		return
+	}
+
+	var req dto.AssignPermissionsRequest
+	if err := c.BindJSON(&req); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	if err := h.roleService.AssignPermissions(c.Request.Context(), roleID, &req); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{"assigned": true})
+}
+
+// GetRolePermissions 获取角色的权限（菜单+按钮）
+// @Summary 获取角色权限
+// @Description 获取指定角色的菜单和按钮权限
+// @Tags 角色管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param role_id path string true "角色ID"
+// @Success 200 {object} response.Response{data=dto.RolePermissionsResponse} "获取成功"
+// @Router /roles/:role_id/permissions [get]
+func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
+	roleID := c.Param("role_id")
+	if roleID == "" {
+		response.Error(c, xerr.ErrInvalidParams)
+		return
+	}
+
+	permissions, err := h.roleService.GetRolePermissions(c.Request.Context(), roleID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, permissions)
+}
+
+// AssignMenus 为角色分配菜单（已弃用，保留向后兼容）
+// Deprecated: 使用 AssignPermissions 代替
+func (h *RoleHandler) AssignMenus(c *gin.Context) {
+	h.AssignPermissions(c)
+}
+
+// GetRoleMenus 获取角色的菜单权限（已弃用，保留向后兼容）
+// Deprecated: 使用 GetRolePermissions 代替
+func (h *RoleHandler) GetRoleMenus(c *gin.Context) {
+	roleID := c.Param("role_id")
+	if roleID == "" {
+		response.Error(c, xerr.ErrInvalidParams)
+		return
+	}
+
+	permissions, err := h.roleService.GetRolePermissions(c.Request.Context(), roleID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	// 旧接口只返回菜单ID
+	response.Success(c, &dto.RoleMenusResponse{MenuIDs: permissions.MenuIDs})
+}

@@ -102,12 +102,17 @@ func Setup(r *gin.Engine, app *App) {
 			// 角色管理（租户管理员+超管）
 			role := authorized.Group("/roles")
 			{
-				role.POST("", app.Handlers.RoleHandler.CreateRole)                              // 创建角色
-				role.GET("", app.Handlers.RoleHandler.ListRoles)                                // 获取角色列表
-				role.GET("/:role_id", app.Handlers.RoleHandler.GetRole)                         // 获取角色详情
-				role.PUT("/:role_id", app.Handlers.RoleHandler.UpdateRole)                      // 更新角色
-				role.DELETE("/:role_id", app.Handlers.RoleHandler.DeleteRole)                   // 删除角色
-				role.PUT("/:role_id/status/:status", app.Handlers.RoleHandler.UpdateRoleStatus) // 更新角色状态
+				role.POST("", app.Handlers.RoleHandler.CreateRole)                                    // 创建角色
+				role.GET("", app.Handlers.RoleHandler.ListRoles)                                      // 获取角色列表
+				role.GET("/:role_id", app.Handlers.RoleHandler.GetRole)                               // 获取角色详情
+				role.PUT("/:role_id", app.Handlers.RoleHandler.UpdateRole)                            // 更新角色
+				role.DELETE("/:role_id", app.Handlers.RoleHandler.DeleteRole)                         // 删除角色
+				role.PUT("/:role_id/status/:status", app.Handlers.RoleHandler.UpdateRoleStatus)     // 更新角色状态
+				role.PUT("/:role_id/permissions", app.Handlers.RoleHandler.AssignPermissions)       // 为角色分配权限（菜单+按钮）
+				role.GET("/:role_id/permissions", app.Handlers.RoleHandler.GetRolePermissions)      // 获取角色的权限
+				// 保留旧路由向后兼容
+				role.PUT("/:role_id/menus", app.Handlers.RoleHandler.AssignMenus)                   // 为角色分配菜单（已弃用）
+				role.GET("/:role_id/menus", app.Handlers.RoleHandler.GetRoleMenus)                   // 获取角色的菜单（已弃用）
 			}
 
 			// 菜单接口

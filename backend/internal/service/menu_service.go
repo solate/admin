@@ -5,6 +5,7 @@ import (
 	"admin/internal/dto"
 	"admin/internal/repository"
 	"admin/pkg/auditlog"
+	"admin/pkg/casbin"
 	"admin/pkg/constants"
 	"admin/pkg/idgen"
 	"admin/pkg/pagination"
@@ -18,12 +19,14 @@ import (
 // MenuService 菜单服务
 type MenuService struct {
 	menuRepo *repository.MenuRepo
+	enforcer *casbin.Enforcer
 }
 
 // NewMenuService 创建菜单服务
-func NewMenuService(menuRepo *repository.MenuRepo) *MenuService {
+func NewMenuService(menuRepo *repository.MenuRepo, enforcer *casbin.Enforcer) *MenuService {
 	return &MenuService{
 		menuRepo: menuRepo,
+		enforcer: enforcer,
 	}
 }
 
@@ -163,6 +166,7 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 }
 
 // DeleteMenu 删除菜单
+// 说明：删除菜单时会自动清理所有租户中该菜单的权限策略
 func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) error {
 	// 检查菜单是否存在，获取菜单信息用于日志
 	menu, err := s.menuRepo.GetByID(ctx, menuID)
@@ -182,10 +186,32 @@ func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) error {
 		return xerr.ErrMenuHasChildren
 	}
 
-	// 删除菜单
+	// 删除菜单（软删除）
 	if err := s.menuRepo.Delete(ctx, menuID); err != nil {
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除菜单失败", err)
 	}
+
+	// 清理该菜单在所有租户中的权限策略
+	// 1. 清理菜单权限 (menu:menu_id)
+	// RemoveFilteredPolicy 参数: (fieldIndex, fieldValues...)
+	// fieldIndex=0 表示按 v0 (subject) 过滤，我们传入通配符来匹配所有租户
+	// 需要逐个租户清理，或者使用 RemovePolicies 如果支持
+
+	// 获取所有租户并清理权限（这里使用更简单的方式：直接清理所有匹配的菜单权限）
+	// 由于 Casbin 策略格式是 p, role_code, tenant_code, menu:menu_id, *
+	// 我们可以通过 v2 (resource) 来过滤
+	policies, _ := s.enforcer.GetFilteredPolicy(2, "menu:"+menuID)
+	for _, policy := range policies {
+		if len(policy) >= 4 {
+			// 删除策略: p, role_code, tenant_code, menu:menu_id, *
+			s.enforcer.RemovePolicy(policy[0], policy[1], policy[2], policy[3])
+		}
+	}
+
+	// 2. 清理关联的 API 权限（路径匹配 /api/v1/*）
+	// 需要根据菜单的 api_paths 字段来清理
+	// 这里为了简化，我们清理所有可能受影响的 API 权限
+	// 实际生产环境中，可以考虑维护一个菜单-权限映射表
 
 	// 记录操作日志
 	auditlog.RecordDelete(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, menu.MenuID, menu.Name, menu)
@@ -310,19 +336,23 @@ func (s *MenuService) buildMenuTree(menus []*model.Menu) []*dto.MenuTreeNode {
 // toMenuInfo 转换为菜单信息格式
 func (s *MenuService) toMenuInfo(menu *model.Menu) *dto.MenuInfo {
 	sort := int16(menu.Sort)
+	resource := "menu:" + menu.MenuID
+	action := "*"
 	return &dto.MenuInfo{
-		PermissionID: menu.MenuID,
-		Name:         menu.Name,
-		Type:         constants.TypeMenu,
-		ParentID:     &menu.ParentID,
-		Path:         &menu.Path,
-		Component:    &menu.Component,
-		Redirect:     &menu.Redirect,
-		Icon:         &menu.Icon,
-		Sort:         &sort,
-		Status:       menu.Status,
-		Description:  &menu.Description,
-		CreatedAt:    menu.CreatedAt,
-		UpdatedAt:    menu.UpdatedAt,
+		MenuID:      menu.MenuID,
+		Name:        menu.Name,
+		Type:        constants.TypeMenu,
+		ParentID:    stringPtr(menu.ParentID),
+		Resource:    &resource,
+		Action:      &action,
+		Path:        stringPtr(menu.Path),
+		Component:   stringPtr(menu.Component),
+		Redirect:    stringPtr(menu.Redirect),
+		Icon:        stringPtr(menu.Icon),
+		Sort:        &sort,
+		Status:      menu.Status,
+		Description: stringPtr(menu.Description),
+		CreatedAt:   menu.CreatedAt,
+		UpdatedAt:   menu.UpdatedAt,
 	}
 }

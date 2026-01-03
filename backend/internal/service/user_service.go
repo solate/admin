@@ -4,6 +4,7 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
+	"admin/pkg/casbin"
 	"admin/pkg/constants"
 	"admin/pkg/idgen"
 	"admin/pkg/auditlog"
@@ -22,14 +23,16 @@ type UserService struct {
 	userRepo   *repository.UserRepo
 	roleRepo   *repository.RoleRepo
 	tenantRepo *repository.TenantRepo
+	enforcer   *casbin.Enforcer
 }
 
 // NewUserService 创建用户服务
-func NewUserService(userRepo *repository.UserRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo) *UserService {
+func NewUserService(userRepo *repository.UserRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, enforcer *casbin.Enforcer) *UserService {
 	return &UserService{
 		userRepo:   userRepo,
 		roleRepo:   roleRepo,
 		tenantRepo: tenantRepo,
+		enforcer:   enforcer,
 	}
 }
 
@@ -235,6 +238,7 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 }
 
 // DeleteUser 删除用户
+// 级联删除：删除用户时会自动清理该用户的角色绑定关系
 func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 	// 检查用户是否存在，获取用户信息用于日志
 	user, err := s.userRepo.GetByID(ctx, userID)
@@ -249,6 +253,11 @@ func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 	if err := s.userRepo.Delete(ctx, userID); err != nil {
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除用户失败", err)
 	}
+
+	// 清理该用户的所有角色绑定关系
+	// g 策略格式: g, username, role_code, tenant_code
+	// 使用 RemoveFilteredGroupingPolicy 按 username 过滤
+	s.enforcer.RemoveFilteredGroupingPolicy(0, user.UserName)
 
 	// 记录操作日志
 	auditlog.RecordDelete(ctx, constants.ModuleUser, constants.ResourceTypeUser, user.UserID, user.UserName, user)

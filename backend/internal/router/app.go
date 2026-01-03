@@ -255,7 +255,6 @@ func (s *App) initHandlers() error {
 	tenantRepo := repository.NewTenantRepo(s.DB)
 	menuRepo := repository.NewMenuRepo(s.DB)
 	permissionRepo := repository.NewPermissionRepo(s.DB)
-	tenantMenuRepo := repository.NewTenantMenuRepo(s.DB)
 	loginLogRepo := repository.NewLoginLogRepo(s.DB)
 	operationLogRepo := repository.NewOperationLogRepo(s.DB)
 	departmentRepo := repository.NewDepartmentRepo(s.DB)
@@ -265,11 +264,11 @@ func (s *App) initHandlers() error {
 
 	// 初始化服务层
 	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, s.Config, s.AuditLogWriter) // 初始化认证服务
-	userService := service.NewUserService(userRepo, roleRepo, tenantRepo)                                                                       // 初始化用户服务
+	userService := service.NewUserService(userRepo, roleRepo, tenantRepo, s.Enforcer)                                                           // 初始化用户服务
 	tenantService := service.NewTenantService(tenantRepo)                                                                                       // 初始化租户服务
-	roleService := service.NewRoleService(roleRepo)                                                                                             // 初始化角色服务
-	menuService := service.NewMenuService(menuRepo)                                                                                             // 初始化菜单服务
-	userMenuService := service.NewUserMenuService(menuRepo, permissionRepo, tenantMenuRepo, s.Enforcer)                                         // 初始化用户菜单服务
+	roleService := service.NewRoleService(roleRepo, permissionRepo, menuRepo, s.Enforcer, cache.Get().Tenant) // 初始化角色服务（需要 enforcer、tenantCache 和 menuRepo 用于角色继承、菜单权限管理和 API 权限关联）
+	menuService := service.NewMenuService(menuRepo, s.Enforcer)                                                                     // 初始化菜单服务
+	userMenuService := service.NewUserMenuService(menuRepo, permissionRepo, s.Enforcer)                                         // 初始化用户菜单服务（根据设计文档：无需取交集）
 	loginLogService := service.NewLoginLogService(loginLogRepo)                                                                                 // 初始化登录日志服务
 	operationLogService := service.NewOperationLogService(operationLogRepo)                                                                     // 初始化操作日志服务
 	departmentService := service.NewDepartmentService(departmentRepo, userRepo)                                                                  // 初始化部门服务

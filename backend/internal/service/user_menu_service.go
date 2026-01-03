@@ -6,7 +6,6 @@ import (
 	"admin/internal/repository"
 	"admin/pkg/casbin"
 	"admin/pkg/constants"
-	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 	"context"
 	"strings"
@@ -16,21 +15,21 @@ import (
 type UserMenuService struct {
 	menuRepo       *repository.MenuRepo
 	permissionRepo *repository.PermissionRepo
-	tenantMenuRepo *repository.TenantMenuRepo
 	enforcer       *casbin.Enforcer
 }
 
 // NewUserMenuService 创建用户菜单服务
-func NewUserMenuService(menuRepo *repository.MenuRepo, permissionRepo *repository.PermissionRepo, tenantMenuRepo *repository.TenantMenuRepo, enforcer *casbin.Enforcer) *UserMenuService {
+// 根据菜单系统设计文档：用户实际菜单 = 角色权限中的菜单（无需取交集）
+func NewUserMenuService(menuRepo *repository.MenuRepo, permissionRepo *repository.PermissionRepo, enforcer *casbin.Enforcer) *UserMenuService {
 	return &UserMenuService{
 		menuRepo:       menuRepo,
 		permissionRepo: permissionRepo,
-		tenantMenuRepo: tenantMenuRepo,
 		enforcer:       enforcer,
 	}
 }
 
 // GetUserMenu 获取用户菜单树
+// 根据设计文档：用户实际菜单 = 角色权限中的菜单（无需取交集）
 func (s *UserMenuService) GetUserMenu(ctx context.Context, userName, tenantCode string) (*dto.UserMenuResponse, error) {
 	// 1. 超管特殊处理：返回所有菜单
 	if s.isSuperAdmin(userName, tenantCode) {
@@ -44,33 +43,25 @@ func (s *UserMenuService) GetUserMenu(ctx context.Context, userName, tenantCode 
 	}
 
 	// 3. 递归获取所有角色（通过 g2 处理继承）
-	allRoleCodes := s.getAllRoleCodes(roles)
+	allRoleCodes, inheritedRoles := s.getAllRoleCodes(roles)
 
 	// 4. 从 Casbin 获取角色的菜单权限
-	menuIDs := s.getMenuPermissionsForRoles(ctx, allRoleCodes, tenantCode)
+	menuIDs := s.getMenuPermissionsForRoles(ctx, allRoleCodes, inheritedRoles, tenantCode)
 
-	// 5. 【关键】与租户菜单边界取交集
-	tenantID := xcontext.GetTenantID(ctx)
-	tenantMenuIDs, err := s.tenantMenuRepo.GetMenuIDsByTenant(ctx, tenantID)
-	if err != nil {
-		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取租户菜单边界失败", err)
-	}
-
-	validMenuIDs := s.intersectMenuIDs(menuIDs, tenantMenuIDs)
-	if len(validMenuIDs) == 0 {
+	if len(menuIDs) == 0 {
 		return &dto.UserMenuResponse{List: []*dto.MenuTreeNode{}}, nil
 	}
 
-	// 6. 查询菜单详情
-	menus, err := s.menuRepo.GetByIDs(ctx, validMenuIDs)
+	// 5. 查询菜单详情
+	menus, err := s.menuRepo.GetByIDs(ctx, menuIDs)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单详情失败", err)
 	}
 
-	// 7. 过滤状态=1(启用)的菜单
+	// 6. 过滤状态=1(启用)的菜单
 	visibleMenus := s.filterVisibleMenus(menus)
 
-	// 8. 构建树结构
+	// 7. 构建树结构
 	tree := s.buildMenuTree(visibleMenus)
 
 	return &dto.UserMenuResponse{List: tree}, nil
@@ -90,10 +81,10 @@ func (s *UserMenuService) GetUserButtons(ctx context.Context, userName, tenantCo
 	}
 
 	// 3. 递归获取所有角色（通过 g2 处理继承）
-	allRoleCodes := s.getAllRoleCodes(roles)
+	allRoleCodes, inheritedRoles := s.getAllRoleCodes(roles)
 
 	// 4. 获取角色的所有 BUTTON 类型权限
-	buttonPerms, err := s.getButtonPermissionsForRoles(ctx, allRoleCodes, tenantCode)
+	buttonPerms, err := s.getButtonPermissionsForRoles(ctx, allRoleCodes, inheritedRoles, tenantCode)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取按钮权限失败", err)
 	}
@@ -173,51 +164,76 @@ func (s *UserMenuService) getAllButtonsForMenu(ctx context.Context, menuID strin
 }
 
 // getAllRoleCodes 递归获取所有角色（通过 g2 处理继承）
-func (s *UserMenuService) getAllRoleCodes(roleCodes []string) []string {
+// 返回值: (所有角色编码, 继承角色集合)
+func (s *UserMenuService) getAllRoleCodes(roleCodes []string) ([]string, map[string]bool) {
 	var allCodes []string
 	visited := make(map[string]bool)
+	inheritedRoles := make(map[string]bool)
 
-	var dfs func(roleCode string)
-	dfs = func(roleCode string) {
+	var dfs func(roleCode string, isInherited bool)
+	dfs = func(roleCode string, isInherited bool) {
 		if visited[roleCode] {
 			return
 		}
 		visited[roleCode] = true
 		allCodes = append(allCodes, roleCode)
 
+		// 如果是继承角色，标记为继承
+		if isInherited {
+			inheritedRoles[roleCode] = true
+		}
+
 		// 通过 g2 获取继承的父角色
 		// GetRolesForUser 在 g2 中返回 (child -> parent)
 		parents, _ := s.enforcer.GetRolesForUser(roleCode)
 		for _, parentCode := range parents {
-			dfs(parentCode)
+			dfs(parentCode, true) // 父角色都是继承角色
 		}
 	}
 
 	for _, code := range roleCodes {
-		dfs(code)
+		dfs(code, false)
 	}
 
-	return allCodes
+	return allCodes, inheritedRoles
 }
 
 // getMenuPermissionsForRoles 获取角色的 MENU 类型权限ID列表
-func (s *UserMenuService) getMenuPermissionsForRoles(ctx context.Context, roles []string, tenantCode string) []string {
+// 支持角色继承：对于继承角色，同时查询 default domain 的权限
+//
+// 性能优化 TODO:
+// 当前实现对每个角色都进行一次 Casbin 查询，当用户有多个角色时会产生 N 次数据库查询
+// 优化方案：
+// 1. 使用批量查询：GetFilteredPolicy(1, []tenantCodes) 一次性获取所有租户的策略
+// 2. 添加 Redis 缓存：缓存用户菜单树，key 格式 "user:menus:{userID}:{tenantCode}"
+// 3. 缓存失效：角色权限变更时清除相关用户的缓存
+func (s *UserMenuService) getMenuPermissionsForRoles(ctx context.Context, roles []string, inheritedRoles map[string]bool, tenantCode string) []string {
 	menuIDSet := make(map[string]bool)
 
 	for _, role := range roles {
-		// 使用 Casbin 获取角色的策略
-		// 策略格式: p, role, domain, resource, action
-		policies, _ := s.enforcer.GetFilteredPolicy(0, role, tenantCode)
+		// 确定要查询的 domain 列表
+		domains := []string{tenantCode}
+		if inheritedRoles[role] {
+			// 继承角色：同时查询 default domain
+			domains = append(domains, constants.DefaultTenantCode)
+		}
 
-		for _, policy := range policies {
-			if len(policy) >= 4 {
-				resource := policy[2]
-				action := policy[3]
+		// 从所有相关 domain 查询权限
+		for _, domain := range domains {
+			// 使用 Casbin 获取角色的策略
+			// 策略格式: p, role, domain, resource, action
+			policies, _ := s.enforcer.GetFilteredPolicy(0, role, domain)
 
-				// 对于 MENU 类型，resource 格式为 "menu:menuID"，action 是 "*"
-				if (action == "*" || action == "") && strings.HasPrefix(resource, "menu:") {
-					menuID := strings.TrimPrefix(resource, "menu:")
-					menuIDSet[menuID] = true
+			for _, policy := range policies {
+				if len(policy) >= 4 {
+					resource := policy[2]
+					action := policy[3]
+
+					// 对于 MENU 类型，resource 格式为 "menu:menuID"，action 是 "*"
+					if (action == "*" || action == "") && strings.HasPrefix(resource, "menu:") {
+						menuID := strings.TrimPrefix(resource, "menu:")
+						menuIDSet[menuID] = true
+					}
 				}
 			}
 		}
@@ -233,21 +249,34 @@ func (s *UserMenuService) getMenuPermissionsForRoles(ctx context.Context, roles 
 }
 
 // getButtonPermissionsForRoles 获取角色的 BUTTON 类型权限
-func (s *UserMenuService) getButtonPermissionsForRoles(ctx context.Context, roles []string, tenantCode string) ([]*model.Permission, error) {
-	var buttonResources []string
+// 支持角色继承：对于继承角色，同时查询 default domain 的权限
+//
+// 性能优化 TODO: 同 getMenuPermissionsForRoles
+func (s *UserMenuService) getButtonPermissionsForRoles(ctx context.Context, roles []string, inheritedRoles map[string]bool, tenantCode string) ([]*model.Permission, error) {
+	buttonResources := make(map[string]bool)
 
 	for _, role := range roles {
-		// 使用 Casbin 获取角色的策略
-		policies, _ := s.enforcer.GetFilteredPolicy(0, role, tenantCode)
+		// 确定要查询的 domain 列表
+		domains := []string{tenantCode}
+		if inheritedRoles[role] {
+			// 继承角色：同时查询 default domain
+			domains = append(domains, constants.DefaultTenantCode)
+		}
 
-		for _, policy := range policies {
-			if len(policy) >= 4 {
-				resource := policy[2]
-				action := policy[3]
+		// 从所有相关 domain 查询权限
+		for _, domain := range domains {
+			// 使用 Casbin 获取角色的策略
+			policies, _ := s.enforcer.GetFilteredPolicy(0, role, domain)
 
-				// 对于 BUTTON 类型，resource 格式为 "btn:menuID:action"，action 是 "*"
-				if (action == "*" || action == "") && strings.HasPrefix(resource, "btn:") {
-					buttonResources = append(buttonResources, resource)
+			for _, policy := range policies {
+				if len(policy) >= 4 {
+					resource := policy[2]
+					action := policy[3]
+
+					// 对于 BUTTON 类型，resource 格式为 "btn:menuID:action"，action 是 "*"
+					if (action == "*" || action == "") && strings.HasPrefix(resource, "btn:") {
+						buttonResources[resource] = true
+					}
 				}
 			}
 		}
@@ -259,7 +288,7 @@ func (s *UserMenuService) getButtonPermissionsForRoles(ctx context.Context, role
 
 	// 根据 resource 查询权限详情
 	var permissions []*model.Permission
-	for _, resource := range buttonResources {
+	for resource := range buttonResources {
 		perm, err := s.permissionRepo.GetByResource(ctx, resource)
 		if err == nil {
 			permissions = append(permissions, perm)
@@ -267,22 +296,6 @@ func (s *UserMenuService) getButtonPermissionsForRoles(ctx context.Context, role
 	}
 
 	return permissions, nil
-}
-
-// intersectMenuIDs 计算两个菜单ID列表的交集
-func (s *UserMenuService) intersectMenuIDs(menuIDs, tenantMenuIDs []string) []string {
-	tenantMenuSet := make(map[string]bool, len(tenantMenuIDs))
-	for _, id := range tenantMenuIDs {
-		tenantMenuSet[id] = true
-	}
-
-	var result []string
-	for _, id := range menuIDs {
-		if tenantMenuSet[id] {
-			result = append(result, id)
-		}
-	}
-	return result
 }
 
 // filterVisibleMenus 过滤启用状态的菜单
@@ -325,22 +338,24 @@ func (s *UserMenuService) buildMenuTree(menus []*model.Menu) []*dto.MenuTreeNode
 
 // toMenuInfo 转换为菜单信息格式
 func (s *UserMenuService) toMenuInfo(menu *model.Menu) *dto.MenuInfo {
+	resource := "menu:" + menu.MenuID
+	action := "*"
 	return &dto.MenuInfo{
-		PermissionID: menu.MenuID,
-		Name:         menu.Name,
-		Type:         "MENU",
-		ParentID:     stringPtr(menu.ParentID),
-		Resource:     stringPtr("menu:" + menu.MenuID),
-		Action:       stringPtr("*"),
-		Path:         stringPtr(menu.Path),
-		Component:    stringPtr(menu.Component),
-		Redirect:     stringPtr(menu.Redirect),
-		Icon:         stringPtr(menu.Icon),
-		Sort:         int16Ptr(menu.Sort),
-		Status:       menu.Status,
-		Description:  stringPtr(menu.Description),
-		CreatedAt:    menu.CreatedAt,
-		UpdatedAt:    menu.UpdatedAt,
+		MenuID:      menu.MenuID,
+		Name:        menu.Name,
+		Type:        "MENU",
+		ParentID:    stringPtr(menu.ParentID),
+		Resource:    &resource,
+		Action:      &action,
+		Path:        stringPtr(menu.Path),
+		Component:   stringPtr(menu.Component),
+		Redirect:    stringPtr(menu.Redirect),
+		Icon:        stringPtr(menu.Icon),
+		Sort:        int16Ptr(menu.Sort),
+		Status:      menu.Status,
+		Description: stringPtr(menu.Description),
+		CreatedAt:   menu.CreatedAt,
+		UpdatedAt:   menu.UpdatedAt,
 	}
 }
 

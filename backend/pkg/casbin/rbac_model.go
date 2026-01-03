@@ -1,6 +1,20 @@
 package casbin
 
 // DefaultModel 默认的RBAC模型
+//
+// Domain 使用规范：
+// 1. default domain：用于存储角色模板的权限（超管在 default 租户创建的角色）
+// 2. 租户 domain（如 tenant-a, tenant-b）：用于存储租户特定的用户-角色绑定和权限
+//
+// 策略存储规则：
+// - p, role_code, domain, resource, action：权限策略
+//   - 模板角色的权限存储在 default domain
+//   - 租户角色继承模板时，不再物理复制权限，而是通过应用层实时查询
+// - g, username, role_code, tenant_code：用户-角色绑定（必须带租户）
+// - g2, child_role, parent_role：角色继承（不需要 domain，用于模板继承）
+//
+// 重要：由于 matcher 要求 r.dom == p.dom，继承角色的跨 domain 权限通过应用层处理
+// 见 UserMenuService.getMenuPermissionsForRoles 中的实现
 func DefaultModel() string {
 	return `
 [request_definition]
