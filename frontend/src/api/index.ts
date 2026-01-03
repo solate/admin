@@ -3,6 +3,8 @@ export * from './auth'
 export * from './role'
 export * from './menu'
 export * from './tenant'
+export * from './department'
+export * from './position'
 
 // user 和 auditLog 有类型冲突，需要分别导入
 export type {
@@ -29,3 +31,5 @@ export { roleApi } from './role'
 export { menuApi } from './menu'
 export { tenantApi } from './tenant'
 export { auditLogApi } from './auditLog'
+export { departmentApi } from './department'
+export { positionApi } from './position'

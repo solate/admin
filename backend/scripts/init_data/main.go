@@ -16,10 +16,12 @@ import (
 
 // SeedResult 初始化结果
 type SeedResult struct {
-	Tenant   model.Tenant
-	User     model.User
-	Roles    []model.Role
-	Password string // 仅用于输出，不存储
+	Tenant      model.Tenant
+	User        model.User
+	Roles       []model.Role
+	Departments []model.Department
+	Positions   []model.Position
+	Password    string // 仅用于输出，不存储
 }
 
 func main() {
@@ -46,11 +48,11 @@ func main() {
 	defer func() {
 		sqlDB, err := db.DB()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "⚠️ 获取 sql.DB 失败: %v\n", err)
+			fmt.Fprintf(os.Stderr, "⚠️  获取 sql.DB 失败: %v\n", err)
 			return
 		}
 		if err := sqlDB.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "⚠️ 关闭数据库连接失败: %v\n", err)
+			fmt.Fprintf(os.Stderr, "⚠️  关闭数据库连接失败: %v\n", err)
 		}
 	}()
 
@@ -75,32 +77,37 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	}
 
 	// 生成所需的ID
-	ids, err := idgen.GenerateUUIDs(5)
+	// 5个基础ID (租户、用户、3个角色) + 19个部门ID + 37个岗位ID = 61个ID
+	ids, err := idgen.GenerateUUIDs(61)
 	if err != nil {
 		return nil, fmt.Errorf("生成ID失败: %w", err)
 	}
+	idIndex := 0
 
 	// 1. 初始化租户
-	tenant, err := seeds.SeedTenant(db, ids[0])
+	tenant, err := seeds.SeedTenant(db, ids[idIndex])
 	if err != nil {
 		return nil, fmt.Errorf("初始化租户失败: %w", err)
 	}
 	result.Tenant = *tenant
+	idIndex++
 
 	// 2. 初始化用户
-	user, err := seeds.SeedUser(db, ids[1], tenant.TenantID)
+	user, err := seeds.SeedUser(db, ids[idIndex], tenant.TenantID)
 	if err != nil {
 		return nil, fmt.Errorf("初始化用户失败: %w", err)
 	}
 	result.User = *user
+	idIndex++
 
 	// 3. 初始化角色
-	roleDefs := seeds.DefaultRoleDefinitions(ids[2:5])
+	roleDefs := seeds.DefaultRoleDefinitions(ids[idIndex : idIndex+3])
 	roles, err := seeds.SeedRoles(db, roleDefs, tenant.TenantID)
 	if err != nil {
 		return nil, fmt.Errorf("初始化角色失败: %w", err)
 	}
 	result.Roles = roles
+	idIndex += 3
 
 	// 4. 初始化 Casbin 表（如果不存在）
 	if err := seeds.InitCasbinTable(db); err != nil {
@@ -121,6 +128,24 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	if err := seeds.SeedSystemMenus(db); err != nil {
 		return nil, fmt.Errorf("初始化系统菜单失败: %w", err)
 	}
+
+	// 8. 初始化组织架构 - 部门
+	fmt.Println("\n📁 开始初始化组织架构")
+	deptDefs := seeds.DefaultDepartmentDefinitions(ids[idIndex : idIndex+19])
+	departments, err := seeds.SeedDepartments(db, deptDefs, tenant.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("初始化部门失败: %w", err)
+	}
+	result.Departments = departments
+	idIndex += 19
+
+	// 9. 初始化组织架构 - 岗位
+	posDefs := seeds.DefaultPositionDefinitions(ids[idIndex:])
+	positions, err := seeds.SeedPositions(db, posDefs, tenant.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("初始化岗位失败: %w", err)
+	}
+	result.Positions = positions
 
 	return result, nil
 }
@@ -146,6 +171,120 @@ func printResult(result *SeedResult) {
 		}
 		fmt.Printf("%s(%s)", role.Name, role.RoleCode)
 	}
+	fmt.Printf("\n\n📁 组织架构: %d个部门, %d个岗位\n", len(result.Departments), len(result.Positions))
+
+	// 打印部门树结构
+	fmt.Println("\n📂 部门结构:")
+	printDepartmentTree(result.Departments, "", 0)
+
+	// 打印岗位列表（按职级排序）
+	fmt.Println("\n💼 岗位列表（按职级排序）:")
+	printPositionList(result.Positions)
+
 	fmt.Println()
-	fmt.Println()
+}
+
+// printDepartmentTree 打印部门树
+func printDepartmentTree(departments []model.Department, prefix string, level int) {
+	// 找出根部门或指定父级的部门
+	var children []model.Department
+	if level == 0 {
+		children = filterByParentID(departments, "")
+	} else {
+		return
+	}
+
+	for i, dept := range children {
+		isLast := i == len(children)-1
+		connector := "├──"
+		if isLast {
+			connector = "└──"
+		}
+
+		fmt.Printf("%s%s %s\n", prefix+connector, dept.DepartmentName, getDepartmentInfo(dept))
+
+		// 获取子部门
+		subChildren := filterByParentID(departments, dept.DepartmentID)
+		if len(subChildren) > 0 {
+			newPrefix := prefix
+			if isLast {
+				newPrefix += "    "
+			} else {
+				newPrefix += "│   "
+			}
+			printDepartmentTreeRecursive(departments, dept.DepartmentID, newPrefix)
+		}
+	}
+}
+
+// printDepartmentTreeRecursive 递归打印部门树
+func printDepartmentTreeRecursive(departments []model.Department, parentID string, prefix string) {
+	children := filterByParentID(departments, parentID)
+
+	for i, dept := range children {
+		isLast := i == len(children)-1
+		connector := "├──"
+		if isLast {
+			connector = "└──"
+		}
+
+		fmt.Printf("%s%s %s\n", prefix+connector, dept.DepartmentName, getDepartmentInfo(dept))
+
+		// 获取子部门
+		subChildren := filterByParentID(departments, dept.DepartmentID)
+		if len(subChildren) > 0 {
+			newPrefix := prefix
+			if isLast {
+				newPrefix += "    "
+			} else {
+				newPrefix += "│   "
+			}
+			printDepartmentTreeRecursive(departments, dept.DepartmentID, newPrefix)
+		}
+	}
+}
+
+// filterByParentID 按父部门ID过滤
+func filterByParentID(departments []model.Department, parentID string) []model.Department {
+	var result []model.Department
+	for _, dept := range departments {
+		if dept.ParentID == parentID {
+			result = append(result, dept)
+		}
+	}
+	return result
+}
+
+// getDepartmentInfo 获取部门信息字符串
+func getDepartmentInfo(dept model.Department) string {
+	return fmt.Sprintf("[排序:%d]", dept.Sort)
+}
+
+// printPositionList 打印岗位列表
+func printPositionList(positions []model.Position) {
+	// 按职级降序排序
+	sortedPositions := make([]model.Position, len(positions))
+	copy(sortedPositions, positions)
+
+	for i := 0; i < len(sortedPositions)-1; i++ {
+		for j := i + 1; j < len(sortedPositions); j++ {
+			if sortedPositions[i].Level < sortedPositions[j].Level {
+				sortedPositions[i], sortedPositions[j] = sortedPositions[j], sortedPositions[i]
+			}
+		}
+	}
+
+	// 按职级分组打印
+	currentLevel := sortedPositions[0].Level + 1
+	for _, pos := range sortedPositions {
+		if pos.Level < currentLevel {
+			if currentLevel <= 100 {
+				fmt.Printf("\n   职级 %d:\n", pos.Level)
+			} else {
+				fmt.Printf("\n   管理层:\n")
+			}
+			currentLevel = pos.Level
+		}
+		fmt.Printf("   • %s (%s) - L%d\n", pos.PositionName, pos.PositionCode, pos.Level)
+	}
 }
