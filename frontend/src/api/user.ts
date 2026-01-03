@@ -77,12 +77,11 @@ export interface CreateUserResponse {
 
 // 更新用户请求
 export interface UpdateUserRequest {
-  name?: string
+  nickname?: string
   email?: string
   status?: number
-  sex?: number
-  avatar?: string
-  role_code_list?: string[]
+  phone?: string
+  remark?: string
 }
 
 // 登录日志信息

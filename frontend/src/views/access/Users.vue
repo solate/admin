@@ -123,8 +123,8 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
-              {{ getStatusText(row.status) }}
+            <el-tag :type="StatusUtils.getTagType(row.status)" size="small">
+              {{ StatusUtils.getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -151,10 +151,10 @@
                   <el-dropdown-item command="permissions">权限设置</el-dropdown-item>
                   <el-dropdown-item command="logs">操作日志</el-dropdown-item>
                   <el-dropdown-item
-                    :command="row.status === 1 ? 'disable' : 'enable'"
-                    :divided="row.status === 1"
+                    :command="StatusUtils.isActive(row.status) ? 'disable' : 'enable'"
+                    :divided="StatusUtils.isActive(row.status)"
                   >
-                    {{ row.status === 1 ? '禁用账户' : '启用账户' }}
+                    {{ StatusUtils.getToggleActionText(row.status) + '账户' }}
                   </el-dropdown-item>
                   <el-dropdown-item command="delete" divided class="danger-item">
                     删除用户
@@ -187,8 +187,8 @@
                     {{ user.user_name?.charAt(0)?.toUpperCase() || '?' }}
                   </template>
                 </el-avatar>
-                <el-tag :type="getStatusType(user.status)" size="small">
-                  {{ getStatusText(user.status) }}
+                <el-tag :type="StatusUtils.getTagType(user.status)" size="small">
+                  {{ StatusUtils.getStatusText(user.status) }}
                 </el-tag>
               </div>
               <div class="user-card-body">
@@ -232,10 +232,10 @@
                       <el-dropdown-item command="permissions">权限设置</el-dropdown-item>
                       <el-dropdown-item command="logs">操作日志</el-dropdown-item>
                       <el-dropdown-item
-                        :command="user.status === 1 ? 'disable' : 'enable'"
-                        :divided="user.status === 1"
+                        :command="StatusUtils.isActive(user.status) ? 'disable' : 'enable'"
+                        :divided="StatusUtils.isActive(user.status)"
                       >
-                        {{ user.status === 1 ? '禁用账户' : '启用账户' }}
+                        {{ StatusUtils.getToggleActionText(user.status) + '账户' }}
                       </el-dropdown-item>
                       <el-dropdown-item command="delete" divided class="danger-item">
                         删除用户
@@ -338,7 +338,7 @@
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="formData.status">
                 <el-radio :value="1">正常</el-radio>
-                <el-radio :value="0">禁用</el-radio>
+                <el-radio :value="2">禁用</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
@@ -360,6 +360,7 @@ import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import dayjs from 'dayjs'
 import { userApi, type UserInfo, type UserListParams } from '@/api/user'
 import { roleApi, type RoleInfo } from '@/api/role'
+import { StatusUtils } from '@/utils/status'
 
 // 接口定义
 interface User {
@@ -464,14 +465,6 @@ const tableData = ref<User[]>([])
 const formRef = ref<FormInstance>()
 
 // 工具函数
-const getStatusType = (status: number) => {
-  return status === 1 ? 'success' : 'danger'
-}
-
-const getStatusText = (status: number) => {
-  return status === 1 ? '正常' : '禁用'
-}
-
 const formatDate = (timestamp: number) => {
   return dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm')
 }
@@ -537,10 +530,10 @@ const handleSubmit = async () => {
     } else {
       // 编辑用户
       await userApi.update(formData.user_id, {
-        name: formData.name,
+        nickname: formData.name,
         email: formData.email || undefined,
         status: formData.status,
-        role_code_list: formData.role_ids
+        phone: formData.phone || undefined
       })
       ElMessage.success('用户更新成功')
     }
@@ -597,9 +590,9 @@ const handleMoreAction = async (command: string, user: User) => {
           }
         )
 
-        const newStatus = command === 'enable' ? 1 : 0
+        const newStatus = StatusUtils.toggleStatus(user.status)
         await userApi.update(user.user_id, { status: newStatus })
-        ElMessage.success(`用户${command === 'enable' ? '启用' : '禁用'}成功`)
+        ElMessage.success(`用户${StatusUtils.getToggleActionText(user.status)}成功`)
         fetchUsers()
       } catch (error: any) {
         if (error !== 'cancel') {
