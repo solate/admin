@@ -21,6 +21,7 @@ type SeedResult struct {
 	Roles       []model.Role
 	Departments []model.Department
 	Positions   []model.Position
+	DictTypes   []model.DictType
 	Password    string // 仅用于输出，不存储
 }
 
@@ -147,6 +148,18 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	}
 	result.Positions = positions
 
+	// 10. 初始化系统字典
+	fmt.Println("\n📚 开始初始化系统字典")
+	dictDefs := seeds.DefaultDictTypeDefinitions()
+	dictTypes, err := seeds.SeedDicts(db, dictDefs, tenant.TenantID)
+	if err != nil {
+		return nil, fmt.Errorf("初始化字典失败: %w", err)
+	}
+	// 转换 []*model.DictType 为 []model.DictType
+	for _, dt := range dictTypes {
+		result.DictTypes = append(result.DictTypes, *dt)
+	}
+
 	return result, nil
 }
 
@@ -180,6 +193,10 @@ func printResult(result *SeedResult) {
 	// 打印岗位列表（按职级排序）
 	fmt.Println("\n💼 岗位列表（按职级排序）:")
 	printPositionList(result.Positions)
+
+	// 打印字典信息
+	fmt.Printf("\n📚 系统字典: 共 %d 个字典类型\n", len(result.DictTypes))
+	printDictList(result.DictTypes)
 
 	fmt.Println()
 }
@@ -286,5 +303,12 @@ func printPositionList(positions []model.Position) {
 			currentLevel = pos.Level
 		}
 		fmt.Printf("   • %s (%s) - L%d\n", pos.PositionName, pos.PositionCode, pos.Level)
+	}
+}
+
+// printDictList 打印字典列表
+func printDictList(dictTypes []model.DictType) {
+	for _, dict := range dictTypes {
+		fmt.Printf("   • %s (%s) - %s\n", dict.TypeName, dict.TypeCode, dict.Description)
 	}
 }
