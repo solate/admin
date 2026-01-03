@@ -24,6 +24,7 @@ const (
 	ResourceTypeTenant     = "tenant"     // 租户资源
 	ResourceTypeMenu       = "menu"       // 菜单资源
 	ResourceTypeDict       = "dict"       // 字典资源
+	ResourceTypeDictItem   = "dict_item"  // 字典项资源
 	ResourceTypeDept       = "dept"       // 部门资源
 	ResourceTypePosition   = "position"   // 岗位资源
 )

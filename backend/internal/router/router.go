@@ -165,10 +165,11 @@ func Setup(r *gin.Engine, app *App) {
 			// 系统字典管理接口（超管专用）
 			systemDict := authorized.Group("/system/dict")
 			{
-				systemDict.POST("", app.Handlers.DictHandler.CreateSystemDict)              // 创建系统字典
-				systemDict.GET("", app.Handlers.DictHandler.ListSystemDictTypes)            // 获取系统字典列表
-				systemDict.PUT("/:type_code", app.Handlers.DictHandler.UpdateSystemDict)    // 更新系统字典
-				systemDict.DELETE("/:type_code", app.Handlers.DictHandler.DeleteSystemDict) // 删除系统字典
+				systemDict.POST("", app.Handlers.DictHandler.CreateSystemDict)                         // 创建系统字典
+				systemDict.GET("", app.Handlers.DictHandler.ListSystemDictTypes)                       // 获取系统字典列表
+				systemDict.PUT("/:type_code", app.Handlers.DictHandler.UpdateSystemDict)               // 更新系统字典
+				systemDict.DELETE("/:type_code", app.Handlers.DictHandler.DeleteSystemDict)            // 删除系统字典
+				systemDict.DELETE("/:type_code/items/:value", app.Handlers.DictHandler.DeleteSystemDictItem) // 删除系统字典项
 			}
 			// 字典类型列表接口
 			authorized.GET("/dict-types", app.Handlers.DictHandler.ListDictTypes) // 获取字典类型列表

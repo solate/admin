@@ -214,6 +214,38 @@ func (h *DictHandler) ResetDictItem(c *gin.Context) {
 	response.Success(c, gin.H{"reset": true})
 }
 
+// DeleteSystemDictItem 删除系统字典项（超管专用）
+// @Summary 删除系统字典项
+// @Description 删除系统字典项（超管专用），真正的删除操作
+// @Tags 字典管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param type_code path string true "字典编码"
+// @Param value path string true "字典值"
+// @Success 200 {object} response.Response "删除成功"
+// @Router /system/dict/:type_code/items/:value [delete]
+func (h *DictHandler) DeleteSystemDictItem(c *gin.Context) {
+	typeCode := c.Param("type_code")
+	if typeCode == "" {
+		response.Error(c, xerr.ErrInvalidParams)
+		return
+	}
+
+	value := c.Param("value")
+	if value == "" {
+		response.Error(c, xerr.ErrInvalidParams)
+		return
+	}
+
+	if err := h.dictService.DeleteSystemDictItem(c.Request.Context(), typeCode, value); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{"deleted": true})
+}
+
 // ListDictTypes 获取字典类型列表（所有用户）
 // @Summary 获取字典类型列表
 // @Description 分页获取字典类型列表

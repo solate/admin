@@ -5,6 +5,7 @@ export * from './menu'
 export * from './tenant'
 export * from './department'
 export * from './position'
+export * from './dict'
 
 // user 和 auditLog 有类型冲突，需要分别导入
 export type {
@@ -33,3 +34,4 @@ export { tenantApi } from './tenant'
 export { auditLogApi } from './auditLog'
 export { departmentApi } from './department'
 export { positionApi } from './position'
+export { dictApi } from './dict'

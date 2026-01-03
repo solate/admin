@@ -19,21 +19,21 @@ type CreateDictItemRequest struct {
 
 // UpdateSystemDictRequest 更新系统字典请求
 type UpdateSystemDictRequest struct {
-	TypeName    string `json:"type_name" binding:"omitempty"` // 字典名称
-	Description string `json:"description" binding:"omitempty"` // 字典描述
+	TypeName    string                `json:"type_name" binding:"omitempty"`    // 字典名称
+	Description string                `json:"description" binding:"omitempty"` // 字典描述
+	Items       []CreateDictItemRequest `json:"items" binding:"omitempty"`      // 字典项列表（更新时替换所有项）
 }
 
 // UpdateDictItemRequest 更新字典项请求（租户覆盖）
 type UpdateDictItemRequest struct {
-	TypeCode string `json:"type_code" binding:"required"` // 字典编码
-	Value    string `json:"value" binding:"required"`    // 字典值（用于匹配）
-	Label    string `json:"label" binding:"required"`    // 新的显示文本
-	Sort     int    `json:"sort" binding:"omitempty"`    // 排序
+	Label string `json:"label" binding:"required"` // 新的显示文本
+	Sort  int    `json:"sort" binding:"omitempty"` // 排序
 }
 
 // BatchUpdateDictItemsRequest 批量更新字典项请求
 type BatchUpdateDictItemsRequest struct {
-	Items []UpdateDictItemRequest `json:"items" binding:"required,min=1"` // 字典项列表
+	TypeCode string                      `json:"type_code" binding:"required"` // 字典编码
+	Items    []UpdateDictItemRequest     `json:"items" binding:"required,min=1"` // 字典项列表
 }
 
 // DictItemResponse 字典项响应
