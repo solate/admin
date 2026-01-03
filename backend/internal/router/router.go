@@ -123,6 +123,31 @@ func Setup(r *gin.Engine, app *App) {
 				menu.PUT("/:menu_id/status/:status", app.Handlers.MenuHandler.UpdateMenuStatus) // 更新菜单状态
 			}
 
+			// 部门管理（租户管理员+超管）
+			dept := authorized.Group("/departments")
+			{
+				dept.POST("", app.Handlers.DepartmentHandler.CreateDepartment)                                // 创建部门
+				dept.GET("", app.Handlers.DepartmentHandler.ListDepartments)                                  // 获取部门列表
+				dept.GET("/tree", app.Handlers.DepartmentHandler.GetDepartmentTree)                           // 获取部门树
+				dept.GET("/:department_id", app.Handlers.DepartmentHandler.GetDepartment)                     // 获取部门详情
+				dept.PUT("/:department_id", app.Handlers.DepartmentHandler.UpdateDepartment)                  // 更新部门
+				dept.DELETE("/:department_id", app.Handlers.DepartmentHandler.DeleteDepartment)               // 删除部门
+				dept.PUT("/:department_id/status/:status", app.Handlers.DepartmentHandler.UpdateDepartmentStatus) // 更新部门状态
+				dept.GET("/:department_id/children", app.Handlers.DepartmentHandler.GetChildren)              // 获取子部门
+			}
+
+			// 岗位管理（租户管理员+超管）
+			position := authorized.Group("/positions")
+			{
+				position.POST("", app.Handlers.PositionHandler.CreatePosition)                              // 创建岗位
+				position.GET("", app.Handlers.PositionHandler.ListPositions)                                // 获取岗位列表
+				position.GET("/all", app.Handlers.PositionHandler.ListAllPositions)                        // 获取所有岗位（不分页）
+				position.GET("/:position_id", app.Handlers.PositionHandler.GetPosition)                     // 获取岗位详情
+				position.PUT("/:position_id", app.Handlers.PositionHandler.UpdatePosition)                  // 更新岗位
+				position.DELETE("/:position_id", app.Handlers.PositionHandler.DeletePosition)               // 删除岗位
+				position.PUT("/:position_id/status/:status", app.Handlers.PositionHandler.UpdatePositionStatus) // 更新岗位状态
+			}
+
 			// 用户菜单接口（基于权限动态加载）
 			userMenu := authorized.Group("/user")
 			{

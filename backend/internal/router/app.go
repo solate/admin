@@ -43,6 +43,8 @@ type Handlers struct {
 	UserMenuHandler     *handler.UserMenuHandler
 	LoginLogHandler     *handler.LoginLogHandler
 	OperationLogHandler *handler.OperationLogHandler
+	DepartmentHandler   *handler.DepartmentHandler
+	PositionHandler     *handler.PositionHandler
 }
 
 func NewApp() (*App, error) {
@@ -255,6 +257,8 @@ func (s *App) initHandlers() error {
 	tenantMenuRepo := repository.NewTenantMenuRepo(s.DB)
 	loginLogRepo := repository.NewLoginLogRepo(s.DB)
 	operationLogRepo := repository.NewOperationLogRepo(s.DB)
+	departmentRepo := repository.NewDepartmentRepo(s.DB)
+	positionRepo := repository.NewPositionRepo(s.DB)
 
 	// 初始化服务层
 	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, s.Config, s.AuditLogWriter) // 初始化认证服务
@@ -265,6 +269,8 @@ func (s *App) initHandlers() error {
 	userMenuService := service.NewUserMenuService(menuRepo, permissionRepo, tenantMenuRepo, s.Enforcer)                                         // 初始化用户菜单服务
 	loginLogService := service.NewLoginLogService(loginLogRepo)                                                                                 // 初始化登录日志服务
 	operationLogService := service.NewOperationLogService(operationLogRepo)                                                                     // 初始化操作日志服务
+	departmentService := service.NewDepartmentService(departmentRepo, userRepo)                                                                  // 初始化部门服务
+	positionService := service.NewPositionService(positionRepo)                                                                                 // 初始化岗位服务
 
 	s.Handlers = &Handlers{
 		HealthHandler:       handler.NewHealthHandler(),
@@ -277,6 +283,8 @@ func (s *App) initHandlers() error {
 		UserMenuHandler:     handler.NewUserMenuHandler(userMenuService),
 		LoginLogHandler:     handler.NewLoginLogHandler(loginLogService),
 		OperationLogHandler: handler.NewOperationLogHandler(operationLogService),
+		DepartmentHandler:   handler.NewDepartmentHandler(departmentService),
+		PositionHandler:     handler.NewPositionHandler(positionService),
 	}
 	return nil
 }

@@ -12,6 +12,8 @@ const (
 	ModuleLog        = "log"        // 日志管理
 	ModuleFile       = "file"       // 文件管理
 	ModuleAuth       = "auth"       // 认证相关 (登录、登出等)
+	ModuleDept       = "dept"       // 部门管理
+	ModulePosition   = "position"   // 岗位管理
 )
 
 // 资源类型常量（用于操作日志记录）
@@ -22,6 +24,8 @@ const (
 	ResourceTypeTenant     = "tenant"     // 租户资源
 	ResourceTypeMenu       = "menu"       // 菜单资源
 	ResourceTypeDict       = "dict"       // 字典资源
+	ResourceTypeDept       = "dept"       // 部门资源
+	ResourceTypePosition   = "position"   // 岗位资源
 )
 
 // 操作类型常量
@@ -66,4 +70,6 @@ var ModuleText = map[string]string{
 	ModuleLog:        "日志管理",
 	ModuleFile:       "文件管理",
 	ModuleAuth:       "认证管理",
+	ModuleDept:       "部门管理",
+	ModulePosition:   "岗位管理",
 }

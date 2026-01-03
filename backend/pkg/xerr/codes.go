@@ -56,4 +56,18 @@ var (
 	ErrMenuHasChildren      = New(2404, "菜单下有子菜单，无法删除")
 	ErrMenuInvalidParent    = New(2405, "父菜单无效")
 	ErrMenuCannotMoveToSelf = New(2406, "不能将菜单移动到自己或其子菜单下")
+
+	// 部门错误 2500-2599
+	ErrDeptNotFound       = New(2500, "部门不存在")
+	ErrDeptExists         = New(2501, "部门已存在")
+	ErrDeptHasChildren    = New(2502, "部门下有子部门，无法删除")
+	ErrDeptHasUsers       = New(2503, "部门下有用户，无法删除")
+	ErrParentDeptNotFound = New(2504, "父部门不存在")
+	ErrInvalidParentDept  = New(2505, "父部门无效")
+
+	// 岗位错误 2600-2699
+	ErrPositionNotFound   = New(2600, "岗位不存在")
+	ErrPositionExists     = New(2601, "岗位已存在")
+	ErrPositionCodeExists = New(2602, "岗位编码已存在")
+	ErrPositionInUse      = New(2603, "岗位正在使用中")
 )

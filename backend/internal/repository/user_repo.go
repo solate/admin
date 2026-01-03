@@ -119,3 +119,17 @@ func (r *UserRepo) ListByIDsAndFilters(ctx context.Context, userIDs []string, of
 	users, err := query.Order(r.q.User.CreatedAt.Desc()).Offset(offset).Limit(limit).Find()
 	return users, total, err
 }
+
+// CountByDept 统计部门下的用户数
+func (r *UserRepo) CountByDept(ctx context.Context, departmentID string) (int64, error) {
+	return r.q.User.WithContext(ctx).
+		Where(r.q.User.DepartmentID.Eq(departmentID)).
+		Count()
+}
+
+// ListByDeptWithChildren 按部门及子部门查询用户
+func (r *UserRepo) ListByDeptWithChildren(ctx context.Context, departmentIDs []string) ([]*model.User, error) {
+	return r.q.User.WithContext(ctx).
+		Where(r.q.User.DepartmentID.In(departmentIDs...)).
+		Find()
+}
