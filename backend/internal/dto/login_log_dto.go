@@ -19,7 +19,7 @@ type LoginLogResponse struct {
 
 // ListLoginLogsRequest 获取登录日志列表请求
 type ListLoginLogsRequest struct {
-	*pagination.Request `json:",inline"`
+	pagination.Request  `json:",inline"`
 	UserID              string  `form:"user_id" binding:"omitempty"`
 	UserName            string  `form:"user_name" binding:"omitempty"`
 	LoginType           string  `form:"login_type" binding:"omitempty"` // PASSWORD, SSO, OAUTH
@@ -31,6 +31,6 @@ type ListLoginLogsRequest struct {
 
 // ListLoginLogsResponse 获取登录日志列表响应
 type ListLoginLogsResponse struct {
-	*pagination.Response `json:",inline"`
-	List                 []*LoginLogResponse `json:"list"` // 列表数据
+	pagination.Response `json:",inline"`
+	List                []*LoginLogResponse `json:"list"` // 列表数据
 }

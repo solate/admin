@@ -37,15 +37,15 @@ type PositionResponse struct {
 
 // ListPositionsRequest 岗位列表请求
 type ListPositionsRequest struct {
-	*pagination.Request `json:",inline"`
+	pagination.Request  `json:",inline"`
 	Keyword             string `form:"keyword" binding:"omitempty"`          // 关键词搜索（岗位名称/编码）
 	Status              int    `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
 }
 
 // ListPositionsResponse 岗位列表响应
 type ListPositionsResponse struct {
-	*pagination.Response `json:",inline"`
-	List                 []*PositionResponse `json:"list"` // 列表数据
+	pagination.Response `json:",inline"`
+	List                []*PositionResponse `json:"list"` // 列表数据
 }
 
 // PositionInfo 岗位基础信息（可复用）

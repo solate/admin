@@ -21,9 +21,9 @@ type Response struct {
 }
 
 // NewResponse 创建分页响应
-func NewResponse(r *Request, total int64) *Response {
+func NewResponse(r Request, total int64) Response {
 	page, pageSize := r.GetPageParams()
-	return &Response{
+	return Response{
 		Page:      page,
 		PageSize:  pageSize,
 		Total:     total,

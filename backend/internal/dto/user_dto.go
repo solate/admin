@@ -46,7 +46,7 @@ type UserResponse struct {
 
 // ListUsersRequest 用户列表请求
 type ListUsersRequest struct {
-	*pagination.Request `json:",inline"`
+	pagination.Request  `json:",inline"`
 	UserName            string `form:"username" binding:"omitempty"`         // 用户名模糊搜索
 	Status              int    `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
 	TenantID            string `form:"tenant_id" binding:"omitempty"`        // 租户ID筛选
@@ -54,8 +54,8 @@ type ListUsersRequest struct {
 
 // ListUsersResponse 用户列表响应
 type ListUsersResponse struct {
-	*pagination.Response `json:",inline"`
-	List                 []*UserResponse `json:"list"` // 列表数据
+	pagination.Response `json:",inline"`
+	List                []*UserResponse `json:"list"` // 列表数据
 }
 
 // ProfileResponse 用户档案响应（含角色和租户信息）

@@ -40,7 +40,7 @@ type DepartmentTreeNode struct {
 
 // ListDepartmentsRequest 部门列表请求
 type ListDepartmentsRequest struct {
-	*pagination.Request `json:",inline"`
+	pagination.Request  `json:",inline"`
 	Keyword             string `form:"keyword" binding:"omitempty"`          // 关键词搜索（部门名称）
 	Status              int    `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
 	ParentID            string `form:"parent_id" binding:"omitempty"`        // 父部门ID（为空则查询所有）
@@ -48,8 +48,8 @@ type ListDepartmentsRequest struct {
 
 // ListDepartmentsResponse 部门列表响应
 type ListDepartmentsResponse struct {
-	*pagination.Response `json:",inline"`
-	List                 []*DepartmentResponse `json:"list"` // 列表数据
+	pagination.Response `json:",inline"`
+	List                []*DepartmentResponse `json:"list"` // 列表数据
 }
 
 // DepartmentTreeResponse 部门树响应

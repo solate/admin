@@ -29,7 +29,7 @@ type TenantResponse struct {
 
 // TenantListRequest 租户列表查询请求
 type TenantListRequest struct {
-	*pagination.Request `json:",inline"`
+	pagination.Request  `json:",inline"`
 	Code                string `form:"code" example:"tenant_shanghai"`                   // 租户编码（模糊查询）
 	Name                string `form:"name" example:"上海"`                                // 租户名称（模糊查询）
 	Status              int    `form:"status" binding:"omitempty,oneof=1 2" example:"1"` // 状态筛选（指针表示可选）
@@ -37,8 +37,8 @@ type TenantListRequest struct {
 
 // TenantListResponse 租户列表响应
 type TenantListResponse struct {
-	*pagination.Response `json:",inline"`
-	List                 []*TenantResponse `json:"list"` // 列表数据
+	pagination.Response `json:",inline"`
+	List                []*TenantResponse `json:"list"` // 列表数据
 }
 
 // TenantInfo 租户基础信息（可复用）

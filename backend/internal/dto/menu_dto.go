@@ -59,7 +59,7 @@ type MenuTreeNode struct {
 
 // ListMenusRequest 菜单列表请求
 type ListMenusRequest struct {
-	*pagination.Request `json:",inline"`
+	pagination.Request  `json:",inline"`
 	Name                string `form:"name" binding:"omitempty"`             // 菜单名称搜索
 	Type                string `form:"type" binding:"omitempty,oneof=MENU BUTTON"` // 类型筛选
 	Status              *int16 `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
@@ -67,8 +67,8 @@ type ListMenusRequest struct {
 
 // ListMenusResponse 菜单列表响应
 type ListMenusResponse struct {
-	*pagination.Response `json:",inline"`
-	List                 []*MenuInfo `json:"list"` // 列表数据
+	pagination.Response `json:",inline"`
+	List                []*MenuInfo `json:"list"` // 列表数据
 }
 
 // MenuTreeResponse 菜单树响应

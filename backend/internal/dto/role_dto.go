@@ -31,15 +31,15 @@ type RoleResponse struct {
 
 // ListRolesRequest 角色列表请求
 type ListRolesRequest struct {
-	*pagination.Request `json:",inline"`
+	pagination.Request  `json:",inline"`
 	Keyword             string `form:"keyword" binding:"omitempty"`          // 关键词搜索（角色名称/编码）
 	Status              int    `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
 }
 
 // ListRolesResponse 角色列表响应
 type ListRolesResponse struct {
-	*pagination.Response `json:",inline"`
-	List                 []*RoleResponse `json:"list"` // 列表数据
+	pagination.Response `json:",inline"`
+	List                []*RoleResponse `json:"list"` // 列表数据
 }
 
 // RoleInfo 角色基础信息（可复用）

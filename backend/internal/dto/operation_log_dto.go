@@ -4,7 +4,7 @@ import "admin/pkg/pagination"
 
 // ListOperationLogsRequest 操作日志列表请求
 type ListOperationLogsRequest struct {
-	*pagination.Request `json:",inline"`
+	pagination.Request  `json:",inline"`
 	Module              string `form:"module" binding:"omitempty"`           // 模块筛选
 	OperationType       string `form:"operation_type" binding:"omitempty"`   // 操作类型筛选
 	ResourceType        string `form:"resource_type" binding:"omitempty"`    // 资源类型筛选
@@ -39,6 +39,6 @@ type OperationLogResponse struct {
 
 // ListOperationLogsResponse 操作日志列表响应
 type ListOperationLogsResponse struct {
-	*pagination.Response `json:",inline"`
-	List                 []*OperationLogResponse `json:"list"` // 列表数据
+	pagination.Response `json:",inline"`
+	List                []*OperationLogResponse `json:"list"` // 列表数据
 }
