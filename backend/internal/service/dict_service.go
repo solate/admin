@@ -278,51 +278,43 @@ func (s *DictService) batchUpdateSystemDictItems(ctx context.Context, dictType *
 		existingItems = []*model.DictItem{}
 	}
 
-	// 创建 item_id -> item 的映射
+	// 创建 value -> item 的映射（使用 value 作为唯一键）
 	existingMap := make(map[string]*model.DictItem)
 	for _, item := range existingItems {
-		existingMap[item.ItemID] = item
+		existingMap[item.Value] = item
 	}
 
-	// 记录已处理的 item_id
-	processedIDs := make(map[string]bool)
+	// 记录已处理的 value
+	processedValues := make(map[string]bool)
 
 	// 处理请求中的字典项
 	for _, itemReq := range req.Items {
-		// 尝试根据 label 找到现有项（前端传的是 label 和 sort，没有 value）
-		var existingItem *model.DictItem
-		for _, item := range existingItems {
-			if item.Label == itemReq.Label || item.Sort == int32(itemReq.Sort) {
-				existingItem = item
-				break
-			}
-		}
+		existingItem := existingMap[itemReq.Value]
 
 		if existingItem != nil {
 			// 更新现有项
-			processedIDs[existingItem.ItemID] = true
+			processedValues[itemReq.Value] = true
 			updates := map[string]interface{}{
-				"label":     itemReq.Label,
-				"sort":      int32(itemReq.Sort),
+				"label":      itemReq.Label,
+				"sort":       int32(itemReq.Sort),
 				"updated_at": time.Now().UnixMilli(),
 			}
 			if err := s.dictItemRepo.Update(ctx, existingItem.ItemID, updates); err != nil {
 				return xerr.Wrap(xerr.ErrInternal.Code, "更新字典项失败", err)
 			}
 		} else {
-			// 创建新项（超管可以添加新项，需要生成 value）
+			// 创建新项（超管可以添加新项）
 			itemID, err := idgen.GenerateUUID()
 			if err != nil {
 				return xerr.Wrap(xerr.ErrInternal.Code, "生成字典项ID失败", err)
 			}
 
-			// 使用 label 作为 value（超管可以自定义）
 			dictItem := &model.DictItem{
 				ItemID:   itemID,
 				TypeID:   dictType.TypeID,
 				TenantID: defaultTenantID,
 				Label:    itemReq.Label,
-				Value:    itemReq.Label, // 超管添加新项时，使用 label 作为 value
+				Value:    itemReq.Value,
 				Sort:     int32(itemReq.Sort),
 			}
 
@@ -334,7 +326,7 @@ func (s *DictService) batchUpdateSystemDictItems(ctx context.Context, dictType *
 
 	// 删除没有在请求中的项（超管可以删除）
 	for _, item := range existingItems {
-		if !processedIDs[item.ItemID] {
+		if !processedValues[item.Value] {
 			if err := s.dictItemRepo.Delete(ctx, item.ItemID); err != nil {
 				return xerr.Wrap(xerr.ErrInternal.Code, "删除字典项失败", err)
 			}

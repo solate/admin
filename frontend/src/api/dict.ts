@@ -63,6 +63,7 @@ export interface CreateSystemDictRequest {
 // 更新字典项请求
 export interface UpdateDictItemRequest {
   label: string
+  value: string
   sort?: number
 }
 

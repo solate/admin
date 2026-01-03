@@ -83,7 +83,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" width="160">
+        <el-table-column label="创建时间" width="180">
           <template #default="{ row }">
             {{ formatTime(row.created_at) }}
           </template>
@@ -255,6 +255,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Edit, Delete, Plus, Search, Lock, Unlock, List, Grid } from '@element-plus/icons-vue'
 import { StatusUtils } from '../../utils/status'
+import { formatTime } from '../../utils/date'
 import { menuApi, type MenuInfo, type MenuTreeNode, type CreateMenuRequest, type UpdateMenuRequest } from '@/api/menu'
 
 const viewMode = ref<'list' | 'tree'>('list')
@@ -294,10 +295,6 @@ const form = reactive<CreateMenuRequest & UpdateMenuRequest>({
 const rules: FormRules = {
   name: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
   type: [{ required: true, message: '请选择菜单类型', trigger: 'change' }]
-}
-
-const formatTime = (timestamp: number) => {
-  return new Date(timestamp).toLocaleString('zh-CN')
 }
 
 const loadData = async (mode?: 'list' | 'tree') => {

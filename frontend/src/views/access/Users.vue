@@ -128,9 +128,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" width="150">
+        <el-table-column label="创建时间" width="180">
           <template #default="{ row }">
-            {{ formatDate(row.created_at) }}
+            {{ formatTime(row.created_at) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
@@ -211,7 +211,7 @@
                   </div>
                   <div class="meta-item">
                     <span class="meta-label">创建时间</span>
-                    <span class="meta-value">{{ formatDate(user.created_at) }}</span>
+                    <span class="meta-value">{{ formatTime(user.created_at) }}</span>
                   </div>
                 </div>
               </div>
@@ -357,10 +357,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
-import dayjs from 'dayjs'
 import { userApi, type UserInfo, type UserListParams } from '@/api/user'
 import { roleApi, type RoleInfo } from '@/api/role'
 import { StatusUtils } from '@/utils/status'
+import { formatTime } from '@/utils/date'
 
 // 接口定义
 interface User {
@@ -463,11 +463,6 @@ const roleOptions = ref<RoleInfo[]>([])
 const tableData = ref<User[]>([])
 
 const formRef = ref<FormInstance>()
-
-// 工具函数
-const formatDate = (timestamp: number) => {
-  return dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm')
-}
 
 // 事件处理
 const handleSearch = () => {

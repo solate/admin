@@ -207,6 +207,7 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Edit, Delete, Plus, Search, Refresh, Lock, Unlock, MoreFilled } from '@element-plus/icons-vue'
 import { StatusUtils } from '@/utils/status'
+import { formatTime } from '@/utils/date'
 import {
   departmentApi,
   type DepartmentTreeNode,
@@ -303,19 +304,6 @@ const form = reactive<{
 
 const rules: FormRules = {
   department_name: [{ required: true, message: '请输入部门名称', trigger: 'blur' }]
-}
-
-// 格式化时间
-function formatTime(timestamp: number) {
-  if (!timestamp) return '-'
-  const date = new Date(timestamp)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 // 监听树搜索关键词

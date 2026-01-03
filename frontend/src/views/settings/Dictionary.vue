@@ -36,7 +36,7 @@
         <el-table-column prop="type_name" label="字典名称" width="200" />
         <el-table-column prop="type_code" label="字典编码" width="200" />
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column label="创建时间" width="160">
+        <el-table-column label="创建时间" width="180">
           <template #default="{ row }">
             {{ formatTime(row.created_at) }}
           </template>
@@ -261,6 +261,8 @@ import {
   type CreateDictItemRequest,
   type UpdateDictItemRequest
 } from '../../api/dict'
+import { getRolesInfo } from '../../utils/token'
+import { formatTime } from '../../utils/date'
 
 const loading = ref(false)
 const itemsLoading = ref(false)
@@ -285,10 +287,8 @@ const dictItems = ref<DictInfo['items'][0]>([])
 
 // 判断是否是超管
 const isSuperAdmin = computed(() => {
-  // 这里应该从用户状态或 store 中获取
-  // 暂时返回 false，表示普通租户管理员
-  // 如果需要超管功能，需要从用户信息中判断
-  return false
+  const roles = getRolesInfo()
+  return roles.some(role => role.role_code === 'super_admin')
 })
 
 const dictForm = reactive<CreateSystemDictRequest>({
@@ -316,19 +316,6 @@ const itemRules: FormRules = {
   label: [{ required: true, message: '请输入显示文本', trigger: 'blur' }],
   value: [{ required: true, message: '请输入实际值', trigger: 'blur' }],
   sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
-}
-
-// 格式化时间
-function formatTime(timestamp: number) {
-  if (!timestamp) return '-'
-  const date = new Date(timestamp * 1000)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 onMounted(() => {
@@ -415,8 +402,9 @@ async function handleSaveItemForm() {
       // 添加新项
       await dictApi.batchUpdateItems({
         type_code: currentDict.value!.type_code,
-        items: dictItems.value.map(item => ({ label: item.label, sort: item.sort })).concat({
+        items: dictItems.value.map(item => ({ label: item.label, value: item.value, sort: item.sort })).concat({
           label: itemForm.label,
+          value: itemForm.value,
           sort: itemForm.sort
         })
       })
@@ -427,8 +415,8 @@ async function handleSaveItemForm() {
         type_code: currentDict.value!.type_code,
         items: dictItems.value.map(item =>
           item.item_id === currentEditingItem.value?.item_id
-            ? { label: itemForm.label, sort: itemForm.sort }
-            : { label: item.label, sort: item.sort }
+            ? { label: itemForm.label, value: itemForm.value, sort: itemForm.sort }
+            : { label: item.label, value: item.value, sort: item.sort }
         )
       })
       ElMessage.success('修改成功')

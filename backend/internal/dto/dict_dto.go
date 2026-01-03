@@ -27,6 +27,7 @@ type UpdateSystemDictRequest struct {
 // UpdateDictItemRequest 更新字典项请求（租户覆盖）
 type UpdateDictItemRequest struct {
 	Label string `json:"label" binding:"required"` // 新的显示文本
+	Value string `json:"value" binding:"required"` // 实际值（用于匹配字典项）
 	Sort  int    `json:"sort" binding:"omitempty"` // 排序
 }
 
