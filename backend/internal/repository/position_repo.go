@@ -3,7 +3,7 @@ package repository
 import (
 	"admin/internal/dal/model"
 	"admin/internal/dal/query"
-
+	"admin/pkg/database"
 	"context"
 
 	"gorm.io/gorm"
@@ -41,6 +41,7 @@ func (r *PositionRepo) GetByCode(ctx context.Context, positionCode string) (*mod
 // GetByCodeWithTenant 根据租户ID和岗位编码获取岗位（手动模式，用于跨租户查询）
 func (r *PositionRepo) GetByCodeWithTenant(ctx context.Context, tenantID, positionCode string) (*model.Position, error) {
 	// 跨租户查询：使用 ManualTenantMode 禁止自动添加当前租户过滤
+	ctx = database.ManualTenantMode(ctx)
 	return r.q.Position.WithContext(ctx).
 		Where(r.q.Position.TenantID.Eq(tenantID)).
 		Where(r.q.Position.PositionCode.Eq(positionCode)).
@@ -94,10 +95,9 @@ func (r *PositionRepo) UpdateStatus(ctx context.Context, positionID string, stat
 	return err
 }
 
-// CheckExists 检查岗位是否存在
+// CheckExists 检查岗位是否存在（租户过滤由 scope callback 自动处理）
 func (r *PositionRepo) CheckExists(ctx context.Context, tenantID, positionCode string) (bool, error) {
 	count, err := r.q.Position.WithContext(ctx).
-		Where(r.q.Position.TenantID.Eq(tenantID)).
 		Where(r.q.Position.PositionCode.Eq(positionCode)).
 		Count()
 	if err != nil {
@@ -106,10 +106,9 @@ func (r *PositionRepo) CheckExists(ctx context.Context, tenantID, positionCode s
 	return count > 0, nil
 }
 
-// CheckExistsByID 检查岗位编码是否存在（排除指定ID）
+// CheckExistsByID 检查岗位编码是否存在（排除指定ID）（租户过滤由 scope callback 自动处理）
 func (r *PositionRepo) CheckExistsByID(ctx context.Context, tenantID, positionCode string, excludePositionID string) (bool, error) {
 	count, err := r.q.Position.WithContext(ctx).
-		Where(r.q.Position.TenantID.Eq(tenantID)).
 		Where(r.q.Position.PositionCode.Eq(positionCode)).
 		Where(r.q.Position.PositionID.Neq(excludePositionID)).
 		Count()
@@ -128,6 +127,7 @@ func (r *PositionRepo) ListByIDs(ctx context.Context, positionIDs []string) ([]*
 
 // ListByCodes 根据岗位编码列表获取岗位列表（跳过租户过滤，支持岗位继承）
 func (r *PositionRepo) ListByCodes(ctx context.Context, positionCodes []string) ([]*model.Position, error) {
+	ctx = database.ManualTenantMode(ctx)
 	return r.q.Position.WithContext(ctx).
 		Where(r.q.Position.PositionCode.In(positionCodes...)).
 		Find()

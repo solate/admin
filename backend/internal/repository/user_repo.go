@@ -3,6 +3,7 @@ package repository
 import (
 	"admin/internal/dal/model"
 	"admin/internal/dal/query"
+	"admin/pkg/database"
 	"context"
 
 	"gorm.io/gorm"
@@ -30,8 +31,9 @@ func (r *UserRepo) GetByID(ctx context.Context, userID string) (*model.User, err
 	return r.q.User.WithContext(ctx).Where(r.q.User.UserID.Eq(userID)).First()
 }
 
-// GetByTenantAndUserName 根据租户ID和用户名获取用户（用于登录）
+// GetByTenantAndUserName 根据租户ID和用户名获取用户（用于登录，手动模式）
 func (r *UserRepo) GetByTenantAndUserName(ctx context.Context, tenantID, userName string) (*model.User, error) {
+	ctx = database.ManualTenantMode(ctx)
 	return r.q.User.WithContext(ctx).
 		Where(r.q.User.TenantID.Eq(tenantID)).
 		Where(r.q.User.UserName.Eq(userName)).
@@ -84,10 +86,9 @@ func (r *UserRepo) UpdateStatus(ctx context.Context, userID string, status int) 
 	return err
 }
 
-// CheckExists 检查用户是否存在（租户内唯一）
+// CheckExists 检查用户是否存在（租户过滤由 scope callback 自动处理）
 func (r *UserRepo) CheckExists(ctx context.Context, tenantID, userName string) (bool, error) {
 	count, err := r.q.User.WithContext(ctx).
-		Where(r.q.User.TenantID.Eq(tenantID)).
 		Where(r.q.User.UserName.Eq(userName)).
 		Count()
 	if err != nil {

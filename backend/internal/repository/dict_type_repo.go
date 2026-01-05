@@ -91,10 +91,9 @@ func (r *DictTypeRepo) ListAll(ctx context.Context) ([]*model.DictType, error) {
 	return r.q.DictType.WithContext(ctx).Find()
 }
 
-// CheckExists 检查字典类型是否存在
+// CheckExists 检查字典类型是否存在（租户过滤由 scope callback 自动处理）
 func (r *DictTypeRepo) CheckExists(ctx context.Context, tenantID, typeCode string) (bool, error) {
 	count, err := r.q.DictType.WithContext(ctx).
-		Where(r.q.DictType.TenantID.Eq(tenantID)).
 		Where(r.q.DictType.TypeCode.Eq(typeCode)).
 		Count()
 	if err != nil {
@@ -103,10 +102,9 @@ func (r *DictTypeRepo) CheckExists(ctx context.Context, tenantID, typeCode strin
 	return count > 0, nil
 }
 
-// CheckExistsByID 检查字典编码是否存在（排除指定ID）
+// CheckExistsByID 检查字典编码是否存在（排除指定ID）（租户过滤由 scope callback 自动处理）
 func (r *DictTypeRepo) CheckExistsByID(ctx context.Context, tenantID, typeCode string, excludeTypeID string) (bool, error) {
 	count, err := r.q.DictType.WithContext(ctx).
-		Where(r.q.DictType.TenantID.Eq(tenantID)).
 		Where(r.q.DictType.TypeCode.Eq(typeCode)).
 		Where(r.q.DictType.TypeID.Neq(excludeTypeID)).
 		Count()
