@@ -29,7 +29,7 @@ func NewCaptchaHandler(rdb redis.UniversalClient) *CaptchaHandler {
 // @Produce json
 // @Success 200 {object} response.Response{data=dto.CaptchaResponse}
 // @Failure 200 {object} response.Response
-// @Router /api/v1/captcha [get]
+// @Router /api/v1/auth/captcha [get]
 func (h *CaptchaHandler) Get(c *gin.Context) {
 	id, b64s, _, err := h.captchaMgr.Generate()
 	if err != nil {

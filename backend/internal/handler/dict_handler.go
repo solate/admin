@@ -30,7 +30,7 @@ func NewDictHandler(dictService *service.DictService) *DictHandler {
 // @Security ApiKeyAuth
 // @Param request body dto.CreateSystemDictRequest true "创建系统字典请求参数"
 // @Success 200 {object} response.Response "创建成功"
-// @Router /system/dict [post]
+// @Router /api/v1/system/dict [post]
 func (h *DictHandler) CreateSystemDict(c *gin.Context) {
 	var req dto.CreateSystemDictRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -56,7 +56,7 @@ func (h *DictHandler) CreateSystemDict(c *gin.Context) {
 // @Param type_code path string true "字典编码"
 // @Param request body dto.UpdateSystemDictRequest true "更新系统字典请求参数"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /system/dict/:type_code [put]
+// @Router /api/v1/system/dict/:type_code [put]
 func (h *DictHandler) UpdateSystemDict(c *gin.Context) {
 	typeCode := c.Param("type_code")
 	if typeCode == "" {
@@ -87,7 +87,7 @@ func (h *DictHandler) UpdateSystemDict(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param type_code path string true "字典编码"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /system/dict/:type_code [delete]
+// @Router /api/v1/system/dict/:type_code [delete]
 func (h *DictHandler) DeleteSystemDict(c *gin.Context) {
 	typeCode := c.Param("type_code")
 	if typeCode == "" {
@@ -114,7 +114,7 @@ func (h *DictHandler) DeleteSystemDict(c *gin.Context) {
 // @Param page_size query int false "每页数量" default(10)
 // @Param keyword query string false "关键词搜索（字典名称/编码）"
 // @Success 200 {object} response.Response{data=dto.ListDictTypesResponse} "获取成功"
-// @Router /system/dict [get]
+// @Router /api/v1/system/dict [get]
 func (h *DictHandler) ListSystemDictTypes(c *gin.Context) {
 	var req dto.ListDictTypesRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -140,7 +140,7 @@ func (h *DictHandler) ListSystemDictTypes(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param type_code path string true "字典编码"
 // @Success 200 {object} response.Response{data=dto.DictResponse} "获取成功"
-// @Router /dict/:type_code [get]
+// @Router /api/v1/dict/:type_code [get]
 func (h *DictHandler) GetDict(c *gin.Context) {
 	typeCode := c.Param("type_code")
 	if typeCode == "" {
@@ -166,7 +166,7 @@ func (h *DictHandler) GetDict(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param request body dto.BatchUpdateDictItemsRequest true "批量更新字典项请求参数"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /dict/items [put]
+// @Router /api/v1/dict/items [put]
 func (h *DictHandler) BatchUpdateDictItems(c *gin.Context) {
 	var req dto.BatchUpdateDictItemsRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -192,7 +192,7 @@ func (h *DictHandler) BatchUpdateDictItems(c *gin.Context) {
 // @Param type_code path string true "字典编码"
 // @Param value path string true "字典值"
 // @Success 200 {object} response.Response "恢复成功"
-// @Router /dict/:type_code/items/:value [delete]
+// @Router /api/v1/dict/:type_code/items/:value [delete]
 func (h *DictHandler) ResetDictItem(c *gin.Context) {
 	typeCode := c.Param("type_code")
 	if typeCode == "" {
@@ -224,7 +224,7 @@ func (h *DictHandler) ResetDictItem(c *gin.Context) {
 // @Param type_code path string true "字典编码"
 // @Param value path string true "字典值"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /system/dict/:type_code/items/:value [delete]
+// @Router /api/v1/system/dict/:type_code/items/:value [delete]
 func (h *DictHandler) DeleteSystemDictItem(c *gin.Context) {
 	typeCode := c.Param("type_code")
 	if typeCode == "" {
@@ -257,7 +257,7 @@ func (h *DictHandler) DeleteSystemDictItem(c *gin.Context) {
 // @Param page_size query int false "每页数量" default(10)
 // @Param keyword query string false "关键词搜索（字典名称/编码）"
 // @Success 200 {object} response.Response{data=dto.ListDictTypesResponse} "获取成功"
-// @Router /dict-types [get]
+// @Router /api/v1/dict-types [get]
 func (h *DictHandler) ListDictTypes(c *gin.Context) {
 	var req dto.ListDictTypesRequest
 	if err := c.ShouldBindQuery(&req); err != nil {

@@ -32,7 +32,7 @@ func NewMenuHandler(menuService *service.MenuService) *MenuHandler {
 // @Security ApiKeyAuth
 // @Param request body dto.CreateMenuRequest true "创建菜单请求参数"
 // @Success 200 {object} response.Response{data=dto.MenuInfo} "创建成功"
-// @Router /menus [post]
+// @Router /api/v1/menus [post]
 func (h *MenuHandler) CreateMenu(c *gin.Context) {
 	var req dto.CreateMenuRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -58,7 +58,7 @@ func (h *MenuHandler) CreateMenu(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param menu_id path string true "菜单ID"
 // @Success 200 {object} response.Response{data=dto.MenuInfo} "获取成功"
-// @Router /menus/:menu_id [get]
+// @Router /api/v1/menus/:menu_id [get]
 func (h *MenuHandler) GetMenu(c *gin.Context) {
 	menuID := c.Param("menu_id")
 	if menuID == "" {
@@ -85,7 +85,7 @@ func (h *MenuHandler) GetMenu(c *gin.Context) {
 // @Param menu_id path string true "菜单ID"
 // @Param request body dto.UpdateMenuRequest true "更新菜单请求参数"
 // @Success 200 {object} response.Response{data=dto.MenuInfo} "更新成功"
-// @Router /menus/:menu_id [put]
+// @Router /api/v1/menus/:menu_id [put]
 func (h *MenuHandler) UpdateMenu(c *gin.Context) {
 	menuID := c.Param("menu_id")
 	if menuID == "" {
@@ -117,7 +117,7 @@ func (h *MenuHandler) UpdateMenu(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param menu_id path string true "菜单ID"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /menus/:menu_id [delete]
+// @Router /api/v1/menus/:menu_id [delete]
 func (h *MenuHandler) DeleteMenu(c *gin.Context) {
 	menuID := c.Param("menu_id")
 	if menuID == "" {
@@ -146,7 +146,7 @@ func (h *MenuHandler) DeleteMenu(c *gin.Context) {
 // @Param type query string false "类型筛选(MENU:菜单, BUTTON:按钮)"
 // @Param status query int false "状态筛选(1:显示, 2:隐藏)"
 // @Success 200 {object} response.Response{data=dto.ListMenusResponse} "获取成功"
-// @Router /menus [get]
+// @Router /api/v1/menus [get]
 func (h *MenuHandler) ListMenus(c *gin.Context) {
 	var req dto.ListMenusRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -171,7 +171,7 @@ func (h *MenuHandler) ListMenus(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Success 200 {object} response.Response{data=dto.AllMenusResponse} "获取成功"
-// @Router /menus/all [get]
+// @Router /api/v1/menus/all [get]
 func (h *MenuHandler) GetAllMenus(c *gin.Context) {
 	resp, err := h.menuService.GetAllMenus(c.Request.Context())
 	if err != nil {
@@ -190,7 +190,7 @@ func (h *MenuHandler) GetAllMenus(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Success 200 {object} response.Response{data=dto.MenuTreeResponse} "获取成功"
-// @Router /menus/tree [get]
+// @Router /api/v1/menus/tree [get]
 func (h *MenuHandler) GetMenuTree(c *gin.Context) {
 	resp, err := h.menuService.GetMenuTree(c.Request.Context())
 	if err != nil {
@@ -211,7 +211,7 @@ func (h *MenuHandler) GetMenuTree(c *gin.Context) {
 // @Param menu_id path string true "菜单ID"
 // @Param status path int true "状态(1:显示, 2:隐藏)"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /menus/:menu_id/status/:status [put]
+// @Router /api/v1/menus/:menu_id/status/:status [put]
 func (h *MenuHandler) UpdateMenuStatus(c *gin.Context) {
 	menuID := c.Param("menu_id")
 	if menuID == "" {
@@ -259,7 +259,7 @@ func NewUserMenuHandler(userMenuService *service.UserMenuService) *UserMenuHandl
 // @Produce json
 // @Security ApiKeyAuth
 // @Success 200 {object} response.Response{data=dto.UserMenuResponse} "获取成功"
-// @Router /user/menus [get]
+// @Router /api/v1/user/menus [get]
 func (h *UserMenuHandler) GetUserMenu(c *gin.Context) {
 	// 从上下文获取用户名和租户编码
 	// 这些信息由 Auth 中间件从 JWT token 中提取并设置到 context
@@ -289,7 +289,7 @@ func (h *UserMenuHandler) GetUserMenu(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param menu_id path string true "菜单ID"
 // @Success 200 {object} response.Response{data=dto.UserButtonsResponse} "获取成功"
-// @Router /user/buttons/{menu_id} [get]
+// @Router /api/v1/user/buttons/:menu_id [get]
 func (h *UserMenuHandler) GetUserButtons(c *gin.Context) {
 	menuID := c.Param("menu_id")
 	if menuID == "" {

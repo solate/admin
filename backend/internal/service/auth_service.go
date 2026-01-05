@@ -4,6 +4,7 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
+	"admin/pkg/audit"
 	"admin/pkg/captcha"
 	"admin/pkg/casbin"
 	"admin/pkg/config"
@@ -30,10 +31,11 @@ type AuthService struct {
 	jwt          *jwt.Manager
 	captcha      *captcha.Manager
 	enforcer     *casbin.Enforcer
+	recorder     *audit.Recorder
 }
 
 // NewAuthService 创建认证服务
-func NewAuthService(userRepo *repository.UserRepo, userRoleRepo *repository.UserRoleRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, jwt *jwt.Manager, rdb redis.UniversalClient, enforcer *casbin.Enforcer, config *config.Config) *AuthService {
+func NewAuthService(userRepo *repository.UserRepo, userRoleRepo *repository.UserRoleRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, jwt *jwt.Manager, rdb redis.UniversalClient, enforcer *casbin.Enforcer, recorder *audit.Recorder, config *config.Config) *AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
 		userRoleRepo: userRoleRepo,
@@ -42,6 +44,7 @@ func NewAuthService(userRepo *repository.UserRepo, userRoleRepo *repository.User
 		jwt:          jwt,
 		captcha:      captcha.NewManager(rdb),
 		enforcer:     enforcer,
+		recorder:     recorder,
 	}
 }
 
@@ -108,6 +111,9 @@ func (s *AuthService) Login(ctx context.Context, r *http.Request, req *dto.Login
 		// 不影响登录流程，继续返回
 	}
 
+	// 记录登录日志
+	s.recorder.Login(ctx, tenantID, user.UserID, user.UserName, nil)
+
 	return &dto.LoginResponse{
 		AccessToken:  tokenPair.AccessToken,
 		RefreshToken: tokenPair.RefreshToken,
@@ -143,6 +149,9 @@ func (s *AuthService) Logout(ctx context.Context, r *http.Request) error {
 		log.Error().Err(err).Str("token_id", tokenID).Msg("撤销token失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "撤销token失败", err)
 	}
+
+	// 记录登出日志
+	s.recorder.Logout(ctx)
 
 	return nil
 }

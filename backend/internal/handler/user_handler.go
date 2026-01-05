@@ -35,7 +35,7 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 // @Success 200 {object} response.Response "未授权访问"
 // @Success 200 {object} response.Response "权限不足"
 // @Success 200 {object} response.Response "服务器内部错误"
-// @Router /users [post]
+// @Router /api/v1/users [post]
 func (h *UserHandler) CreateUser(c *gin.Context) {
 	var req dto.CreateUserRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -123,7 +123,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // @Success 200 {object} response.Response "请求参数错误"
 // @Success 200 {object} response.Response "未授权访问"
 // @Success 200 {object} response.Response "服务器内部错误"
-// @Router /users [get]
+// @Router /api/v1/users [get]
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	var req dto.ListUsersRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -178,7 +178,7 @@ func (h *UserHandler) UpdateUserStatus(c *gin.Context) {
 // @Success 200 {object} response.Response{data=dto.ProfileResponse} "获取成功"
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /profile [get]
+// @Router /api/v1/profile [get]
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	// 获取当前用户信息（从 context 中获取）
 	user, err := h.userService.GetProfile(c.Request.Context())

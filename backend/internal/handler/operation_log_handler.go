@@ -34,7 +34,7 @@ func NewOperationLogHandler(operationLogService *service.OperationLogService) *O
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "资源不存在"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /operation-logs/{log_id} [get]
+// @Router /api/v1/operation-logs/:log_id [get]
 func (h *OperationLogHandler) GetOperationLog(c *gin.Context) {
 	logID := c.Param("log_id")
 	if logID == "" {
@@ -71,7 +71,7 @@ func (h *OperationLogHandler) GetOperationLog(c *gin.Context) {
 // @Failure 200 {object} response.Response "请求参数错误"
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /operation-logs [get]
+// @Router /api/v1/operation-logs [get]
 func (h *OperationLogHandler) ListOperationLogs(c *gin.Context) {
 	var req dto.ListOperationLogsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {

@@ -122,3 +122,10 @@ func WithUser(tenantID, userID, userName string) LogOption {
 		e.UserName = userName
 	}
 }
+
+// WithTenantID 设置租户ID（用于跨租户操作，如创建租户）
+func WithTenantID(tenantID string) LogOption {
+	return func(e *LogEntry) {
+		e.TenantID = tenantID
+	}
+}

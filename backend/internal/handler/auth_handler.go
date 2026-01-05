@@ -32,7 +32,7 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 // @Success 200 {object} response.Response "请求参数错误"
 // @Success 200 {object} response.Response "认证失败"
 // @Success 200 {object} response.Response "服务器内部错误"
-// @Router /auth/login [post]
+// @Router /api/v1/auth/:tenant_code/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -60,7 +60,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Success 200 {object} response.Response "请求参数错误"
 // @Success 200 {object} response.Response "刷新令牌无效或已过期"
 // @Success 200 {object} response.Response "服务器内部错误"
-// @Router /auth/refresh [post]
+// @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -87,7 +87,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Success 200 {object} response.Response "登出成功"
 // @Success 200 {object} response.Response "未授权访问"
 // @Success 200 {object} response.Response "服务器内部错误"
-// @Router /auth/logout [post]
+// @Router /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	if err := h.authService.Logout(c.Request.Context(), c.Request); err != nil {
 		response.Error(c, err)
@@ -110,7 +110,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 // @Success 200 {object} response.Response "租户不存在"
 // @Success 200 {object} response.Response "无该租户访问权限"
 // @Success 200 {object} response.Response "服务器内部错误"
-// @Router /auth/switch-tenant [post]
+// @Router /api/v1/auth/switch-tenant [post]
 func (h *AuthHandler) SwitchTenant(c *gin.Context) {
 	var req dto.SwitchTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -136,7 +136,7 @@ func (h *AuthHandler) SwitchTenant(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Success 200 {object} response.Response{data=dto.AvailableTenantsResponse} "获取成功"
 // @Success 200 {object} response.Response "服务器内部错误"
-// @Router /auth/available-tenants [get]
+// @Router /api/v1/auth/available-tenants [get]
 func (h *AuthHandler) GetAvailableTenants(c *gin.Context) {
 	resp, err := h.authService.GetAvailableTenants(c.Request.Context())
 	if err != nil {

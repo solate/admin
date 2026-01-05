@@ -2,6 +2,7 @@ package router
 
 import (
 	"admin/internal/middleware"
+	"admin/pkg/audit"
 	filesystem "admin/static"
 	"fmt"
 	"net/http"
@@ -41,14 +42,16 @@ func Setup(r *gin.Engine, app *App) {
 		// 公开接口（无需认证）
 		public := v1.Group("")
 		{
-			// 登录/注册相关接口 - 需要跳过租户检查
+			// 登录/注册相关接口 - 需要审计日志
 			auth := public.Group("/auth")
+
 			{
 				auth.GET("/captcha", app.Handlers.CaptchaHandler.Get)   // 获取验证码 （无需租户）
 				auth.POST("/refresh", app.Handlers.AuthHandler.Refresh) // 刷新令牌 （无需租户）
 
 				tenantAuth := auth.Group("/:tenant_code")
 				tenantAuth.Use(middleware.TenantFromCode(app.DB)) //中间件
+				tenantAuth.Use(audit.AuditMiddleware())           // 登录接口也需要审计日志
 				{
 					tenantAuth.POST("/login", app.Handlers.AuthHandler.Login) // 用户登录
 				}
@@ -63,6 +66,7 @@ func Setup(r *gin.Engine, app *App) {
 		authorized := v1.Group("")
 		authorized.Use(middleware.AuthMiddleware(app.JWT))
 		authorized.Use(middleware.CasbinMiddleware(app.Enforcer)) // 权限校验（超管跳过，其他走 Casbin）
+		authorized.Use(audit.AuditMiddleware())                   // 审计日志中间件（提取请求信息）
 		{
 			// 当前用户信息
 			authorized.GET("/profile", app.Handlers.UserHandler.GetProfile) // 获取当前用户信息（含角色）
@@ -101,17 +105,17 @@ func Setup(r *gin.Engine, app *App) {
 			// 角色管理（租户管理员+超管）
 			role := authorized.Group("/roles")
 			{
-				role.POST("", app.Handlers.RoleHandler.CreateRole)                                    // 创建角色
-				role.GET("", app.Handlers.RoleHandler.ListRoles)                                      // 获取角色列表
-				role.GET("/:role_id", app.Handlers.RoleHandler.GetRole)                               // 获取角色详情
-				role.PUT("/:role_id", app.Handlers.RoleHandler.UpdateRole)                            // 更新角色
-				role.DELETE("/:role_id", app.Handlers.RoleHandler.DeleteRole)                         // 删除角色
-				role.PUT("/:role_id/status/:status", app.Handlers.RoleHandler.UpdateRoleStatus)     // 更新角色状态
-				role.PUT("/:role_id/permissions", app.Handlers.RoleHandler.AssignPermissions)       // 为角色分配权限（菜单+按钮）
-				role.GET("/:role_id/permissions", app.Handlers.RoleHandler.GetRolePermissions)      // 获取角色的权限
+				role.POST("", app.Handlers.RoleHandler.CreateRole)                              // 创建角色
+				role.GET("", app.Handlers.RoleHandler.ListRoles)                                // 获取角色列表
+				role.GET("/:role_id", app.Handlers.RoleHandler.GetRole)                         // 获取角色详情
+				role.PUT("/:role_id", app.Handlers.RoleHandler.UpdateRole)                      // 更新角色
+				role.DELETE("/:role_id", app.Handlers.RoleHandler.DeleteRole)                   // 删除角色
+				role.PUT("/:role_id/status/:status", app.Handlers.RoleHandler.UpdateRoleStatus) // 更新角色状态
+				role.PUT("/:role_id/permissions", app.Handlers.RoleHandler.AssignPermissions)   // 为角色分配权限（菜单+按钮）
+				role.GET("/:role_id/permissions", app.Handlers.RoleHandler.GetRolePermissions)  // 获取角色的权限
 				// 保留旧路由向后兼容
-				role.PUT("/:role_id/menus", app.Handlers.RoleHandler.AssignMenus)                   // 为角色分配菜单（已弃用）
-				role.GET("/:role_id/menus", app.Handlers.RoleHandler.GetRoleMenus)                   // 获取角色的菜单（已弃用）
+				role.PUT("/:role_id/menus", app.Handlers.RoleHandler.AssignMenus)  // 为角色分配菜单（已弃用）
+				role.GET("/:role_id/menus", app.Handlers.RoleHandler.GetRoleMenus) // 获取角色的菜单（已弃用）
 			}
 
 			// 菜单接口
@@ -169,10 +173,10 @@ func Setup(r *gin.Engine, app *App) {
 			// 系统字典管理接口（超管专用）
 			systemDict := authorized.Group("/system/dict")
 			{
-				systemDict.POST("", app.Handlers.DictHandler.CreateSystemDict)                         // 创建系统字典
-				systemDict.GET("", app.Handlers.DictHandler.ListSystemDictTypes)                       // 获取系统字典列表
-				systemDict.PUT("/:type_code", app.Handlers.DictHandler.UpdateSystemDict)               // 更新系统字典
-				systemDict.DELETE("/:type_code", app.Handlers.DictHandler.DeleteSystemDict)            // 删除系统字典
+				systemDict.POST("", app.Handlers.DictHandler.CreateSystemDict)                               // 创建系统字典
+				systemDict.GET("", app.Handlers.DictHandler.ListSystemDictTypes)                             // 获取系统字典列表
+				systemDict.PUT("/:type_code", app.Handlers.DictHandler.UpdateSystemDict)                     // 更新系统字典
+				systemDict.DELETE("/:type_code", app.Handlers.DictHandler.DeleteSystemDict)                  // 删除系统字典
 				systemDict.DELETE("/:type_code/items/:value", app.Handlers.DictHandler.DeleteSystemDictItem) // 删除系统字典项
 			}
 			// 字典类型列表接口

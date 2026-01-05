@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/service"
+	"admin/pkg/audit"
+	"admin/pkg/pagination"
 	"admin/pkg/response"
-	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 	"strconv"
 
@@ -14,12 +16,14 @@ import (
 // TenantHandler 租户处理器
 type TenantHandler struct {
 	tenantService *service.TenantService
+	recorder      *audit.Recorder
 }
 
 // NewTenantHandler 创建租户处理器
-func NewTenantHandler(tenantService *service.TenantService) *TenantHandler {
+func NewTenantHandler(tenantService *service.TenantService, recorder *audit.Recorder) *TenantHandler {
 	return &TenantHandler{
 		tenantService: tenantService,
+		recorder:      recorder,
 	}
 }
 
@@ -36,7 +40,7 @@ func NewTenantHandler(tenantService *service.TenantService) *TenantHandler {
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "权限不足"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /tenants [post]
+// @Router /api/v1/tenants [post]
 func (h *TenantHandler) CreateTenant(c *gin.Context) {
 	var req dto.TenantCreateRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -44,13 +48,23 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.tenantService.CreateTenant(c.Request.Context(), &req)
+	tenant, err := h.tenantService.CreateTenant(c.Request.Context(), &req)
 	if err != nil {
+		h.recorder.Log(c.Request.Context(),
+			audit.WithCreate(audit.ModuleTenant),
+			audit.WithError(err),
+		)
 		response.Error(c, err)
 		return
 	}
 
-	response.Success(c, resp)
+	h.recorder.Log(c.Request.Context(),
+		audit.WithCreate(audit.ModuleTenant),
+		audit.WithResource(audit.ResourceTenant, tenant.TenantID, tenant.Name),
+		audit.WithValue(nil, tenant),
+	)
+
+	response.Success(c, h.toTenantResponse(tenant))
 }
 
 // GetTenant 获取租户详情
@@ -66,7 +80,7 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "资源不存在"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /tenants/{tenant_id} [get]
+// @Router /api/v1/tenants/{tenant_id} [get]
 func (h *TenantHandler) GetTenant(c *gin.Context) {
 	tenantID := c.Param("tenant_id")
 	if tenantID == "" {
@@ -74,37 +88,13 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.tenantService.GetTenantByID(c.Request.Context(), tenantID)
+	tenant, err := h.tenantService.GetTenantByID(c.Request.Context(), tenantID)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	response.Success(c, resp)
-}
-
-// GetCurrentTenant 获取当前登录租户信息
-// @Summary 获取当前租户信息
-// @Description 获取当前登录用户的租户信息（所有角色可用）
-// @Tags 租户管理
-// @Accept json
-// @Produce json
-// @Security ApiKeyAuth
-// @Success 200 {object} response.Response{data=dto.TenantResponse} "获取成功"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "资源不存在"
-// @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /tenants/me [get]
-func (h *TenantHandler) GetCurrentTenant(c *gin.Context) {
-	tenantID := xcontext.GetTenantID(c.Request.Context())
-
-	resp, err := h.tenantService.GetTenantByID(c.Request.Context(), tenantID)
-	if err != nil {
-		response.Error(c, err)
-		return
-	}
-
-	response.Success(c, resp)
+	response.Success(c, h.toTenantResponse(tenant))
 }
 
 // UpdateTenant 更新租户
@@ -121,7 +111,7 @@ func (h *TenantHandler) GetCurrentTenant(c *gin.Context) {
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "资源不存在"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /tenants/{tenant_id} [put]
+// @Router /api/v1/tenants/{tenant_id} [put]
 func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 	tenantID := c.Param("tenant_id")
 	if tenantID == "" {
@@ -135,13 +125,23 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.tenantService.UpdateTenant(c.Request.Context(), tenantID, &req)
+	oldTenant, newTenant, err := h.tenantService.UpdateTenant(c.Request.Context(), tenantID, &req)
 	if err != nil {
+		h.recorder.Log(c.Request.Context(),
+			audit.WithUpdate(audit.ModuleTenant),
+			audit.WithError(err),
+		)
 		response.Error(c, err)
 		return
 	}
 
-	response.Success(c, resp)
+	h.recorder.Log(c.Request.Context(),
+		audit.WithUpdate(audit.ModuleTenant),
+		audit.WithResource(audit.ResourceTenant, newTenant.TenantID, newTenant.Name),
+		audit.WithValue(oldTenant, newTenant),
+	)
+
+	response.Success(c, h.toTenantResponse(newTenant))
 }
 
 // DeleteTenant 删除租户
@@ -157,7 +157,7 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "资源不存在"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /tenants/{tenant_id} [delete]
+// @Router /api/v1/tenants/{tenant_id} [delete]
 func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 	tenantID := c.Param("tenant_id")
 	if tenantID == "" {
@@ -165,10 +165,21 @@ func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 		return
 	}
 
-	if err := h.tenantService.DeleteTenant(c.Request.Context(), tenantID); err != nil {
+	tenant, err := h.tenantService.DeleteTenant(c.Request.Context(), tenantID)
+	if err != nil {
+		h.recorder.Log(c.Request.Context(),
+			audit.WithDelete(audit.ModuleTenant),
+			audit.WithError(err),
+		)
 		response.Error(c, err)
 		return
 	}
+
+	h.recorder.Log(c.Request.Context(),
+		audit.WithDelete(audit.ModuleTenant),
+		audit.WithResource(audit.ResourceTenant, tenant.TenantID, tenant.Name),
+		audit.WithValue(tenant, nil),
+	)
 
 	response.Success(c, gin.H{"deleted": true})
 }
@@ -189,7 +200,7 @@ func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 // @Failure 200 {object} response.Response "请求参数错误"
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /tenants [get]
+// @Router /api/v1/tenants [get]
 func (h *TenantHandler) ListTenants(c *gin.Context) {
 	var req dto.TenantListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -197,13 +208,23 @@ func (h *TenantHandler) ListTenants(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.tenantService.ListTenants(c.Request.Context(), &req)
+	tenants, total, err := h.tenantService.ListTenants(c.Request.Context(), &req)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	response.Success(c, resp)
+	// 转换为响应格式
+	tenantResponses := make([]*dto.TenantResponse, len(tenants))
+	for i, tenant := range tenants {
+		tenantResponses[i] = h.toTenantResponse(tenant)
+	}
+
+	// 构建分页响应
+	response.Success(c, &dto.TenantListResponse{
+		Response: pagination.NewResponse(req.Request, total),
+		List:     tenantResponses,
+	})
 }
 
 // UpdateTenantStatus 更新租户状态
@@ -220,7 +241,7 @@ func (h *TenantHandler) ListTenants(c *gin.Context) {
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "资源不存在"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /tenants/{tenant_id}/status/{status} [put]
+// @Router /api/v1/tenants/{tenant_id}/status/{status} [put]
 func (h *TenantHandler) UpdateTenantStatus(c *gin.Context) {
 	tenantID := c.Param("tenant_id")
 	if tenantID == "" {
@@ -246,4 +267,17 @@ func (h *TenantHandler) UpdateTenantStatus(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"updated": true})
+}
+
+// toTenantResponse 转换为租户响应格式
+func (h *TenantHandler) toTenantResponse(tenant *model.Tenant) *dto.TenantResponse {
+	return &dto.TenantResponse{
+		TenantID:    tenant.TenantID,
+		Code:        tenant.TenantCode,
+		Name:        tenant.Name,
+		Description: tenant.Description,
+		Status:      int(tenant.Status),
+		CreatedAt:   tenant.CreatedAt,
+		UpdatedAt:   tenant.UpdatedAt,
+	}
 }

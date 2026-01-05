@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"strings"
 
 	"admin/pkg/jwt"
 	"admin/pkg/response"
@@ -26,17 +25,17 @@ func AuthMiddleware(jwtManager *jwt.Manager) gin.HandlerFunc {
 			return
 		}
 
-		// 解析 "Bearer <token>" 格式
-		parts := strings.SplitN(token, " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			response.Error(c, xerr.ErrTokenInvalid)
-			c.Abort()
-			return
-		}
-		tokenString := parts[1]
+		// // 解析 "Bearer <token>" 格式
+		// parts := strings.SplitN(token, " ", 2)
+		// if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		// 	response.Error(c, xerr.ErrTokenInvalid)
+		// 	c.Abort()
+		// 	return
+		// }
+		// tokenString := parts[1]
 
 		// 验证 token（签名、过期、黑名单）
-		claims, err := jwtManager.VerifyAccessToken(c.Request.Context(), tokenString)
+		claims, err := jwtManager.VerifyAccessToken(c.Request.Context(), token)
 		if err != nil {
 			response.Error(c, err)
 			c.Abort()

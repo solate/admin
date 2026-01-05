@@ -34,7 +34,7 @@ func NewLoginLogHandler(loginLogService *service.LoginLogService) *LoginLogHandl
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "资源不存在"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /login-logs/{log_id} [get]
+// @Router /api/v1/login-logs/:log_id [get]
 func (h *LoginLogHandler) GetLoginLog(c *gin.Context) {
 	logID := c.Param("log_id")
 	if logID == "" {
@@ -71,7 +71,7 @@ func (h *LoginLogHandler) GetLoginLog(c *gin.Context) {
 // @Failure 200 {object} response.Response "请求参数错误"
 // @Failure 200 {object} response.Response "未授权访问"
 // @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /login-logs [get]
+// @Router /api/v1/login-logs [get]
 func (h *LoginLogHandler) ListLoginLogs(c *gin.Context) {
 	var req dto.ListLoginLogsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {

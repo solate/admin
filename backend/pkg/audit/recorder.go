@@ -63,7 +63,8 @@ func (r *Recorder) Log(ctx context.Context, opts ...LogOption) {
 	}
 
 	// 异步写入（使用独立的 background context，避免被请求取消影响）
-	go r.db.Write(context.Background(), entry)
+	// 同时保留租户和用户信息，供 GORM 租户插件使用
+	go r.db.Write(xcontext.CopyContext(ctx), entry)
 }
 
 // Login 记录登录日志

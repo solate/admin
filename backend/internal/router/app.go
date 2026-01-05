@@ -257,7 +257,7 @@ func (s *App) initHandlers(auditRecorder *audit.Recorder) error {
 	dictItemRepo := repository.NewDictItemRepo(s.DB)
 
 	// 初始化服务层
-	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, s.Config) // 初始化认证服务
+	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, auditRecorder, s.Config) // 初始化认证服务
 	userService := service.NewUserService(userRepo, roleRepo, tenantRepo, s.Enforcer)                                                           // 初始化用户服务
 	tenantService := service.NewTenantService(tenantRepo)                                                                                       // 初始化租户服务
 	roleService := service.NewRoleService(roleRepo, permissionRepo, menuRepo, s.Enforcer, cache.Get().Tenant) // 初始化角色服务（需要 enforcer、tenantCache 和 menuRepo 用于角色继承、菜单权限管理和 API 权限关联）
@@ -274,7 +274,7 @@ func (s *App) initHandlers(auditRecorder *audit.Recorder) error {
 		CaptchaHandler:      handler.NewCaptchaHandler(s.Redis),
 		AuthHandler:         handler.NewAuthHandler(authService),
 		UserHandler:         handler.NewUserHandler(userService),
-		TenantHandler:       handler.NewTenantHandler(tenantService),
+		TenantHandler:       handler.NewTenantHandler(tenantService, auditRecorder),
 		RoleHandler:         handler.NewRoleHandler(roleService),
 		MenuHandler:         handler.NewMenuHandler(menuService),
 		UserMenuHandler:     handler.NewUserMenuHandler(userMenuService),
