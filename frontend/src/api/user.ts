@@ -59,15 +59,14 @@ export interface UserListResponse {
 
 // 创建用户请求
 export interface CreateUserRequest {
-  user_name: string
-  name: string
+  username: string
+  nickname: string
   password: string
   status: number
   phone: string
   email?: string
   sex?: number
   avatar?: string
-  role_ids?: string[]
 }
 
 // 创建用户响应
@@ -113,6 +112,38 @@ export interface LoginLogListResponse {
   list: LoginLogInfo[]
 }
 
+// 重置密码请求
+export interface ResetPasswordRequest {
+  password?: string // 可选，为空则自动生成
+}
+
+// 重置密码响应
+export interface ResetPasswordResponse {
+  password?: string // 重置后的密码（仅显示一次）
+  auto_generated: boolean // 是否自动生成
+  message: string
+}
+
+// 角色信息（用户角色）
+export interface UserRoleInfo {
+  role_id: string
+  role_code: string
+  name: string
+  description?: string
+}
+
+// 用户角色响应
+export interface UserRolesResponse {
+  user_id: string
+  username: string
+  roles: UserRoleInfo[]
+}
+
+// 分配角色请求
+export interface AssignRolesRequest {
+  role_codes: string[]
+}
+
 export const userApi = {
   // 获取用户列表
   getList: (params: UserListParams): Promise<UserListResponse> => {
@@ -147,6 +178,21 @@ export const userApi = {
   // 查询登录记录
   getLoginLogs: (params: LoginLogListParams): Promise<LoginLogListResponse> => {
     return http.get('/api/v1/login-logs', { params })
+  },
+
+  // 重置用户密码（超管功能）
+  resetPassword: (userId: string, data: ResetPasswordRequest): Promise<ResetPasswordResponse> => {
+    return http.post(`/api/v1/users/${userId}/password/reset`, data)
+  },
+
+  // 获取用户角色列表
+  getUserRoles: (userId: string): Promise<UserRolesResponse> => {
+    return http.get(`/api/v1/users/${userId}/roles`)
+  },
+
+  // 为用户分配角色（覆盖式）
+  assignRoles: (userId: string, data: AssignRolesRequest): Promise<{ assigned: boolean }> => {
+    return http.put(`/api/v1/users/${userId}/roles`, data)
   }
 }
 

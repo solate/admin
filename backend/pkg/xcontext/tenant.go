@@ -10,7 +10,8 @@ type contextKey string
 
 const (
 	// 租户相关
-	TenantIDKey   contextKey = "tenant_id"
+	// TenantIDKey 使用 database 包中定义的 key，确保 GORM callback 能正确读取
+	TenantIDKey   contextKey = database.TenantIDKey
 	TenantCodeKey contextKey = "tenant_code"
 )
 

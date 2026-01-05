@@ -46,7 +46,7 @@ func TenantFromCode(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		ctx := c.Request.Context()
-		ctx = database.WithTenantID(ctx, tenant.TenantID)
+		// xcontext.SetTenantID 和 database.WithTenantID 现在使用相同的 key，只需调用一次
 		ctx = xcontext.SetTenantID(ctx, tenant.TenantID)
 		ctx = xcontext.SetTenantCode(ctx, tenant.TenantCode)
 		c.Request = c.Request.WithContext(ctx)

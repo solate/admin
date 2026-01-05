@@ -70,6 +70,12 @@
     :current-tenant="tenant"
     @tenant-changed="handleTenantChanged"
   />
+
+  <!-- 账号设置对话框 -->
+  <AccountSettingsDialog
+    v-model="settingsDialogVisible"
+    :user-info="userInfo"
+  />
 </template>
 
 <script setup lang="ts">
@@ -80,6 +86,7 @@ import { User, Setting, SwitchButton, ArrowRight } from '@element-plus/icons-vue
 import { authApi } from '../../api'
 import { clearTokens } from '../../utils/token'
 import TenantSelector from '../tenant/TenantSelector.vue'
+import AccountSettingsDialog from './AccountSettingsDialog.vue'
 
 // 定义 emit
 const emit = defineEmits<{
@@ -115,6 +122,7 @@ const props = withDefaults(defineProps<Props>(), {
 const router = useRouter()
 const isOpen = ref(false)
 const tenantSelectorRef = ref<InstanceType<typeof TenantSelector>>()
+const settingsDialogVisible = ref(false)
 
 function handleVisibleChange(visible: boolean) {
   isOpen.value = visible
@@ -145,8 +153,10 @@ async function handleCommand(command: string) {
 
   switch (command) {
     case 'profile':
-    case 'settings':
       ElMessage.info('功能开发中...')
+      break
+    case 'settings':
+      settingsDialogVisible.value = true
       break
     case 'logout':
       try {

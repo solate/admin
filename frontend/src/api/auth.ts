@@ -126,10 +126,22 @@ export interface ChangePasswordRequest {
   new_password: string
 }
 
+// 修改密码响应
+export interface ChangePasswordResponse {
+  success: boolean
+  message: string
+}
+
 // 重置密码请求
 export interface ResetPasswordRequest {
-  user_id: string
-  new_password: string
+  password?: string // 可选，为空则自动生成
+}
+
+// 重置密码响应
+export interface ResetPasswordResponse {
+  password?: string // 重置后的密码（仅显示一次）
+  auto_generated: boolean // 是否自动生成
+  message: string
 }
 
 // 活跃设备响应
@@ -192,13 +204,8 @@ export const authApi = {
   },
 
   // 修改密码
-  changePassword: (data: ChangePasswordRequest): Promise<boolean> => {
-    return http.post('/admin/v1/auth/change-password', data)
-  },
-
-  // 重置密码
-  resetPassword: (data: ResetPasswordRequest): Promise<boolean> => {
-    return http.post('/admin/v1/auth/reset-password', data)
+  changePassword: (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
+    return http.post('/api/v1/password/change', data)
   },
 
   // 获取当前用户活跃设备数量

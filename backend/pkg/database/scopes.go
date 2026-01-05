@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	tenantIDKey        = "tenant_id"
+	// TenantIDKey 是 context 中存储租户ID的key，导出供其他包使用
+	TenantIDKey        = "tenant_id"
 	tenantModeKey      = "tenant_mode" // 租户查询模式
 	skipTenantCheckKey = "skip_tenant_check"
 )
@@ -32,7 +33,7 @@ func SkipTenantCheck(ctx context.Context) context.Context {
 }
 
 func WithTenantID(ctx context.Context, tenantID string) context.Context {
-	return context.WithValue(ctx, tenantIDKey, tenantID)
+	return context.WithValue(ctx, TenantIDKey, tenantID)
 }
 
 // WithTenantMode 设置租户查询模式
@@ -116,7 +117,7 @@ func getTenantID(db *gorm.DB) (string, bool) {
 	if db.Statement.Context == nil {
 		return "", false
 	}
-	id, ok := db.Statement.Context.Value(tenantIDKey).(string)
+	id, ok := db.Statement.Context.Value(TenantIDKey).(string)
 	// 修改：允许空字符串作为有效的 tenant_id（用于默认租户）
 	// 只要 ok 为 true，就认为 tenant_id 有效
 	return id, ok

@@ -99,11 +99,11 @@
                   <img :src="row.avatar" />
                 </template>
                 <template v-else>
-                  {{ row.user_name?.charAt(0)?.toUpperCase() || '?' }}
+                  {{ row.username?.charAt(0)?.toUpperCase() || '?' }}
                 </template>
               </el-avatar>
               <div class="user-details">
-                <div class="user-name">{{ row.user_name || '-' }}</div>
+                <div class="user-name">{{ row.username || '-' }}</div>
                 <div class="user-email">{{ row.email || '-' }}</div>
               </div>
             </div>
@@ -111,7 +111,7 @@
         </el-table-column>
         <el-table-column label="真实姓名" width="120">
           <template #default="{ row }">
-            {{ row.name }}
+            {{ row.nickname }}
           </template>
         </el-table-column>
         <el-table-column label="角色" width="150">
@@ -184,7 +184,7 @@
                     <img :src="user.avatar" />
                   </template>
                   <template v-else>
-                    {{ user.user_name?.charAt(0)?.toUpperCase() || '?' }}
+                    {{ user.username?.charAt(0)?.toUpperCase() || '?' }}
                   </template>
                 </el-avatar>
                 <el-tag :type="StatusUtils.getTagType(user.status)" size="small">
@@ -192,7 +192,7 @@
                 </el-tag>
               </div>
               <div class="user-card-body">
-                <h4 class="user-card-name">{{ user.user_name }}</h4>
+                <h4 class="user-card-name">{{ user.username }}</h4>
                 <p class="user-card-email">{{ user.email }}</p>
                 <div class="user-card-roles">
                   <el-tag
@@ -207,7 +207,7 @@
                 <div class="user-card-meta">
                   <div class="meta-item">
                     <span class="meta-label">真实姓名</span>
-                    <span class="meta-value">{{ user.name }}</span>
+                    <span class="meta-value">{{ user.nickname }}</span>
                   </div>
                   <div class="meta-item">
                     <span class="meta-label">创建时间</span>
@@ -278,17 +278,17 @@
       >
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="用户名" prop="user_name">
+            <el-form-item label="用户名" prop="username">
               <el-input
-                v-model="formData.user_name"
+                v-model="formData.username"
                 placeholder="请输入用户名"
                 :disabled="dialogType === 'edit'"
               />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="真实姓名" prop="name">
-              <el-input v-model="formData.name" placeholder="请输入真实姓名" />
+            <el-form-item label="真实姓名" prop="nickname">
+              <el-input v-model="formData.nickname" placeholder="请输入真实姓名" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -351,22 +351,30 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 角色分配对话框 -->
+    <RoleAssignDialog
+      v-model="roleDialogVisible"
+      :user="currentUserForRole"
+      @success="handleRoleAssigned"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
-import { userApi, type UserInfo, type UserListParams } from '@/api/user'
+import { userApi, type UserInfo, type UserListParams, type ResetPasswordRequest, type ResetPasswordResponse } from '@/api/user'
 import { roleApi, type RoleInfo } from '@/api/role'
 import { StatusUtils } from '@/utils/status'
 import { formatTime } from '@/utils/date'
+import RoleAssignDialog from '@/components/user/RoleAssignDialog.vue'
 
 // 接口定义
 interface User {
   user_id: string
-  user_name: string
-  name: string
+  username: string
+  nickname: string
   phone: string
   email: string
   avatar?: string
@@ -390,6 +398,10 @@ const dialogType = ref<'create' | 'edit'>('create')
 const viewMode = ref<'table' | 'card'>('table')
 const selectedUsers = ref<User[]>([])
 
+// 角色分配对话框
+const roleDialogVisible = ref(false)
+const currentUserForRole = ref<User | null>(null)
+
 // 搜索表单
 const searchForm = reactive({
   keyword: '',
@@ -408,10 +420,10 @@ const pagination = reactive({
 // 用户表单
 const formData = reactive({
   user_id: '',
-  user_name: '',
+  username: '',
   email: '',
   phone: '',
-  name: '',
+  nickname: '',
   password: '',
   role_ids: [] as string[],
   status: 1,
@@ -421,15 +433,29 @@ const formData = reactive({
 
 // 表单验证规则
 const formRules = {
-  user_name: [
+  username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
     { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' }
   ],
-  name: [
+  nickname: [
     { required: true, message: '请输入真实姓名', trigger: 'blur' }
   ],
   email: [
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    {
+      type: 'email',
+      message: '请输入正确的邮箱格式',
+      trigger: ['blur', 'change'],
+      // 只在有值时才验证
+      validator: (rule: any, value: string, callback: Function) => {
+        if (!value) {
+          callback() // 空值不报错
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          callback(new Error('请输入正确的邮箱格式'))
+        } else {
+          callback()
+        }
+      }
+    }
   ],
   phone: [
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
@@ -445,11 +471,25 @@ const formRules = {
 
 // 编辑时的表单验证规则（密码不需要）
 const editFormRules = {
-  name: [
+  nickname: [
     { required: true, message: '请输入真实姓名', trigger: 'blur' }
   ],
   email: [
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    {
+      type: 'email',
+      message: '请输入正确的邮箱格式',
+      trigger: ['blur', 'change'],
+      // 只在有值时才验证
+      validator: (rule: any, value: string, callback: Function) => {
+        if (!value) {
+          callback() // 空值不报错
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          callback(new Error('请输入正确的邮箱格式'))
+        } else {
+          callback()
+        }
+      }
+    }
   ],
   phone: [
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
@@ -486,16 +526,32 @@ const handleCreate = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (user: User) => {
+const handleEdit = async (user: User) => {
   dialogType.value = 'edit'
+
+  // 获取用户的角色列表
+  let roleIds: string[] = []
+  try {
+    const rolesResponse = await userApi.getUserRoles(user.user_id)
+    // 将角色的 role_code 转换为 role_id（通过 roleOptions 匹配）
+    roleIds = rolesResponse.roles
+      .map(role => {
+        const matchedRole = roleOptions.value.find(r => r.role_code === role.role_code)
+        return matchedRole?.role_id || ''
+      })
+      .filter(id => id !== '')
+  } catch (error) {
+    console.error('获取用户角色失败:', error)
+  }
+
   Object.assign(formData, {
     user_id: user.user_id,
-    user_name: user.user_name,
+    username: user.username,
     email: user.email || '',
     phone: user.phone,
-    name: user.name,
+    nickname: user.nickname,
     password: '',
-    role_ids: user.role_list.map(r => r.role_id),
+    role_ids: roleIds,
     status: user.status,
     avatar: user.avatar || '',
     sex: 0
@@ -512,24 +568,66 @@ const handleSubmit = async () => {
   try {
     if (dialogType.value === 'create') {
       // 创建用户
-      await userApi.create({
-        user_name: formData.user_name,
-        name: formData.name,
+      const createResult = await userApi.create({
+        username: formData.username,
+        nickname: formData.nickname,
         password: formData.password,
         phone: formData.phone,
         email: formData.email || undefined,
-        status: formData.status,
-        role_ids: formData.role_ids.length > 0 ? formData.role_ids : undefined
+        status: formData.status
       })
+
+      // 如果选择了角色，则为用户分配角色
+      if (formData.role_ids.length > 0) {
+        try {
+          // 获取选中角色的 role_code
+          const selectedRoleCodes = roleOptions.value
+            .filter(role => formData.role_ids.includes(role.role_id))
+            .map(role => role.role_code)
+
+          await userApi.assignRoles(createResult.user_id, {
+            role_codes: selectedRoleCodes
+          })
+        } catch (roleError) {
+          console.error('分配角色失败:', roleError)
+          ElMessage.warning('用户创建成功，但角色分配失败')
+        }
+      }
+
       ElMessage.success('用户创建成功')
     } else {
-      // 编辑用户
+      // 编辑用户 - 更新基本信息
       await userApi.update(formData.user_id, {
-        nickname: formData.name,
+        nickname: formData.nickname,
         email: formData.email || undefined,
         status: formData.status,
         phone: formData.phone || undefined
       })
+
+      // 更新角色（如果角色有变化）
+      try {
+        // 获取当前用户的角色
+        const currentRolesResponse = await userApi.getUserRoles(formData.user_id)
+        const currentRoleCodes = currentRolesResponse.roles.map(r => r.role_code)
+
+        // 获取表单中选择的角色 code
+        const selectedRoleCodes = roleOptions.value
+          .filter(role => formData.role_ids.includes(role.role_id))
+          .map(role => role.role_code)
+
+        // 比较角色是否有变化
+        const hasChanged = JSON.stringify(currentRoleCodes.sort()) !== JSON.stringify(selectedRoleCodes.sort())
+
+        if (hasChanged) {
+          await userApi.assignRoles(formData.user_id, {
+            role_codes: selectedRoleCodes
+          })
+        }
+      } catch (roleError) {
+        console.error('更新角色失败:', roleError)
+        ElMessage.warning('用户信息更新成功，但角色更新失败')
+      }
+
       ElMessage.success('用户更新成功')
     }
 
@@ -545,7 +643,7 @@ const handleSubmit = async () => {
 const handleResetPassword = async (user: User) => {
   try {
     await ElMessageBox.confirm(
-      `确定要重置用户 "${user.user_name}" 的密码吗？新密码将发送到用户邮箱。`,
+      `确定要重置用户 "${user.username}" 的密码吗？`,
       '重置密码',
       {
         confirmButtonText: '确定',
@@ -554,10 +652,26 @@ const handleResetPassword = async (user: User) => {
       }
     )
 
-    // TODO: 调用重置密码API
-    ElMessage.info('重置密码功能开发中...')
-  } catch {
-    // 用户取消
+    // 调用重置密码API（不传密码则自动生成）
+    const result = await userApi.resetPassword(user.user_id, {})
+
+    // 显示密码对话框（密码只显示一次）
+    await ElMessageBox.alert(
+      `新密码：${result.password}\n\n${result.message}`,
+      '密码重置成功',
+      {
+        confirmButtonText: '我知道了',
+        type: 'success',
+        dangerouslyUseHTMLString: false,
+        customClass: 'reset-password-dialog'
+      }
+    )
+
+    ElMessage.success('密码重置成功')
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.message || '重置密码失败')
+    }
   }
 }
 
@@ -567,7 +681,9 @@ const handleMoreAction = async (command: string, user: User) => {
       ElMessage.info('查看详情功能开发中...')
       break
     case 'permissions':
-      ElMessage.info('权限设置功能开发中...')
+      // 打开角色分配对话框
+      currentUserForRole.value = user
+      roleDialogVisible.value = true
       break
     case 'logs':
       ElMessage.info('操作日志功能开发中...')
@@ -576,7 +692,7 @@ const handleMoreAction = async (command: string, user: User) => {
     case 'disable':
       try {
         await ElMessageBox.confirm(
-          `确定要${command === 'enable' ? '启用' : '禁用'}用户 "${user.user_name}" 吗？`,
+          `确定要${command === 'enable' ? '启用' : '禁用'}用户 "${user.username}" 吗？`,
           `${command === 'enable' ? '启用' : '禁用'}用户`,
           {
             confirmButtonText: '确定',
@@ -598,7 +714,7 @@ const handleMoreAction = async (command: string, user: User) => {
     case 'delete':
       try {
         await ElMessageBox.confirm(
-          `确定要删除用户 "${user.user_name}" 吗？此操作不可恢复！`,
+          `确定要删除用户 "${user.username}" 吗？此操作不可恢复！`,
           '删除用户',
           {
             confirmButtonText: '确定删除',
@@ -627,6 +743,12 @@ const handleExport = () => {
   ElMessage.info('导出数据功能开发中...')
 }
 
+// 角色分配成功回调
+const handleRoleAssigned = () => {
+  // 刷新用户列表以显示更新后的角色
+  fetchUsers()
+}
+
 const handleSelectionChange = (selection: User[]) => {
   selectedUsers.value = selection
 }
@@ -643,15 +765,17 @@ const handleCurrentChange = (page: number) => {
 
 const handleDialogClose = () => {
   formRef.value?.resetFields()
+  // 清空表单数据
+  resetFormData()
 }
 
 const resetFormData = () => {
   Object.assign(formData, {
     user_id: '',
-    user_name: '',
+    username: '',
     email: '',
     phone: '',
-    name: '',
+    nickname: '',
     password: '',
     role_ids: [],
     status: 1,
@@ -683,8 +807,8 @@ const fetchUsers = async () => {
     // 将后端返回的 { user: {...} } 结构转换为前端期望的格式
     tableData.value = response.list.map(item => ({
       user_id: item.user.user_id,
-      user_name: item.user.username,
-      name: item.user.nickname,
+      username: item.user.username,
+      nickname: item.user.nickname,
       phone: item.user.phone,
       email: item.user.email,
       avatar: item.user.avatar,
@@ -862,5 +986,28 @@ onMounted(() => {
 // 危险操作样式
 :deep(.danger-item) {
   color: var(--danger-color);
+}
+
+// 重置密码对话框样式
+:deep(.reset-password-dialog) {
+  .el-message-box__message {
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    line-height: 1.8;
+    white-space: pre-line;
+  }
+
+  .reset-password-highlight {
+    display: block;
+    background: var(--bg-light);
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 6px;
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--primary-color);
+    text-align: center;
+    letter-spacing: 2px;
+  }
 }
 </style>
