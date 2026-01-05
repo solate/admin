@@ -4,8 +4,6 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
-	"admin/pkg/auditlog"
-	"admin/pkg/constants"
 	"admin/pkg/idgen"
 	"admin/pkg/pagination"
 	"admin/pkg/xcontext"
@@ -13,6 +11,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -42,11 +41,14 @@ func (s *DepartmentService) CreateDepartment(ctx context.Context, req *dto.Creat
 		parentDept, err := s.deptRepo.GetByID(ctx, req.ParentID)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
+				log.Warn().Str("parent_id", req.ParentID).Msg("父部门不存在")
 				return nil, xerr.ErrParentDeptNotFound
 			}
+			log.Error().Err(err).Str("parent_id", req.ParentID).Msg("查询父部门失败")
 			return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询父部门失败", err)
 		}
 		if parentDept.TenantID != tenantID {
+			log.Warn().Str("parent_id", req.ParentID).Str("tenant_id", tenantID).Msg("父部门不属于当前租户")
 			return nil, xerr.ErrParentDeptNotFound
 		}
 	}
@@ -54,6 +56,7 @@ func (s *DepartmentService) CreateDepartment(ctx context.Context, req *dto.Creat
 	// 生成部门ID
 	deptID, err := idgen.GenerateUUID()
 	if err != nil {
+		log.Error().Err(err).Msg("生成部门ID失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成部门ID失败", err)
 	}
 
@@ -80,11 +83,9 @@ func (s *DepartmentService) CreateDepartment(ctx context.Context, req *dto.Creat
 
 	// 创建部门
 	if err := s.deptRepo.Create(ctx, dept); err != nil {
+		log.Error().Err(err).Str("department_id", deptID).Str("department_name", req.DepartmentName).Str("parent_id", req.ParentID).Msg("创建部门失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "创建部门失败", err)
 	}
-
-	// 记录操作日志
-	ctx = auditlog.RecordCreate(ctx, constants.ModuleDept, constants.ResourceTypeDept, dept.DepartmentID, dept.DepartmentName, dept)
 
 	return s.toDepartmentResponse(dept), nil
 }
@@ -94,8 +95,10 @@ func (s *DepartmentService) GetDepartmentByID(ctx context.Context, departmentID 
 	dept, err := s.deptRepo.GetByID(ctx, departmentID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("department_id", departmentID).Msg("部门不存在")
 			return nil, xerr.ErrDeptNotFound
 		}
+		log.Error().Err(err).Str("department_id", departmentID).Msg("查询部门失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询部门失败", err)
 	}
 
@@ -104,12 +107,14 @@ func (s *DepartmentService) GetDepartmentByID(ctx context.Context, departmentID 
 
 // UpdateDepartment 更新部门
 func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID string, req *dto.UpdateDepartmentRequest) (*dto.DepartmentResponse, error) {
-	// 检查部门是否存在，获取旧值用于日志
+	// 检查部门是否存在
 	oldDept, err := s.deptRepo.GetByID(ctx, departmentID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("department_id", departmentID).Msg("部门不存在")
 			return nil, xerr.ErrDeptNotFound
 		}
+		log.Error().Err(err).Str("department_id", departmentID).Msg("查询部门失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询部门失败", err)
 	}
 
@@ -117,16 +122,19 @@ func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID s
 	if req.ParentID != "" && req.ParentID != oldDept.ParentID {
 		// 不能将部门设置为自己的子部门
 		if req.ParentID == departmentID {
+			log.Warn().Str("department_id", departmentID).Str("parent_id", req.ParentID).Msg("不能将部门设置为自己的父部门")
 			return nil, xerr.ErrInvalidParentDept
 		}
 
 		// 检查是否将部门设置为自己的子孙部门
 		descendantIDs, err := s.deptRepo.GetDescendantIDs(ctx, departmentID)
 		if err != nil {
+			log.Error().Err(err).Str("department_id", departmentID).Msg("获取子部门列表失败")
 			return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取子部门列表失败", err)
 		}
 		for _, id := range descendantIDs {
 			if id == req.ParentID {
+				log.Warn().Str("department_id", departmentID).Str("parent_id", req.ParentID).Msg("不能将部门设置为自己的子孙部门")
 				return nil, xerr.ErrInvalidParentDept
 			}
 		}
@@ -134,11 +142,14 @@ func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID s
 		parentDept, err := s.deptRepo.GetByID(ctx, req.ParentID)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
+				log.Warn().Str("parent_id", req.ParentID).Msg("父部门不存在")
 				return nil, xerr.ErrParentDeptNotFound
 			}
+			log.Error().Err(err).Str("parent_id", req.ParentID).Msg("查询父部门失败")
 			return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询父部门失败", err)
 		}
 		if parentDept.TenantID != oldDept.TenantID {
+			log.Warn().Str("parent_id", req.ParentID).Str("tenant_id", oldDept.TenantID).Msg("父部门不属于当前租户")
 			return nil, xerr.ErrParentDeptNotFound
 		}
 	}
@@ -164,58 +175,62 @@ func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID s
 
 	// 更新部门
 	if err := s.deptRepo.Update(ctx, departmentID, updates); err != nil {
+		log.Error().Err(err).Str("department_id", departmentID).Interface("updates", updates).Msg("更新部门失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "更新部门失败", err)
 	}
 
 	// 获取更新后的部门信息
-	updatedDept, err := s.deptRepo.GetByID(ctx, departmentID)
+	dept, err := s.deptRepo.GetByID(ctx, departmentID)
 	if err != nil {
+		log.Error().Err(err).Str("department_id", departmentID).Msg("获取更新后部门信息失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后部门信息失败", err)
 	}
 
-	// 记录操作日志
-	ctx = auditlog.RecordUpdate(ctx, constants.ModuleDept, constants.ResourceTypeDept, updatedDept.DepartmentID, updatedDept.DepartmentName, oldDept, updatedDept)
-
-	return s.toDepartmentResponse(updatedDept), nil
+	return s.toDepartmentResponse(dept), nil
 }
 
 // DeleteDepartment 删除部门
 func (s *DepartmentService) DeleteDepartment(ctx context.Context, departmentID string) error {
-	// 检查部门是否存在，获取部门信息用于日志
+	// 检查部门是否存在
 	dept, err := s.deptRepo.GetByID(ctx, departmentID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("department_id", departmentID).Msg("部门不存在")
 			return xerr.ErrDeptNotFound
 		}
+		log.Error().Err(err).Str("department_id", departmentID).Msg("查询部门失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "查询部门失败", err)
 	}
 
 	// 检查是否有子部门
 	hasChildren, err := s.deptRepo.HasChildren(ctx, departmentID)
 	if err != nil {
+		log.Error().Err(err).Str("department_id", departmentID).Msg("检查子部门失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "检查子部门失败", err)
 	}
 	if hasChildren {
+		log.Warn().Str("department_id", departmentID).Msg("部门存在子部门，无法删除")
 		return xerr.ErrDeptHasChildren
 	}
 
 	// 检查是否有关联用户
 	count, err := s.userRepo.CountByDept(ctx, departmentID)
 	if err != nil {
+		log.Error().Err(err).Str("department_id", departmentID).Msg("检查部门用户失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "检查部门用户失败", err)
 	}
 	if count > 0 {
+		log.Warn().Str("department_id", departmentID).Int("user_count", int(count)).Msg("部门存在关联用户，无法删除")
 		return xerr.ErrDeptHasUsers
 	}
 
 	// 删除部门
 	if err := s.deptRepo.Delete(ctx, departmentID); err != nil {
+		log.Error().Err(err).Str("department_id", departmentID).Str("department_name", dept.DepartmentName).Msg("删除部门失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除部门失败", err)
 	}
 
-	// 记录操作日志
-	auditlog.RecordDelete(ctx, constants.ModuleDept, constants.ResourceTypeDept, dept.DepartmentID, dept.DepartmentName, dept)
-
+	log.Info().Str("department_id", departmentID).Str("department_name", dept.DepartmentName).Msg("删除部门成功")
 	return nil
 }
 
@@ -223,6 +238,11 @@ func (s *DepartmentService) DeleteDepartment(ctx context.Context, departmentID s
 func (s *DepartmentService) ListDepartments(ctx context.Context, req *dto.ListDepartmentsRequest) (*dto.ListDepartmentsResponse, error) {
 	depts, total, err := s.deptRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Keyword, req.Status, req.ParentID)
 	if err != nil {
+		log.Error().Err(err).
+			Str("keyword", req.Keyword).
+			Int("status", req.Status).
+			Str("parent_id", req.ParentID).
+			Msg("查询部门列表失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询部门列表失败", err)
 	}
 
@@ -243,6 +263,7 @@ func (s *DepartmentService) GetDepartmentTree(ctx context.Context) (*dto.Departm
 	// 获取所有部门
 	allDepts, err := s.deptRepo.List(ctx)
 	if err != nil {
+		log.Error().Err(err).Msg("查询部门列表失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询部门列表失败", err)
 	}
 
@@ -258,6 +279,7 @@ func (s *DepartmentService) GetDepartmentTree(ctx context.Context) (*dto.Departm
 func (s *DepartmentService) GetChildren(ctx context.Context, departmentID string) ([]*dto.DepartmentResponse, error) {
 	children, err := s.deptRepo.GetChildren(ctx, departmentID)
 	if err != nil {
+		log.Error().Err(err).Str("department_id", departmentID).Msg("查询子部门失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询子部门失败", err)
 	}
 
@@ -271,29 +293,24 @@ func (s *DepartmentService) GetChildren(ctx context.Context, departmentID string
 
 // UpdateDepartmentStatus 更新部门状态
 func (s *DepartmentService) UpdateDepartmentStatus(ctx context.Context, departmentID string, status int) error {
-	// 检查部门是否存在，获取旧值用于日志
-	oldDept, err := s.deptRepo.GetByID(ctx, departmentID)
+	// 检查部门是否存在
+	dept, err := s.deptRepo.GetByID(ctx, departmentID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("department_id", departmentID).Msg("部门不存在")
 			return xerr.ErrDeptNotFound
 		}
+		log.Error().Err(err).Str("department_id", departmentID).Msg("查询部门失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "查询部门失败", err)
 	}
 
 	// 更新部门状态
 	if err := s.deptRepo.UpdateStatus(ctx, departmentID, status); err != nil {
+		log.Error().Err(err).Str("department_id", departmentID).Int("status", status).Msg("更新部门状态失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新部门状态失败", err)
 	}
 
-	// 获取更新后的部门信息
-	updatedDept, err := s.deptRepo.GetByID(ctx, departmentID)
-	if err != nil {
-		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后部门信息失败", err)
-	}
-
-	// 记录操作日志
-	auditlog.RecordUpdate(ctx, constants.ModuleDept, constants.ResourceTypeDept, updatedDept.DepartmentID, updatedDept.DepartmentName, oldDept, updatedDept)
-
+	log.Info().Str("department_id", departmentID).Str("department_name", dept.DepartmentName).Int("status", status).Msg("更新部门状态成功")
 	return nil
 }
 

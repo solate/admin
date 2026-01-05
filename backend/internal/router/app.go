@@ -4,7 +4,7 @@ import (
 	"admin/internal/handler"
 	"admin/internal/repository"
 	"admin/internal/service"
-	"admin/pkg/auditlog"
+	"admin/pkg/audit"
 	"admin/pkg/cache"
 	"admin/pkg/casbin"
 	"admin/pkg/config"
@@ -21,14 +21,13 @@ import (
 )
 
 type App struct {
-	Config         *config.Config        // 配置
-	Router         *gin.Engine           // 路由
-	DB             *gorm.DB              // 数据库连接
-	Redis          redis.UniversalClient // Redis连接
-	JWT            *jwt.Manager          // JWT管理器
-	Enforcer       *casbin.Enforcer      // Casbin enforce
-	Handlers       *Handlers             // 处理器层容器
-	AuditLogWriter *auditlog.Writer      // 审计日志写入器
+	Config   *config.Config        // 配置
+	Router   *gin.Engine           // 路由
+	DB       *gorm.DB              // 数据库连接
+	Redis    redis.UniversalClient // Redis连接
+	JWT      *jwt.Manager          // JWT管理器
+	Enforcer *casbin.Enforcer      // Casbin enforce
+	Handlers *Handlers             // 处理器层容器
 }
 
 // Handlers 处理器层容器
@@ -85,11 +84,12 @@ func NewApp() (*App, error) {
 		return nil, fmt.Errorf("failed to init casbin: %w", err)
 	}
 
-	// 7. 初始化操作日志 Writer
-	app.AuditLogWriter = auditlog.NewWriter(app.DB)
+	// 7. 初始化新的审计日志 Recorder
+	auditDB := audit.NewDB(app.DB)
+	auditRecorder := audit.NewRecorder(auditDB)
 
 	// 8. 初始化处理器层
-	if err := app.initHandlers(); err != nil {
+	if err := app.initHandlers(auditRecorder); err != nil {
 		return nil, fmt.Errorf("failed to init handlers: %w", err)
 	}
 
@@ -240,14 +240,8 @@ func (s *App) Close() error {
 	return nil
 }
 
-// initAuditLogLogger 初始化操作日志写入器
-func (s *App) initAuditLogLogger() error {
-	s.AuditLogWriter = auditlog.NewWriter(s.DB)
-	return nil
-}
-
 // initHandlers 初始化处理器层
-func (s *App) initHandlers() error {
+func (s *App) initHandlers(auditRecorder *audit.Recorder) error {
 	// 初始化仓库层
 	userRepo := repository.NewUserRepo(s.DB)
 	userRoleRepo := repository.NewUserRoleRepo(s.Enforcer)
@@ -263,7 +257,7 @@ func (s *App) initHandlers() error {
 	dictItemRepo := repository.NewDictItemRepo(s.DB)
 
 	// 初始化服务层
-	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, s.Config, s.AuditLogWriter) // 初始化认证服务
+	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, s.Config) // 初始化认证服务
 	userService := service.NewUserService(userRepo, roleRepo, tenantRepo, s.Enforcer)                                                           // 初始化用户服务
 	tenantService := service.NewTenantService(tenantRepo)                                                                                       // 初始化租户服务
 	roleService := service.NewRoleService(roleRepo, permissionRepo, menuRepo, s.Enforcer, cache.Get().Tenant) // 初始化角色服务（需要 enforcer、tenantCache 和 menuRepo 用于角色继承、菜单权限管理和 API 权限关联）

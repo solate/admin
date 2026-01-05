@@ -4,14 +4,13 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
-	"admin/pkg/constants"
 	"admin/pkg/idgen"
-	"admin/pkg/auditlog"
 	"admin/pkg/pagination"
 	"admin/pkg/xerr"
 	"context"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -32,34 +31,35 @@ func (s *TenantService) CreateTenant(ctx context.Context, req *dto.TenantCreateR
 	// 检查租户编码是否已存在
 	exists, err := s.tenantRepo.CheckExists(ctx, req.Code)
 	if err != nil {
+		log.Error().Err(err).Str("code", req.Code).Msg("检查租户编码失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "检查租户编码失败", err)
 	}
 	if exists {
+		log.Warn().Str("code", req.Code).Msg("租户编码已存在")
 		return nil, xerr.New(xerr.ErrConflict.Code, "租户编码已存在")
 	}
 
 	// 生成租户ID
 	tenantID, err := idgen.GenerateUUID()
 	if err != nil {
+		log.Error().Err(err).Msg("生成租户ID失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成租户ID失败", err)
 	}
 
 	// 构建租户模型
 	tenant := &model.Tenant{
-		TenantID:   tenantID,
-		TenantCode: req.Code,
-		Name:       req.Name,
+		TenantID:    tenantID,
+		TenantCode:  req.Code,
+		Name:        req.Name,
 		Description: req.Description,
-		Status:     1, // 默认启用
+		Status:      1, // 默认启用
 	}
 
 	// 创建租户
 	if err := s.tenantRepo.Create(ctx, tenant); err != nil {
+		log.Error().Err(err).Str("tenant_id", tenantID).Str("code", req.Code).Msg("创建租户失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "创建租户失败", err)
 	}
-
-	// 记录操作日志
-	ctx = auditlog.RecordCreate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, tenant.TenantID, tenant.Name, tenant)
 
 	return s.toTenantResponse(tenant), nil
 }
@@ -69,8 +69,10 @@ func (s *TenantService) GetTenantByID(ctx context.Context, tenantID string) (*dt
 	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("tenant_id", tenantID).Msg("租户不存在")
 			return nil, xerr.ErrNotFound
 		}
+		log.Error().Err(err).Str("tenant_id", tenantID).Msg("查询租户失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询租户失败", err)
 	}
 
@@ -80,11 +82,13 @@ func (s *TenantService) GetTenantByID(ctx context.Context, tenantID string) (*dt
 // UpdateTenant 更新租户
 func (s *TenantService) UpdateTenant(ctx context.Context, tenantID string, req *dto.TenantUpdateRequest) (*dto.TenantResponse, error) {
 	// 检查租户是否存在
-	oldTenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	_, err := s.tenantRepo.GetByID(ctx, tenantID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("tenant_id", tenantID).Msg("租户不存在")
 			return nil, xerr.ErrNotFound
 		}
+		log.Error().Err(err).Str("tenant_id", tenantID).Msg("查询租户失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询租户失败", err)
 	}
 
@@ -106,29 +110,30 @@ func (s *TenantService) UpdateTenant(ctx context.Context, tenantID string, req *
 
 	// 更新租户
 	if err := s.tenantRepo.Update(ctx, tenantID, updates); err != nil {
+		log.Error().Err(err).Str("tenant_id", tenantID).Interface("updates", updates).Msg("更新租户失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "更新租户失败", err)
 	}
 
 	// 获取更新后的租户信息
-	updatedTenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
 	if err != nil {
+		log.Error().Err(err).Str("tenant_id", tenantID).Msg("获取更新后租户信息失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后租户信息失败", err)
 	}
 
-	// 记录操作日志
-	ctx = auditlog.RecordUpdate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
-
-	return s.toTenantResponse(updatedTenant), nil
+	return s.toTenantResponse(tenant), nil
 }
 
 // DeleteTenant 删除租户
 func (s *TenantService) DeleteTenant(ctx context.Context, tenantID string) error {
 	// 检查租户是否存在
-	tenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	_, err := s.tenantRepo.GetByID(ctx, tenantID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("tenant_id", tenantID).Msg("租户不存在")
 			return xerr.ErrNotFound
 		}
+		log.Error().Err(err).Str("tenant_id", tenantID).Msg("查询租户失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "查询租户失败", err)
 	}
 
@@ -140,12 +145,11 @@ func (s *TenantService) DeleteTenant(ctx context.Context, tenantID string) error
 
 	// 删除租户
 	if err := s.tenantRepo.Delete(ctx, tenantID); err != nil {
+		log.Error().Err(err).Str("tenant_id", tenantID).Msg("删除租户失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除租户失败", err)
 	}
 
-	// 记录操作日志
-	auditlog.RecordDelete(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, tenant.TenantID, tenant.Name, tenant)
-
+	log.Info().Str("tenant_id", tenantID).Msg("删除租户成功")
 	return nil
 }
 
@@ -154,6 +158,11 @@ func (s *TenantService) ListTenants(ctx context.Context, req *dto.TenantListRequ
 	// 获取租户列表和总数，支持筛选条件
 	tenants, total, err := s.tenantRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Code, req.Name, req.Status)
 	if err != nil {
+		log.Error().Err(err).
+			Str("code", req.Code).
+			Str("name", req.Name).
+			Int("status", req.Status).
+			Msg("查询租户列表失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询租户列表失败", err)
 	}
 
@@ -173,28 +182,23 @@ func (s *TenantService) ListTenants(ctx context.Context, req *dto.TenantListRequ
 // UpdateTenantStatus 更新租户状态
 func (s *TenantService) UpdateTenantStatus(ctx context.Context, tenantID string, status int) error {
 	// 检查租户是否存在
-	oldTenant, err := s.tenantRepo.GetByID(ctx, tenantID)
+	_, err := s.tenantRepo.GetByID(ctx, tenantID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("tenant_id", tenantID).Msg("租户不存在")
 			return xerr.ErrNotFound
 		}
+		log.Error().Err(err).Str("tenant_id", tenantID).Msg("查询租户失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "查询租户失败", err)
 	}
 
 	// 更新租户状态
 	if err := s.tenantRepo.UpdateStatus(ctx, tenantID, status); err != nil {
+		log.Error().Err(err).Str("tenant_id", tenantID).Int("status", status).Msg("更新租户状态失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新租户状态失败", err)
 	}
 
-	// 获取更新后的租户信息
-	updatedTenant, err := s.tenantRepo.GetByID(ctx, tenantID)
-	if err != nil {
-		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后租户信息失败", err)
-	}
-
-	// 记录操作日志
-	auditlog.RecordUpdate(ctx, constants.ModuleTenant, constants.ResourceTypeTenant, updatedTenant.TenantID, updatedTenant.Name, oldTenant, updatedTenant)
-
+	log.Info().Str("tenant_id", tenantID).Int("status", status).Msg("更新租户状态成功")
 	return nil
 }
 

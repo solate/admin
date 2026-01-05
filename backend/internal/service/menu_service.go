@@ -4,7 +4,6 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
-	"admin/pkg/auditlog"
 	"admin/pkg/casbin"
 	"admin/pkg/constants"
 	"admin/pkg/idgen"
@@ -13,6 +12,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -35,6 +35,7 @@ func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest
 	// 生成菜单ID
 	menuID, err := idgen.GenerateUUID()
 	if err != nil {
+		log.Error().Err(err).Msg("生成菜单ID失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成菜单ID失败", err)
 	}
 
@@ -43,8 +44,10 @@ func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest
 		_, err := s.menuRepo.GetByID(ctx, req.ParentID)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
+				log.Warn().Str("parent_id", req.ParentID).Msg("父菜单不存在")
 				return nil, xerr.ErrMenuInvalidParent
 			}
+			log.Error().Err(err).Str("parent_id", req.ParentID).Msg("查询父菜单失败")
 			return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询父菜单失败", err)
 		}
 	}
@@ -70,12 +73,11 @@ func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest
 
 	// 创建菜单
 	if err := s.menuRepo.Create(ctx, menu); err != nil {
+		log.Error().Err(err).Str("menu_id", menuID).Str("name", req.Name).Msg("创建菜单失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "创建菜单失败", err)
 	}
 
-	// 记录操作日志
-	ctx = auditlog.RecordCreate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, menu.MenuID, menu.Name, menu)
-
+	log.Info().Str("menu_id", menuID).Str("name", req.Name).Msg("创建菜单成功")
 	return s.toMenuInfo(menu), nil
 }
 
@@ -84,8 +86,10 @@ func (s *MenuService) GetMenuByID(ctx context.Context, menuID string) (*dto.Menu
 	menu, err := s.menuRepo.GetByID(ctx, menuID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("menu_id", menuID).Msg("菜单不存在")
 			return nil, xerr.ErrMenuNotFound
 		}
+		log.Error().Err(err).Str("menu_id", menuID).Msg("查询菜单失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单失败", err)
 	}
 
@@ -94,12 +98,14 @@ func (s *MenuService) GetMenuByID(ctx context.Context, menuID string) (*dto.Menu
 
 // UpdateMenu 更新菜单
 func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.UpdateMenuRequest) (*dto.MenuInfo, error) {
-	// 检查菜单是否存在，获取旧值用于日志
-	oldMenu, err := s.menuRepo.GetByID(ctx, menuID)
+	// 检查菜单是否存在
+	_, err := s.menuRepo.GetByID(ctx, menuID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("menu_id", menuID).Msg("菜单不存在")
 			return nil, xerr.ErrMenuNotFound
 		}
+		log.Error().Err(err).Str("menu_id", menuID).Msg("查询菜单失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单失败", err)
 	}
 
@@ -107,6 +113,7 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 	if req.ParentID != "" {
 		// 不能将菜单移动到自己或其子菜单下
 		if req.ParentID == menuID {
+			log.Warn().Str("menu_id", menuID).Msg("不能将菜单移动到自己下")
 			return nil, xerr.ErrMenuCannotMoveToSelf
 		}
 
@@ -114,8 +121,10 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 		_, err := s.menuRepo.GetByID(ctx, req.ParentID)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
+				log.Warn().Str("parent_id", req.ParentID).Msg("父菜单不存在")
 				return nil, xerr.ErrMenuInvalidParent
 			}
+			log.Error().Err(err).Str("parent_id", req.ParentID).Msg("查询父菜单失败")
 			return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询父菜单失败", err)
 		}
 	}
@@ -150,46 +159,53 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 
 	// 更新菜单
 	if err := s.menuRepo.Update(ctx, menuID, updates); err != nil {
+		log.Error().Err(err).Str("menu_id", menuID).Interface("updates", updates).Msg("更新菜单失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "更新菜单失败", err)
 	}
 
 	// 获取更新后的菜单信息
-	updatedMenu, err := s.menuRepo.GetByID(ctx, menuID)
+	menu, err := s.menuRepo.GetByID(ctx, menuID)
 	if err != nil {
+		log.Error().Err(err).Str("menu_id", menuID).Msg("获取更新后菜单信息失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后菜单信息失败", err)
 	}
 
-	// 记录操作日志
-	ctx = auditlog.RecordUpdate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, updatedMenu.MenuID, updatedMenu.Name, oldMenu, updatedMenu)
-
-	return s.toMenuInfo(updatedMenu), nil
+	log.Info().Str("menu_id", menuID).Msg("更新菜单成功")
+	return s.toMenuInfo(menu), nil
 }
 
 // DeleteMenu 删除菜单
 // 说明：删除菜单时会自动清理所有租户中该菜单的权限策略
 func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) error {
-	// 检查菜单是否存在，获取菜单信息用于日志
-	menu, err := s.menuRepo.GetByID(ctx, menuID)
+	// 检查菜单是否存在
+	_, err := s.menuRepo.GetByID(ctx, menuID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("menu_id", menuID).Msg("菜单不存在")
 			return xerr.ErrMenuNotFound
 		}
+		log.Error().Err(err).Str("menu_id", menuID).Msg("查询菜单失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "查询菜单失败", err)
 	}
 
 	// 检查是否有子菜单
 	childrenCount, err := s.menuRepo.GetChildrenCount(ctx, menuID)
 	if err != nil {
+		log.Error().Err(err).Str("menu_id", menuID).Msg("检查子菜单失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "检查子菜单失败", err)
 	}
 	if childrenCount > 0 {
+		log.Warn().Str("menu_id", menuID).Int64("children_count", childrenCount).Msg("菜单存在子菜单，无法删除")
 		return xerr.ErrMenuHasChildren
 	}
 
 	// 删除菜单（软删除）
 	if err := s.menuRepo.Delete(ctx, menuID); err != nil {
+		log.Error().Err(err).Str("menu_id", menuID).Msg("删除菜单失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除菜单失败", err)
 	}
+
+	log.Info().Str("menu_id", menuID).Msg("删除菜单成功")
 
 	// 清理该菜单在所有租户中的权限策略
 	// 1. 清理菜单权限 (menu:menu_id)
@@ -213,9 +229,6 @@ func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) error {
 	// 这里为了简化，我们清理所有可能受影响的 API 权限
 	// 实际生产环境中，可以考虑维护一个菜单-权限映射表
 
-	// 记录操作日志
-	auditlog.RecordDelete(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, menu.MenuID, menu.Name, menu)
-
 	return nil
 }
 
@@ -228,6 +241,7 @@ func (s *MenuService) ListMenus(ctx context.Context, req *dto.ListMenusRequest) 
 	}
 	menus, total, err := s.menuRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Name, statusFilter)
 	if err != nil {
+		log.Error().Err(err).Str("name", req.Name).Msg("查询菜单列表失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单列表失败", err)
 	}
 
@@ -248,6 +262,7 @@ func (s *MenuService) GetAllMenus(ctx context.Context) (*dto.AllMenusResponse, e
 	// 获取所有菜单
 	menus, err := s.menuRepo.List(ctx)
 	if err != nil {
+		log.Error().Err(err).Msg("查询菜单列表失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单列表失败", err)
 	}
 
@@ -267,6 +282,7 @@ func (s *MenuService) GetMenuTree(ctx context.Context) (*dto.MenuTreeResponse, e
 	// 获取所有菜单
 	menus, err := s.menuRepo.List(ctx)
 	if err != nil {
+		log.Error().Err(err).Msg("查询菜单列表失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单列表失败", err)
 	}
 
@@ -280,29 +296,24 @@ func (s *MenuService) GetMenuTree(ctx context.Context) (*dto.MenuTreeResponse, e
 
 // UpdateMenuStatus 更新菜单状态
 func (s *MenuService) UpdateMenuStatus(ctx context.Context, menuID string, status int) error {
-	// 检查菜单是否存在，获取旧值用于日志
-	oldMenu, err := s.menuRepo.GetByID(ctx, menuID)
+	// 检查菜单是否存在
+	_, err := s.menuRepo.GetByID(ctx, menuID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("menu_id", menuID).Msg("菜单不存在")
 			return xerr.ErrMenuNotFound
 		}
+		log.Error().Err(err).Str("menu_id", menuID).Msg("查询菜单失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "查询菜单失败", err)
 	}
 
 	// 更新菜单状态
 	if err := s.menuRepo.UpdateStatus(ctx, menuID, int16(status)); err != nil {
+		log.Error().Err(err).Str("menu_id", menuID).Int("status", status).Msg("更新菜单状态失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新菜单状态失败", err)
 	}
 
-	// 获取更新后的菜单信息
-	updatedMenu, err := s.menuRepo.GetByID(ctx, menuID)
-	if err != nil {
-		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后菜单信息失败", err)
-	}
-
-	// 记录操作日志
-	auditlog.RecordUpdate(ctx, constants.ModuleMenu, constants.ResourceTypeMenu, updatedMenu.MenuID, updatedMenu.Name, oldMenu, updatedMenu)
-
+	log.Info().Str("menu_id", menuID).Int("status", status).Msg("更新菜单状态成功")
 	return nil
 }
 
