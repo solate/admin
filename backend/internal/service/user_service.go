@@ -20,21 +20,23 @@ import (
 
 // UserService 用户服务
 type UserService struct {
-	userRepo   *repository.UserRepo
-	roleRepo   *repository.RoleRepo
-	tenantRepo *repository.TenantRepo
-	enforcer   *casbin.Enforcer
-	recorder   *audit.Recorder
+	userRepo     *repository.UserRepo
+	userRoleRepo *repository.UserRoleRepo
+	roleRepo     *repository.RoleRepo
+	tenantRepo   *repository.TenantRepo
+	enforcer     *casbin.Enforcer
+	recorder     *audit.Recorder
 }
 
 // NewUserService 创建用户服务
-func NewUserService(userRepo *repository.UserRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, enforcer *casbin.Enforcer, recorder *audit.Recorder) *UserService {
+func NewUserService(userRepo *repository.UserRepo, userRoleRepo *repository.UserRoleRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, enforcer *casbin.Enforcer, recorder *audit.Recorder) *UserService {
 	return &UserService{
-		userRepo:   userRepo,
-		roleRepo:   roleRepo,
-		tenantRepo: tenantRepo,
-		enforcer:   enforcer,
-		recorder:   recorder,
+		userRepo:     userRepo,
+		userRoleRepo: userRoleRepo,
+		roleRepo:     roleRepo,
+		tenantRepo:   tenantRepo,
+		enforcer:     enforcer,
+		recorder:     recorder,
 	}
 }
 
@@ -419,4 +421,246 @@ func (s *UserService) toUserResponse(ctx context.Context, user *model.User) *dto
 			UpdatedAt:     user.UpdatedAt,
 		},
 	}
+}
+
+// AssignRoles 为用户分配角色（覆盖式）
+func (s *UserService) AssignRoles(ctx context.Context, userID string, req *dto.AssignRolesRequest) (err error) {
+	var user *model.User
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleRole),
+				audit.WithError(err),
+			)
+		} else if user != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleRole),
+				audit.WithResource(audit.ResourceUser, user.UserID, user.UserName),
+				audit.WithValue(nil, map[string]interface{}{
+					"role_codes": req.RoleCodes,
+				}),
+			)
+		}
+	}()
+
+	// 获取用户信息
+	user, err = s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("user_id", userID).Msg("用户不存在")
+			return xerr.ErrUserNotFound
+		}
+		log.Error().Err(err).Str("user_id", userID).Msg("查询用户失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
+	}
+
+	tenantCode := xcontext.GetTenantCode(ctx)
+
+	// 验证所有角色是否存在
+	roles, err := s.roleRepo.ListByCodes(ctx, req.RoleCodes)
+	if err != nil {
+		log.Error().Err(err).Strs("role_codes", req.RoleCodes).Msg("查询角色失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "查询角色失败", err)
+	}
+
+	if len(roles) != len(req.RoleCodes) {
+		log.Warn().Strs("role_codes", req.RoleCodes).Msg("部分角色不存在")
+		return xerr.Wrap(xerr.ErrInvalidParams.Code, "部分角色不存在", nil)
+	}
+
+	// 分配角色（覆盖式）
+	if err := s.userRoleRepo.AssignRoles(ctx, user.UserName, req.RoleCodes, tenantCode); err != nil {
+		log.Error().Err(err).Str("user_id", userID).Strs("role_codes", req.RoleCodes).Msg("分配角色失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "分配角色失败", err)
+	}
+
+	log.Info().
+		Str("user_id", userID).
+		Str("username", user.UserName).
+		Strs("role_codes", req.RoleCodes).
+		Msg("分配用户角色成功")
+
+	return nil
+}
+
+// GetUserRoles 获取用户的角色列表
+func (s *UserService) GetUserRoles(ctx context.Context, userID string) (*dto.UserRolesResponse, error) {
+	// 获取用户信息
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("user_id", userID).Msg("用户不存在")
+			return nil, xerr.ErrUserNotFound
+		}
+		log.Error().Err(err).Str("user_id", userID).Msg("查询用户失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
+	}
+
+	tenantCode := xcontext.GetTenantCode(ctx)
+
+	// 获取用户角色编码列表
+	roleCodes, err := s.userRoleRepo.GetUserRoles(ctx, user.UserName, tenantCode)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", userID).Msg("查询用户角色失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户角色失败", err)
+	}
+
+	// 获取角色详情
+	roles, err := s.roleRepo.ListByCodes(ctx, roleCodes)
+	if err != nil {
+		log.Error().Err(err).Strs("role_codes", roleCodes).Msg("查询角色详情失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询角色详情失败", err)
+	}
+
+	// 构建角色信息列表
+	roleInfos := make([]*dto.RoleInfo, 0, len(roles))
+	for _, role := range roles {
+		roleInfos = append(roleInfos, &dto.RoleInfo{
+			RoleID:      role.RoleID,
+			RoleCode:    role.RoleCode,
+			Name:        role.Name,
+			Description: role.Description,
+		})
+	}
+
+	return &dto.UserRolesResponse{
+		UserID:   user.UserID,
+		UserName: user.UserName,
+		Roles:    roleInfos,
+	}, nil
+}
+
+// ChangePassword 用户修改自己的密码
+func (s *UserService) ChangePassword(ctx context.Context, req *dto.ChangePasswordRequest) (err error) {
+	var user *model.User
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleUser),
+				audit.WithOperation("修改密码"),
+				audit.WithError(err),
+			)
+		} else if user != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleUser),
+				audit.WithOperation("修改密码"),
+				audit.WithResource(audit.ResourceUser, user.UserID, user.UserName),
+				audit.WithValue(nil, user),
+			)
+			log.Info().Str("user_id", user.UserID).Msg("用户修改密码成功")
+		}
+	}()
+
+	// 获取当前用户ID
+	userID := xcontext.GetUserID(ctx)
+
+	// 查询用户信息
+	user, err = s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("user_id", userID).Msg("用户不存在")
+			return xerr.ErrUserNotFound
+		}
+		log.Error().Err(err).Str("user_id", userID).Msg("查询用户失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
+	}
+
+	// 使用 VerifyPassword 验证旧密码
+	if !passwordgen.VerifyPassword(req.OldPassword, user.Password) {
+		log.Warn().Str("user_id", userID).Msg("旧密码错误")
+		return xerr.New(xerr.ErrUnauthorized.Code, "原密码错误")
+	}
+
+	// 生成新盐值并加密新密码
+	newSalt, err := passwordgen.GenerateSalt()
+	if err != nil {
+		log.Error().Err(err).Str("user_id", userID).Msg("生成盐值失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "生成盐值失败", err)
+	}
+
+	newHashedPassword, err := passwordgen.Argon2Hash(req.NewPassword, newSalt)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", userID).Msg("新密码加密失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "新密码加密失败", err)
+	}
+
+	// 更新密码
+	if err := s.userRepo.UpdatePassword(ctx, userID, newHashedPassword); err != nil {
+		log.Error().Err(err).Str("user_id", userID).Msg("更新密码失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "更新密码失败", err)
+	}
+
+	return nil
+}
+
+// ResetPassword 超管重置用户密码（密码只显示一次）
+// 权限检查由 CasbinMiddleware 处理
+func (s *UserService) ResetPassword(ctx context.Context, targetUserID string, req *dto.ResetPasswordRequest) (resp *dto.ResetPasswordResponse, err error) {
+	var user *model.User
+	var newPassword string
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleUser),
+				audit.WithOperation("重置密码"),
+				audit.WithError(err),
+			)
+		} else if user != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleUser),
+				audit.WithOperation("重置密码"),
+				audit.WithResource(audit.ResourceUser, user.UserID, user.UserName),
+				audit.WithValue(nil, user),
+			)
+			log.Info().Str("operator_id", xcontext.GetUserID(ctx)).Str("target_user_id", targetUserID).Msg("重置用户密码成功")
+		}
+	}()
+
+	// 查询目标用户
+	user, err = s.userRepo.GetByID(ctx, targetUserID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Warn().Str("target_user_id", targetUserID).Msg("目标用户不存在")
+			return nil, xerr.ErrUserNotFound
+		}
+		log.Error().Err(err).Str("target_user_id", targetUserID).Msg("查询用户失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
+	}
+
+	// 确定新密码：如果未提供则自动生成
+	if req.Password != "" {
+		newPassword = req.Password
+	} else {
+		// 自动生成随机密码（8位字母+数字）
+		newPassword = passwordgen.GenerateRandomPassword(8)
+	}
+
+	// 生成新盐值并加密密码
+	salt, err := passwordgen.GenerateSalt()
+	if err != nil {
+		log.Error().Err(err).Str("target_user_id", targetUserID).Msg("生成盐值失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成盐值失败", err)
+	}
+
+	hashedPassword, err := passwordgen.Argon2Hash(newPassword, salt)
+	if err != nil {
+		log.Error().Err(err).Str("target_user_id", targetUserID).Msg("密码加密失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "密码加密失败", err)
+	}
+
+	// 更新密码
+	if err := s.userRepo.UpdatePassword(ctx, targetUserID, hashedPassword); err != nil {
+		log.Error().Err(err).Str("target_user_id", targetUserID).Msg("更新密码失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "更新密码失败", err)
+	}
+
+	// 返回响应（密码只显示这一次）
+	return &dto.ResetPasswordResponse{
+		Password:      newPassword,
+		AutoGenerated: req.Password == "",
+		Message:       "密码重置成功，请立即将新密码告知用户，此密码仅显示一次",
+	}, nil
 }

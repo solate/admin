@@ -68,8 +68,12 @@ func Setup(r *gin.Engine, app *App) {
 		authorized.Use(middleware.CasbinMiddleware(app.Enforcer)) // 权限校验（超管跳过，其他走 Casbin）
 		authorized.Use(audit.AuditMiddleware())                   // 审计日志中间件（提取请求信息）
 		{
-			// 当前用户信息
-			authorized.GET("/profile", app.Handlers.UserHandler.GetProfile) // 获取当前用户信息（含角色）
+			// 用户个人资料相关（当前登录用户操作自己的数据）
+			userSelf := authorized.Group("")
+			{
+				userSelf.GET("/profile", app.Handlers.UserHandler.GetProfile)              // 获取当前用户信息（含角色）
+				userSelf.POST("/password/change", app.Handlers.UserHandler.ChangePassword) // 修改自己的密码
+			}
 
 			// 认证接口（无需 Casbin 权限检查）
 			auth := authorized.Group("/auth")
@@ -100,6 +104,9 @@ func Setup(r *gin.Engine, app *App) {
 				user.PUT("/:user_id", app.Handlers.UserHandler.UpdateUser)                      // 更新用户
 				user.DELETE("/:user_id", app.Handlers.UserHandler.DeleteUser)                   // 删除用户
 				user.PUT("/:user_id/status/:status", app.Handlers.UserHandler.UpdateUserStatus) // 更新用户状态
+				user.GET("/:user_id/roles", app.Handlers.UserHandler.GetUserRoles)              // 获取用户角色
+				user.PUT("/:user_id/roles", app.Handlers.UserHandler.AssignRoles)               // 为用户分配角色
+				user.POST("/:user_id/password/reset", app.Handlers.UserHandler.ResetPassword)   // 超管重置用户密码
 			}
 
 			// 角色管理（租户管理员+超管）

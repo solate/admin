@@ -258,7 +258,7 @@ func (s *App) initHandlers(auditRecorder *audit.Recorder) error {
 
 	// 初始化服务层
 	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, auditRecorder, s.Config) // 初始化认证服务
-	userService := service.NewUserService(userRepo, roleRepo, tenantRepo, s.Enforcer, auditRecorder)                                                           // 初始化用户服务
+	userService := service.NewUserService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.Enforcer, auditRecorder)                           // 初始化用户服务
 	tenantService := service.NewTenantService(tenantRepo, auditRecorder)                                                                                // 初始化租户服务
 	roleService := service.NewRoleService(roleRepo, permissionRepo, menuRepo, s.Enforcer, cache.Get().Tenant, auditRecorder) // 初始化角色服务（需要 enforcer、tenantCache 和 menuRepo 用于角色继承、菜单权限管理和 API 权限关联）
 	menuService := service.NewMenuService(menuRepo, s.Enforcer, auditRecorder)                                                                     // 初始化菜单服务

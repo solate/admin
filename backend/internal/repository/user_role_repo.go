@@ -72,3 +72,53 @@ func (r *UserRoleRepo) GetRoleUsers(ctx context.Context, roleCode, tenantCode st
 	users := r.enforcer.GetUsersForRoleInDomain(roleCode, tenantCode)
 	return users, nil
 }
+
+// AssignRoles 为用户批量分配角色（覆盖式）
+// 先删除用户在租户下的所有角色，再添加新角色
+func (r *UserRoleRepo) AssignRoles(ctx context.Context, userName string, roleCodes []string, tenantCode string) error {
+	// 1. 删除用户在该租户下的所有现有角色
+	if _, err := r.DeleteUserRoles(ctx, userName, tenantCode); err != nil {
+		return err
+	}
+
+	// 2. 添加新角色
+	for _, roleCode := range roleCodes {
+		if _, err := r.AddUserRole(ctx, userName, roleCode, tenantCode); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// AddRoles 为用户批量添加角色（增量式）
+// 不删除现有角色，只添加新角色
+func (r *UserRoleRepo) AddRoles(ctx context.Context, userName string, roleCodes []string, tenantCode string) error {
+	// 获取用户现有角色
+	existingRoles := r.enforcer.GetRolesForUserInDomain(userName, tenantCode)
+	existingRoleMap := make(map[string]bool)
+	for _, role := range existingRoles {
+		existingRoleMap[role] = true
+	}
+
+	// 只添加不存在的角色
+	for _, roleCode := range roleCodes {
+		if !existingRoleMap[roleCode] {
+			if _, err := r.AddUserRole(ctx, userName, roleCode, tenantCode); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// RemoveRoles 为用户批量删除角色
+func (r *UserRoleRepo) RemoveRoles(ctx context.Context, userName string, roleCodes []string, tenantCode string) error {
+	for _, roleCode := range roleCodes {
+		if _, err := r.DeleteUserRole(ctx, userName, roleCode, tenantCode); err != nil {
+			return err
+		}
+	}
+	return nil
+}

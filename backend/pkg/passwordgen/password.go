@@ -194,3 +194,14 @@ func parseUint32(s, prefix string, base int) (uint32, error) {
 
 	return uint32(n.Uint64()), nil
 }
+
+// GenerateRandomPassword 生成简单的随机密码（字母+数字）
+func GenerateRandomPassword(length int) string {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+	password := make([]byte, length)
+	for i := range password {
+		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		password[i] = charset[n.Int64()]
+	}
+	return string(password)
+}

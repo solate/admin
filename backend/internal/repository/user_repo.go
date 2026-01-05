@@ -134,3 +134,11 @@ func (r *UserRepo) ListByDeptWithChildren(ctx context.Context, departmentIDs []s
 		Where(r.q.User.DepartmentID.In(departmentIDs...)).
 		Find()
 }
+
+// UpdatePassword 更新用户密码
+func (r *UserRepo) UpdatePassword(ctx context.Context, userID string, hashedPassword string) error {
+	_, err := r.q.User.WithContext(ctx).
+		Where(r.q.User.UserID.Eq(userID)).
+		Update(r.q.User.Password, hashedPassword)
+	return err
+}
