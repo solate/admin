@@ -4,6 +4,7 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
+	"admin/pkg/audit"
 	"admin/pkg/casbin"
 	"admin/pkg/constants"
 	"admin/pkg/idgen"
@@ -20,20 +21,40 @@ import (
 type MenuService struct {
 	menuRepo *repository.MenuRepo
 	enforcer *casbin.Enforcer
+	recorder *audit.Recorder
 }
 
 // NewMenuService 创建菜单服务
-func NewMenuService(menuRepo *repository.MenuRepo, enforcer *casbin.Enforcer) *MenuService {
+func NewMenuService(menuRepo *repository.MenuRepo, enforcer *casbin.Enforcer, recorder *audit.Recorder) *MenuService {
 	return &MenuService{
 		menuRepo: menuRepo,
 		enforcer: enforcer,
+		recorder: recorder,
 	}
 }
 
 // CreateMenu 创建菜单
-func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest) (*dto.MenuInfo, error) {
+func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest) (resp *dto.MenuInfo, err error) {
+	var menu *model.Menu
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModuleMenu),
+				audit.WithError(err),
+			)
+		} else if menu != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModuleMenu),
+				audit.WithResource(audit.ResourceMenu, menu.MenuID, menu.Name),
+				audit.WithValue(nil, menu),
+			)
+		}
+	}()
+
 	// 生成菜单ID
-	menuID, err := idgen.GenerateUUID()
+	var menuID string
+	menuID, err = idgen.GenerateUUID()
 	if err != nil {
 		log.Error().Err(err).Msg("生成菜单ID失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成菜单ID失败", err)
@@ -58,7 +79,7 @@ func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest
 		status = constants.MenuStatusShow
 	}
 
-	menu := &model.Menu{
+	menu = &model.Menu{
 		MenuID:      menuID,
 		ParentID:    req.ParentID,
 		Name:        req.Name,
@@ -97,9 +118,26 @@ func (s *MenuService) GetMenuByID(ctx context.Context, menuID string) (*dto.Menu
 }
 
 // UpdateMenu 更新菜单
-func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.UpdateMenuRequest) (*dto.MenuInfo, error) {
-	// 检查菜单是否存在
-	_, err := s.menuRepo.GetByID(ctx, menuID)
+func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.UpdateMenuRequest) (resp *dto.MenuInfo, err error) {
+	var oldMenu, newMenu *model.Menu
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleMenu),
+				audit.WithError(err),
+			)
+		} else if newMenu != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleMenu),
+				audit.WithResource(audit.ResourceMenu, newMenu.MenuID, newMenu.Name),
+				audit.WithValue(oldMenu, newMenu),
+			)
+		}
+	}()
+
+	// 获取旧菜单信息
+	oldMenu, err = s.menuRepo.GetByID(ctx, menuID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("menu_id", menuID).Msg("菜单不存在")
@@ -164,21 +202,39 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 	}
 
 	// 获取更新后的菜单信息
-	menu, err := s.menuRepo.GetByID(ctx, menuID)
+	newMenu, err = s.menuRepo.GetByID(ctx, menuID)
 	if err != nil {
 		log.Error().Err(err).Str("menu_id", menuID).Msg("获取更新后菜单信息失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后菜单信息失败", err)
 	}
 
 	log.Info().Str("menu_id", menuID).Msg("更新菜单成功")
-	return s.toMenuInfo(menu), nil
+	return s.toMenuInfo(newMenu), nil
 }
 
 // DeleteMenu 删除菜单
 // 说明：删除菜单时会自动清理所有租户中该菜单的权限策略
-func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) error {
+func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) (err error) {
+	var menu *model.Menu
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModuleMenu),
+				audit.WithError(err),
+			)
+		} else if menu != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModuleMenu),
+				audit.WithResource(audit.ResourceMenu, menu.MenuID, menu.Name),
+				audit.WithValue(menu, nil),
+			)
+			log.Info().Str("menu_id", menuID).Msg("删除菜单成功")
+		}
+	}()
+
 	// 检查菜单是否存在
-	_, err := s.menuRepo.GetByID(ctx, menuID)
+	menu, err = s.menuRepo.GetByID(ctx, menuID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("menu_id", menuID).Msg("菜单不存在")
@@ -204,8 +260,6 @@ func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) error {
 		log.Error().Err(err).Str("menu_id", menuID).Msg("删除菜单失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除菜单失败", err)
 	}
-
-	log.Info().Str("menu_id", menuID).Msg("删除菜单成功")
 
 	// 清理该菜单在所有租户中的权限策略
 	// 1. 清理菜单权限 (menu:menu_id)
@@ -295,9 +349,27 @@ func (s *MenuService) GetMenuTree(ctx context.Context) (*dto.MenuTreeResponse, e
 }
 
 // UpdateMenuStatus 更新菜单状态
-func (s *MenuService) UpdateMenuStatus(ctx context.Context, menuID string, status int) error {
-	// 检查菜单是否存在
-	_, err := s.menuRepo.GetByID(ctx, menuID)
+func (s *MenuService) UpdateMenuStatus(ctx context.Context, menuID string, status int) (err error) {
+	var oldMenu, newMenu *model.Menu
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleMenu),
+				audit.WithError(err),
+			)
+		} else if newMenu != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleMenu),
+				audit.WithResource(audit.ResourceMenu, newMenu.MenuID, newMenu.Name),
+				audit.WithValue(oldMenu, newMenu),
+			)
+			log.Info().Str("menu_id", menuID).Int("status", status).Msg("更新菜单状态成功")
+		}
+	}()
+
+	// 获取旧菜单信息
+	oldMenu, err = s.menuRepo.GetByID(ctx, menuID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("menu_id", menuID).Msg("菜单不存在")
@@ -313,7 +385,13 @@ func (s *MenuService) UpdateMenuStatus(ctx context.Context, menuID string, statu
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新菜单状态失败", err)
 	}
 
-	log.Info().Str("menu_id", menuID).Int("status", status).Msg("更新菜单状态成功")
+	// 获取更新后的菜单信息
+	newMenu, err = s.menuRepo.GetByID(ctx, menuID)
+	if err != nil {
+		log.Error().Err(err).Str("menu_id", menuID).Msg("获取更新后菜单信息失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后菜单信息失败", err)
+	}
+
 	return nil
 }
 

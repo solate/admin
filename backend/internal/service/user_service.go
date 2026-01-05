@@ -4,6 +4,7 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
+	"admin/pkg/audit"
 	"admin/pkg/casbin"
 	"admin/pkg/idgen"
 	"admin/pkg/pagination"
@@ -23,21 +24,40 @@ type UserService struct {
 	roleRepo   *repository.RoleRepo
 	tenantRepo *repository.TenantRepo
 	enforcer   *casbin.Enforcer
+	recorder   *audit.Recorder
 }
 
 // NewUserService 创建用户服务
-func NewUserService(userRepo *repository.UserRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, enforcer *casbin.Enforcer) *UserService {
+func NewUserService(userRepo *repository.UserRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, enforcer *casbin.Enforcer, recorder *audit.Recorder) *UserService {
 	return &UserService{
 		userRepo:   userRepo,
 		roleRepo:   roleRepo,
 		tenantRepo: tenantRepo,
 		enforcer:   enforcer,
+		recorder:   recorder,
 	}
 }
 
 // CreateUser 创建用户
-func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest) (*dto.UserResponse, error) {
+func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest) (resp *dto.UserResponse, err error) {
+	var user *model.User
 	tenantID := xcontext.GetTenantID(ctx)
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModuleUser),
+				audit.WithError(err),
+			)
+		} else if user != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModuleUser),
+				audit.WithResource(audit.ResourceUser, user.UserID, user.UserName),
+				audit.WithValue(nil, user),
+			)
+		}
+	}()
+
 	if tenantID == "" {
 		return nil, xerr.ErrUnauthorized
 	}
@@ -73,7 +93,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 	}
 
 	// 创建用户模型
-	user := &model.User{
+	user = &model.User{
 		UserID:   userID,
 		TenantID: tenantID,
 		UserName: req.UserName,
@@ -187,9 +207,26 @@ func (s *UserService) GetProfile(ctx context.Context) (*dto.ProfileResponse, err
 }
 
 // UpdateUser 更新用户
-func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
+func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.UpdateUserRequest) (resp *dto.UserResponse, err error) {
+	var oldUser, newUser *model.User
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleUser),
+				audit.WithError(err),
+			)
+		} else if newUser != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleUser),
+				audit.WithResource(audit.ResourceUser, newUser.UserID, newUser.UserName),
+				audit.WithValue(oldUser, newUser),
+			)
+		}
+	}()
+
 	// 检查用户是否存在
-	_, err := s.userRepo.GetByID(ctx, userID)
+	oldUser, err = s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("user_id", userID).Msg("用户不存在")
@@ -239,20 +276,38 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 	}
 
 	// 获取更新后的用户信息
-	user, err := s.userRepo.GetByID(ctx, userID)
+	newUser, err = s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		log.Error().Err(err).Str("user_id", userID).Msg("获取更新后用户信息失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后用户信息失败", err)
 	}
 
-	return s.toUserResponse(ctx, user), nil
+	return s.toUserResponse(ctx, newUser), nil
 }
 
 // DeleteUser 删除用户
 // 级联删除：删除用户时会自动清理该用户的角色绑定关系
-func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
+func (s *UserService) DeleteUser(ctx context.Context, userID string) (err error) {
+	var user *model.User
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModuleUser),
+				audit.WithError(err),
+			)
+		} else if user != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModuleUser),
+				audit.WithResource(audit.ResourceUser, user.UserID, user.UserName),
+				audit.WithValue(user, nil),
+			)
+			log.Info().Str("user_id", userID).Str("username", user.UserName).Msg("删除用户成功")
+		}
+	}()
+
 	// 检查用户是否存在
-	user, err := s.userRepo.GetByID(ctx, userID)
+	user, err = s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("user_id", userID).Msg("用户不存在")
@@ -273,7 +328,6 @@ func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
 	// 使用 RemoveFilteredGroupingPolicy 按 username 过滤
 	s.enforcer.RemoveFilteredGroupingPolicy(0, user.UserName)
 
-	log.Info().Str("user_id", userID).Str("username", user.UserName).Msg("删除用户成功")
 	return nil
 }
 
@@ -302,9 +356,27 @@ func (s *UserService) ListUsers(ctx context.Context, req *dto.ListUsersRequest) 
 }
 
 // UpdateUserStatus 更新用户状态
-func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, status int) error {
+func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, status int) (err error) {
+	var oldUser, newUser *model.User
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleUser),
+				audit.WithError(err),
+			)
+		} else if newUser != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleUser),
+				audit.WithResource(audit.ResourceUser, newUser.UserID, newUser.UserName),
+				audit.WithValue(oldUser, newUser),
+			)
+			log.Info().Str("user_id", userID).Int("status", status).Msg("更新用户状态成功")
+		}
+	}()
+
 	// 检查用户是否存在
-	_, err := s.userRepo.GetByID(ctx, userID)
+	oldUser, err = s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("user_id", userID).Msg("用户不存在")
@@ -320,7 +392,13 @@ func (s *UserService) UpdateUserStatus(ctx context.Context, userID string, statu
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新用户状态失败", err)
 	}
 
-	log.Info().Str("user_id", userID).Int("status", status).Msg("更新用户状态成功")
+	// 获取更新后的用户信息
+	newUser, err = s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", userID).Msg("获取更新后用户信息失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后用户信息失败", err)
+	}
+
 	return nil
 }
 

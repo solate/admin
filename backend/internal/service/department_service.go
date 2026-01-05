@@ -4,6 +4,7 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
+	"admin/pkg/audit"
 	"admin/pkg/idgen"
 	"admin/pkg/pagination"
 	"admin/pkg/xcontext"
@@ -19,18 +20,37 @@ import (
 type DepartmentService struct {
 	deptRepo *repository.DepartmentRepo
 	userRepo *repository.UserRepo
+	recorder *audit.Recorder
 }
 
 // NewDepartmentService 创建部门服务
-func NewDepartmentService(deptRepo *repository.DepartmentRepo, userRepo *repository.UserRepo) *DepartmentService {
+func NewDepartmentService(deptRepo *repository.DepartmentRepo, userRepo *repository.UserRepo, recorder *audit.Recorder) *DepartmentService {
 	return &DepartmentService{
 		deptRepo: deptRepo,
 		userRepo: userRepo,
+		recorder: recorder,
 	}
 }
 
 // CreateDepartment 创建部门
-func (s *DepartmentService) CreateDepartment(ctx context.Context, req *dto.CreateDepartmentRequest) (*dto.DepartmentResponse, error) {
+func (s *DepartmentService) CreateDepartment(ctx context.Context, req *dto.CreateDepartmentRequest) (resp *dto.DepartmentResponse, err error) {
+	var dept *model.Department
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModuleDepartment),
+				audit.WithError(err),
+			)
+		} else if dept != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModuleDepartment),
+				audit.WithResource(audit.ResourceDepartment, dept.DepartmentID, dept.DepartmentName),
+				audit.WithValue(nil, dept),
+			)
+		}
+	}()
+
 	tenantID := xcontext.GetTenantID(ctx)
 	if tenantID == "" {
 		return nil, xerr.ErrUnauthorized
@@ -54,7 +74,8 @@ func (s *DepartmentService) CreateDepartment(ctx context.Context, req *dto.Creat
 	}
 
 	// 生成部门ID
-	deptID, err := idgen.GenerateUUID()
+	var deptID string
+	deptID, err = idgen.GenerateUUID()
 	if err != nil {
 		log.Error().Err(err).Msg("生成部门ID失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成部门ID失败", err)
@@ -71,7 +92,7 @@ func (s *DepartmentService) CreateDepartment(ctx context.Context, req *dto.Creat
 	}
 
 	// 构建部门模型
-	dept := &model.Department{
+	dept = &model.Department{
 		DepartmentID:   deptID,
 		TenantID:       tenantID,
 		ParentID:       req.ParentID,
@@ -106,9 +127,26 @@ func (s *DepartmentService) GetDepartmentByID(ctx context.Context, departmentID 
 }
 
 // UpdateDepartment 更新部门
-func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID string, req *dto.UpdateDepartmentRequest) (*dto.DepartmentResponse, error) {
-	// 检查部门是否存在
-	oldDept, err := s.deptRepo.GetByID(ctx, departmentID)
+func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID string, req *dto.UpdateDepartmentRequest) (resp *dto.DepartmentResponse, err error) {
+	var oldDept, newDept *model.Department
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleDepartment),
+				audit.WithError(err),
+			)
+		} else if newDept != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleDepartment),
+				audit.WithResource(audit.ResourceDepartment, newDept.DepartmentID, newDept.DepartmentName),
+				audit.WithValue(oldDept, newDept),
+			)
+		}
+	}()
+
+	// 获取旧部门信息
+	oldDept, err = s.deptRepo.GetByID(ctx, departmentID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("department_id", departmentID).Msg("部门不存在")
@@ -180,19 +218,37 @@ func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID s
 	}
 
 	// 获取更新后的部门信息
-	dept, err := s.deptRepo.GetByID(ctx, departmentID)
+	newDept, err = s.deptRepo.GetByID(ctx, departmentID)
 	if err != nil {
 		log.Error().Err(err).Str("department_id", departmentID).Msg("获取更新后部门信息失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后部门信息失败", err)
 	}
 
-	return s.toDepartmentResponse(dept), nil
+	return s.toDepartmentResponse(newDept), nil
 }
 
 // DeleteDepartment 删除部门
-func (s *DepartmentService) DeleteDepartment(ctx context.Context, departmentID string) error {
+func (s *DepartmentService) DeleteDepartment(ctx context.Context, departmentID string) (err error) {
+	var dept *model.Department
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModuleDepartment),
+				audit.WithError(err),
+			)
+		} else if dept != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModuleDepartment),
+				audit.WithResource(audit.ResourceDepartment, dept.DepartmentID, dept.DepartmentName),
+				audit.WithValue(dept, nil),
+			)
+			log.Info().Str("department_id", departmentID).Str("department_name", dept.DepartmentName).Msg("删除部门成功")
+		}
+	}()
+
 	// 检查部门是否存在
-	dept, err := s.deptRepo.GetByID(ctx, departmentID)
+	dept, err = s.deptRepo.GetByID(ctx, departmentID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("department_id", departmentID).Msg("部门不存在")
@@ -230,7 +286,6 @@ func (s *DepartmentService) DeleteDepartment(ctx context.Context, departmentID s
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除部门失败", err)
 	}
 
-	log.Info().Str("department_id", departmentID).Str("department_name", dept.DepartmentName).Msg("删除部门成功")
 	return nil
 }
 
@@ -292,9 +347,27 @@ func (s *DepartmentService) GetChildren(ctx context.Context, departmentID string
 }
 
 // UpdateDepartmentStatus 更新部门状态
-func (s *DepartmentService) UpdateDepartmentStatus(ctx context.Context, departmentID string, status int) error {
-	// 检查部门是否存在
-	dept, err := s.deptRepo.GetByID(ctx, departmentID)
+func (s *DepartmentService) UpdateDepartmentStatus(ctx context.Context, departmentID string, status int) (err error) {
+	var oldDept, newDept *model.Department
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleDepartment),
+				audit.WithError(err),
+			)
+		} else if newDept != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleDepartment),
+				audit.WithResource(audit.ResourceDepartment, newDept.DepartmentID, newDept.DepartmentName),
+				audit.WithValue(oldDept, newDept),
+			)
+			log.Info().Str("department_id", departmentID).Str("department_name", newDept.DepartmentName).Int("status", status).Msg("更新部门状态成功")
+		}
+	}()
+
+	// 获取旧部门信息
+	oldDept, err = s.deptRepo.GetByID(ctx, departmentID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("department_id", departmentID).Msg("部门不存在")
@@ -310,7 +383,13 @@ func (s *DepartmentService) UpdateDepartmentStatus(ctx context.Context, departme
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新部门状态失败", err)
 	}
 
-	log.Info().Str("department_id", departmentID).Str("department_name", dept.DepartmentName).Int("status", status).Msg("更新部门状态成功")
+	// 获取更新后的部门信息
+	newDept, err = s.deptRepo.GetByID(ctx, departmentID)
+	if err != nil {
+		log.Error().Err(err).Str("department_id", departmentID).Msg("获取更新后部门信息失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后部门信息失败", err)
+	}
+
 	return nil
 }
 

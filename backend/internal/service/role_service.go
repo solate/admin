@@ -4,6 +4,7 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
+	"admin/pkg/audit"
 	"admin/pkg/casbin"
 	"admin/pkg/cache"
 	"admin/pkg/constants"
@@ -33,28 +34,48 @@ type RoleService struct {
 	menuRepo       *repository.MenuRepo
 	enforcer       *casbin.Enforcer
 	tenantCache    *cache.TenantCache
+	recorder       *audit.Recorder
 }
 
 // NewRoleService 创建角色服务
-func NewRoleService(roleRepo *repository.RoleRepo, permissionRepo *repository.PermissionRepo, menuRepo *repository.MenuRepo, enforcer *casbin.Enforcer, tenantCache *cache.TenantCache) *RoleService {
+func NewRoleService(roleRepo *repository.RoleRepo, permissionRepo *repository.PermissionRepo, menuRepo *repository.MenuRepo, enforcer *casbin.Enforcer, tenantCache *cache.TenantCache, recorder *audit.Recorder) *RoleService {
 	return &RoleService{
 		roleRepo:       roleRepo,
 		permissionRepo: permissionRepo,
 		menuRepo:       menuRepo,
 		enforcer:       enforcer,
 		tenantCache:    tenantCache,
+		recorder:       recorder,
 	}
 }
 
 // CreateRole 创建角色（支持继承 default 租户角色模板）
-func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (*dto.RoleResponse, error) {
+func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (resp *dto.RoleResponse, err error) {
+	var role *model.Role
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModuleRole),
+				audit.WithError(err),
+			)
+		} else if role != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModuleRole),
+				audit.WithResource(audit.ResourceRole, role.RoleID, role.Name),
+				audit.WithValue(nil, role),
+			)
+		}
+	}()
+
 	tenantID := xcontext.GetTenantID(ctx)
 	if tenantID == "" {
 		return nil, xerr.ErrUnauthorized
 	}
 
 	// 检查角色编码是否已存在（租户内唯一）
-	exists, err := s.roleRepo.CheckExists(ctx, tenantID, req.RoleCode)
+	var exists bool
+	exists, err = s.roleRepo.CheckExists(ctx, tenantID, req.RoleCode)
 	if err != nil {
 		log.Error().Err(err).Str("tenant_id", tenantID).Str("role_code", req.RoleCode).Msg("检查角色编码是否存在失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "检查角色编码是否存在失败", err)
@@ -80,14 +101,15 @@ func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest
 	}
 
 	// 生成角色ID
-	roleID, err := idgen.GenerateUUID()
+	var roleID string
+	roleID, err = idgen.GenerateUUID()
 	if err != nil {
 		log.Error().Err(err).Msg("生成角色ID失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成角色ID失败", err)
 	}
 
 	// 构建角色模型
-	role := &model.Role{
+	role = &model.Role{
 		RoleID:      roleID,
 		TenantID:    tenantID,
 		RoleCode:    req.RoleCode,
@@ -167,9 +189,26 @@ func (s *RoleService) GetRoleByID(ctx context.Context, roleID string) (*dto.Role
 // 说明：
 // - 超管通过 SkipTenantCheck 可更新任意租户角色
 // - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能更新本租户角色
-func (s *RoleService) UpdateRole(ctx context.Context, roleID string, req *dto.UpdateRoleRequest) (*dto.RoleResponse, error) {
-	// 检查角色是否存在
-	_, err := s.roleRepo.GetByID(ctx, roleID)
+func (s *RoleService) UpdateRole(ctx context.Context, roleID string, req *dto.UpdateRoleRequest) (resp *dto.RoleResponse, err error) {
+	var oldRole, newRole *model.Role
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleRole),
+				audit.WithError(err),
+			)
+		} else if newRole != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleRole),
+				audit.WithResource(audit.ResourceRole, newRole.RoleID, newRole.Name),
+				audit.WithValue(oldRole, newRole),
+			)
+		}
+	}()
+
+	// 获取旧角色信息
+	oldRole, err = s.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("role_id", roleID).Msg("角色不存在")
@@ -199,13 +238,13 @@ func (s *RoleService) UpdateRole(ctx context.Context, roleID string, req *dto.Up
 	}
 
 	// 获取更新后的角色信息
-	role, err := s.roleRepo.GetByID(ctx, roleID)
+	newRole, err = s.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
 		log.Error().Err(err).Str("role_id", roleID).Msg("获取更新后角色信息失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后角色信息失败", err)
 	}
 
-	return s.toRoleResponse(role, nil), nil
+	return s.toRoleResponse(newRole, nil), nil
 }
 
 // DeleteRole 删除角色
@@ -213,9 +252,27 @@ func (s *RoleService) UpdateRole(ctx context.Context, roleID string, req *dto.Up
 // - 超管通过 SkipTenantCheck 可删除任意租户角色
 // - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能删除本租户角色
 // 级联删除：删除角色时会自动清理该角色的所有权限策略和继承关系
-func (s *RoleService) DeleteRole(ctx context.Context, roleID string) error {
+func (s *RoleService) DeleteRole(ctx context.Context, roleID string) (err error) {
+	var role *model.Role
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModuleRole),
+				audit.WithError(err),
+			)
+		} else if role != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModuleRole),
+				audit.WithResource(audit.ResourceRole, role.RoleID, role.Name),
+				audit.WithValue(role, nil),
+			)
+			log.Info().Str("role_id", roleID).Str("role_code", role.RoleCode).Msg("删除角色成功")
+		}
+	}()
+
 	// 检查角色是否存在
-	role, err := s.roleRepo.GetByID(ctx, roleID)
+	role, err = s.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("role_id", roleID).Msg("角色不存在")
@@ -249,7 +306,6 @@ func (s *RoleService) DeleteRole(ctx context.Context, roleID string) error {
 	// 使用 RemoveFilteredGroupingPolicy 按 role_code 过滤
 	s.enforcer.RemoveFilteredGroupingPolicy(1, role.RoleCode)
 
-	log.Info().Str("role_id", roleID).Str("role_code", role.RoleCode).Msg("删除角色成功")
 	return nil
 }
 
@@ -288,9 +344,27 @@ func (s *RoleService) ListRoles(ctx context.Context, req *dto.ListRolesRequest) 
 // 说明：
 // - 超管通过 SkipTenantCheck 可更新任意租户角色状态
 // - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能更新本租户角色状态
-func (s *RoleService) UpdateRoleStatus(ctx context.Context, roleID string, status int) error {
-	// 检查角色是否存在
-	role, err := s.roleRepo.GetByID(ctx, roleID)
+func (s *RoleService) UpdateRoleStatus(ctx context.Context, roleID string, status int) (err error) {
+	var oldRole, newRole *model.Role
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleRole),
+				audit.WithError(err),
+			)
+		} else if newRole != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleRole),
+				audit.WithResource(audit.ResourceRole, newRole.RoleID, newRole.Name),
+				audit.WithValue(oldRole, newRole),
+			)
+			log.Info().Str("role_id", roleID).Str("role_code", newRole.RoleCode).Int("status", status).Msg("更新角色状态成功")
+		}
+	}()
+
+	// 获取旧角色信息
+	oldRole, err = s.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("role_id", roleID).Msg("角色不存在")
@@ -306,7 +380,13 @@ func (s *RoleService) UpdateRoleStatus(ctx context.Context, roleID string, statu
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新角色状态失败", err)
 	}
 
-	log.Info().Str("role_id", roleID).Str("role_code", role.RoleCode).Int("status", status).Msg("更新角色状态成功")
+	// 获取更新后的角色信息
+	newRole, err = s.roleRepo.GetByID(ctx, roleID)
+	if err != nil {
+		log.Error().Err(err).Str("role_id", roleID).Msg("获取更新后角色信息失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后角色信息失败", err)
+	}
+
 	return nil
 }
 

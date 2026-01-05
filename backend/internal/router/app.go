@@ -258,16 +258,16 @@ func (s *App) initHandlers(auditRecorder *audit.Recorder) error {
 
 	// 初始化服务层
 	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, auditRecorder, s.Config) // 初始化认证服务
-	userService := service.NewUserService(userRepo, roleRepo, tenantRepo, s.Enforcer)                                                           // 初始化用户服务
+	userService := service.NewUserService(userRepo, roleRepo, tenantRepo, s.Enforcer, auditRecorder)                                                           // 初始化用户服务
 	tenantService := service.NewTenantService(tenantRepo, auditRecorder)                                                                                // 初始化租户服务
-	roleService := service.NewRoleService(roleRepo, permissionRepo, menuRepo, s.Enforcer, cache.Get().Tenant) // 初始化角色服务（需要 enforcer、tenantCache 和 menuRepo 用于角色继承、菜单权限管理和 API 权限关联）
-	menuService := service.NewMenuService(menuRepo, s.Enforcer)                                                                     // 初始化菜单服务
+	roleService := service.NewRoleService(roleRepo, permissionRepo, menuRepo, s.Enforcer, cache.Get().Tenant, auditRecorder) // 初始化角色服务（需要 enforcer、tenantCache 和 menuRepo 用于角色继承、菜单权限管理和 API 权限关联）
+	menuService := service.NewMenuService(menuRepo, s.Enforcer, auditRecorder)                                                                     // 初始化菜单服务
 	userMenuService := service.NewUserMenuService(menuRepo, permissionRepo, s.Enforcer)                                         // 初始化用户菜单服务（根据设计文档：无需取交集）
 	loginLogService := service.NewLoginLogService(loginLogRepo)                                                                                 // 初始化登录日志服务
 	operationLogService := service.NewOperationLogService(operationLogRepo)                                                                     // 初始化操作日志服务
-	departmentService := service.NewDepartmentService(departmentRepo, userRepo)                                                                  // 初始化部门服务
-	positionService := service.NewPositionService(positionRepo)                                                                                 // 初始化岗位服务
-	dictService := service.NewDictService(dictTypeRepo, dictItemRepo, cache.Get().Tenant)                                                      // 初始化字典服务
+	departmentService := service.NewDepartmentService(departmentRepo, userRepo, auditRecorder)                                                                  // 初始化部门服务
+	positionService := service.NewPositionService(positionRepo, auditRecorder)                                                                                 // 初始化岗位服务
+	dictService := service.NewDictService(dictTypeRepo, dictItemRepo, cache.Get().Tenant, auditRecorder)                                                      // 初始化字典服务
 
 	s.Handlers = &Handlers{
 		HealthHandler:       handler.NewHealthHandler(),

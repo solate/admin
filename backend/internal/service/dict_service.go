@@ -4,6 +4,7 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
+	"admin/pkg/audit"
 	"admin/pkg/cache"
 	"admin/pkg/idgen"
 	"admin/pkg/pagination"
@@ -21,23 +22,43 @@ type DictService struct {
 	dictTypeRepo *repository.DictTypeRepo
 	dictItemRepo *repository.DictItemRepo
 	tenantCache  *cache.TenantCache
+	recorder     *audit.Recorder
 }
 
 // NewDictService 创建字典服务
-func NewDictService(dictTypeRepo *repository.DictTypeRepo, dictItemRepo *repository.DictItemRepo, tenantCache *cache.TenantCache) *DictService {
+func NewDictService(dictTypeRepo *repository.DictTypeRepo, dictItemRepo *repository.DictItemRepo, tenantCache *cache.TenantCache, recorder *audit.Recorder) *DictService {
 	return &DictService{
 		dictTypeRepo: dictTypeRepo,
 		dictItemRepo: dictItemRepo,
 		tenantCache:  tenantCache,
+		recorder:     recorder,
 	}
 }
 
 // CreateSystemDict 创建系统字典（超管专用）
-func (s *DictService) CreateSystemDict(ctx context.Context, req *dto.CreateSystemDictRequest) error {
+func (s *DictService) CreateSystemDict(ctx context.Context, req *dto.CreateSystemDictRequest) (err error) {
+	var dictType *model.DictType
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModuleDict),
+				audit.WithError(err),
+			)
+		} else if dictType != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModuleDict),
+				audit.WithResource(audit.ResourceDict, dictType.TypeID, dictType.TypeName),
+				audit.WithValue(nil, dictType),
+			)
+		}
+	}()
+
 	defaultTenantID := s.tenantCache.GetDefaultTenantID()
 
 	// 检查字典编码是否已存在（默认租户内唯一）
-	exists, err := s.dictTypeRepo.CheckExists(ctx, defaultTenantID, req.TypeCode)
+	var exists bool
+	exists, err = s.dictTypeRepo.CheckExists(ctx, defaultTenantID, req.TypeCode)
 	if err != nil {
 		log.Error().Err(err).Str("type_code", req.TypeCode).Str("tenant_id", defaultTenantID).Msg("检查字典编码是否存在失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "检查字典编码是否存在失败", err)
@@ -48,14 +69,15 @@ func (s *DictService) CreateSystemDict(ctx context.Context, req *dto.CreateSyste
 	}
 
 	// 生成字典类型ID
-	typeID, err := idgen.GenerateUUID()
+	var typeID string
+	typeID, err = idgen.GenerateUUID()
 	if err != nil {
 		log.Error().Err(err).Msg("生成字典类型ID失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "生成字典类型ID失败", err)
 	}
 
 	// 构建字典类型模型
-	dictType := &model.DictType{
+	dictType = &model.DictType{
 		TypeID:      typeID,
 		TenantID:    defaultTenantID,
 		TypeCode:    req.TypeCode,
@@ -97,11 +119,28 @@ func (s *DictService) CreateSystemDict(ctx context.Context, req *dto.CreateSyste
 }
 
 // UpdateSystemDict 更新系统字典（超管专用）
-func (s *DictService) UpdateSystemDict(ctx context.Context, typeCode string, req *dto.UpdateSystemDictRequest) error {
+func (s *DictService) UpdateSystemDict(ctx context.Context, typeCode string, req *dto.UpdateSystemDictRequest) (err error) {
+	var oldDictType, newDictType *model.DictType
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleDict),
+				audit.WithError(err),
+			)
+		} else if newDictType != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModuleDict),
+				audit.WithResource(audit.ResourceDict, newDictType.TypeID, newDictType.TypeName),
+				audit.WithValue(oldDictType, newDictType),
+			)
+		}
+	}()
+
 	defaultTenantID := s.tenantCache.GetDefaultTenantID()
 
-	// 获取系统字典类型
-	dictType, err := s.dictTypeRepo.GetByCodeAndTenant(ctx, typeCode, defaultTenantID)
+	// 获取旧的系统字典类型
+	oldDictType, err = s.dictTypeRepo.GetByCodeAndTenant(ctx, typeCode, defaultTenantID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("type_code", typeCode).Str("tenant_id", defaultTenantID).Msg("字典类型不存在")
@@ -122,16 +161,16 @@ func (s *DictService) UpdateSystemDict(ctx context.Context, typeCode string, req
 	updates["updated_at"] = time.Now().UnixMilli()
 
 	// 更新字典类型
-	if err := s.dictTypeRepo.Update(ctx, dictType.TypeID, updates); err != nil {
-		log.Error().Err(err).Str("type_id", dictType.TypeID).Str("type_code", typeCode).Interface("updates", updates).Msg("更新字典类型失败")
+	if err := s.dictTypeRepo.Update(ctx, oldDictType.TypeID, updates); err != nil {
+		log.Error().Err(err).Str("type_id", oldDictType.TypeID).Str("type_code", typeCode).Interface("updates", updates).Msg("更新字典类型失败")
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新字典类型失败", err)
 	}
 
 	// 如果提供了字典项列表，则更新字典项
 	if len(req.Items) > 0 {
 		// 删除所有旧的系统字典项
-		if err := s.dictItemRepo.DeleteByTypeID(ctx, dictType.TypeID); err != nil {
-			log.Error().Err(err).Str("type_id", dictType.TypeID).Msg("删除旧字典项失败")
+		if err := s.dictItemRepo.DeleteByTypeID(ctx, oldDictType.TypeID); err != nil {
+			log.Error().Err(err).Str("type_id", oldDictType.TypeID).Msg("删除旧字典项失败")
 			return xerr.Wrap(xerr.ErrInternal.Code, "删除旧字典项失败", err)
 		}
 
@@ -145,7 +184,7 @@ func (s *DictService) UpdateSystemDict(ctx context.Context, typeCode string, req
 
 			dictItem := &model.DictItem{
 				ItemID:   itemID,
-				TypeID:   dictType.TypeID,
+				TypeID:   oldDictType.TypeID,
 				TenantID: defaultTenantID,
 				Label:    itemReq.Label,
 				Value:    itemReq.Value,
@@ -153,22 +192,47 @@ func (s *DictService) UpdateSystemDict(ctx context.Context, typeCode string, req
 			}
 
 			if err := s.dictItemRepo.Create(ctx, dictItem); err != nil {
-				log.Error().Err(err).Str("item_id", itemID).Str("type_id", dictType.TypeID).Msg("创建字典项失败")
+				log.Error().Err(err).Str("item_id", itemID).Str("type_id", oldDictType.TypeID).Msg("创建字典项失败")
 				return xerr.Wrap(xerr.ErrInternal.Code, "创建字典项失败", err)
 			}
 		}
 	}
 
-	log.Info().Str("type_id", dictType.TypeID).Str("type_code", typeCode).Int("item_count", len(req.Items)).Msg("更新系统字典成功")
+	// 获取更新后的字典类型
+	newDictType, err = s.dictTypeRepo.GetByCodeAndTenant(ctx, typeCode, defaultTenantID)
+	if err != nil {
+		log.Error().Err(err).Str("type_code", typeCode).Str("tenant_id", defaultTenantID).Msg("获取更新后字典类型失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后字典类型失败", err)
+	}
+
+	log.Info().Str("type_id", oldDictType.TypeID).Str("type_code", typeCode).Int("item_count", len(req.Items)).Msg("更新系统字典成功")
 	return nil
 }
 
 // DeleteSystemDict 删除系统字典（超管专用）
-func (s *DictService) DeleteSystemDict(ctx context.Context, typeCode string) error {
+func (s *DictService) DeleteSystemDict(ctx context.Context, typeCode string) (err error) {
+	var dictType *model.DictType
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModuleDict),
+				audit.WithError(err),
+			)
+		} else if dictType != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModuleDict),
+				audit.WithResource(audit.ResourceDict, dictType.TypeID, dictType.TypeName),
+				audit.WithValue(dictType, nil),
+			)
+			log.Info().Str("type_id", dictType.TypeID).Str("type_code", typeCode).Msg("删除系统字典成功")
+		}
+	}()
+
 	defaultTenantID := s.tenantCache.GetDefaultTenantID()
 
 	// 获取系统字典类型
-	dictType, err := s.dictTypeRepo.GetByCodeAndTenant(ctx, typeCode, defaultTenantID)
+	dictType, err = s.dictTypeRepo.GetByCodeAndTenant(ctx, typeCode, defaultTenantID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("type_code", typeCode).Str("tenant_id", defaultTenantID).Msg("字典类型不存在")
@@ -190,7 +254,6 @@ func (s *DictService) DeleteSystemDict(ctx context.Context, typeCode string) err
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除字典类型失败", err)
 	}
 
-	log.Info().Str("type_id", dictType.TypeID).Str("type_code", typeCode).Msg("删除系统字典成功")
 	return nil
 }
 

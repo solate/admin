@@ -4,6 +4,7 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
+	"admin/pkg/audit"
 	"admin/pkg/idgen"
 	"admin/pkg/pagination"
 	"admin/pkg/xcontext"
@@ -18,24 +19,44 @@ import (
 // PositionService 岗位服务
 type PositionService struct {
 	positionRepo *repository.PositionRepo
+	recorder     *audit.Recorder
 }
 
 // NewPositionService 创建岗位服务
-func NewPositionService(positionRepo *repository.PositionRepo) *PositionService {
+func NewPositionService(positionRepo *repository.PositionRepo, recorder *audit.Recorder) *PositionService {
 	return &PositionService{
 		positionRepo: positionRepo,
+		recorder:     recorder,
 	}
 }
 
 // CreatePosition 创建岗位
-func (s *PositionService) CreatePosition(ctx context.Context, req *dto.CreatePositionRequest) (*dto.PositionResponse, error) {
+func (s *PositionService) CreatePosition(ctx context.Context, req *dto.CreatePositionRequest) (resp *dto.PositionResponse, err error) {
+	var position *model.Position
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModulePosition),
+				audit.WithError(err),
+			)
+		} else if position != nil {
+			s.recorder.Log(ctx,
+				audit.WithCreate(audit.ModulePosition),
+				audit.WithResource(audit.ResourcePosition, position.PositionID, position.PositionName),
+				audit.WithValue(nil, position),
+			)
+		}
+	}()
+
 	tenantID := xcontext.GetTenantID(ctx)
 	if tenantID == "" {
 		return nil, xerr.ErrUnauthorized
 	}
 
 	// 检查岗位编码是否已存在（租户内唯一）
-	exists, err := s.positionRepo.CheckExists(ctx, tenantID, req.PositionCode)
+	var exists bool
+	exists, err = s.positionRepo.CheckExists(ctx, tenantID, req.PositionCode)
 	if err != nil {
 		log.Error().Err(err).Str("tenant_id", tenantID).Str("position_code", req.PositionCode).Msg("检查岗位编码失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "检查岗位编码是否存在失败", err)
@@ -46,7 +67,8 @@ func (s *PositionService) CreatePosition(ctx context.Context, req *dto.CreatePos
 	}
 
 	// 生成岗位ID
-	positionID, err := idgen.GenerateUUID()
+	var positionID string
+	positionID, err = idgen.GenerateUUID()
 	if err != nil {
 		log.Error().Err(err).Msg("生成岗位ID失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成岗位ID失败", err)
@@ -63,7 +85,7 @@ func (s *PositionService) CreatePosition(ctx context.Context, req *dto.CreatePos
 	}
 
 	// 构建岗位模型
-	position := &model.Position{
+	position = &model.Position{
 		PositionID:   positionID,
 		TenantID:     tenantID,
 		PositionCode: req.PositionCode,
@@ -99,9 +121,26 @@ func (s *PositionService) GetPositionByID(ctx context.Context, positionID string
 }
 
 // UpdatePosition 更新岗位
-func (s *PositionService) UpdatePosition(ctx context.Context, positionID string, req *dto.UpdatePositionRequest) (*dto.PositionResponse, error) {
-	// 检查岗位是否存在
-	oldPosition, err := s.positionRepo.GetByID(ctx, positionID)
+func (s *PositionService) UpdatePosition(ctx context.Context, positionID string, req *dto.UpdatePositionRequest) (resp *dto.PositionResponse, err error) {
+	var oldPosition, newPosition *model.Position
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModulePosition),
+				audit.WithError(err),
+			)
+		} else if newPosition != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModulePosition),
+				audit.WithResource(audit.ResourcePosition, newPosition.PositionID, newPosition.PositionName),
+				audit.WithValue(oldPosition, newPosition),
+			)
+		}
+	}()
+
+	// 获取旧岗位信息
+	oldPosition, err = s.positionRepo.GetByID(ctx, positionID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("position_id", positionID).Msg("岗位不存在")
@@ -113,7 +152,8 @@ func (s *PositionService) UpdatePosition(ctx context.Context, positionID string,
 
 	// 如果要修改岗位编码，检查编码是否已存在
 	if req.PositionCode != "" && req.PositionCode != oldPosition.PositionCode {
-		exists, err := s.positionRepo.CheckExistsByID(ctx, oldPosition.TenantID, req.PositionCode, positionID)
+		var exists bool
+		exists, err = s.positionRepo.CheckExistsByID(ctx, oldPosition.TenantID, req.PositionCode, positionID)
 		if err != nil {
 			log.Error().Err(err).Str("position_id", positionID).Str("tenant_id", oldPosition.TenantID).Str("position_code", req.PositionCode).Msg("检查岗位编码是否存在失败")
 			return nil, xerr.Wrap(xerr.ErrInternal.Code, "检查岗位编码是否存在失败", err)
@@ -153,19 +193,37 @@ func (s *PositionService) UpdatePosition(ctx context.Context, positionID string,
 	}
 
 	// 获取更新后的岗位信息
-	position, err := s.positionRepo.GetByID(ctx, positionID)
+	newPosition, err = s.positionRepo.GetByID(ctx, positionID)
 	if err != nil {
 		log.Error().Err(err).Str("position_id", positionID).Msg("获取更新后岗位信息失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后岗位信息失败", err)
 	}
 
-	return s.toPositionResponse(position), nil
+	return s.toPositionResponse(newPosition), nil
 }
 
 // DeletePosition 删除岗位
-func (s *PositionService) DeletePosition(ctx context.Context, positionID string) error {
+func (s *PositionService) DeletePosition(ctx context.Context, positionID string) (err error) {
+	var position *model.Position
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModulePosition),
+				audit.WithError(err),
+			)
+		} else if position != nil {
+			s.recorder.Log(ctx,
+				audit.WithDelete(audit.ModulePosition),
+				audit.WithResource(audit.ResourcePosition, position.PositionID, position.PositionName),
+				audit.WithValue(position, nil),
+			)
+			log.Info().Str("position_id", positionID).Str("tenant_id", position.TenantID).Msg("删除岗位成功")
+		}
+	}()
+
 	// 检查岗位是否存在
-	position, err := s.positionRepo.GetByID(ctx, positionID)
+	position, err = s.positionRepo.GetByID(ctx, positionID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("position_id", positionID).Msg("岗位不存在")
@@ -181,7 +239,6 @@ func (s *PositionService) DeletePosition(ctx context.Context, positionID string)
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除岗位失败", err)
 	}
 
-	log.Info().Str("position_id", positionID).Str("tenant_id", position.TenantID).Msg("删除岗位成功")
 	return nil
 }
 
@@ -227,9 +284,27 @@ func (s *PositionService) ListAllPositions(ctx context.Context) ([]*dto.Position
 }
 
 // UpdatePositionStatus 更新岗位状态
-func (s *PositionService) UpdatePositionStatus(ctx context.Context, positionID string, status int) error {
-	// 检查岗位是否存在
-	position, err := s.positionRepo.GetByID(ctx, positionID)
+func (s *PositionService) UpdatePositionStatus(ctx context.Context, positionID string, status int) (err error) {
+	var oldPosition, newPosition *model.Position
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModulePosition),
+				audit.WithError(err),
+			)
+		} else if newPosition != nil {
+			s.recorder.Log(ctx,
+				audit.WithUpdate(audit.ModulePosition),
+				audit.WithResource(audit.ResourcePosition, newPosition.PositionID, newPosition.PositionName),
+				audit.WithValue(oldPosition, newPosition),
+			)
+			log.Info().Str("position_id", positionID).Int("status", status).Str("tenant_id", newPosition.TenantID).Msg("更新岗位状态成功")
+		}
+	}()
+
+	// 获取旧岗位信息
+	oldPosition, err = s.positionRepo.GetByID(ctx, positionID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Warn().Str("position_id", positionID).Msg("岗位不存在")
@@ -245,7 +320,13 @@ func (s *PositionService) UpdatePositionStatus(ctx context.Context, positionID s
 		return xerr.Wrap(xerr.ErrInternal.Code, "更新岗位状态失败", err)
 	}
 
-	log.Info().Str("position_id", positionID).Int("status", status).Str("tenant_id", position.TenantID).Msg("更新岗位状态成功")
+	// 获取更新后的岗位信息
+	newPosition, err = s.positionRepo.GetByID(ctx, positionID)
+	if err != nil {
+		log.Error().Err(err).Str("position_id", positionID).Msg("获取更新后岗位信息失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "获取更新后岗位信息失败", err)
+	}
+
 	return nil
 }
 
