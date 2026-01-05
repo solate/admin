@@ -13,7 +13,6 @@ const (
 
 // Module 模块常量
 const (
-	ModuleAuth       = "auth"
 	ModuleUser       = "user"
 	ModuleRole       = "role"
 	ModuleMenu       = "menu"
@@ -34,6 +33,13 @@ const (
 	ResourcePosition   = "position"
 	ResourceDict       = "dict"
 	ResourceDictItem   = "dict_item"
+)
+
+// LoginType 登录方式常量（用于 login_type 字段）
+const (
+	LoginTypePassword = "PASSWORD" // 密码登录
+	LoginTypeSSO      = "SSO"      // 单点登录
+	LoginTypeOAuth    = "OAUTH"    // 第三方登录
 )
 
 // LogStatus 日志状态常量

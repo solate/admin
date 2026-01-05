@@ -298,6 +298,7 @@ CREATE TABLE login_logs (
     tenant_id VARCHAR(20) NOT NULL,
     user_id VARCHAR(20) NOT NULL,
     user_name VARCHAR(100) NOT NULL,               -- 登录账号
+    operation_type VARCHAR(20) NOT NULL DEFAULT '', -- LOGIN:登录, LOGOUT:登出
     login_type VARCHAR(20) NOT NULL DEFAULT '',     -- PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录
     login_ip VARCHAR(50) NOT NULL DEFAULT '',       -- 登录IP地址
     login_location VARCHAR(100) NOT NULL DEFAULT '',    -- 登录位置(IP解析的地理位置)
@@ -315,6 +316,7 @@ COMMENT ON COLUMN login_logs.log_id IS '日志ID(18位字符串)';
 COMMENT ON COLUMN login_logs.tenant_id IS '租户ID';
 COMMENT ON COLUMN login_logs.user_id IS '用户ID';
 COMMENT ON COLUMN login_logs.user_name IS '登录账号';
+COMMENT ON COLUMN login_logs.operation_type IS '操作类型(LOGIN:登录, LOGOUT:登出)';
 COMMENT ON COLUMN login_logs.login_type IS '登录类型(PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录)';
 COMMENT ON COLUMN login_logs.login_ip IS '登录IP地址';
 COMMENT ON COLUMN login_logs.login_location IS '登录位置(IP解析的地理位置)';

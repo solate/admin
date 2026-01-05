@@ -26,8 +26,9 @@ func (r *OperationLogRepo) GetByID(ctx context.Context, logID string) (*model.Op
 }
 
 // ListWithFilters 根据筛选条件分页获取操作日志列表
+// 说明：租户过滤由 scope callback 自动处理（超管 SkipTenantCheck 时查询所有，普通用户只查当前租户）
 func (r *OperationLogRepo) ListWithFilters(ctx context.Context, tenantID string, offset, limit int, module, operationType, resourceType, userName string, status int, startDate, endDate int64) ([]*model.OperationLog, int64, error) {
-	q := r.q.OperationLog.WithContext(ctx).Where(r.q.OperationLog.TenantID.Eq(tenantID))
+	q := r.q.OperationLog.WithContext(ctx)
 
 	// 应用筛选条件
 	if module != "" {

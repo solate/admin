@@ -8,7 +8,8 @@ export interface LoginLogInfo {
   tenant_id: string
   user_id: string
   user_name: string
-  login_type: string
+  operation_type: string // 操作类型: LOGIN=登录, LOGOUT=登出
+  login_type: string // 登录方式: PASSWORD=密码, SSO=单点登录, OAUTH=第三方登录
   login_ip: string
   login_location: string
   user_agent: string
@@ -23,7 +24,8 @@ export interface LoginLogListParams {
   page_size?: number
   user_id?: string
   user_name?: string
-  login_type?: string
+  operation_type?: string // 操作类型筛选: LOGIN, LOGOUT
+  login_type?: string // 登录方式筛选: PASSWORD, SSO, OAUTH
   status?: number
   start_date?: number
   end_date?: number

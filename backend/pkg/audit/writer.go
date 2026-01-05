@@ -54,6 +54,7 @@ func (w *DB) writeLoginLog(ctx context.Context, entry *LogEntry) error {
 		TenantID:      entry.TenantID,
 		UserID:        entry.UserID,
 		UserName:      entry.UserName,
+		OperationType: entry.OperationType,
 		LoginType:     entry.Module,
 		LoginIP:       entry.IPAddress,
 		LoginLocation: "", // 暂不实现 IP 地址解析

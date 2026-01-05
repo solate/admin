@@ -101,7 +101,7 @@ func WithExport(module string) LogOption {
 // WithLogin 登录操作选项
 func WithLogin() LogOption {
 	return func(e *LogEntry) {
-		e.Module = ModuleAuth
+		e.Module = LoginTypePassword // 默认密码登录，可后续扩展支持 SSO、OAUTH
 		e.OperationType = OperationLogin
 	}
 }
@@ -109,7 +109,7 @@ func WithLogin() LogOption {
 // WithLogout 登出操作选项
 func WithLogout() LogOption {
 	return func(e *LogEntry) {
-		e.Module = ModuleAuth
+		e.Module = "" // 登出不需要登录类型
 		e.OperationType = OperationLogout
 	}
 }

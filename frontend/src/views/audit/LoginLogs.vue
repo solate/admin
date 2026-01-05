@@ -10,7 +10,13 @@
         <el-form-item label="用户名">
           <el-input v-model="filterForm.user_name" placeholder="输入用户名" clearable style="width: 180px" />
         </el-form-item>
-        <el-form-item label="登录类型">
+        <el-form-item label="操作类型">
+          <el-select v-model="filterForm.operation_type" placeholder="全部" clearable style="width: 100px">
+            <el-option label="登录" value="LOGIN" />
+            <el-option label="登出" value="LOGOUT" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="登录方式">
           <el-select v-model="filterForm.login_type" placeholder="全部" clearable style="width: 120px">
             <el-option label="密码登录" value="PASSWORD" />
             <el-option label="SSO登录" value="SSO" />
@@ -54,11 +60,19 @@
     <el-card class="table-card">
       <el-table :data="logsData" style="width: 100%" v-loading="loading" stripe>
         <el-table-column prop="user_name" label="用户名" width="120" />
-        <el-table-column prop="login_type" label="登录类型" width="100">
+        <el-table-column prop="operation_type" label="操作类型" width="90">
           <template #default="{ row }">
-            <el-tag :type="getLoginTypeTagType(row.login_type)" size="small">
+            <el-tag :type="getOperationTypeTagType(row.operation_type)" size="small">
+              {{ getOperationTypeLabel(row.operation_type) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="login_type" label="登录方式" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.login_type" :type="getLoginTypeTagType(row.login_type)" size="small">
               {{ getLoginTypeLabel(row.login_type) }}
             </el-tag>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column prop="login_ip" label="IP地址" width="140" />
@@ -108,10 +122,16 @@
       <el-descriptions :column="1" border>
         <el-descriptions-item label="日志ID">{{ currentLog?.log_id }}</el-descriptions-item>
         <el-descriptions-item label="用户名">{{ currentLog?.user_name }}</el-descriptions-item>
-        <el-descriptions-item label="登录类型">
-          <el-tag :type="getLoginTypeTagType(currentLog?.login_type)" size="small">
+        <el-descriptions-item label="操作类型">
+          <el-tag :type="getOperationTypeTagType(currentLog?.operation_type)" size="small">
+            {{ getOperationTypeLabel(currentLog?.operation_type) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="登录方式">
+          <el-tag v-if="currentLog?.login_type" :type="getLoginTypeTagType(currentLog?.login_type)" size="small">
             {{ getLoginTypeLabel(currentLog?.login_type) }}
           </el-tag>
+          <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="IP地址">{{ currentLog?.login_ip }}</el-descriptions-item>
         <el-descriptions-item label="登录位置">{{ currentLog?.login_location || '-' }}</el-descriptions-item>
@@ -124,7 +144,7 @@
           <span class="text-danger">{{ currentLog?.fail_reason }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="用户代理" :span="2">{{ currentLog?.user_agent }}</el-descriptions-item>
-        <el-descriptions-item label="登录时间">{{ formatTime(currentLog?.created_at) }}</el-descriptions-item>
+        <el-descriptions-item label="操作时间">{{ formatTime(currentLog?.created_at) }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>
@@ -137,6 +157,7 @@ import { formatTime } from '@/utils/date'
 
 const filterForm = reactive<LoginLogListParams>({
   user_name: '',
+  operation_type: '',
   login_type: '',
   status: undefined,
   ip_address: ''
@@ -173,6 +194,22 @@ function getLoginTypeTagType(type: string): string {
   return typeMap[type] || ''
 }
 
+function getOperationTypeLabel(type: string): string {
+  const typeMap: Record<string, string> = {
+    LOGIN: '登录',
+    LOGOUT: '登出'
+  }
+  return typeMap[type] || type
+}
+
+function getOperationTypeTagType(type: string): string {
+  const typeMap: Record<string, string> = {
+    LOGIN: 'success',
+    LOGOUT: 'info'
+  }
+  return typeMap[type] || ''
+}
+
 async function loadLogs() {
   loading.value = true
   try {
@@ -204,6 +241,7 @@ function handleSearch() {
 
 function handleReset() {
   filterForm.user_name = ''
+  filterForm.operation_type = ''
   filterForm.login_type = ''
   filterForm.status = undefined
   filterForm.ip_address = ''

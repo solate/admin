@@ -99,10 +99,9 @@ func (r *RoleRepo) UpdateStatus(ctx context.Context, roleID string, status int) 
 	return err
 }
 
-// CheckExists 检查角色是否存在
+// CheckExists 检查角色是否存在（租户过滤由 scope callback 自动处理）
 func (r *RoleRepo) CheckExists(ctx context.Context, tenantID, roleCode string) (bool, error) {
 	count, err := r.q.Role.WithContext(ctx).
-		Where(r.q.Role.TenantID.Eq(tenantID)).
 		Where(r.q.Role.RoleCode.Eq(roleCode)).
 		Count()
 	if err != nil {
@@ -126,10 +125,9 @@ func (r *RoleRepo) ListByCodes(ctx context.Context, roleCodes []string) ([]*mode
 		Find()
 }
 
-// CheckExistsByID 检查角色编码是否存在（排除指定ID）
+// CheckExistsByID 检查角色编码是否存在（排除指定ID）（租户过滤由 scope callback 自动处理）
 func (r *RoleRepo) CheckExistsByID(ctx context.Context, tenantID, roleCode string, excludeRoleID string) (bool, error) {
 	count, err := r.q.Role.WithContext(ctx).
-		Where(r.q.Role.TenantID.Eq(tenantID)).
 		Where(r.q.Role.RoleCode.Eq(roleCode)).
 		Where(r.q.Role.RoleID.Neq(excludeRoleID)).
 		Count()

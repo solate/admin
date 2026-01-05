@@ -8,7 +8,8 @@ type LoginLogResponse struct {
 	TenantID      string `json:"tenant_id"`
 	UserID        string `json:"user_id"`
 	UserName      string `json:"user_name"`
-	LoginType     string `json:"login_type"`     // PASSWORD, SSO, OAUTH
+	OperationType string `json:"operation_type"` // LOGIN:登录, LOGOUT:登出
+	LoginType     string `json:"login_type"`     // PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录
 	LoginIP       string `json:"login_ip"`
 	LoginLocation string `json:"login_location"` // IP解析的地理位置
 	UserAgent     string `json:"user_agent"`
@@ -22,10 +23,11 @@ type ListLoginLogsRequest struct {
 	pagination.Request  `json:",inline"`
 	UserID              string  `form:"user_id" binding:"omitempty"`
 	UserName            string  `form:"user_name" binding:"omitempty"`
-	LoginType           string  `form:"login_type" binding:"omitempty"` // PASSWORD, SSO, OAUTH
-	Status              *int16  `form:"status" binding:"omitempty"`      // 1:成功 0:失败
-	StartDate           *int64  `form:"start_date" binding:"omitempty"`  // 开始时间(毫秒时间戳)
-	EndDate             *int64  `form:"end_date" binding:"omitempty"`    // 结束时间(毫秒时间戳)
+	OperationType       string  `form:"operation_type" binding:"omitempty"` // LOGIN:登录, LOGOUT:登出
+	LoginType           string  `form:"login_type" binding:"omitempty"`     // PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录
+	Status              *int16  `form:"status" binding:"omitempty"`         // 1:成功 0:失败
+	StartDate           *int64  `form:"start_date" binding:"omitempty"`     // 开始时间(毫秒时间戳)
+	EndDate             *int64  `form:"end_date" binding:"omitempty"`       // 结束时间(毫秒时间戳)
 	IPAddress           string  `form:"ip_address" binding:"omitempty"`
 }
 
