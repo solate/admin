@@ -1,11 +1,8 @@
 package handler
 
 import (
-	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/service"
-	"admin/pkg/audit"
-	"admin/pkg/pagination"
 	"admin/pkg/response"
 	"admin/pkg/xerr"
 	"strconv"
@@ -16,14 +13,12 @@ import (
 // TenantHandler 租户处理器
 type TenantHandler struct {
 	tenantService *service.TenantService
-	recorder      *audit.Recorder
 }
 
 // NewTenantHandler 创建租户处理器
-func NewTenantHandler(tenantService *service.TenantService, recorder *audit.Recorder) *TenantHandler {
+func NewTenantHandler(tenantService *service.TenantService) *TenantHandler {
 	return &TenantHandler{
 		tenantService: tenantService,
-		recorder:      recorder,
 	}
 }
 
@@ -48,23 +43,13 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 		return
 	}
 
-	tenant, err := h.tenantService.CreateTenant(c.Request.Context(), &req)
+	resp, err := h.tenantService.CreateTenant(c.Request.Context(), &req)
 	if err != nil {
-		h.recorder.Log(c.Request.Context(),
-			audit.WithCreate(audit.ModuleTenant),
-			audit.WithError(err),
-		)
 		response.Error(c, err)
 		return
 	}
 
-	h.recorder.Log(c.Request.Context(),
-		audit.WithCreate(audit.ModuleTenant),
-		audit.WithResource(audit.ResourceTenant, tenant.TenantID, tenant.Name),
-		audit.WithValue(nil, tenant),
-	)
-
-	response.Success(c, h.toTenantResponse(tenant))
+	response.Success(c, resp)
 }
 
 // GetTenant 获取租户详情
@@ -88,13 +73,13 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 		return
 	}
 
-	tenant, err := h.tenantService.GetTenantByID(c.Request.Context(), tenantID)
+	resp, err := h.tenantService.GetTenantByID(c.Request.Context(), tenantID)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	response.Success(c, h.toTenantResponse(tenant))
+	response.Success(c, resp)
 }
 
 // UpdateTenant 更新租户
@@ -125,23 +110,13 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 		return
 	}
 
-	oldTenant, newTenant, err := h.tenantService.UpdateTenant(c.Request.Context(), tenantID, &req)
+	resp, err := h.tenantService.UpdateTenant(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		h.recorder.Log(c.Request.Context(),
-			audit.WithUpdate(audit.ModuleTenant),
-			audit.WithError(err),
-		)
 		response.Error(c, err)
 		return
 	}
 
-	h.recorder.Log(c.Request.Context(),
-		audit.WithUpdate(audit.ModuleTenant),
-		audit.WithResource(audit.ResourceTenant, newTenant.TenantID, newTenant.Name),
-		audit.WithValue(oldTenant, newTenant),
-	)
-
-	response.Success(c, h.toTenantResponse(newTenant))
+	response.Success(c, resp)
 }
 
 // DeleteTenant 删除租户
@@ -165,21 +140,10 @@ func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 		return
 	}
 
-	tenant, err := h.tenantService.DeleteTenant(c.Request.Context(), tenantID)
-	if err != nil {
-		h.recorder.Log(c.Request.Context(),
-			audit.WithDelete(audit.ModuleTenant),
-			audit.WithError(err),
-		)
+	if err := h.tenantService.DeleteTenant(c.Request.Context(), tenantID); err != nil {
 		response.Error(c, err)
 		return
 	}
-
-	h.recorder.Log(c.Request.Context(),
-		audit.WithDelete(audit.ModuleTenant),
-		audit.WithResource(audit.ResourceTenant, tenant.TenantID, tenant.Name),
-		audit.WithValue(tenant, nil),
-	)
 
 	response.Success(c, gin.H{"deleted": true})
 }
@@ -208,23 +172,13 @@ func (h *TenantHandler) ListTenants(c *gin.Context) {
 		return
 	}
 
-	tenants, total, err := h.tenantService.ListTenants(c.Request.Context(), &req)
+	resp, err := h.tenantService.ListTenants(c.Request.Context(), &req)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	// 转换为响应格式
-	tenantResponses := make([]*dto.TenantResponse, len(tenants))
-	for i, tenant := range tenants {
-		tenantResponses[i] = h.toTenantResponse(tenant)
-	}
-
-	// 构建分页响应
-	response.Success(c, &dto.TenantListResponse{
-		Response: pagination.NewResponse(req.Request, total),
-		List:     tenantResponses,
-	})
+	response.Success(c, resp)
 }
 
 // UpdateTenantStatus 更新租户状态
@@ -267,17 +221,4 @@ func (h *TenantHandler) UpdateTenantStatus(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"updated": true})
-}
-
-// toTenantResponse 转换为租户响应格式
-func (h *TenantHandler) toTenantResponse(tenant *model.Tenant) *dto.TenantResponse {
-	return &dto.TenantResponse{
-		TenantID:    tenant.TenantID,
-		Code:        tenant.TenantCode,
-		Name:        tenant.Name,
-		Description: tenant.Description,
-		Status:      int(tenant.Status),
-		CreatedAt:   tenant.CreatedAt,
-		UpdatedAt:   tenant.UpdatedAt,
-	}
 }
