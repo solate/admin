@@ -22,7 +22,7 @@ func NewHealthHandler() *HealthHandler {
 // @Accept json
 // @Produce json
 // @Success 200 {object} response.Response{data=map[string]string} "健康检查成功"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /health [get]
 func (h *HealthHandler) Check(c *gin.Context) {
 	response.Success(c, gin.H{
@@ -39,7 +39,7 @@ func (h *HealthHandler) Check(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]string "Ping成功响应"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /ping [get]
 func (h *HealthHandler) Ping(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{

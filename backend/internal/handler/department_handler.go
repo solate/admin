@@ -57,7 +57,7 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param department_id path string true "部门ID"
 // @Success 200 {object} response.Response{data=dto.DepartmentResponse} "获取成功"
-// @Router /api/v1/departments/:department_id [get]
+// @Router /api/v1/departments/{department_id} [get]
 func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
 	departmentID := c.Param("department_id")
 	if departmentID == "" {
@@ -84,7 +84,7 @@ func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
 // @Param department_id path string true "部门ID"
 // @Param request body dto.UpdateDepartmentRequest true "更新部门请求参数"
 // @Success 200 {object} response.Response{data=dto.DepartmentResponse} "更新成功"
-// @Router /api/v1/departments/:department_id [put]
+// @Router /api/v1/departments/{department_id} [put]
 func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
 	departmentID := c.Param("department_id")
 	if departmentID == "" {
@@ -116,7 +116,7 @@ func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param department_id path string true "部门ID"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /api/v1/departments/:department_id [delete]
+// @Router /api/v1/departments/{department_id} [delete]
 func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
 	departmentID := c.Param("department_id")
 	if departmentID == "" {
@@ -190,7 +190,7 @@ func (h *DepartmentHandler) GetDepartmentTree(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param department_id path string true "部门ID"
 // @Success 200 {object} response.Response{data=[]dto.DepartmentResponse} "获取成功"
-// @Router /api/v1/departments/:department_id/children [get]
+// @Router /api/v1/departments/{department_id}/children [get]
 func (h *DepartmentHandler) GetChildren(c *gin.Context) {
 	departmentID := c.Param("department_id")
 	if departmentID == "" {
@@ -217,7 +217,7 @@ func (h *DepartmentHandler) GetChildren(c *gin.Context) {
 // @Param department_id path string true "部门ID"
 // @Param status path int true "状态(1:启用,2:禁用)"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /api/v1/departments/:department_id/status/:status [put]
+// @Router /api/v1/departments/{department_id}/status/{status} [put]
 func (h *DepartmentHandler) UpdateDepartmentStatus(c *gin.Context) {
 	departmentID := c.Param("department_id")
 	if departmentID == "" {

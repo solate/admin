@@ -29,10 +29,10 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 // @Produce json
 // @Param request body dto.LoginRequest true "登录请求参数"
 // @Success 200 {object} response.Response{data=dto.LoginResponse} "登录成功或需要选择租户"
-// @Success 200 {object} response.Response "请求参数错误"
-// @Success 200 {object} response.Response "认证失败"
-// @Success 200 {object} response.Response "服务器内部错误"
-// @Router /api/v1/auth/:tenant_code/login [post]
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "认证失败"
+// @Failure 500 {object} response.Response "服务器内部错误"
+// @Router /api/v1/auth/{tenant_code}/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -57,9 +57,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Produce json
 // @Param request body dto.RefreshRequest true "刷新令牌请求参数"
 // @Success 200 {object} response.Response{data=dto.RefreshResponse} "刷新成功"
-// @Success 200 {object} response.Response "请求参数错误"
-// @Success 200 {object} response.Response "刷新令牌无效或已过期"
-// @Success 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "刷新令牌无效或已过期"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshRequest
@@ -85,8 +85,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Success 200 {object} response.Response "登出成功"
-// @Success 200 {object} response.Response "未授权访问"
-// @Success 200 {object} response.Response "服务器内部错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	if err := h.authService.Logout(c.Request.Context(), c.Request); err != nil {
@@ -106,10 +106,10 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param request body dto.SwitchTenantRequest true "切换租户请求参数"
 // @Success 200 {object} response.Response{data=dto.LoginResponse} "切换成功"
-// @Success 200 {object} response.Response "请求参数错误"
-// @Success 200 {object} response.Response "租户不存在"
-// @Success 200 {object} response.Response "无该租户访问权限"
-// @Success 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 404 {object} response.Response "租户不存在"
+// @Failure 403 {object} response.Response "无该租户访问权限"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/auth/switch-tenant [post]
 func (h *AuthHandler) SwitchTenant(c *gin.Context) {
 	var req dto.SwitchTenantRequest
@@ -135,7 +135,7 @@ func (h *AuthHandler) SwitchTenant(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Success 200 {object} response.Response{data=dto.AvailableTenantsResponse} "获取成功"
-// @Success 200 {object} response.Response "服务器内部错误"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/auth/available-tenants [get]
 func (h *AuthHandler) GetAvailableTenants(c *gin.Context) {
 	resp, err := h.authService.GetAvailableTenants(c.Request.Context())

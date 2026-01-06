@@ -8,16 +8,16 @@ const MaxPageSize = 100
 
 // Request 分页请求
 type Request struct {
-	Page     int `form:"page" json:"page" binding:"omitempty,min=1"`                   // 当前页
-	PageSize int `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100"` // 每页数量
+	Page     int `form:"page" json:"page" binding:"omitempty,min=1" example:"1"`                   // 当前页
+	PageSize int `form:"page_size" json:"page_size" binding:"omitempty,min=1,max=100" example:"10"` // 每页数量
 }
 
 // Response 分页响应基类（只包含分页元数据）
 type Response struct {
-	Page      int   `json:"page"`       // 当前页码
-	PageSize  int   `json:"page_size"`  // 每页大小
-	Total     int64 `json:"total"`      // 总记录数
-	TotalPage int64 `json:"total_page"` // 总页数
+	Page      int   `json:"page" example:"1"`       // 当前页码
+	PageSize  int   `json:"page_size" example:"10"`  // 每页大小
+	Total     int64 `json:"total" example:"100"`     // 总记录数
+	TotalPage int64 `json:"total_page" example:"10"` // 总页数
 }
 
 // NewResponse 创建分页响应

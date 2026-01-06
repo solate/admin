@@ -31,10 +31,10 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 // @Security ApiKeyAuth
 // @Param request body dto.CreateUserRequest true "创建用户请求参数"
 // @Success 200 {object} response.Response{data=dto.UserResponse} "创建成功"
-// @Success 200 {object} response.Response "请求参数错误"
-// @Success 200 {object} response.Response "未授权访问"
-// @Success 200 {object} response.Response "权限不足"
-// @Success 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 403 {object} response.Response "权限不足"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/users [post]
 func (h *UserHandler) CreateUser(c *gin.Context) {
 	var req dto.CreateUserRequest
@@ -53,6 +53,19 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 }
 
 // GetUser 获取用户详情
+// @Summary 获取用户详情
+// @Description 根据用户ID获取用户详细信息
+// @Tags 用户管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "用户ID"
+// @Success 200 {object} response.Response{data=dto.UserResponse} "获取成功"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 404 {object} response.Response "用户不存在"
+// @Failure 500 {object} response.Response "服务器内部错误"
+// @Router /api/v1/users/{user_id} [get]
 func (h *UserHandler) GetUser(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -70,6 +83,20 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 }
 
 // UpdateUser 更新用户
+// @Summary 更新用户
+// @Description 更新用户基本信息
+// @Tags 用户管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "用户ID"
+// @Param request body dto.UpdateUserRequest true "更新用户请求参数"
+// @Success 200 {object} response.Response{data=dto.UserResponse} "更新成功"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 404 {object} response.Response "用户不存在"
+// @Failure 500 {object} response.Response "服务器内部错误"
+// @Router /api/v1/users/{user_id} [put]
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -93,6 +120,19 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 }
 
 // DeleteUser 删除用户
+// @Summary 删除用户
+// @Description 删除用户（软删除）
+// @Tags 用户管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "用户ID"
+// @Success 200 {object} response.Response "删除成功"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 404 {object} response.Response "用户不存在"
+// @Failure 500 {object} response.Response "服务器内部错误"
+// @Router /api/v1/users/{user_id} [delete]
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -120,9 +160,9 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // @Param user_name query string false "用户名筛选"
 // @Param status query int false "状态筛选(0:禁用,1:启用)"
 // @Success 200 {object} response.Response{data=dto.ListUsersResponse} "获取成功"
-// @Success 200 {object} response.Response "请求参数错误"
-// @Success 200 {object} response.Response "未授权访问"
-// @Success 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/users [get]
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	var req dto.ListUsersRequest
@@ -141,6 +181,20 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 }
 
 // UpdateUserStatus 更新用户状态
+// @Summary 更新用户状态
+// @Description 启用或禁用用户账号
+// @Tags 用户管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "用户ID"
+// @Param status path int true "状态(1:启用,2:禁用)"
+// @Success 200 {object} response.Response "更新成功"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 404 {object} response.Response "用户不存在"
+// @Failure 500 {object} response.Response "服务器内部错误"
+// @Router /api/v1/users/{user_id}/status/{status} [put]
 func (h *UserHandler) UpdateUserStatus(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -176,8 +230,8 @@ func (h *UserHandler) UpdateUserStatus(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Success 200 {object} response.Response{data=dto.ProfileResponse} "获取成功"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/profile [get]
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	// 获取当前用户信息（从 context 中获取）
@@ -200,7 +254,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 // @Param user_id path string true "用户ID"
 // @Param request body dto.AssignRolesRequest true "角色编码列表"
 // @Success 200 {object} response.Response "分配成功"
-// @Router /api/v1/users/:user_id/roles [put]
+// @Router /api/v1/users/{user_id}/roles [put]
 func (h *UserHandler) AssignRoles(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -231,7 +285,7 @@ func (h *UserHandler) AssignRoles(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param user_id path string true "用户ID"
 // @Success 200 {object} response.Response{data=dto.UserRolesResponse} "获取成功"
-// @Router /api/v1/users/:user_id/roles [get]
+// @Router /api/v1/users/{user_id}/roles [get]
 func (h *UserHandler) GetUserRoles(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -257,10 +311,10 @@ func (h *UserHandler) GetUserRoles(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param request body dto.ChangePasswordRequest true "修改密码请求参数"
 // @Success 200 {object} response.Response{data=dto.ChangePasswordResponse} "修改成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "原密码错误"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 400 {object} response.Response "原密码错误"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/password/change [post]
 func (h *UserHandler) ChangePassword(c *gin.Context) {
 	var req dto.ChangePasswordRequest
@@ -290,11 +344,11 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 // @Param user_id path string true "用户ID"
 // @Param request body dto.ResetPasswordRequest false "重置密码请求参数"
 // @Success 200 {object} response.Response{data=dto.ResetPasswordResponse} "重置成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "权限不足"
-// @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /api/v1/users/:user_id/password/reset [post]
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 403 {object} response.Response "权限不足"
+// @Failure 500 {object} response.Response "服务器内部错误"
+// @Router /api/v1/users/{user_id}/password/reset [post]
 func (h *UserHandler) ResetPassword(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {

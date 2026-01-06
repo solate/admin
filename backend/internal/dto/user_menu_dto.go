@@ -7,15 +7,15 @@ type UserMenuResponse struct {
 
 // UserButtonsRequest 按钮权限请求
 type UserButtonsRequest struct {
-	MenuID string `form:"menu_id" binding:"required"`
+	MenuID string `form:"menu_id" binding:"required" example:"123456789012345678"`
 }
 
 // ButtonInfo 按钮信息
 type ButtonInfo struct {
-	PermissionID string  `json:"permission_id"`
-	Name         string  `json:"name"`
-	Action       *string `json:"action"`
-	Resource     *string `json:"resource"`
+	PermissionID string  `json:"permission_id" example:"123456789012345678"`
+	Name         string  `json:"name" example:"创建用户"`
+	Action       *string `json:"action" example:"POST"`
+	Resource     *string `json:"resource" example:"button:123456789012345678"`
 }
 
 // UserButtonsResponse 按钮权限响应

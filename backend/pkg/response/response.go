@@ -11,10 +11,10 @@ const RequestIDKey = "X-Request-ID"
 
 // Response 统一响应结构
 type Response struct {
-	Code      int    `json:"code"`
-	Message   string `json:"message"`
-	Data      any    `json:"data,omitempty"`
-	RequestID string `json:"request_id"`
+	Code      int    `json:"code" example:"200"`          // 业务状态码
+	Message   string `json:"message" example:"success"`   // 响应消息
+	Data      any    `json:"data,omitempty"`              // 响应数据
+	RequestID string `json:"request_id" example:"abc123"` // 请求ID
 }
 
 // getRequestID 从context中获取请求ID

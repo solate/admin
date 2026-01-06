@@ -4,18 +4,18 @@ import "admin/pkg/pagination"
 
 // LoginLogResponse 登录日志响应
 type LoginLogResponse struct {
-	LogID         string `json:"log_id"`
-	TenantID      string `json:"tenant_id"`
-	UserID        string `json:"user_id"`
-	UserName      string `json:"user_name"`
-	OperationType string `json:"operation_type"` // LOGIN:登录, LOGOUT:登出
-	LoginType     string `json:"login_type"`     // PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录
-	LoginIP       string `json:"login_ip"`
-	LoginLocation string `json:"login_location"` // IP解析的地理位置
-	UserAgent     string `json:"user_agent"`
-	Status        int16  `json:"status"`         // 1:成功 0:失败
-	FailReason    string `json:"fail_reason"`    // 失败原因
-	CreatedAt     int64  `json:"created_at"`
+	LogID         string `json:"log_id" example:"123456789012345678"`
+	TenantID      string `json:"tenant_id" example:"123456789012345678"`
+	UserID        string `json:"user_id" example:"123456789012345678"`
+	UserName      string `json:"user_name" example:"admin"`
+	OperationType string `json:"operation_type" example:"LOGIN"` // LOGIN:登录, LOGOUT:登出
+	LoginType     string `json:"login_type" example:"PASSWORD"`     // PASSWORD:密码, SSO:单点登录, OAUTH:第三方登录
+	LoginIP       string `json:"login_ip" example:"192.168.1.100"`
+	LoginLocation string `json:"login_location" example:"北京市朝阳区"` // IP解析的地理位置
+	UserAgent     string `json:"user_agent" example:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"`
+	Status        int16  `json:"status" example:"1"`         // 1:成功 0:失败
+	FailReason    string `json:"fail_reason" example:""`    // 失败原因
+	CreatedAt     int64  `json:"created_at" example:"1735206400"`
 }
 
 // ListLoginLogsRequest 获取登录日志列表请求

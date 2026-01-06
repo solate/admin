@@ -46,10 +46,10 @@ type ListRolesResponse struct {
 
 // RoleInfo 角色基础信息（可复用）
 type RoleInfo struct {
-	RoleID      string `json:"role_id"`     // 角色ID
-	RoleCode    string `json:"role_code"`   // 角色编码
-	Name        string `json:"name"`        // 角色名称
-	Description string `json:"description"` // 角色描述
+	RoleID      string `json:"role_id" example:"123456789012345678"`     // 角色ID
+	RoleCode    string `json:"role_code" example:"admin"`               // 角色编码
+	Name        string `json:"name" example:"系统管理员"`                  // 角色名称
+	Description string `json:"description" example:"系统管理员，拥有所有权限"` // 角色描述
 }
 
 // AssignPermissionsRequest 分配权限请求（菜单+按钮）

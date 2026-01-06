@@ -24,15 +24,15 @@ type UpdatePositionRequest struct {
 
 // PositionResponse 岗位响应
 type PositionResponse struct {
-	PositionID   string `json:"position_id"`   // 岗位ID
-	PositionCode string `json:"position_code"` // 岗位编码
-	PositionName string `json:"position_name"` // 岗位名称
-	Level        int    `json:"level"`         // 职级
-	Description  string `json:"description"`   // 岗位描述
-	Sort         int    `json:"sort"`          // 排序权重
-	Status       int    `json:"status"`        // 状态 1:启用 2:禁用
-	CreatedAt    int64  `json:"created_at"`    // 创建时间
-	UpdatedAt    int64  `json:"updated_at"`    // 更新时间
+	PositionID   string `json:"position_id" example:"123456789012345678"`   // 岗位ID
+	PositionCode string `json:"position_code" example:"SENIOR_ENGINEER"` // 岗位编码
+	PositionName string `json:"position_name" example:"高级工程师"` // 岗位名称
+	Level        int    `json:"level" example:"7"`         // 职级
+	Description  string `json:"description" example:"负责核心技术研发工作"`   // 岗位描述
+	Sort         int    `json:"sort" example:"1"`          // 排序权重
+	Status       int    `json:"status" example:"1" enum:"1,2"`        // 状态 1:启用 2:禁用
+	CreatedAt    int64  `json:"created_at" example:"1735200000"`    // 创建时间
+	UpdatedAt    int64  `json:"updated_at" example:"1735206400"`    // 更新时间
 }
 
 // ListPositionsRequest 岗位列表请求
@@ -50,7 +50,7 @@ type ListPositionsResponse struct {
 
 // PositionInfo 岗位基础信息（可复用）
 type PositionInfo struct {
-	PositionID   string `json:"position_id"`   // 岗位ID
-	PositionCode string `json:"position_code"` // 岗位编码
-	PositionName string `json:"position_name"` // 岗位名称
+	PositionID   string `json:"position_id" example:"123456789012345678"`   // 岗位ID
+	PositionCode string `json:"position_code" example:"SENIOR_ENGINEER"` // 岗位编码
+	PositionName string `json:"position_name" example:"高级工程师"` // 岗位名称
 }

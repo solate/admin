@@ -28,7 +28,7 @@ func NewCaptchaHandler(rdb redis.UniversalClient) *CaptchaHandler {
 // @Tags 认证
 // @Produce json
 // @Success 200 {object} response.Response{data=dto.CaptchaResponse}
-// @Failure 200 {object} response.Response
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/auth/captcha [get]
 func (h *CaptchaHandler) Get(c *gin.Context) {
 	id, b64s, _, err := h.captchaMgr.Generate()

@@ -57,7 +57,7 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param role_id path string true "角色ID"
 // @Success 200 {object} response.Response{data=dto.RoleResponse} "获取成功"
-// @Router /api/v1/roles/:role_id [get]
+// @Router /api/v1/roles/{role_id} [get]
 func (h *RoleHandler) GetRole(c *gin.Context) {
 	roleID := c.Param("role_id")
 	if roleID == "" {
@@ -84,7 +84,7 @@ func (h *RoleHandler) GetRole(c *gin.Context) {
 // @Param role_id path string true "角色ID"
 // @Param request body dto.UpdateRoleRequest true "更新角色请求参数"
 // @Success 200 {object} response.Response{data=dto.RoleResponse} "更新成功"
-// @Router /api/v1/roles/:role_id [put]
+// @Router /api/v1/roles/{role_id} [put]
 func (h *RoleHandler) UpdateRole(c *gin.Context) {
 	roleID := c.Param("role_id")
 	if roleID == "" {
@@ -116,7 +116,7 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param role_id path string true "角色ID"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /api/v1/roles/:role_id [delete]
+// @Router /api/v1/roles/{role_id} [delete]
 func (h *RoleHandler) DeleteRole(c *gin.Context) {
 	roleID := c.Param("role_id")
 	if roleID == "" {
@@ -171,7 +171,7 @@ func (h *RoleHandler) ListRoles(c *gin.Context) {
 // @Param role_id path string true "角色ID"
 // @Param status path int true "状态(1:启用,2:禁用)"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /api/v1/roles/:role_id/status/:status [put]
+// @Router /api/v1/roles/{role_id}/status/{status} [put]
 func (h *RoleHandler) UpdateRoleStatus(c *gin.Context) {
 	roleID := c.Param("role_id")
 	if roleID == "" {
@@ -209,7 +209,7 @@ func (h *RoleHandler) UpdateRoleStatus(c *gin.Context) {
 // @Param role_id path string true "角色ID"
 // @Param request body dto.AssignPermissionsRequest true "权限列表"
 // @Success 200 {object} response.Response "分配成功"
-// @Router /api/v1/roles/:role_id/permissions [put]
+// @Router /api/v1/roles/{role_id}/permissions [put]
 func (h *RoleHandler) AssignPermissions(c *gin.Context) {
 	roleID := c.Param("role_id")
 	if roleID == "" {
@@ -240,7 +240,7 @@ func (h *RoleHandler) AssignPermissions(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param role_id path string true "角色ID"
 // @Success 200 {object} response.Response{data=dto.RolePermissionsResponse} "获取成功"
-// @Router /api/v1/roles/:role_id/permissions [get]
+// @Router /api/v1/roles/{role_id}/permissions [get]
 func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
 	roleID := c.Param("role_id")
 	if roleID == "" {
@@ -258,12 +258,33 @@ func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
 }
 
 // AssignMenus 为角色分配菜单（已弃用，保留向后兼容）
+// @Summary 为角色分配菜单（已弃用）
+// @Deprecated
+// @Description 为指定角色分配菜单权限。已弃用，请使用 AssignPermissions 接口
+// @Tags 角色管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param role_id path string true "角色ID"
+// @Param request body dto.AssignMenusRequest true "菜单ID列表"
+// @Success 200 {object} response.Response "分配成功"
+// @Router /api/v1/roles/{role_id}/menus [put]
 // Deprecated: 使用 AssignPermissions 代替
 func (h *RoleHandler) AssignMenus(c *gin.Context) {
 	h.AssignPermissions(c)
 }
 
 // GetRoleMenus 获取角色的菜单权限（已弃用，保留向后兼容）
+// @Summary 获取角色菜单权限（已弃用）
+// @Deprecated
+// @Description 获取指定角色的菜单权限。已弃用，请使用 GetRolePermissions 接口
+// @Tags 角色管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param role_id path string true "角色ID"
+// @Success 200 {object} response.Response{data=dto.RoleMenusResponse} "获取成功"
+// @Router /api/v1/roles/{role_id}/menus [get]
 // Deprecated: 使用 GetRolePermissions 代替
 func (h *RoleHandler) GetRoleMenus(c *gin.Context) {
 	roleID := c.Param("role_id")

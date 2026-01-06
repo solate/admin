@@ -43,8 +43,8 @@ type TenantListResponse struct {
 
 // TenantInfo 租户基础信息（可复用）
 type TenantInfo struct {
-	TenantID    string `json:"tenant_id"`   // 租户ID
-	TenantCode  string `json:"tenant_code"` // 租户编码
-	Name        string `json:"name"`        // 租户名称
-	Description string `json:"description"` // 租户描述
+	TenantID    string `json:"tenant_id" example:"123456789012345678"`   // 租户ID
+	TenantCode  string `json:"tenant_code" example:"tenant_shanghai"`   // 租户编码
+	Name        string `json:"name" example:"上海分公司"`                 // 租户名称
+	Description string `json:"description" example:"上海地区业务运营"`     // 租户描述
 }

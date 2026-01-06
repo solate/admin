@@ -28,21 +28,21 @@ type UpdateMenuRequest struct {
 
 // MenuInfo 菜单信息
 type MenuInfo struct {
-	MenuID      string  `json:"menu_id"`      // 菜单ID（修正：PermissionID -> MenuID）
-	Name        string  `json:"name"`         // 菜单名称
-	Type        string  `json:"type"`         // 类型（固定为 "MENU"）
-	ParentID    *string `json:"parent_id"`    // 父菜单ID
-	Resource    *string `json:"resource"`     // 资源路径（menu:menu_id）
-	Action      *string `json:"action"`       // 请求方法（固定为 "*"）
-	Path        *string `json:"path"`         // 前端路由路径
-	Component   *string `json:"component"`    // 前端组件路径
+	MenuID      string  `json:"menu_id" example:"123456789012345678"`      // 菜单ID（修正：PermissionID -> MenuID）
+	Name        string  `json:"name" example:"用户管理"`         // 菜单名称
+	Type        string  `json:"type" example:"MENU"`         // 类型（固定为 "MENU"）
+	ParentID    *string `json:"parent_id" example:"123456789012345678"`    // 父菜单ID
+	Resource    *string `json:"resource" example:"menu:123456789012345678"`     // 资源路径（menu:menu_id）
+	Action      *string `json:"action" example:"*"`       // 请求方法（固定为 "*"）
+	Path        *string `json:"path" example:"/system/user"`         // 前端路由路径
+	Component   *string `json:"component" example:"system/user/index"`    // 前端组件路径
 	Redirect    *string `json:"redirect"`     // 重定向路径
-	Icon        *string `json:"icon"`         // 图标
-	Sort        *int16  `json:"sort"`         // 排序
-	Status      int16   `json:"status"`       // 状态
-	Description *string `json:"description"`  // 描述
-	CreatedAt   int64   `json:"created_at"`   // 创建时间
-	UpdatedAt   int64   `json:"updated_at"`   // 更新时间
+	Icon        *string `json:"icon" example:"User"`         // 图标
+	Sort        *int16  `json:"sort" example:"1"`         // 排序
+	Status      int16   `json:"status" example:"1"`       // 状态
+	Description *string `json:"description" example:"用户管理菜单"`  // 描述
+	CreatedAt   int64   `json:"created_at" example:"1735200000"`   // 创建时间
+	UpdatedAt   int64   `json:"updated_at" example:"1735206400"`   // 更新时间
 }
 
 // MenuTreeNode 菜单树节点

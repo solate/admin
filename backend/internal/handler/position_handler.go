@@ -57,7 +57,7 @@ func (h *PositionHandler) CreatePosition(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param position_id path string true "岗位ID"
 // @Success 200 {object} response.Response{data=dto.PositionResponse} "获取成功"
-// @Router /api/v1/positions/:position_id [get]
+// @Router /api/v1/positions/{position_id} [get]
 func (h *PositionHandler) GetPosition(c *gin.Context) {
 	positionID := c.Param("position_id")
 	if positionID == "" {
@@ -84,7 +84,7 @@ func (h *PositionHandler) GetPosition(c *gin.Context) {
 // @Param position_id path string true "岗位ID"
 // @Param request body dto.UpdatePositionRequest true "更新岗位请求参数"
 // @Success 200 {object} response.Response{data=dto.PositionResponse} "更新成功"
-// @Router /api/v1/positions/:position_id [put]
+// @Router /api/v1/positions/{position_id} [put]
 func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 	positionID := c.Param("position_id")
 	if positionID == "" {
@@ -116,7 +116,7 @@ func (h *PositionHandler) UpdatePosition(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param position_id path string true "岗位ID"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /api/v1/positions/:position_id [delete]
+// @Router /api/v1/positions/{position_id} [delete]
 func (h *PositionHandler) DeletePosition(c *gin.Context) {
 	positionID := c.Param("position_id")
 	if positionID == "" {
@@ -190,7 +190,7 @@ func (h *PositionHandler) ListAllPositions(c *gin.Context) {
 // @Param position_id path string true "岗位ID"
 // @Param status path int true "状态(1:启用,2:禁用)"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /api/v1/positions/:position_id/status/:status [put]
+// @Router /api/v1/positions/{position_id}/status/{status} [put]
 func (h *PositionHandler) UpdatePositionStatus(c *gin.Context) {
 	positionID := c.Param("position_id")
 	if positionID == "" {

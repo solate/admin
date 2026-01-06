@@ -30,11 +30,11 @@ func NewOperationLogHandler(operationLogService *service.OperationLogService) *O
 // @Security ApiKeyAuth
 // @Param log_id path string true "日志ID"
 // @Success 200 {object} response.Response{data=dto.OperationLogResponse} "获取成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "资源不存在"
-// @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /api/v1/operation-logs/:log_id [get]
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 404 {object} response.Response "资源不存在"
+// @Failure 500 {object} response.Response "服务器内部错误"
+// @Router /api/v1/operation-logs/{log_id} [get]
 func (h *OperationLogHandler) GetOperationLog(c *gin.Context) {
 	logID := c.Param("log_id")
 	if logID == "" {
@@ -68,9 +68,9 @@ func (h *OperationLogHandler) GetOperationLog(c *gin.Context) {
 // @Param start_date query int false "开始时间(毫秒时间戳)"
 // @Param end_date query int false "结束时间(毫秒时间戳)"
 // @Success 200 {object} response.Response{data=dto.ListOperationLogsResponse} "获取成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/operation-logs [get]
 func (h *OperationLogHandler) ListOperationLogs(c *gin.Context) {
 	var req dto.ListOperationLogsRequest

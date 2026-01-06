@@ -56,7 +56,7 @@ func (h *DictHandler) CreateSystemDict(c *gin.Context) {
 // @Param type_code path string true "字典编码"
 // @Param request body dto.UpdateSystemDictRequest true "更新系统字典请求参数"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /api/v1/system/dict/:type_code [put]
+// @Router /api/v1/system/dict/{type_code} [put]
 func (h *DictHandler) UpdateSystemDict(c *gin.Context) {
 	typeCode := c.Param("type_code")
 	if typeCode == "" {
@@ -87,7 +87,7 @@ func (h *DictHandler) UpdateSystemDict(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param type_code path string true "字典编码"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /api/v1/system/dict/:type_code [delete]
+// @Router /api/v1/system/dict/{type_code} [delete]
 func (h *DictHandler) DeleteSystemDict(c *gin.Context) {
 	typeCode := c.Param("type_code")
 	if typeCode == "" {
@@ -140,7 +140,7 @@ func (h *DictHandler) ListSystemDictTypes(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param type_code path string true "字典编码"
 // @Success 200 {object} response.Response{data=dto.DictResponse} "获取成功"
-// @Router /api/v1/dict/:type_code [get]
+// @Router /api/v1/dict/{type_code} [get]
 func (h *DictHandler) GetDict(c *gin.Context) {
 	typeCode := c.Param("type_code")
 	if typeCode == "" {
@@ -192,7 +192,7 @@ func (h *DictHandler) BatchUpdateDictItems(c *gin.Context) {
 // @Param type_code path string true "字典编码"
 // @Param value path string true "字典值"
 // @Success 200 {object} response.Response "恢复成功"
-// @Router /api/v1/dict/:type_code/items/:value [delete]
+// @Router /api/v1/dict/{type_code}/items/{value} [delete]
 func (h *DictHandler) ResetDictItem(c *gin.Context) {
 	typeCode := c.Param("type_code")
 	if typeCode == "" {
@@ -224,7 +224,7 @@ func (h *DictHandler) ResetDictItem(c *gin.Context) {
 // @Param type_code path string true "字典编码"
 // @Param value path string true "字典值"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /api/v1/system/dict/:type_code/items/:value [delete]
+// @Router /api/v1/system/dict/{type_code}/items/{value} [delete]
 func (h *DictHandler) DeleteSystemDictItem(c *gin.Context) {
 	typeCode := c.Param("type_code")
 	if typeCode == "" {

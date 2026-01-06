@@ -31,10 +31,10 @@ func NewTenantHandler(tenantService *service.TenantService) *TenantHandler {
 // @Security ApiKeyAuth
 // @Param request body dto.TenantCreateRequest true "创建租户请求参数"
 // @Success 200 {object} response.Response{data=dto.TenantResponse} "创建成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "权限不足"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 403 {object} response.Response "权限不足"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/tenants [post]
 func (h *TenantHandler) CreateTenant(c *gin.Context) {
 	var req dto.TenantCreateRequest
@@ -61,10 +61,10 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param tenant_id path string true "租户ID"
 // @Success 200 {object} response.Response{data=dto.TenantResponse} "获取成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "资源不存在"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 404 {object} response.Response "资源不存在"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/tenants/{tenant_id} [get]
 func (h *TenantHandler) GetTenant(c *gin.Context) {
 	tenantID := c.Param("tenant_id")
@@ -92,10 +92,10 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 // @Param tenant_id path string true "租户ID"
 // @Param request body dto.TenantUpdateRequest true "更新租户请求参数"
 // @Success 200 {object} response.Response{data=dto.TenantResponse} "更新成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "资源不存在"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 404 {object} response.Response "资源不存在"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/tenants/{tenant_id} [put]
 func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 	tenantID := c.Param("tenant_id")
@@ -128,10 +128,10 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param tenant_id path string true "租户ID"
 // @Success 200 {object} response.Response "删除成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "资源不存在"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 404 {object} response.Response "资源不存在"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/tenants/{tenant_id} [delete]
 func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 	tenantID := c.Param("tenant_id")
@@ -161,9 +161,9 @@ func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 // @Param name query string false "租户名称（模糊查询）"
 // @Param status query int false "状态筛选" Enums(1,2)
 // @Success 200 {object} response.Response{data=dto.TenantListResponse} "获取成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/tenants [get]
 func (h *TenantHandler) ListTenants(c *gin.Context) {
 	var req dto.TenantListRequest
@@ -191,10 +191,10 @@ func (h *TenantHandler) ListTenants(c *gin.Context) {
 // @Param tenant_id path string true "租户ID"
 // @Param status path int true "状态(1:启用,2:禁用)"
 // @Success 200 {object} response.Response "更新成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "资源不存在"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 404 {object} response.Response "资源不存在"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/tenants/{tenant_id}/status/{status} [put]
 func (h *TenantHandler) UpdateTenantStatus(c *gin.Context) {
 	tenantID := c.Param("tenant_id")

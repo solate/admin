@@ -58,7 +58,7 @@ func (h *MenuHandler) CreateMenu(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param menu_id path string true "菜单ID"
 // @Success 200 {object} response.Response{data=dto.MenuInfo} "获取成功"
-// @Router /api/v1/menus/:menu_id [get]
+// @Router /api/v1/menus/{menu_id} [get]
 func (h *MenuHandler) GetMenu(c *gin.Context) {
 	menuID := c.Param("menu_id")
 	if menuID == "" {
@@ -85,7 +85,7 @@ func (h *MenuHandler) GetMenu(c *gin.Context) {
 // @Param menu_id path string true "菜单ID"
 // @Param request body dto.UpdateMenuRequest true "更新菜单请求参数"
 // @Success 200 {object} response.Response{data=dto.MenuInfo} "更新成功"
-// @Router /api/v1/menus/:menu_id [put]
+// @Router /api/v1/menus/{menu_id} [put]
 func (h *MenuHandler) UpdateMenu(c *gin.Context) {
 	menuID := c.Param("menu_id")
 	if menuID == "" {
@@ -117,7 +117,7 @@ func (h *MenuHandler) UpdateMenu(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param menu_id path string true "菜单ID"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /api/v1/menus/:menu_id [delete]
+// @Router /api/v1/menus/{menu_id} [delete]
 func (h *MenuHandler) DeleteMenu(c *gin.Context) {
 	menuID := c.Param("menu_id")
 	if menuID == "" {
@@ -211,7 +211,7 @@ func (h *MenuHandler) GetMenuTree(c *gin.Context) {
 // @Param menu_id path string true "菜单ID"
 // @Param status path int true "状态(1:显示, 2:隐藏)"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /api/v1/menus/:menu_id/status/:status [put]
+// @Router /api/v1/menus/{menu_id}/status/{status} [put]
 func (h *MenuHandler) UpdateMenuStatus(c *gin.Context) {
 	menuID := c.Param("menu_id")
 	if menuID == "" {
@@ -289,7 +289,7 @@ func (h *UserMenuHandler) GetUserMenu(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param menu_id path string true "菜单ID"
 // @Success 200 {object} response.Response{data=dto.UserButtonsResponse} "获取成功"
-// @Router /api/v1/user/buttons/:menu_id [get]
+// @Router /api/v1/user/buttons/{menu_id} [get]
 func (h *UserMenuHandler) GetUserButtons(c *gin.Context) {
 	menuID := c.Param("menu_id")
 	if menuID == "" {

@@ -10,25 +10,25 @@ type LoginRequest struct {
 
 // LoginResponse 登录响应
 type LoginResponse struct {
-	AccessToken  string `json:"access_token"`  // 访问令牌
-	RefreshToken string `json:"refresh_token"` // 刷新令牌
-	ExpiresIn    int64  `json:"expires_in"`    // 过期时间（秒）
+	AccessToken  string `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."` // 访问令牌
+	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."` // 刷新令牌
+	ExpiresIn    int64  `json:"expires_in" example:"3600"` // 过期时间（秒）
 }
 
 // SwitchTenantRequest 切换租户请求
 type SwitchTenantRequest struct {
-	TenantID string `json:"tenant_id" binding:"required"` // 切换租户ID
+	TenantID string `json:"tenant_id" binding:"required" example:"123456789012345678"` // 切换租户ID
 }
 
 // RefreshRequest 刷新令牌请求
 type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"` // 刷新令牌
+	RefreshToken string `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."` // 刷新令牌
 }
 
 // RefreshResponse 刷新令牌响应
 type RefreshResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 }
 
 // AvailableTenantsResponse 可用租户列表响应

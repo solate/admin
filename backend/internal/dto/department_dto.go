@@ -22,14 +22,14 @@ type UpdateDepartmentRequest struct {
 
 // DepartmentResponse 部门响应
 type DepartmentResponse struct {
-	DepartmentID   string `json:"department_id"`   // 部门ID
-	ParentID       string `json:"parent_id"`       // 父部门ID
-	DepartmentName string `json:"department_name"` // 部门名称
-	Description    string `json:"description"`     // 部门描述
-	Sort           int    `json:"sort"`            // 排序权重
-	Status         int    `json:"status"`          // 状态 1:启用 2:禁用
-	CreatedAt      int64  `json:"created_at"`      // 创建时间
-	UpdatedAt      int64  `json:"updated_at"`      // 更新时间
+	DepartmentID   string `json:"department_id" example:"123456789012345678"`   // 部门ID
+	ParentID       string `json:"parent_id" example:"123456789012345678"`       // 父部门ID
+	DepartmentName string `json:"department_name" example:"技术部"` // 部门名称
+	Description    string `json:"description" example:"负责技术研发工作"`     // 部门描述
+	Sort           int    `json:"sort" example:"1"`            // 排序权重
+	Status         int    `json:"status" example:"1" enum:"1,2"`          // 状态 1:启用 2:禁用
+	CreatedAt      int64  `json:"created_at" example:"1735200000"`      // 创建时间
+	UpdatedAt      int64  `json:"updated_at" example:"1735206400"`      // 更新时间
 }
 
 // DepartmentTreeNode 部门树节点
@@ -59,6 +59,6 @@ type DepartmentTreeResponse struct {
 
 // DepartmentInfo 部门基础信息（可复用）
 type DepartmentInfo struct {
-	DepartmentID   string `json:"department_id"`   // 部门ID
-	DepartmentName string `json:"department_name"` // 部门名称
+	DepartmentID   string `json:"department_id" example:"123456789012345678"`   // 部门ID
+	DepartmentName string `json:"department_name" example:"技术部"` // 部门名称
 }

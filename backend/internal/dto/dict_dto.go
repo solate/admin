@@ -39,30 +39,30 @@ type BatchUpdateDictItemsRequest struct {
 
 // DictItemResponse 字典项响应
 type DictItemResponse struct {
-	ItemID string `json:"item_id"` // 字典项ID
-	Label  string `json:"label"`   // 显示文本
-	Value  string `json:"value"`   // 实际值
-	Sort   int    `json:"sort"`    // 排序
-	Source string `json:"source"`  // 来源（system:系统默认, custom:租户覆盖）
+	ItemID string `json:"item_id" example:"123456789012345678"` // 字典项ID
+	Label  string `json:"label" example:"启用"`   // 显示文本
+	Value  string `json:"value" example:"1"`   // 实际值
+	Sort   int    `json:"sort" example:"1"`    // 排序
+	Source string `json:"source" example:"system"`  // 来源（system:系统默认, custom:租户覆盖）
 }
 
 // DictResponse 字典响应
 type DictResponse struct {
-	TypeID   string                 `json:"type_id"`   // 字典类型ID
-	TypeCode string                 `json:"type_code"` // 字典编码
-	TypeName string                 `json:"type_name"` // 字典名称
+	TypeID   string                 `json:"type_id" example:"123456789012345678"`   // 字典类型ID
+	TypeCode string                 `json:"type_code" example:"status"` // 字典编码
+	TypeName string                 `json:"type_name" example:"状态"` // 字典名称
 	Items    []*DictItemResponse `json:"items"`    // 字典项列表（已合并系统+覆盖）
 }
 
 // DictTypeResponse 字典类型响应
 type DictTypeResponse struct {
-	TypeID      string `json:"type_id"`      // 字典类型ID
-	TenantID    string `json:"tenant_id"`    // 租户ID
-	TypeCode    string `json:"type_code"`    // 字典编码
-	TypeName    string `json:"type_name"`    // 字典名称
-	Description string `json:"description"` // 字典描述
-	CreatedAt   int64  `json:"created_at"`  // 创建时间
-	UpdatedAt   int64  `json:"updated_at"`  // 更新时间
+	TypeID      string `json:"type_id" example:"123456789012345678"`      // 字典类型ID
+	TenantID    string `json:"tenant_id" example:"123456789012345678"`    // 租户ID
+	TypeCode    string `json:"type_code" example:"status"`    // 字典编码
+	TypeName    string `json:"type_name" example:"状态"`    // 字典名称
+	Description string `json:"description" example:"通用状态字典"` // 字典描述
+	CreatedAt   int64  `json:"created_at" example:"1735200000"`  // 创建时间
+	UpdatedAt   int64  `json:"updated_at" example:"1735206400"`  // 更新时间
 }
 
 // ListDictTypesRequest 字典类型列表请求

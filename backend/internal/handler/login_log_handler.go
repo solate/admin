@@ -30,11 +30,11 @@ func NewLoginLogHandler(loginLogService *service.LoginLogService) *LoginLogHandl
 // @Security ApiKeyAuth
 // @Param log_id path string true "日志ID"
 // @Success 200 {object} response.Response{data=dto.LoginLogResponse} "获取成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "资源不存在"
-// @Failure 200 {object} response.Response "服务器内部错误"
-// @Router /api/v1/login-logs/:log_id [get]
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 404 {object} response.Response "资源不存在"
+// @Failure 500 {object} response.Response "服务器内部错误"
+// @Router /api/v1/login-logs/{log_id} [get]
 func (h *LoginLogHandler) GetLoginLog(c *gin.Context) {
 	logID := c.Param("log_id")
 	if logID == "" {
@@ -68,9 +68,9 @@ func (h *LoginLogHandler) GetLoginLog(c *gin.Context) {
 // @Param end_date query int false "结束时间(毫秒时间戳)"
 // @Param ip_address query string false "IP地址筛选"
 // @Success 200 {object} response.Response{data=dto.ListLoginLogsResponse} "获取成功"
-// @Failure 200 {object} response.Response "请求参数错误"
-// @Failure 200 {object} response.Response "未授权访问"
-// @Failure 200 {object} response.Response "服务器内部错误"
+// @Failure 400 {object} response.Response "请求参数错误"
+// @Failure 401 {object} response.Response "未授权访问"
+// @Failure 500 {object} response.Response "服务器内部错误"
 // @Router /api/v1/login-logs [get]
 func (h *LoginLogHandler) ListLoginLogs(c *gin.Context) {
 	var req dto.ListLoginLogsRequest
