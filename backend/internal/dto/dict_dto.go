@@ -74,5 +74,12 @@ type ListDictTypesRequest struct {
 // ListDictTypesResponse 字典类型列表响应
 type ListDictTypesResponse struct {
 	pagination.Response `json:",inline"`
-	List                []*DictTypeResponse `json:"list"` // 列表数据
+	List                []*DictTypeInfo `json:"list"` // 列表数据
+}
+
+// DictTypeInfo 字典类型基础信息（可复用）
+type DictTypeInfo struct {
+	TypeID   string `json:"type_id" example:"123456789012345678"`   // 字典类型ID
+	TypeCode string `json:"type_code" example:"status"` // 字典编码
+	TypeName string `json:"type_name" example:"状态"`    // 字典名称
 }

@@ -40,5 +40,17 @@ type OperationLogResponse struct {
 // ListOperationLogsResponse 操作日志列表响应
 type ListOperationLogsResponse struct {
 	pagination.Response `json:",inline"`
-	List                []*OperationLogResponse `json:"list"` // 列表数据
+	List                []*OperationLogInfo `json:"list"` // 列表数据
+}
+
+// OperationLogInfo 操作日志基础信息（可复用）
+type OperationLogInfo struct {
+	LogID         string `json:"log_id" example:"123456789012345678"`         // 日志ID
+	UserName      string `json:"user_name" example:"admin"`      // 用户名
+	Module        string `json:"module" example:"用户管理"`         // 模块名
+	OperationType string `json:"operation_type" example:"CREATE"` // 操作类型
+	ResourceType  string `json:"resource_type" example:"用户"`  // 资源类型
+	ResourceName  string `json:"resource_name" example:"admin"`  // 资源名称
+	Status        int    `json:"status" example:"1"`         // 操作状态
+	CreatedAt     int64  `json:"created_at" example:"1735206400"`     // 创建时间
 }

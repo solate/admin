@@ -38,7 +38,7 @@ type TenantListRequest struct {
 // TenantListResponse 租户列表响应
 type TenantListResponse struct {
 	pagination.Response `json:",inline"`
-	List                []*TenantResponse `json:"list"` // 列表数据
+	List                []*TenantInfo `json:"list"` // 列表数据
 }
 
 // TenantInfo 租户基础信息（可复用）

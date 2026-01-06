@@ -2,8 +2,8 @@ package dto
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	UserName  string `json:"username" binding:"required"`   // 用户名
-	Password  string `json:"password" binding:"required"`   // 密码
+	Email     string `json:"email" binding:"required,email"` // 邮箱
+	Password  string `json:"password" binding:"required"`    // 密码
 	CaptchaID string `json:"captcha_id" binding:"required"` // 验证码ID
 	Captcha   string `json:"captcha" binding:"required"`    // 验证码
 }

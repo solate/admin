@@ -45,7 +45,7 @@ type ListPositionsRequest struct {
 // ListPositionsResponse 岗位列表响应
 type ListPositionsResponse struct {
 	pagination.Response `json:",inline"`
-	List                []*PositionResponse `json:"list"` // 列表数据
+	List                []*PositionInfo `json:"list"` // 列表数据
 }
 
 // PositionInfo 岗位基础信息（可复用）

@@ -41,7 +41,7 @@ type ListRolesRequest struct {
 // ListRolesResponse 角色列表响应
 type ListRolesResponse struct {
 	pagination.Response `json:",inline"`
-	List                []*RoleResponse `json:"list"` // 列表数据
+	List                []*RoleInfo `json:"list"` // 列表数据
 }
 
 // RoleInfo 角色基础信息（可复用）

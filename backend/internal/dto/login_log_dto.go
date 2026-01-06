@@ -34,5 +34,16 @@ type ListLoginLogsRequest struct {
 // ListLoginLogsResponse 获取登录日志列表响应
 type ListLoginLogsResponse struct {
 	pagination.Response `json:",inline"`
-	List                []*LoginLogResponse `json:"list"` // 列表数据
+	List                []*LoginLogInfo `json:"list"` // 列表数据
+}
+
+// LoginLogInfo 登录日志基础信息（可复用）
+type LoginLogInfo struct {
+	LogID         string `json:"log_id" example:"123456789012345678"`
+	UserName      string `json:"user_name" example:"admin"`
+	OperationType string `json:"operation_type" example:"LOGIN"` // LOGIN:登录, LOGOUT:登出
+	LoginIP       string `json:"login_ip" example:"192.168.1.100"`
+	LoginLocation string `json:"login_location" example:"北京市朝阳区"` // IP解析的地理位置
+	Status        int16  `json:"status" example:"1"`         // 1:成功 0:失败
+	CreatedAt     int64  `json:"created_at" example:"1735206400"`
 }
