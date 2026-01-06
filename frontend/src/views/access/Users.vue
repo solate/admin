@@ -362,7 +362,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { userApi, type UserInfo, type UserListParams, type ResetPasswordRequest, type ResetPasswordResponse } from '@/api/user'
 import { roleApi, type RoleInfo } from '@/api/role'
@@ -520,9 +520,11 @@ const handleReset = () => {
   handleSearch()
 }
 
-const handleCreate = () => {
+const handleCreate = async () => {
   dialogType.value = 'create'
   resetFormData()
+  // 使用 nextTick 确保表单数据已重置后再打开对话框
+  await nextTick()
   dialogVisible.value = true
 }
 
@@ -585,7 +587,7 @@ const handleSubmit = async () => {
             .filter(role => formData.role_ids.includes(role.role_id))
             .map(role => role.role_code)
 
-          await userApi.assignRoles(createResult.user_id, {
+          await userApi.assignRoles(createResult.user.user_id, {
             role_codes: selectedRoleCodes
           })
         } catch (roleError) {
@@ -763,10 +765,12 @@ const handleCurrentChange = (page: number) => {
   fetchUsers()
 }
 
-const handleDialogClose = () => {
-  formRef.value?.resetFields()
-  // 清空表单数据
+const handleDialogClose = async () => {
+  // 先清空表单数据
   resetFormData()
+  // 等待下一帧再重置表单字段
+  await nextTick()
+  formRef.value?.clearValidate()
 }
 
 const resetFormData = () => {

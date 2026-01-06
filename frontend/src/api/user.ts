@@ -71,7 +71,7 @@ export interface CreateUserRequest {
 
 // 创建用户响应
 export interface CreateUserResponse {
-  user_id: string
+  user: UserResponse
 }
 
 // 更新用户请求
