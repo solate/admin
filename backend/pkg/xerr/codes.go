@@ -29,18 +29,20 @@ var (
 	ErrTokenInvalid           = New(2102, "Token无效")
 	ErrUserNotFound           = New(2103, "用户不存在")
 	ErrUserExists             = New(2104, "用户已存在")
-	ErrCaptchaInvalid         = New(2105, "验证码错误")
-	ErrUserDisabled           = New(2106, "用户已禁用")
-	ErrUserHasMultipleTenants = New(2107, "用户关联多个租户")
-	ErrUserNoTenants          = New(2108, "用户未关联任何租户")
-	ErrUserTenantAccessDenied = New(2109, "用户无该租户访问权限")
-	ErrUserNoRoles            = New(2110, "用户在租户中无任何角色")
+	ErrEmailOrPhoneExists     = New(2105, "邮箱或手机号已存在")
+	ErrCaptchaInvalid         = New(2106, "验证码错误")
+	ErrUserDisabled           = New(2107, "用户已禁用")
+	ErrUserHasMultipleTenants = New(2108, "用户关联多个租户")
+	ErrUserNoTenants          = New(2109, "用户未关联任何租户")
+	ErrUserTenantAccessDenied = New(2110, "用户无该租户访问权限")
+	ErrUserNoRoles            = New(2111, "用户在租户中无任何角色")
 
 	// 租户错误 2200-2299
 	ErrTenantCodeRequired = New(2200, "租户编码不能为空")
 	ErrTenantNotFound     = New(2201, "租户不存在")
 	ErrTenantExists       = New(2202, "租户已存在")
 	ErrTenantCodeExists   = New(2203, "租户编码已存在")
+	ErrTenantDisabled     = New(2204, "租户已禁用")
 
 	// 角色错误 2300-2399
 	ErrRoleNotFound   = New(2300, "角色不存在")

@@ -26,19 +26,21 @@ const (
 	ResourceTypeDict       = "dict"       // 字典资源
 	ResourceTypeDictItem   = "dict_item"  // 字典项资源
 	ResourceTypeDept       = "dept"       // 部门资源
+	ResourceTypeDepartment = "department" // 部门资源 (别名)
 	ResourceTypePosition   = "position"   // 岗位资源
 )
 
 // 操作类型常量
 const (
-	OperationCreate = "CREATE" // 创建
-	OperationUpdate = "UPDATE" // 更新
-	OperationDelete = "DELETE" // 删除
-	OperationQuery  = "QUERY"  // 查询
-	OperationExport = "EXPORT" // 导出
-	OperationImport = "IMPORT" // 导入
-	OperationLogin  = "LOGIN"  // 登录
-	OperationLogout = "LOGOUT" // 登出
+	OperationCreate      = "CREATE"       // 创建
+	OperationUpdate      = "UPDATE"       // 更新
+	OperationDelete      = "DELETE"       // 删除
+	OperationBatchDelete = "BATCH_DELETE" // 批量删除
+	OperationQuery       = "QUERY"        // 查询
+	OperationExport      = "EXPORT"       // 导出
+	OperationImport      = "IMPORT"       // 导入
+	OperationLogin       = "LOGIN"        // 登录
+	OperationLogout      = "LOGOUT"       // 登出
 )
 
 // 操作状态常量
@@ -47,16 +49,26 @@ const (
 	OperationStatusFailed  = 2 // 失败
 )
 
+// 登录方式常量
+const (
+	LoginTypePassword = "PASSWORD" // 密码登录
+	LoginTypeEmail    = "EMAIL"    // 邮箱登录
+	LoginTypePhone    = "PHONE"    // 手机号登录
+	LoginTypeSSO      = "SSO"      // 单点登录
+	LoginTypeOAuth    = "OAUTH"    // 第三方登录
+)
+
 // OperationTypeText 操作类型中文描述映射
 var OperationTypeText = map[string]string{
-	OperationCreate: "创建",
-	OperationUpdate: "更新",
-	OperationDelete: "删除",
-	OperationQuery:  "查询",
-	OperationExport: "导出",
-	OperationImport: "导入",
-	OperationLogin:  "登录",
-	OperationLogout: "登出",
+	OperationCreate:      "创建",
+	OperationUpdate:      "更新",
+	OperationDelete:      "删除",
+	OperationBatchDelete: "批量删除",
+	OperationQuery:       "查询",
+	OperationExport:      "导出",
+	OperationImport:      "导入",
+	OperationLogin:       "登录",
+	OperationLogout:      "登出",
 }
 
 // ModuleText 模块名称中文描述映射

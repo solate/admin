@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"admin/pkg/constants"
 	"admin/pkg/xcontext"
 )
 
@@ -20,7 +21,7 @@ func NewRecorder(db *DB) *Recorder {
 // Log 记录操作日志（统一的日志记录方法）
 func (r *Recorder) Log(ctx context.Context, opts ...LogOption) {
 	entry := &LogEntry{
-		Status:    StatusSuccess,
+		Status:    constants.OperationStatusSuccess,
 		CreatedAt: time.Now().UnixMilli(),
 	}
 
@@ -71,6 +72,30 @@ func (r *Recorder) Log(ctx context.Context, opts ...LogOption) {
 func (r *Recorder) Login(ctx context.Context, tenantID, userID, userName string, err error) {
 	opts := []LogOption{
 		WithLogin(),
+		WithUser(tenantID, userID, userName),
+	}
+	if err != nil {
+		opts = append(opts, WithError(err))
+	}
+	r.Log(ctx, opts...)
+}
+
+// LoginEmail 记录邮箱登录日志
+func (r *Recorder) LoginEmail(ctx context.Context, tenantID, userID, userName string, err error) {
+	opts := []LogOption{
+		WithLoginEmail(),
+		WithUser(tenantID, userID, userName),
+	}
+	if err != nil {
+		opts = append(opts, WithError(err))
+	}
+	r.Log(ctx, opts...)
+}
+
+// LoginPhone 记录手机号登录日志
+func (r *Recorder) LoginPhone(ctx context.Context, tenantID, userID, userName string, err error) {
+	opts := []LogOption{
+		WithLoginPhone(),
 		WithUser(tenantID, userID, userName),
 	}
 	if err != nil {

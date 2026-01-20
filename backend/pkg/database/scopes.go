@@ -1,52 +1,20 @@
 package database
 
 import (
-	"context"
 	"errors"
 	"reflect"
 	"strings"
+
+	"admin/pkg/xcontext"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/schema"
 )
 
-const (
-	// TenantIDKey 是 context 中存储租户ID的key，导出供其他包使用
-	TenantIDKey        = "tenant_id"
-	tenantModeKey      = "tenant_mode" // 租户查询模式
-	skipTenantCheckKey = "skip_tenant_check"
-)
-
-// 租户查询模式常量
-const (
-	TenantModeAuto   = "auto"   // 自动添加当前租户过滤（默认）
-	TenantModeManual = "manual" // 手动控制，不自动添加
-)
-
 var (
 	ErrMissingTenantID = errors.New("missing tenant_id in context")
 )
-
-func SkipTenantCheck(ctx context.Context) context.Context {
-	return context.WithValue(ctx, skipTenantCheckKey, true)
-}
-
-func WithTenantID(ctx context.Context, tenantID string) context.Context {
-	return context.WithValue(ctx, TenantIDKey, tenantID)
-}
-
-// WithTenantMode 设置租户查询模式
-// mode: "auto" (默认，自动添加tenant_id过滤) 或 "manual" (手动控制WHERE条件)
-func WithTenantMode(ctx context.Context, mode string) context.Context {
-	return context.WithValue(ctx, tenantModeKey, mode)
-}
-
-// ManualTenantMode 设置为手动模式，Repository 完全手动控制 WHERE 条件
-// 适用于：查询默认租户数据、跨租户查询等需要精确控制的场景
-func ManualTenantMode(ctx context.Context) context.Context {
-	return context.WithValue(ctx, tenantModeKey, TenantModeManual)
-}
 
 func RegisterCallbacks(db *gorm.DB) error {
 	callbacks := db.Callback()
@@ -90,19 +58,12 @@ func tenantQueryCallback(db *gorm.DB) {
 		return
 	}
 
-	// 1. 优先检查是否跳过租户检查
+	// 检查是否跳过租户检查
 	if shouldSkipTenantCheck(db) {
 		return
 	}
 
-	// 2. 检查查询模式
-	mode := getTenantMode(db)
-	if mode == TenantModeManual {
-		// 手动模式：不自动添加 WHERE，由 Repository 精确控制
-		return
-	}
-
-	// 3. 默认行为：自动添加当前租户
+	// 默认行为：自动添加当前租户过滤
 	tenantID, ok := getTenantID(db)
 	if !ok {
 		db.AddError(ErrMissingTenantID)
@@ -117,30 +78,17 @@ func getTenantID(db *gorm.DB) (string, bool) {
 	if db.Statement.Context == nil {
 		return "", false
 	}
-	id, ok := db.Statement.Context.Value(TenantIDKey).(string)
+	id := xcontext.GetTenantID(db.Statement.Context)
 	// 修改：允许空字符串作为有效的 tenant_id（用于默认租户）
-	// 只要 ok 为 true，就认为 tenant_id 有效
-	return id, ok
+	// 只要返回的值不为空（或者即使为空，但我们检查了context存在），就认为 tenant_id 有效
+	return id, true
 }
 
 func shouldSkipTenantCheck(db *gorm.DB) bool {
 	if db.Statement.Context == nil {
 		return false
 	}
-	skip, ok := db.Statement.Context.Value(skipTenantCheckKey).(bool)
-	return ok && skip
-}
-
-// getTenantMode 获取租户查询模式，默认为 auto
-func getTenantMode(db *gorm.DB) string {
-	if db.Statement.Context == nil {
-		return TenantModeAuto
-	}
-	mode, ok := db.Statement.Context.Value(tenantModeKey).(string)
-	if !ok {
-		return TenantModeAuto
-	}
-	return mode
+	return xcontext.ShouldSkipTenantCheck(db.Statement.Context)
 }
 
 func hasTenantColumn(db *gorm.DB) bool {

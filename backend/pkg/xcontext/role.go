@@ -20,7 +20,10 @@ func GetRoles(ctx context.Context) []string {
 	if value == nil {
 		return nil
 	}
-	roles, _ := value.([]string)
+	roles, ok := value.([]string)
+	if !ok {
+		return nil
+	}
 	return roles
 }
 

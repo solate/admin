@@ -2,6 +2,7 @@ package constants
 
 // 用户状态常量
 const (
+	StatusZero     = 0 // 零值，用于判断是否传入状态
 	StatusEnabled  = 1 // 启用
 	StatusDisabled = 2 // 禁用
 )

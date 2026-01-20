@@ -17,18 +17,23 @@ CREATE TABLE tenants (
     tenant_code VARCHAR(50) NOT NULL,                 -- 租户编码（全局唯一，可用于二级域名或URL路径，如：tenant_shanghai）
     name VARCHAR(200) NOT NULL,                       -- 租户名称（企业/组织名称）
     description TEXT NOT NULL DEFAULT '',             -- 租户描述
+    contact_name VARCHAR(100) NOT NULL DEFAULT '',    -- 联系人姓名
+    contact_phone VARCHAR(20) NOT NULL DEFAULT '',    -- 联系人手机号
     status SMALLINT NOT NULL DEFAULT 1,               -- 状态：1-正常, 2-冻结/停用 (影响该租户下所有用户访问)
     created_at BIGINT NOT NULL,                       -- 创建时间戳(毫秒)
     updated_at BIGINT NOT NULL,                       -- 更新时间戳(毫秒)
     deleted_at BIGINT DEFAULT 0                       -- 软删除标识，0表示未删除
 );
-CREATE UNIQUE INDEX idx_tenants_tenant_code ON tenants(tenant_code);
+CREATE UNIQUE INDEX idx_tenants_tenant_code ON tenants(tenant_code) WHERE deleted_at = 0;
+
 
 COMMENT ON TABLE tenants IS '租户表(SaaS核心表)';
 COMMENT ON COLUMN tenants.tenant_id IS '租户ID(18位字符串)';
 COMMENT ON COLUMN tenants.tenant_code IS '租户编码(全局唯一业务标识)';
 COMMENT ON COLUMN tenants.name IS '租户名称';
 COMMENT ON COLUMN tenants.description IS '租户描述';
+COMMENT ON COLUMN tenants.contact_name IS '联系人姓名';
+COMMENT ON COLUMN tenants.contact_phone IS '联系人手机号';
 COMMENT ON COLUMN tenants.status IS '状态(1:启用, 2:禁用)';
 COMMENT ON COLUMN tenants.created_at IS '创建时间戳(毫秒)';
 COMMENT ON COLUMN tenants.updated_at IS '更新时间戳(毫秒)';
@@ -42,35 +47,39 @@ COMMENT ON COLUMN tenants.deleted_at IS '删除时间戳(毫秒,软删除)';
 CREATE TABLE users (
     user_id VARCHAR(20) PRIMARY KEY,             -- 18位字符串ID
     tenant_id VARCHAR(20) NOT NULL,              -- 租户ID（所有用户都有值，包括超管）
-    user_name VARCHAR(100) NOT NULL,             -- 登录账号（租户内唯一）
+    user_name VARCHAR(100) NOT NULL DEFAULT '',  -- 登录账号（保留字段，可为空）
     password VARCHAR(100) NOT NULL,              -- 密码 (Bcrypt加密)
-    nickname VARCHAR(100) NOT NULL DEFAULT '',   -- 昵称/显示名称
+    nickname VARCHAR(100) NOT NULL,   -- 昵称/显示名称
     avatar VARCHAR(255) NOT NULL DEFAULT '',     -- 头像URL
     phone VARCHAR(20) NOT NULL DEFAULT '',       -- 手机号
-    email VARCHAR(100) NOT NULL DEFAULT '',      -- 邮箱
+    email VARCHAR(100) NOT NULL,                 -- 邮箱（全局唯一，不能为空）
+    description TEXT NOT NULL DEFAULT '',             -- 用户描述
     department_id VARCHAR(20) NOT NULL DEFAULT '', -- 所属部门ID
     position_id VARCHAR(20) NOT NULL DEFAULT '',  -- 主岗位ID
     status SMALLINT NOT NULL DEFAULT 1,          -- 状态 (1:正常, 2:冻结)
     remark TEXT NOT NULL DEFAULT '',             -- 备注信息
     last_login_time BIGINT NOT NULL DEFAULT 0,   -- 最后登录时间
+    must_change_password SMALLINT NOT NULL DEFAULT 1, -- 是否必须修改密码 (1:是, 2:否)
     created_at BIGINT NOT NULL DEFAULT 0,
     updated_at BIGINT NOT NULL DEFAULT 0,
     deleted_at BIGINT DEFAULT 0
 );
 
--- 租户内用户名唯一约束
--- ('tenant-001', 'admin') 租户内唯一
-CREATE UNIQUE INDEX uk_tenant_username ON users(tenant_id, user_name) WHERE deleted_at = 0;
+-- 邮箱全局唯一约束（跨租户唯一）
+CREATE UNIQUE INDEX uk_users_email ON users(email) WHERE deleted_at = 0;
+-- 手机号全局唯一约束（跨租户唯一，用于登录和验证）
+CREATE UNIQUE INDEX uk_users_phone ON users(phone) WHERE deleted_at = 0;
 
 COMMENT ON TABLE users IS '用户表(所有用户都绑定租户，权限由Casbin角色策略控制)';
 COMMENT ON COLUMN users.user_id IS '用户ID';
 COMMENT ON COLUMN users.tenant_id IS '租户ID(所有用户都有值)';
-COMMENT ON COLUMN users.user_name IS '用户名(登录账号，租户内唯一)';
+COMMENT ON COLUMN users.user_name IS '用户名(保留字段，默认空字符串)';
 COMMENT ON COLUMN users.password IS '加密密码';
 COMMENT ON COLUMN users.nickname IS '昵称/显示名称';
 COMMENT ON COLUMN users.avatar IS '头像URL';
 COMMENT ON COLUMN users.phone IS '手机号';
-COMMENT ON COLUMN users.email IS '电子邮箱';
+COMMENT ON COLUMN users.email IS '电子邮箱(全局唯一,不能为空)';
+COMMENT ON COLUMN users.description IS '用户描述';
 COMMENT ON COLUMN users.department_id IS '所属部门ID';
 COMMENT ON COLUMN users.position_id IS '主岗位ID';
 COMMENT ON COLUMN users.status IS '状态(1:启用, 2:禁用)';
@@ -440,6 +449,7 @@ COMMENT ON COLUMN dict_items.sort IS '排序权重';
 COMMENT ON COLUMN dict_items.created_at IS '创建时间戳(毫秒)';
 COMMENT ON COLUMN dict_items.updated_at IS '更新时间戳(毫秒)';
 COMMENT ON COLUMN dict_items.deleted_at IS '删除时间戳(毫秒,软删除)';
+
 
 
 -- -- ========================================

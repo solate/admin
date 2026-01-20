@@ -2,7 +2,9 @@ package audit
 
 import (
 	"admin/internal/dal/model"
+	"admin/pkg/constants"
 	"admin/pkg/idgen"
+	"admin/pkg/xcontext"
 	"context"
 	"encoding/json"
 
@@ -27,7 +29,7 @@ func (w *DB) Write(ctx context.Context, entry *LogEntry) error {
 	}
 
 	switch entry.OperationType {
-	case OperationLogin, OperationLogout:
+	case constants.OperationLogin, constants.OperationLogout:
 		return w.writeLoginLog(ctx, entry)
 	default:
 		return w.writeOperationLog(ctx, entry)
@@ -63,6 +65,9 @@ func (w *DB) writeLoginLog(ctx context.Context, entry *LogEntry) error {
 		FailReason:    entry.ErrorMessage,
 		CreatedAt:     entry.CreatedAt,
 	}
+
+	// 使用手动模式：跳过租户检查，直接使用 entry.TenantID
+	ctx = xcontext.SetTenantID(ctx, entry.TenantID)
 
 	if err := w.db.WithContext(ctx).Create(loginLog).Error; err != nil {
 		log.Error().Err(err).Msg("[审计日志] 写入登录日志失败")
@@ -107,6 +112,9 @@ func (w *DB) writeOperationLog(ctx context.Context, entry *LogEntry) error {
 		UserAgent:     entry.UserAgent,
 		CreatedAt:     entry.CreatedAt,
 	}
+
+	// 使用手动模式：跳过租户检查，直接使用 entry.TenantID
+	ctx = xcontext.SetTenantID(ctx, entry.TenantID)
 
 	if err := w.db.WithContext(ctx).Create(operationLog).Error; err != nil {
 		log.Error().Err(err).Msg("[审计日志] 写入操作日志失败")

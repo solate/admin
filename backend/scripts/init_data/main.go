@@ -5,6 +5,7 @@ import (
 	"admin/pkg/config"
 	"admin/pkg/database"
 	"admin/pkg/idgen"
+	"admin/pkg/xcontext"
 	"admin/scripts/init_data/seeds"
 	"context"
 	"fmt"
@@ -57,7 +58,7 @@ func main() {
 		}
 	}()
 
-	ctx := database.SkipTenantCheck(context.Background())
+	ctx := xcontext.SkipTenantCheck(context.Background())
 	db = db.WithContext(ctx)
 
 	fmt.Println("🚀 开始初始化默认数据")

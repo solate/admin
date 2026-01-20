@@ -1,5 +1,13 @@
 package audit
 
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"admin/pkg/constants"
+)
+
 // LogOption 日志选项函数
 type LogOption func(*LogEntry)
 
@@ -26,6 +34,23 @@ func WithResource(resourceType, resourceID, resourceName string) LogOption {
 	}
 }
 
+// WithBatchResource 设置批量资源信息
+// resourceIDs: 资源ID列表，会被序列化为JSON数组存储
+// resourceNames: 资源名称列表（用于汇总描述）
+func WithBatchResource(resourceType string, resourceIDs []string, resourceNames []string) LogOption {
+	return func(e *LogEntry) {
+		e.ResourceType = resourceType
+		// 将ID列表序列化为JSON数组字符串
+		if len(resourceIDs) > 0 {
+			e.ResourceID = toJsonArray(resourceIDs)
+		}
+		// 生成汇总描述
+		if len(resourceNames) > 0 {
+			e.ResourceName = formatBatchResourceNames(resourceNames)
+		}
+	}
+}
+
 // WithValue 设置变更值
 func WithValue(oldValue, newValue any) LogOption {
 	return func(e *LogEntry) {
@@ -38,7 +63,7 @@ func WithValue(oldValue, newValue any) LogOption {
 func WithError(err error) LogOption {
 	return func(e *LogEntry) {
 		if err != nil {
-			e.Status = StatusFailure
+			e.Status = constants.OperationStatusFailed
 			e.ErrorMessage = err.Error()
 		}
 	}
@@ -62,7 +87,7 @@ func WithClient(ip, userAgent string) LogOption {
 func WithCreate(module string) LogOption {
 	return func(e *LogEntry) {
 		e.Module = module
-		e.OperationType = OperationCreate
+		e.OperationType = constants.OperationCreate
 	}
 }
 
@@ -70,7 +95,7 @@ func WithCreate(module string) LogOption {
 func WithUpdate(module string) LogOption {
 	return func(e *LogEntry) {
 		e.Module = module
-		e.OperationType = OperationUpdate
+		e.OperationType = constants.OperationUpdate
 	}
 }
 
@@ -78,7 +103,15 @@ func WithUpdate(module string) LogOption {
 func WithDelete(module string) LogOption {
 	return func(e *LogEntry) {
 		e.Module = module
-		e.OperationType = OperationDelete
+		e.OperationType = constants.OperationDelete
+	}
+}
+
+// WithBatchDelete 批量删除操作选项
+func WithBatchDelete(module string) LogOption {
+	return func(e *LogEntry) {
+		e.Module = module
+		e.OperationType = constants.OperationBatchDelete
 	}
 }
 
@@ -86,7 +119,7 @@ func WithDelete(module string) LogOption {
 func WithQuery(module string) LogOption {
 	return func(e *LogEntry) {
 		e.Module = module
-		e.OperationType = OperationQuery
+		e.OperationType = constants.OperationQuery
 	}
 }
 
@@ -94,15 +127,31 @@ func WithQuery(module string) LogOption {
 func WithExport(module string) LogOption {
 	return func(e *LogEntry) {
 		e.Module = module
-		e.OperationType = OperationExport
+		e.OperationType = constants.OperationExport
 	}
 }
 
 // WithLogin 登录操作选项
 func WithLogin() LogOption {
 	return func(e *LogEntry) {
-		e.Module = LoginTypePassword // 默认密码登录，可后续扩展支持 SSO、OAUTH
-		e.OperationType = OperationLogin
+		e.Module = constants.LoginTypePassword // 默认密码登录，可后续扩展支持 SSO、OAUTH
+		e.OperationType = constants.OperationLogin
+	}
+}
+
+// WithLoginEmail 邮箱登录操作选项
+func WithLoginEmail() LogOption {
+	return func(e *LogEntry) {
+		e.Module = constants.LoginTypeEmail
+		e.OperationType = constants.OperationLogin
+	}
+}
+
+// WithLoginPhone 手机号登录操作选项
+func WithLoginPhone() LogOption {
+	return func(e *LogEntry) {
+		e.Module = constants.LoginTypePhone
+		e.OperationType = constants.OperationLogin
 	}
 }
 
@@ -110,7 +159,7 @@ func WithLogin() LogOption {
 func WithLogout() LogOption {
 	return func(e *LogEntry) {
 		e.Module = "" // 登出不需要登录类型
-		e.OperationType = OperationLogout
+		e.OperationType = constants.OperationLogout
 	}
 }
 
@@ -128,4 +177,25 @@ func WithTenantID(tenantID string) LogOption {
 	return func(e *LogEntry) {
 		e.TenantID = tenantID
 	}
+}
+
+// toJsonArray 将字符串数组序列化为JSON数组字符串
+func toJsonArray(items []string) string {
+	if len(items) == 0 {
+		return "[]"
+	}
+	data, _ := json.Marshal(items)
+	return string(data)
+}
+
+// formatBatchResourceNames 格式化批量资源名称
+// 如果超过3个，显示前3个 + "等N个"
+func formatBatchResourceNames(names []string) string {
+	if len(names) == 0 {
+		return ""
+	}
+	if len(names) <= 3 {
+		return strings.Join(names, ", ")
+	}
+	return fmt.Sprintf("%s 等 %d 个", strings.Join(names[:3], ", "), len(names))
 }

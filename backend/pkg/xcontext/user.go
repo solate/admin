@@ -26,7 +26,10 @@ func GetUserID(ctx context.Context) string {
 	if value == nil {
 		return ""
 	}
-	userID, _ := value.(string)
+	userID, ok := value.(string)
+	if !ok {
+		return ""
+	}
 	return userID
 }
 
@@ -41,7 +44,10 @@ func GetUserName(ctx context.Context) string {
 	if value == nil {
 		return ""
 	}
-	userName, _ := value.(string)
+	userName, ok := value.(string)
+	if !ok {
+		return ""
+	}
 	return userName
 }
 
@@ -56,6 +62,9 @@ func GetTokenID(ctx context.Context) string {
 	if value == nil {
 		return ""
 	}
-	tokenID, _ := value.(string)
+	tokenID, ok := value.(string)
+	if !ok {
+		return ""
+	}
 	return tokenID
 }
