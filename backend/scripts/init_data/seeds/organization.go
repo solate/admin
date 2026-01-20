@@ -171,7 +171,7 @@ func SeedPositions(db *gorm.DB, posDefs []PositionDefinition, tenantID string) (
 
 	for _, def := range posDefs {
 		var pos model.Position
-		if err := db.Where("position_id = ? AND tenant_id = ?", def.PositionID, tenantID).First(&pos).Error; err != nil {
+		if err := db.Where("position_code = ? AND tenant_id = ?", def.PositionCode, tenantID).First(&pos).Error; err != nil {
 			// 岗位不存在，创建新岗位
 			pos = model.Position{
 				PositionID:   def.PositionID,

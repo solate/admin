@@ -14,6 +14,7 @@ const (
 	ModuleAuth       = "auth"       // 认证相关 (登录、登出等)
 	ModuleDept       = "dept"       // 部门管理
 	ModulePosition   = "position"   // 岗位管理
+	ModuleDepartment = "department" // 部门管理
 )
 
 // 资源类型常量（用于操作日志记录）

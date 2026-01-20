@@ -6,6 +6,11 @@ app:
 
 server:
   mode: "debug"  # debug, release, test
+  tls:
+    enabled: false  # 是否启用 TLS/HTTPS
+    cert_file: "./certs/server.crt"  # 证书文件路径
+    key_file: "./certs/server.key"   # 私钥文件路径
+
 
 # 日志配置
 log:
@@ -25,7 +30,7 @@ database:
   port: 5432
   user: "postgres"
   password: "postgres"
-  dbname: "admin_db"
+  dbname: "admin"
   sslmode: "disable"
   max_idle_conns: 10
   max_open_conns: 100

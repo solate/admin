@@ -2,15 +2,19 @@ package router
 
 import (
 	"admin/internal/handler"
+	"admin/internal/jobs"
 	"admin/internal/repository"
 	"admin/internal/service"
 	"admin/pkg/audit"
 	"admin/pkg/cache"
 	"admin/pkg/casbin"
 	"admin/pkg/config"
+	"admin/pkg/constants"
 	"admin/pkg/database"
 	"admin/pkg/jwt"
 	"admin/pkg/logger"
+	"admin/pkg/rsapwd"
+	"admin/pkg/xcron"
 	"admin/pkg/xredis"
 	"fmt"
 
@@ -21,13 +25,15 @@ import (
 )
 
 type App struct {
-	Config   *config.Config        // 配置
-	Router   *gin.Engine           // 路由
-	DB       *gorm.DB              // 数据库连接
-	Redis    redis.UniversalClient // Redis连接
-	JWT      *jwt.Manager          // JWT管理器
-	Enforcer *casbin.Enforcer      // Casbin enforce
-	Handlers *Handlers             // 处理器层容器
+	Config    *config.Config        // 配置
+	Router    *gin.Engine           // 路由
+	DB        *gorm.DB              // 数据库连接
+	Redis     redis.UniversalClient // Redis连接
+	JWT       *jwt.Manager          // JWT管理器
+	Enforcer  *casbin.Enforcer      // Casbin enforce
+	RSACipher *rsapwd.RSACipher     // RSA 密码解密器（全局单例）
+	Cron      *xcron.Manager        // 定时任务管理器
+	Handlers  *Handlers             // 处理器层容器
 }
 
 // Handlers 处理器层容器
@@ -82,6 +88,16 @@ func NewApp() (*App, error) {
 	// 6. 初始化Casbin
 	if err := app.initCasbin(); err != nil {
 		return nil, fmt.Errorf("failed to init casbin: %w", err)
+	}
+
+	// 6.5 初始化RSA密码解密器
+	if err := app.initRSACipher(); err != nil {
+		return nil, fmt.Errorf("failed to init rsa cipher: %w", err)
+	}
+
+	// 6.6 初始化定时任务
+	if err := app.initCron(); err != nil {
+		return nil, fmt.Errorf("failed to init cron: %w", err)
 	}
 
 	// 7. 初始化新的审计日志 Recorder
@@ -207,6 +223,40 @@ func (a *App) initCasbin() error {
 	return nil
 }
 
+// initRSACipher 初始化RSA密码解密器
+func (a *App) initRSACipher() error {
+	// 使用测试密钥创建 RSA 加密器
+	// 注意：生产环境应该从配置文件或环境变量中读取私钥
+	cipher := rsapwd.MustNew(constants.RSAKey)
+	a.RSACipher = cipher
+
+	log.Info().Msg("RSA cipher initialized")
+	return nil
+}
+
+// initCron 初始化定时任务
+func (a *App) initCron() error {
+	// 初始化 cron 管理器
+	cronMgr, err := xcron.Init(xcron.Config{
+		WithSeconds: true,
+	})
+	if err != nil {
+		return err
+	}
+	a.Cron = cronMgr
+
+	// 注册所有定时任务
+	if err := jobs.Init(cronMgr, a.DB); err != nil {
+		return fmt.Errorf("failed to register jobs: %w", err)
+	}
+
+	// 启动定时任务
+	a.Cron.Start()
+
+	log.Info().Msg("Cron jobs initialized and started")
+	return nil
+}
+
 // initRouter 初始化路由
 func (s *App) initRouter() error {
 	gin.SetMode(s.Config.Server.Mode)
@@ -225,12 +275,36 @@ func (s *App) initRouter() error {
 // Run 启动应用
 func (s *App) Run() error {
 	addr := fmt.Sprintf(":%d", s.Config.App.Port)
-	log.Info().Str("addr", addr).Msg("Starting server")
+
+	// 如果启用了 TLS，使用 HTTPS
+	if s.Config.Server.TLS.Enabled {
+		certFile := s.Config.Server.TLS.CertFile
+		keyFile := s.Config.Server.TLS.KeyFile
+
+		// 验证证书文件存在
+		if certFile == "" || keyFile == "" {
+			return fmt.Errorf("TLS enabled but cert_file or key_file not specified")
+		}
+
+		log.Info().
+			Str("addr", addr).
+			Str("cert", certFile).
+			Str("key", keyFile).
+			Msg("Starting HTTPS server")
+		return s.Router.RunTLS(addr, certFile, keyFile)
+	}
+
+	log.Info().Str("addr", addr).Msg("Starting HTTP server")
 	return s.Router.Run(addr)
 }
 
 // Close 关闭资源
 func (s *App) Close() error {
+	// 停止定时任务
+	if s.Cron != nil {
+		s.Cron.Stop()
+	}
+
 	if err := database.Close(); err != nil {
 		return err
 	}
@@ -257,23 +331,25 @@ func (s *App) initHandlers(auditRecorder *audit.Recorder) error {
 	dictItemRepo := repository.NewDictItemRepo(s.DB)
 
 	// 初始化服务层
-	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, auditRecorder, s.Config) // 初始化认证服务
-	userService := service.NewUserService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.Enforcer, auditRecorder)                           // 初始化用户服务
-	tenantService := service.NewTenantService(tenantRepo, auditRecorder)                                                                                // 初始化租户服务
-	roleService := service.NewRoleService(roleRepo, permissionRepo, menuRepo, s.Enforcer, cache.Get().Tenant, auditRecorder) // 初始化角色服务（需要 enforcer、tenantCache 和 menuRepo 用于角色继承、菜单权限管理和 API 权限关联）
-	menuService := service.NewMenuService(menuRepo, s.Enforcer, auditRecorder)                                                                     // 初始化菜单服务
-	userMenuService := service.NewUserMenuService(menuRepo, permissionRepo, s.Enforcer)                                         // 初始化用户菜单服务（根据设计文档：无需取交集）
-	loginLogService := service.NewLoginLogService(loginLogRepo)                                                                                 // 初始化登录日志服务
-	operationLogService := service.NewOperationLogService(operationLogRepo)                                                                     // 初始化操作日志服务
-	departmentService := service.NewDepartmentService(departmentRepo, userRepo, auditRecorder)                                                                  // 初始化部门服务
-	positionService := service.NewPositionService(positionRepo, auditRecorder)                                                                                 // 初始化岗位服务
-	dictService := service.NewDictService(dictTypeRepo, dictItemRepo, cache.Get().Tenant, auditRecorder)                                                      // 初始化字典服务
+	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, s.Enforcer, auditRecorder, s.Config, s.RSACipher) // 初始化认证服务
+	userRoleService := service.NewUserRoleService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.Enforcer, auditRecorder)                                // 初始化用户角色服务
+	userService := service.NewUserService(userRepo, userRoleService, roleRepo, tenantRepo, s.Enforcer, auditRecorder, s.RSACipher)                        // 初始化用户服务
+	tenantService := service.NewTenantService(tenantRepo, userRepo, auditRecorder)                                                                        // 初始化租户服务
+	roleService := service.NewRoleService(roleRepo, permissionRepo, menuRepo, s.Enforcer, cache.Get().Tenant, auditRecorder)                              // 初始化角色服务（需要 enforcer、tenantCache 和 menuRepo 用于角色继承、菜单权限管理和 API 权限关联）
+	menuService := service.NewMenuService(menuRepo, s.Enforcer, auditRecorder)                                                                            // 初始化菜单服务
+	userMenuService := service.NewUserMenuService(menuRepo, permissionRepo, s.Enforcer)                                                                   // 初始化用户菜单服务（根据设计文档：无需取交集）
+	loginLogService := service.NewLoginLogService(loginLogRepo)                                                                                           // 初始化登录日志服务
+	operationLogService := service.NewOperationLogService(operationLogRepo)                                                                               // 初始化操作日志服务
+	departmentService := service.NewDepartmentService(departmentRepo, userRepo, auditRecorder)                                                            // 初始化部门服务
+	positionService := service.NewPositionService(positionRepo, auditRecorder)                                                                            // 初始化岗位服务
+	dictService := service.NewDictService(dictTypeRepo, dictItemRepo, cache.Get().Tenant, auditRecorder)                                                  // 初始化字典服务
+	// 初始化接入设备服务
 
 	s.Handlers = &Handlers{
 		HealthHandler:       handler.NewHealthHandler(),
 		CaptchaHandler:      handler.NewCaptchaHandler(s.Redis),
 		AuthHandler:         handler.NewAuthHandler(authService),
-		UserHandler:         handler.NewUserHandler(userService),
+		UserHandler:         handler.NewUserHandler(userService, userRoleService),
 		TenantHandler:       handler.NewTenantHandler(tenantService),
 		RoleHandler:         handler.NewRoleHandler(roleService),
 		MenuHandler:         handler.NewMenuHandler(menuService),

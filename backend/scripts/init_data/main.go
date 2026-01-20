@@ -79,8 +79,8 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	}
 
 	// 生成所需的ID
-	// 5个基础ID (租户、用户、3个角色) + 29个菜单ID + 19个部门ID + 37个岗位ID + 52个字典ID (13个类型+39个项) = 142个ID
-	ids, err := idgen.GenerateUUIDs(142)
+	// 6个基础ID (租户、用户、4个角色) + 29个菜单ID + 19个部门ID + 37个岗位ID + 52个字典ID (13个类型+39个项) = 143个ID
+	ids, err := idgen.GenerateUUIDs(143)
 	if err != nil {
 		return nil, fmt.Errorf("生成ID失败: %w", err)
 	}
@@ -103,13 +103,13 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	idIndex++
 
 	// 3. 初始化角色
-	roleDefs := seeds.DefaultRoleDefinitions(ids[idIndex : idIndex+3])
+	roleDefs := seeds.DefaultRoleDefinitions(ids[idIndex : idIndex+4])
 	roles, err := seeds.SeedRoles(db, roleDefs, tenant.TenantID)
 	if err != nil {
 		return nil, fmt.Errorf("初始化角色失败: %w", err)
 	}
 	result.Roles = roles
-	idIndex += 3
+	idIndex += 4
 
 	// 4. 初始化 Casbin 表（如果不存在）
 	if err := seeds.InitCasbinTable(db); err != nil {

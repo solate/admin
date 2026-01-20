@@ -3,6 +3,8 @@ package repository
 import (
 	"admin/pkg/casbin"
 	"context"
+
+	"github.com/rs/zerolog/log"
 )
 
 // UserRoleRepo 用户角色仓储（基于 Casbin）
@@ -120,5 +122,54 @@ func (r *UserRoleRepo) RemoveRoles(ctx context.Context, userName string, roleCod
 			return err
 		}
 	}
+	return nil
+}
+
+// EnsureRoleInheritance 确保角色继承自 default 租户的同名角色
+// 通过复制 default 租户的权限到当前租户来实现继承
+func (r *UserRoleRepo) EnsureRoleInheritance(ctx context.Context, roleCode, tenantCode string) error {
+	// 如果是 default 租户，不需要继承
+	if tenantCode == "default" {
+		return nil
+	}
+
+	// 获取 default 租户中该角色的所有权限策略
+	defaultPolicies, _ := r.enforcer.GetFilteredPolicy(1, roleCode, "default")
+
+	// 如果 default 租户没有该角色的权限，跳过
+	if len(defaultPolicies) == 0 {
+		return nil
+	}
+
+	// 为当前租户添加相同的权限策略
+	addedCount := 0
+	for _, policy := range defaultPolicies {
+		// policy 格式: [roleCode, "default", resource, action]
+		if len(policy) < 4 {
+			continue
+		}
+		resource := policy[2]
+		action := policy[3]
+
+		// 检查当前租户是否已有该权限
+		hasPolicy, _ := r.enforcer.HasPolicy(roleCode, tenantCode, resource, action)
+		if hasPolicy {
+			continue
+		}
+
+		// 添加权限到当前租户
+		if _, err := r.enforcer.AddPolicy(roleCode, tenantCode, resource, action); err != nil {
+			log.Error().Err(err).Str("role_code", roleCode).Str("tenant_code", tenantCode).
+				Str("resource", resource).Str("action", action).Msg("添加角色权限失败")
+			continue
+		}
+		addedCount++
+	}
+
+	if addedCount > 0 {
+		log.Info().Str("role_code", roleCode).Str("tenant_code", tenantCode).
+			Int("count", addedCount).Msg("角色权限继承成功")
+	}
+
 	return nil
 }

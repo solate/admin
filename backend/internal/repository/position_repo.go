@@ -3,7 +3,7 @@ package repository
 import (
 	"admin/internal/dal/model"
 	"admin/internal/dal/query"
-	"admin/pkg/database"
+	"admin/pkg/xcontext"
 	"context"
 
 	"gorm.io/gorm"
@@ -41,7 +41,7 @@ func (r *PositionRepo) GetByCode(ctx context.Context, positionCode string) (*mod
 // GetByCodeWithTenant 根据租户ID和岗位编码获取岗位（手动模式，用于跨租户查询）
 func (r *PositionRepo) GetByCodeWithTenant(ctx context.Context, tenantID, positionCode string) (*model.Position, error) {
 	// 跨租户查询：使用 ManualTenantMode 禁止自动添加当前租户过滤
-	ctx = database.ManualTenantMode(ctx)
+	ctx = xcontext.SkipTenantCheck(ctx)
 	return r.q.Position.WithContext(ctx).
 		Where(r.q.Position.TenantID.Eq(tenantID)).
 		Where(r.q.Position.PositionCode.Eq(positionCode)).
@@ -60,19 +60,32 @@ func (r *PositionRepo) Delete(ctx context.Context, positionID string) error {
 	return err
 }
 
+// BatchDelete 批量删除岗位
+func (r *PositionRepo) BatchDelete(ctx context.Context, positionIDs []string) error {
+	_, err := r.q.Position.WithContext(ctx).Where(r.q.Position.PositionID.In(positionIDs...)).Delete()
+	return err
+}
+
+// GetByIDs 根据岗位ID列表获取岗位信息
+func (r *PositionRepo) GetByIDs(ctx context.Context, positionIDs []string) ([]*model.Position, error) {
+	return r.q.Position.WithContext(ctx).Where(r.q.Position.PositionID.In(positionIDs...)).Find()
+}
+
 // List 分页获取岗位列表
 func (r *PositionRepo) List(ctx context.Context, offset, limit int) ([]*model.Position, int64, error) {
 	return r.q.Position.WithContext(ctx).FindByPage(offset, limit)
 }
 
 // ListWithFilters 根据筛选条件分页获取岗位列表（支持自动租户过滤）
-func (r *PositionRepo) ListWithFilters(ctx context.Context, offset, limit int, keywordFilter string, statusFilter int) ([]*model.Position, int64, error) {
+func (r *PositionRepo) ListWithFilters(ctx context.Context, offset, limit int, positionName, positionCode string, statusFilter int) ([]*model.Position, int64, error) {
 	query := r.q.Position.WithContext(ctx)
 
 	// 应用筛选条件
-	if keywordFilter != "" {
-		query = query.Where(r.q.Position.PositionName.Like("%"+keywordFilter+"%")).
-			Or(r.q.Position.PositionCode.Like("%"+keywordFilter+"%"))
+	if positionName != "" {
+		query = query.Where(r.q.Position.PositionName.Like("%" + positionName + "%"))
+	}
+	if positionCode != "" {
+		query = query.Where(r.q.Position.PositionCode.Like("%" + positionCode + "%"))
 	}
 	if statusFilter != 0 {
 		query = query.Where(r.q.Position.Status.Eq(int16(statusFilter)))
@@ -127,7 +140,7 @@ func (r *PositionRepo) ListByIDs(ctx context.Context, positionIDs []string) ([]*
 
 // ListByCodes 根据岗位编码列表获取岗位列表（跳过租户过滤，支持岗位继承）
 func (r *PositionRepo) ListByCodes(ctx context.Context, positionCodes []string) ([]*model.Position, error) {
-	ctx = database.ManualTenantMode(ctx)
+	ctx = xcontext.SkipTenantCheck(ctx)
 	return r.q.Position.WithContext(ctx).
 		Where(r.q.Position.PositionCode.In(positionCodes...)).
 		Find()

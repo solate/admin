@@ -1,6 +1,7 @@
 package service
 
 import (
+	"admin/internal/converter"
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
@@ -315,7 +316,7 @@ func (s *UserMenuService) buildMenuTree(menus []*model.Menu) []*dto.MenuTreeNode
 	menuMap := make(map[string]*dto.MenuTreeNode)
 	for _, menu := range menus {
 		menuMap[menu.MenuID] = &dto.MenuTreeNode{
-			MenuInfo: s.toMenuInfo(menu),
+			MenuInfo: converter.ModelToMenuInfo(menu),
 			Children: []*dto.MenuTreeNode{},
 		}
 	}
@@ -334,41 +335,4 @@ func (s *UserMenuService) buildMenuTree(menus []*model.Menu) []*dto.MenuTreeNode
 	}
 
 	return roots
-}
-
-// toMenuInfo 转换为菜单信息格式
-func (s *UserMenuService) toMenuInfo(menu *model.Menu) *dto.MenuInfo {
-	resource := "menu:" + menu.MenuID
-	action := "*"
-	return &dto.MenuInfo{
-		MenuID:      menu.MenuID,
-		Name:        menu.Name,
-		Type:        "MENU",
-		ParentID:    stringPtr(menu.ParentID),
-		Resource:    &resource,
-		Action:      &action,
-		Path:        stringPtr(menu.Path),
-		Component:   stringPtr(menu.Component),
-		Redirect:    stringPtr(menu.Redirect),
-		Icon:        stringPtr(menu.Icon),
-		Sort:        int16Ptr(menu.Sort),
-		Status:      menu.Status,
-		Description: stringPtr(menu.Description),
-		CreatedAt:   menu.CreatedAt,
-		UpdatedAt:   menu.UpdatedAt,
-	}
-}
-
-// stringPtr 辅助函数：返回字符串指针
-func stringPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
-// int16Ptr 辅助函数：返回 int16 指针
-func int16Ptr(i int32) *int16 {
-	v := int16(i)
-	return &v
 }

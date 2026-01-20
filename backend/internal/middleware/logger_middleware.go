@@ -2,11 +2,57 @@ package middleware
 
 import (
 	"admin/pkg/bodyreader"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 )
+
+// shouldLogBody 判断是否应该记录请求体
+// 跳过文件上传、二进制数据等请求
+func shouldLogBody(c *gin.Context, bodyStr string) bool {
+	// 检查 Content-Type
+	contentType := c.GetHeader("Content-Type")
+
+	// 跳过 multipart/form-data（文件上传）
+	if strings.Contains(contentType, "multipart/form-data") {
+		return false
+	}
+
+	// 跳过其他二进制类型
+	binaryTypes := []string{
+		"application/octet-stream",
+		"image/",
+		"video/",
+		"audio/",
+		"application/pdf",
+		"application/zip",
+		"application/gzip",
+	}
+
+	for _, btype := range binaryTypes {
+		if strings.Contains(contentType, btype) {
+			return false
+		}
+	}
+
+	// 检查 body 内容，如果包含大量非 ASCII 字符，可能是二进制数据
+	if len(bodyStr) > 100 {
+		nonASCII := 0
+		for _, b := range bodyStr {
+			if b > 127 {
+				nonASCII++
+			}
+		}
+		// 如果超过 20% 是非 ASCII 字符，认为是二进制数据
+		if float64(nonASCII)/float64(len(bodyStr)) > 0.2 {
+			return false
+		}
+	}
+
+	return true
+}
 
 // Logger 请求日志中间件
 func LoggerMiddleware() gin.HandlerFunc {
@@ -21,7 +67,10 @@ func LoggerMiddleware() gin.HandlerFunc {
 			if restoredBody != nil {
 				c.Request.Body = restoredBody
 			}
-			bodyParams = bodyreader.SanitizeParams(bodyStr)
+			// 只有在应该记录的情况下才进行脱敏处理
+			if shouldLogBody(c, bodyStr) {
+				bodyParams = bodyreader.SanitizeParams(bodyStr)
+			}
 		}
 
 		// 处理请求

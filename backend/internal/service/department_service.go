@@ -1,10 +1,13 @@
 package service
 
 import (
+	"admin/internal/converter"
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
 	"admin/pkg/audit"
+	"admin/pkg/constants"
+	"admin/pkg/convert"
 	"admin/pkg/idgen"
 	"admin/pkg/pagination"
 	"admin/pkg/xcontext"
@@ -33,19 +36,19 @@ func NewDepartmentService(deptRepo *repository.DepartmentRepo, userRepo *reposit
 }
 
 // CreateDepartment 创建部门
-func (s *DepartmentService) CreateDepartment(ctx context.Context, req *dto.CreateDepartmentRequest) (resp *dto.DepartmentResponse, err error) {
+func (s *DepartmentService) CreateDepartment(ctx context.Context, req *dto.CreateDepartmentRequest) (resp *dto.DepartmentInfo, err error) {
 	var dept *model.Department
 
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithCreate(audit.ModuleDepartment),
+				audit.WithCreate(constants.ModuleDepartment),
 				audit.WithError(err),
 			)
 		} else if dept != nil {
 			s.recorder.Log(ctx,
-				audit.WithCreate(audit.ModuleDepartment),
-				audit.WithResource(audit.ResourceDepartment, dept.DepartmentID, dept.DepartmentName),
+				audit.WithCreate(constants.ModuleDepartment),
+				audit.WithResource(constants.ResourceTypeDepartment, dept.DepartmentID, dept.DepartmentName),
 				audit.WithValue(nil, dept),
 			)
 		}
@@ -108,11 +111,11 @@ func (s *DepartmentService) CreateDepartment(ctx context.Context, req *dto.Creat
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "创建部门失败", err)
 	}
 
-	return s.toDepartmentResponse(dept), nil
+	return converter.ModelToDepartmentInfo(dept), nil
 }
 
 // GetDepartmentByID 获取部门详情
-func (s *DepartmentService) GetDepartmentByID(ctx context.Context, departmentID string) (*dto.DepartmentResponse, error) {
+func (s *DepartmentService) GetDepartmentByID(ctx context.Context, departmentID string) (*dto.DepartmentInfo, error) {
 	dept, err := s.deptRepo.GetByID(ctx, departmentID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -123,23 +126,23 @@ func (s *DepartmentService) GetDepartmentByID(ctx context.Context, departmentID 
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询部门失败", err)
 	}
 
-	return s.toDepartmentResponse(dept), nil
+	return converter.ModelToDepartmentInfo(dept), nil
 }
 
 // UpdateDepartment 更新部门
-func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID string, req *dto.UpdateDepartmentRequest) (resp *dto.DepartmentResponse, err error) {
+func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID string, req *dto.UpdateDepartmentRequest) (resp *dto.DepartmentInfo, err error) {
 	var oldDept, newDept *model.Department
 
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithUpdate(audit.ModuleDepartment),
+				audit.WithUpdate(constants.ModuleDepartment),
 				audit.WithError(err),
 			)
 		} else if newDept != nil {
 			s.recorder.Log(ctx,
-				audit.WithUpdate(audit.ModuleDepartment),
-				audit.WithResource(audit.ResourceDepartment, newDept.DepartmentID, newDept.DepartmentName),
+				audit.WithUpdate(constants.ModuleDepartment),
+				audit.WithResource(constants.ResourceTypeDepartment, newDept.DepartmentID, newDept.DepartmentName),
 				audit.WithValue(oldDept, newDept),
 			)
 		}
@@ -203,7 +206,7 @@ func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID s
 	if req.Sort != 0 {
 		updates["sort"] = req.Sort
 	}
-	if req.Status != 0 {
+	if req.Status != constants.StatusZero {
 		updates["status"] = req.Status
 	}
 	if req.ParentID != "" {
@@ -224,7 +227,7 @@ func (s *DepartmentService) UpdateDepartment(ctx context.Context, departmentID s
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取更新后部门信息失败", err)
 	}
 
-	return s.toDepartmentResponse(newDept), nil
+	return converter.ModelToDepartmentInfo(newDept), nil
 }
 
 // DeleteDepartment 删除部门
@@ -234,13 +237,13 @@ func (s *DepartmentService) DeleteDepartment(ctx context.Context, departmentID s
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithDelete(audit.ModuleDepartment),
+				audit.WithDelete(constants.ModuleDepartment),
 				audit.WithError(err),
 			)
 		} else if dept != nil {
 			s.recorder.Log(ctx,
-				audit.WithDelete(audit.ModuleDepartment),
-				audit.WithResource(audit.ResourceDepartment, dept.DepartmentID, dept.DepartmentName),
+				audit.WithDelete(constants.ModuleDepartment),
+				audit.WithResource(constants.ResourceTypeDepartment, dept.DepartmentID, dept.DepartmentName),
 				audit.WithValue(dept, nil),
 			)
 			log.Info().Str("department_id", departmentID).Str("department_name", dept.DepartmentName).Msg("删除部门成功")
@@ -289,27 +292,104 @@ func (s *DepartmentService) DeleteDepartment(ctx context.Context, departmentID s
 	return nil
 }
 
+// BatchDeleteDepartments 批量删除部门
+func (s *DepartmentService) BatchDeleteDepartments(ctx context.Context, departmentIDs []string) (err error) {
+	var deptMap map[string]*model.Department
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithBatchDelete(constants.ModuleDepartment),
+				audit.WithError(err),
+			)
+		} else if len(deptMap) > 0 {
+			// 收集资源信息用于批量审计日志
+			ids := make([]string, 0, len(deptMap))
+			names := make([]string, 0, len(deptMap))
+			for _, dept := range deptMap {
+				ids = append(ids, dept.DepartmentID)
+				names = append(names, dept.DepartmentName)
+			}
+			// 记录批量删除审计日志（单条日志记录所有资源）
+			s.recorder.Log(ctx,
+				audit.WithBatchDelete(constants.ModuleDepartment),
+				audit.WithBatchResource(constants.ResourceTypeDepartment, ids, names),
+				audit.WithValue(deptMap, nil),
+			)
+			log.Info().Strs("department_ids", departmentIDs).Int("count", len(departmentIDs)).Msg("批量删除部门成功")
+		}
+	}()
+
+	// 获取所有部门信息
+	departments, err := s.deptRepo.GetByIDs(ctx, departmentIDs)
+	if err != nil {
+		log.Error().Err(err).Strs("department_ids", departmentIDs).Msg("查询部门信息失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "查询部门信息失败", err)
+	}
+	deptMap = convert.ToMap(departments, func(d *model.Department) string { return d.DepartmentID })
+
+	// 验证所有部门都存在
+	if len(deptMap) != len(departmentIDs) {
+		var missingIDs []string
+		for _, id := range departmentIDs {
+			if _, exists := deptMap[id]; !exists {
+				missingIDs = append(missingIDs, id)
+			}
+		}
+		log.Warn().Strs("missing_ids", missingIDs).Msg("部分部门不存在")
+		return xerr.New(xerr.ErrNotFound.Code, "部分部门不存在")
+	}
+
+	// 检查是否有部门存在子部门
+	for _, departmentID := range departmentIDs {
+		hasChildren, err := s.deptRepo.HasChildren(ctx, departmentID)
+		if err != nil {
+			log.Error().Err(err).Str("department_id", departmentID).Msg("检查子部门失败")
+			return xerr.Wrap(xerr.ErrInternal.Code, "检查子部门失败", err)
+		}
+		if hasChildren {
+			log.Warn().Str("department_id", departmentID).Msg("部门存在子部门，无法删除")
+			return xerr.ErrDeptHasChildren
+		}
+	}
+
+	// 检查是否有关联用户
+	for _, departmentID := range departmentIDs {
+		count, err := s.userRepo.CountByDept(ctx, departmentID)
+		if err != nil {
+			log.Error().Err(err).Str("department_id", departmentID).Msg("检查部门用户失败")
+			return xerr.Wrap(xerr.ErrInternal.Code, "检查部门用户失败", err)
+		}
+		if count > 0 {
+			log.Warn().Str("department_id", departmentID).Int("user_count", int(count)).Msg("部门存在关联用户，无法删除")
+			return xerr.ErrDeptHasUsers
+		}
+	}
+
+	// 批量删除部门
+	if err := s.deptRepo.BatchDelete(ctx, departmentIDs); err != nil {
+		log.Error().Err(err).Strs("department_ids", departmentIDs).Msg("批量删除部门失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "批量删除部门失败", err)
+	}
+
+	return nil
+}
+
 // ListDepartments 获取部门列表
 func (s *DepartmentService) ListDepartments(ctx context.Context, req *dto.ListDepartmentsRequest) (*dto.ListDepartmentsResponse, error) {
-	depts, total, err := s.deptRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Keyword, req.Status, req.ParentID)
+	depts, total, err := s.deptRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.DepartmentName, req.Status, req.ParentID)
 	if err != nil {
 		log.Error().Err(err).
-			Str("keyword", req.Keyword).
+			Str("department_name", req.DepartmentName).
 			Int("status", req.Status).
 			Str("parent_id", req.ParentID).
 			Msg("查询部门列表失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询部门列表失败", err)
 	}
 
-	// 转换为响应格式
-	deptResponses := make([]*dto.DepartmentResponse, len(depts))
-	for i, dept := range depts {
-		deptResponses[i] = s.toDepartmentResponse(dept)
-	}
-
 	return &dto.ListDepartmentsResponse{
 		Response: pagination.NewResponse(req.Request, total),
-		List:     deptResponses,
+		List:     converter.ModelListToDepartmentInfoList(depts),
 	}, nil
 }
 
@@ -331,19 +411,14 @@ func (s *DepartmentService) GetDepartmentTree(ctx context.Context) (*dto.Departm
 }
 
 // GetChildren 获取子部门
-func (s *DepartmentService) GetChildren(ctx context.Context, departmentID string) ([]*dto.DepartmentResponse, error) {
+func (s *DepartmentService) GetChildren(ctx context.Context, departmentID string) ([]*dto.DepartmentInfo, error) {
 	children, err := s.deptRepo.GetChildren(ctx, departmentID)
 	if err != nil {
 		log.Error().Err(err).Str("department_id", departmentID).Msg("查询子部门失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询子部门失败", err)
 	}
 
-	responses := make([]*dto.DepartmentResponse, len(children))
-	for i, child := range children {
-		responses[i] = s.toDepartmentResponse(child)
-	}
-
-	return responses, nil
+	return converter.ModelListToDepartmentInfoList(children), nil
 }
 
 // UpdateDepartmentStatus 更新部门状态
@@ -353,13 +428,13 @@ func (s *DepartmentService) UpdateDepartmentStatus(ctx context.Context, departme
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithUpdate(audit.ModuleDepartment),
+				audit.WithUpdate(constants.ModuleDepartment),
 				audit.WithError(err),
 			)
 		} else if newDept != nil {
 			s.recorder.Log(ctx,
-				audit.WithUpdate(audit.ModuleDepartment),
-				audit.WithResource(audit.ResourceDepartment, newDept.DepartmentID, newDept.DepartmentName),
+				audit.WithUpdate(constants.ModuleDepartment),
+				audit.WithResource(constants.ResourceTypeDepartment, newDept.DepartmentID, newDept.DepartmentName),
 				audit.WithValue(oldDept, newDept),
 			)
 			log.Info().Str("department_id", departmentID).Str("department_name", newDept.DepartmentName).Int("status", status).Msg("更新部门状态成功")
@@ -401,26 +476,12 @@ func (s *DepartmentService) buildDepartmentTree(depts []*model.Department, paren
 	for _, dept := range depts {
 		if dept.ParentID == parentID {
 			node := &dto.DepartmentTreeNode{
-				DepartmentResponse: s.toDepartmentResponse(dept),
-				Children:           s.buildDepartmentTree(depts, dept.DepartmentID),
+				DepartmentInfo: converter.ModelToDepartmentInfo(dept),
+				Children:       s.buildDepartmentTree(depts, dept.DepartmentID),
 			}
 			tree = append(tree, node)
 		}
 	}
 
 	return tree
-}
-
-// toDepartmentResponse 转换为部门响应格式
-func (s *DepartmentService) toDepartmentResponse(dept *model.Department) *dto.DepartmentResponse {
-	return &dto.DepartmentResponse{
-		DepartmentID:   dept.DepartmentID,
-		ParentID:       dept.ParentID,
-		DepartmentName: dept.DepartmentName,
-		Description:    dept.Description,
-		Sort:           int(dept.Sort),
-		Status:         int(dept.Status),
-		CreatedAt:      dept.CreatedAt,
-		UpdatedAt:      dept.UpdatedAt,
-	}
 }

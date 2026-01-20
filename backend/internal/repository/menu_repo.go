@@ -164,3 +164,17 @@ func (r *MenuRepo) Exists(ctx context.Context, menuID string) (bool, error) {
 	}
 	return count > 0, nil
 }
+
+// GetByIDsAsMap 根据ID列表获取菜单映射
+func (r *MenuRepo) GetByIDsAsMap(ctx context.Context, ids []string) (map[string]*model.Menu, error) {
+	menus, err := r.GetByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*model.Menu, len(menus))
+	for _, menu := range menus {
+		result[menu.MenuID] = menu
+	}
+	return result, nil
+}

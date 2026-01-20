@@ -3,9 +3,9 @@ package repository
 import (
 	"admin/internal/dal/model"
 	"admin/internal/dal/query"
-	"admin/pkg/database"
-	"sort"
+	"admin/pkg/xcontext"
 	"context"
+	"sort"
 
 	"gorm.io/gorm"
 )
@@ -43,7 +43,7 @@ func (r *DictItemRepo) GetByID(ctx context.Context, itemID string) (*model.DictI
 
 // GetByTypeAndTenant 获取指定类型和租户的字典项
 func (r *DictItemRepo) GetByTypeAndTenant(ctx context.Context, typeID, tenantID string) ([]*model.DictItem, error) {
-	ctx = database.ManualTenantMode(ctx)
+	ctx = xcontext.SkipTenantCheck(ctx)
 	return r.q.DictItem.WithContext(ctx).
 		Where(r.q.DictItem.TypeID.Eq(typeID)).
 		Where(r.q.DictItem.TenantID.Eq(tenantID)).
@@ -53,7 +53,7 @@ func (r *DictItemRepo) GetByTypeAndTenant(ctx context.Context, typeID, tenantID 
 
 // GetByTypeAndValue 获取指定类型、租户、值的字典项（用于检查是否已覆盖）
 func (r *DictItemRepo) GetByTypeAndValue(ctx context.Context, typeID, tenantID, value string) (*model.DictItem, error) {
-	ctx = database.ManualTenantMode(ctx)
+	ctx = xcontext.SkipTenantCheck(ctx)
 	return r.q.DictItem.WithContext(ctx).
 		Where(r.q.DictItem.TypeID.Eq(typeID)).
 		Where(r.q.DictItem.TenantID.Eq(tenantID)).
@@ -63,7 +63,7 @@ func (r *DictItemRepo) GetByTypeAndValue(ctx context.Context, typeID, tenantID, 
 
 // DeleteByTypeAndValue 删除指定类型、租户、值的字典项（恢复系统默认）
 func (r *DictItemRepo) DeleteByTypeAndValue(ctx context.Context, typeID, tenantID, value string) error {
-	ctx = database.ManualTenantMode(ctx)
+	ctx = xcontext.SkipTenantCheck(ctx)
 	_, err := r.q.DictItem.WithContext(ctx).
 		Where(r.q.DictItem.TypeID.Eq(typeID)).
 		Where(r.q.DictItem.TenantID.Eq(tenantID)).
@@ -108,7 +108,7 @@ func (r *DictItemRepo) ListByTypeID(ctx context.Context, typeID string) ([]*mode
 // GetMergedByTypeCode 根据字典编码获取合并后的字典项（系统+租户覆盖）
 // 这是字典系统的核心方法，实现了租户覆盖系统默认值的逻辑
 func (r *DictItemRepo) GetMergedByTypeCode(ctx context.Context, typeCode string, defaultTenantID, currentTenantID string) ([]*model.DictItem, error) {
-	ctx = database.ManualTenantMode(ctx)
+	ctx = xcontext.SkipTenantCheck(ctx)
 
 	// 1. 获取字典类型
 	dictType, err := query.Use(r.db).DictType.WithContext(ctx).
@@ -170,7 +170,7 @@ func (r *DictItemRepo) GetMergedByTypeCode(ctx context.Context, typeCode string,
 
 // GetDictTypeWithItems 获取字典类型及其合并后的字典项
 func (r *DictItemRepo) GetDictTypeWithItems(ctx context.Context, typeCode string, defaultTenantID, currentTenantID string) (*model.DictType, []*model.DictItem, error) {
-	ctx = database.ManualTenantMode(ctx)
+	ctx = xcontext.SkipTenantCheck(ctx)
 
 	// 获取字典类型
 	dictType, err := query.Use(r.db).DictType.WithContext(ctx).

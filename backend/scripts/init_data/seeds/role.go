@@ -46,6 +46,7 @@ func DefaultRoleDefinitions(roleIDs []string) []RoleDefinition {
 	return []RoleDefinition{
 		{roleIDs[0], "super_admin", "超级管理员"},
 		{roleIDs[1], "admin", "租户管理员"},
-		{roleIDs[2], "user", "普通用户"},
+		{roleIDs[2], "auditor", "监管员"},
+		{roleIDs[3], "user", "普通用户"},
 	}
 }

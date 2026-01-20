@@ -4,45 +4,46 @@ import "admin/pkg/pagination"
 
 // CreateMenuRequest 创建菜单请求
 type CreateMenuRequest struct {
-	Name      string `json:"name" binding:"required"`         // 菜单名称
-	ParentID  string `json:"parent_id" binding:"omitempty"`    // 父菜单ID
-	Path      string `json:"path" binding:"omitempty"`         // 前端路由路径
-	Component string `json:"component" binding:"omitempty"`    // 前端组件路径
-	Redirect  string `json:"redirect" binding:"omitempty"`     // 重定向路径
-	Icon      string `json:"icon" binding:"omitempty"`         // 图标
-	Sort      *int16 `json:"sort" binding:"omitempty"`         // 排序
+	Name      string `json:"name" binding:"required"`              // 菜单名称
+	ParentID  string `json:"parent_id" binding:"omitempty"`        // 父菜单ID
+	Path      string `json:"path" binding:"omitempty"`             // 前端路由路径
+	Component string `json:"component" binding:"omitempty"`        // 前端组件路径
+	Redirect  string `json:"redirect" binding:"omitempty"`         // 重定向路径
+	Icon      string `json:"icon" binding:"omitempty"`             // 图标
+	Sort      *int16 `json:"sort" binding:"omitempty"`             // 排序
 	Status    int    `json:"status" binding:"omitempty,oneof=1 2"` // 状态 1:显示 2:隐藏
 }
 
 // UpdateMenuRequest 更新菜单请求
 type UpdateMenuRequest struct {
-	Name      string `json:"name" binding:"omitempty"`          // 菜单名称
-	ParentID  string `json:"parent_id" binding:"omitempty"`     // 父菜单ID
-	Path      string `json:"path" binding:"omitempty"`          // 前端路由路径
-	Component string `json:"component" binding:"omitempty"`     // 前端组件路径
-	Redirect  string `json:"redirect" binding:"omitempty"`      // 重定向路径
-	Icon      string `json:"icon" binding:"omitempty"`          // 图标
-	Sort      *int16 `json:"sort" binding:"omitempty"`          // 排序
-	Status    int    `json:"status" binding:"omitempty,oneof=1 2"` // 状态 1:显示 2:隐藏
+	MenuID    string `json:"menu_id" form:"menu_id" binding:"required" example:"123456789012345678"` // 菜单ID
+	Name      string `json:"name" binding:"omitempty"`                                               // 菜单名称
+	ParentID  string `json:"parent_id" binding:"omitempty"`                                          // 父菜单ID
+	Path      string `json:"path" binding:"omitempty"`                                               // 前端路由路径
+	Component string `json:"component" binding:"omitempty"`                                          // 前端组件路径
+	Redirect  string `json:"redirect" binding:"omitempty"`                                           // 重定向路径
+	Icon      string `json:"icon" binding:"omitempty"`                                               // 图标
+	Sort      *int16 `json:"sort" binding:"omitempty"`                                               // 排序
+	Status    int    `json:"status" binding:"omitempty,oneof=1 2"`                                   // 状态 1:显示 2:隐藏
 }
 
 // MenuInfo 菜单信息
 type MenuInfo struct {
-	MenuID      string  `json:"menu_id" example:"123456789012345678"`      // 菜单ID（修正：PermissionID -> MenuID）
-	Name        string  `json:"name" example:"用户管理"`         // 菜单名称
-	Type        string  `json:"type" example:"MENU"`         // 类型（固定为 "MENU"）
-	ParentID    *string `json:"parent_id" example:"123456789012345678"`    // 父菜单ID
-	Resource    *string `json:"resource" example:"menu:123456789012345678"`     // 资源路径（menu:menu_id）
-	Action      *string `json:"action" example:"*"`       // 请求方法（固定为 "*"）
-	Path        *string `json:"path" example:"/system/user"`         // 前端路由路径
-	Component   *string `json:"component" example:"system/user/index"`    // 前端组件路径
-	Redirect    *string `json:"redirect"`     // 重定向路径
-	Icon        *string `json:"icon" example:"User"`         // 图标
-	Sort        *int16  `json:"sort" example:"1"`         // 排序
-	Status      int16   `json:"status" example:"1"`       // 状态
-	Description *string `json:"description" example:"用户管理菜单"`  // 描述
-	CreatedAt   int64   `json:"created_at" example:"1735200000"`   // 创建时间
-	UpdatedAt   int64   `json:"updated_at" example:"1735206400"`   // 更新时间
+	MenuID      string  `json:"menu_id" example:"123456789012345678"`       // 菜单ID（修正：PermissionID -> MenuID）
+	Name        string  `json:"name" example:"用户管理"`                        // 菜单名称
+	Type        string  `json:"type" example:"MENU"`                        // 类型（固定为 "MENU"）
+	ParentID    *string `json:"parent_id" example:"123456789012345678"`     // 父菜单ID
+	Resource    *string `json:"resource" example:"menu:123456789012345678"` // 资源路径（menu:menu_id）
+	Action      *string `json:"action" example:"*"`                         // 请求方法（固定为 "*"）
+	Path        *string `json:"path" example:"/system/user"`                // 前端路由路径
+	Component   *string `json:"component" example:"system/user/index"`      // 前端组件路径
+	Redirect    *string `json:"redirect"`                                   // 重定向路径
+	Icon        *string `json:"icon" example:"User"`                        // 图标
+	Sort        *int16  `json:"sort" example:"1"`                           // 排序
+	Status      int16   `json:"status" example:"1"`                         // 状态
+	Description *string `json:"description" example:"用户管理菜单"`               // 描述
+	CreatedAt   int64   `json:"created_at" example:"1735200000"`            // 创建时间
+	UpdatedAt   int64   `json:"updated_at" example:"1735206400"`            // 更新时间
 }
 
 // MenuTreeNode 菜单树节点
@@ -54,8 +55,8 @@ type MenuTreeNode struct {
 // ListMenusRequest 菜单列表请求
 type ListMenusRequest struct {
 	pagination.Request `json:",inline"`
-	Name                string `form:"name" binding:"omitempty"`          // 菜单名称搜索
-	Status              *int16 `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
+	Name               string `form:"name" binding:"omitempty"`             // 菜单名称搜索
+	Status             *int16 `form:"status" binding:"omitempty,oneof=1 2"` // 状态筛选
 }
 
 // ListMenusResponse 菜单列表响应
@@ -74,12 +75,23 @@ type AllMenusResponse struct {
 	List []*MenuInfo `json:"list"` // 菜单列表
 }
 
-// MenuDetailResponse 菜单详情响应
-type MenuDetailResponse struct {
-	*MenuInfo
+// MenuDetailRequest 获取菜单详情请求
+type MenuDetailRequest struct {
+	MenuID string `json:"menu_id" form:"menu_id" binding:"required" example:"123456789012345678"` // 菜单ID
 }
 
-// UpdateMenuStatusRequest 更新菜单状态请求
-type UpdateMenuStatusRequest struct {
-	Status int `json:"status" binding:"required,oneof=1 2"` // 状态 1:显示 2:隐藏
+// MenuDeleteRequest 删除菜单请求
+type MenuDeleteRequest struct {
+	MenuID string `json:"menu_id" form:"menu_id" binding:"required" example:"123456789012345678"` // 菜单ID
+}
+
+// MenuStatusRequest 更新菜单状态请求
+type MenuStatusRequest struct {
+	MenuID string `json:"menu_id" binding:"required" example:"123456789012345678"` // 菜单ID
+	Status int    `json:"status" binding:"required" example:"1"`                   // 状态值
+}
+
+// MenuBatchDeleteRequest 批量删除菜单请求
+type MenuBatchDeleteRequest struct {
+	MenuIDs []string `json:"menu_ids" binding:"required,min=1,dive,required" example:"[\"123456789012345678\", \"987654321098765432\"]"` // 菜单ID列表
 }

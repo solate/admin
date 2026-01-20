@@ -6,7 +6,6 @@ import (
 	"admin/pkg/response"
 	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -56,17 +55,17 @@ func (h *MenuHandler) CreateMenu(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param menu_id path string true "菜单ID"
+// @Param menu_id query string true "菜单ID"
 // @Success 200 {object} response.Response{data=dto.MenuInfo} "获取成功"
-// @Router /api/v1/menus/{menu_id} [get]
+// @Router /api/v1/menus/detail [get]
 func (h *MenuHandler) GetMenu(c *gin.Context) {
-	menuID := c.Param("menu_id")
-	if menuID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.MenuDetailRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	resp, err := h.menuService.GetMenuByID(c.Request.Context(), menuID)
+	resp, err := h.menuService.GetMenuByID(c.Request.Context(), req.MenuID)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -82,24 +81,17 @@ func (h *MenuHandler) GetMenu(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param menu_id path string true "菜单ID"
 // @Param request body dto.UpdateMenuRequest true "更新菜单请求参数"
 // @Success 200 {object} response.Response{data=dto.MenuInfo} "更新成功"
-// @Router /api/v1/menus/{menu_id} [put]
+// @Router /api/v1/menus [put]
 func (h *MenuHandler) UpdateMenu(c *gin.Context) {
-	menuID := c.Param("menu_id")
-	if menuID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
-		return
-	}
-
 	var req dto.UpdateMenuRequest
 	if err := c.BindJSON(&req); err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	resp, err := h.menuService.UpdateMenu(c.Request.Context(), menuID, &req)
+	resp, err := h.menuService.UpdateMenu(c.Request.Context(), req.MenuID, &req)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -115,22 +107,47 @@ func (h *MenuHandler) UpdateMenu(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param menu_id path string true "菜单ID"
+// @Param request body dto.MenuDeleteRequest true "删除菜单请求参数"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /api/v1/menus/{menu_id} [delete]
+// @Router /api/v1/menus [delete]
 func (h *MenuHandler) DeleteMenu(c *gin.Context) {
-	menuID := c.Param("menu_id")
-	if menuID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.MenuDeleteRequest
+	if err := c.BindJSON(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	if err := h.menuService.DeleteMenu(c.Request.Context(), menuID); err != nil {
+	if err := h.menuService.DeleteMenu(c.Request.Context(), req.MenuID); err != nil {
 		response.Error(c, err)
 		return
 	}
 
 	response.Success(c, gin.H{"deleted": true})
+}
+
+// BatchDeleteMenus 批量删除菜单
+// @Summary 批量删除菜单
+// @Description 批量软删除菜单（无子菜单的菜单才能删除）
+// @Tags 菜单管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param request body dto.MenuBatchDeleteRequest true "批量删除请求参数"
+// @Success 200 {object} response.Response "删除成功"
+// @Router /api/v1/menus/batch-delete [delete]
+func (h *MenuHandler) BatchDeleteMenus(c *gin.Context) {
+	var req dto.MenuBatchDeleteRequest
+	if err := c.BindJSON(&req); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	if err := h.menuService.BatchDeleteMenus(c.Request.Context(), req.MenuIDs); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{"deleted": true, "count": len(req.MenuIDs)})
 }
 
 // ListMenus 获取菜单列表
@@ -143,8 +160,7 @@ func (h *MenuHandler) DeleteMenu(c *gin.Context) {
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
 // @Param name query string false "菜单名称搜索"
-// @Param type query string false "类型筛选(MENU:菜单, BUTTON:按钮)"
-// @Param status query int false "状态筛选(1:显示, 2:隐藏)"
+// @Param status query int false "状态筛选(1:显示,2:隐藏)" Enums(1,2)
 // @Success 200 {object} response.Response{data=dto.ListMenusResponse} "获取成功"
 // @Router /api/v1/menus [get]
 func (h *MenuHandler) ListMenus(c *gin.Context) {
@@ -208,30 +224,17 @@ func (h *MenuHandler) GetMenuTree(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param menu_id path string true "菜单ID"
-// @Param status path int true "状态(1:显示, 2:隐藏)"
+// @Param request body dto.MenuStatusRequest true "更新状态请求参数"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /api/v1/menus/{menu_id}/status/{status} [put]
+// @Router /api/v1/menus/status [put]
 func (h *MenuHandler) UpdateMenuStatus(c *gin.Context) {
-	menuID := c.Param("menu_id")
-	if menuID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.MenuStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	statusStr := c.Param("status")
-	if statusStr == "" {
-		response.Error(c, xerr.ErrInvalidParams)
-		return
-	}
-
-	status, err := strconv.Atoi(statusStr)
-	if err != nil {
-		response.Error(c, xerr.ErrInvalidParams)
-		return
-	}
-
-	if err := h.menuService.UpdateMenuStatus(c.Request.Context(), menuID, status); err != nil {
+	if err := h.menuService.UpdateMenuStatus(c.Request.Context(), req.MenuID, req.Status); err != nil {
 		response.Error(c, err)
 		return
 	}
@@ -287,13 +290,13 @@ func (h *UserMenuHandler) GetUserMenu(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param menu_id path string true "菜单ID"
+// @Param menu_id query string true "菜单ID"
 // @Success 200 {object} response.Response{data=dto.UserButtonsResponse} "获取成功"
-// @Router /api/v1/user/buttons/{menu_id} [get]
+// @Router /api/v1/user/buttons [get]
 func (h *UserMenuHandler) GetUserButtons(c *gin.Context) {
-	menuID := c.Param("menu_id")
-	if menuID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.MenuDetailRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
@@ -307,7 +310,7 @@ func (h *UserMenuHandler) GetUserButtons(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.userMenuService.GetUserButtons(c.Request.Context(), userName, tenantCode, menuID)
+	resp, err := h.userMenuService.GetUserButtons(c.Request.Context(), userName, tenantCode, req.MenuID)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -315,4 +318,3 @@ func (h *UserMenuHandler) GetUserButtons(c *gin.Context) {
 
 	response.Success(c, resp)
 }
-

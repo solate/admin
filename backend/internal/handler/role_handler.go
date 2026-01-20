@@ -4,8 +4,6 @@ import (
 	"admin/internal/dto"
 	"admin/internal/service"
 	"admin/pkg/response"
-	"admin/pkg/xerr"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,11 +28,11 @@ func NewRoleHandler(roleService *service.RoleService) *RoleHandler {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param request body dto.CreateRoleRequest true "创建角色请求参数"
-// @Success 200 {object} response.Response{data=dto.RoleResponse} "创建成功"
+// @Success 200 {object} response.Response{data=dto.RoleInfo} "创建成功"
 // @Router /api/v1/roles [post]
 func (h *RoleHandler) CreateRole(c *gin.Context) {
 	var req dto.CreateRoleRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, err)
 		return
 	}
@@ -55,17 +53,17 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param role_id path string true "角色ID"
-// @Success 200 {object} response.Response{data=dto.RoleResponse} "获取成功"
-// @Router /api/v1/roles/{role_id} [get]
+// @Param role_id query string true "角色ID"
+// @Success 200 {object} response.Response{data=dto.RoleInfo} "获取成功"
+// @Router /api/v1/roles/detail [get]
 func (h *RoleHandler) GetRole(c *gin.Context) {
-	roleID := c.Param("role_id")
-	if roleID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.RoleDetailRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	resp, err := h.roleService.GetRoleByID(c.Request.Context(), roleID)
+	resp, err := h.roleService.GetRoleByID(c.Request.Context(), req.RoleID)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -81,24 +79,17 @@ func (h *RoleHandler) GetRole(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param role_id path string true "角色ID"
 // @Param request body dto.UpdateRoleRequest true "更新角色请求参数"
-// @Success 200 {object} response.Response{data=dto.RoleResponse} "更新成功"
-// @Router /api/v1/roles/{role_id} [put]
+// @Success 200 {object} response.Response{data=dto.RoleInfo} "更新成功"
+// @Router /api/v1/roles [put]
 func (h *RoleHandler) UpdateRole(c *gin.Context) {
-	roleID := c.Param("role_id")
-	if roleID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
-		return
-	}
-
 	var req dto.UpdateRoleRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	resp, err := h.roleService.UpdateRole(c.Request.Context(), roleID, &req)
+	resp, err := h.roleService.UpdateRole(c.Request.Context(), req.RoleID, &req)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -114,22 +105,47 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param role_id path string true "角色ID"
+// @Param request body dto.RoleDeleteRequest true "删除角色请求参数"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /api/v1/roles/{role_id} [delete]
+// @Router /api/v1/roles [delete]
 func (h *RoleHandler) DeleteRole(c *gin.Context) {
-	roleID := c.Param("role_id")
-	if roleID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.RoleDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	if err := h.roleService.DeleteRole(c.Request.Context(), roleID); err != nil {
+	if err := h.roleService.DeleteRole(c.Request.Context(), req.RoleID); err != nil {
 		response.Error(c, err)
 		return
 	}
 
 	response.Success(c, gin.H{"deleted": true})
+}
+
+// BatchDeleteRoles 批量删除角色
+// @Summary 批量删除角色
+// @Description 批量软删除角色
+// @Tags 角色管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param request body dto.RoleBatchDeleteRequest true "批量删除请求参数"
+// @Success 200 {object} response.Response "删除成功"
+// @Router /api/v1/roles/batch-delete [delete]
+func (h *RoleHandler) BatchDeleteRoles(c *gin.Context) {
+	var req dto.RoleBatchDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	if err := h.roleService.BatchDeleteRoles(c.Request.Context(), req.RoleIDs); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{"deleted": true, "count": len(req.RoleIDs)})
 }
 
 // ListRoles 获取角色列表
@@ -141,8 +157,9 @@ func (h *RoleHandler) DeleteRole(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
-// @Param keyword query string false "关键词搜索（角色名称/编码）"
-// @Param status query int false "状态筛选(1:启用,2:禁用)"
+// @Param role_name query string false "角色名称(模糊匹配)"
+// @Param role_code query string false "角色编码(模糊匹配)"
+// @Param status query int false "状态筛选(1:启用,2:禁用)" Enums(1,2)
 // @Success 200 {object} response.Response{data=dto.ListRolesResponse} "获取成功"
 // @Router /api/v1/roles [get]
 func (h *RoleHandler) ListRoles(c *gin.Context) {
@@ -161,6 +178,34 @@ func (h *RoleHandler) ListRoles(c *gin.Context) {
 	response.Success(c, resp)
 }
 
+// GetAllRoles 获取所有角色（不分页）
+// @Summary 获取所有角色
+// @Description 获取所有角色列表（不分页），支持按关键词和状态筛选
+// @Tags 角色管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param role_name query string false "角色名称(模糊匹配)"
+// @Param role_code query string false "角色编码(模糊匹配)"
+// @Param status query int false "状态筛选(1:启用,2:禁用)" Enums(1,2)
+// @Success 200 {object} response.Response{data=dto.GetAllRolesResponse} "获取成功"
+// @Router /api/v1/roles/all [get]
+func (h *RoleHandler) GetAllRoles(c *gin.Context) {
+	var req dto.GetAllRolesRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	resp, err := h.roleService.GetAllRoles(c.Request.Context(), &req)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, resp)
+}
+
 // UpdateRoleStatus 更新角色状态
 // @Summary 更新角色状态
 // @Description 更新角色状态
@@ -168,30 +213,17 @@ func (h *RoleHandler) ListRoles(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param role_id path string true "角色ID"
-// @Param status path int true "状态(1:启用,2:禁用)"
+// @Param request body dto.RoleStatusRequest true "更新状态请求参数"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /api/v1/roles/{role_id}/status/{status} [put]
+// @Router /api/v1/roles/status [put]
 func (h *RoleHandler) UpdateRoleStatus(c *gin.Context) {
-	roleID := c.Param("role_id")
-	if roleID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.RoleStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	statusStr := c.Param("status")
-	if statusStr == "" {
-		response.Error(c, xerr.ErrInvalidParams)
-		return
-	}
-
-	status, err := strconv.Atoi(statusStr)
-	if err != nil {
-		response.Error(c, xerr.ErrInvalidParams)
-		return
-	}
-
-	if err := h.roleService.UpdateRoleStatus(c.Request.Context(), roleID, status); err != nil {
+	if err := h.roleService.UpdateRoleStatus(c.Request.Context(), req.RoleID, req.Status); err != nil {
 		response.Error(c, err)
 		return
 	}
@@ -206,24 +238,17 @@ func (h *RoleHandler) UpdateRoleStatus(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param role_id path string true "角色ID"
-// @Param request body dto.AssignPermissionsRequest true "权限列表"
+// @Param request body dto.AssignPermissionsRequest true "分配权限请求参数"
 // @Success 200 {object} response.Response "分配成功"
-// @Router /api/v1/roles/{role_id}/permissions [put]
+// @Router /api/v1/roles/permissions [put]
 func (h *RoleHandler) AssignPermissions(c *gin.Context) {
-	roleID := c.Param("role_id")
-	if roleID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
-		return
-	}
-
 	var req dto.AssignPermissionsRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	if err := h.roleService.AssignPermissions(c.Request.Context(), roleID, &req); err != nil {
+	if err := h.roleService.AssignPermissions(c.Request.Context(), req.RoleID, &req); err != nil {
 		response.Error(c, err)
 		return
 	}
@@ -238,17 +263,17 @@ func (h *RoleHandler) AssignPermissions(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param role_id path string true "角色ID"
+// @Param role_id query string true "角色ID"
 // @Success 200 {object} response.Response{data=dto.RolePermissionsResponse} "获取成功"
-// @Router /api/v1/roles/{role_id}/permissions [get]
+// @Router /api/v1/roles/permissions [get]
 func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
-	roleID := c.Param("role_id")
-	if roleID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.RoleDetailRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	permissions, err := h.roleService.GetRolePermissions(c.Request.Context(), roleID)
+	permissions, err := h.roleService.GetRolePermissions(c.Request.Context(), req.RoleID)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -266,7 +291,7 @@ func (h *RoleHandler) GetRolePermissions(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param role_id path string true "角色ID"
-// @Param request body dto.AssignMenusRequest true "菜单ID列表"
+// @Param request body dto.AssignPermissionsRequest true "菜单ID列表"
 // @Success 200 {object} response.Response "分配成功"
 // @Router /api/v1/roles/{role_id}/menus [put]
 // Deprecated: 使用 AssignPermissions 代替
@@ -282,23 +307,23 @@ func (h *RoleHandler) AssignMenus(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param role_id path string true "角色ID"
-// @Success 200 {object} response.Response{data=dto.RoleMenusResponse} "获取成功"
-// @Router /api/v1/roles/{role_id}/menus [get]
+// @Param role_id query string true "角色ID"
+// @Success 200 {object} response.Response{data=dto.RolePermissionsResponse} "获取成功"
+// @Router /api/v1/roles/menus [get]
 // Deprecated: 使用 GetRolePermissions 代替
 func (h *RoleHandler) GetRoleMenus(c *gin.Context) {
-	roleID := c.Param("role_id")
-	if roleID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.RoleDetailRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	permissions, err := h.roleService.GetRolePermissions(c.Request.Context(), roleID)
+	permissions, err := h.roleService.GetRolePermissions(c.Request.Context(), req.RoleID)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
 	// 旧接口只返回菜单ID
-	response.Success(c, &dto.RoleMenusResponse{MenuIDs: permissions.MenuIDs})
+	response.Success(c, &dto.RolePermissionsResponse{MenuIDs: permissions.MenuIDs})
 }

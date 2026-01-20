@@ -4,114 +4,287 @@
 #   g, 用户名, 角色, 租户              - 用户角色绑定
 
 # ========== 超级管理员策略 ==========
-p, super_admin, {tenant}, /api/v1/*, *
+
 
 # ========== 租户管理员策略 ==========
 # 当前用户信息
-p, admin, {tenant}, /api/v1/profile, GET
+p, admin, {tenant}, /api/v1/user/profile, GET
+p, admin, {tenant}, /api/v1/user/password/change, POST
+
+# 租户管理（仅超管）
+p, admin, {tenant}, /api/v1/tenants, POST
+p, admin, {tenant}, /api/v1/tenants, GET
+p, admin, {tenant}, /api/v1/tenants/all, GET
+p, admin, {tenant}, /api/v1/tenants/detail, GET
+p, admin, {tenant}, /api/v1/tenants, PUT
+p, admin, {tenant}, /api/v1/tenants, DELETE
+p, admin, {tenant}, /api/v1/tenants/batch-delete, DELETE
+p, admin, {tenant}, /api/v1/tenants/status, PUT
 
 # 用户管理
 p, admin, {tenant}, /api/v1/users, GET
 p, admin, {tenant}, /api/v1/users, POST
-p, admin, {tenant}, /api/v1/users/*, GET
-p, admin, {tenant}, /api/v1/users/*, PUT
-p, admin, {tenant}, /api/v1/users/*, DELETE
-p, admin, {tenant}, /api/v1/users/*/status/*, PUT
+p, admin, {tenant}, /api/v1/users/detail, GET
+p, admin, {tenant}, /api/v1/users, PUT
+p, admin, {tenant}, /api/v1/users, DELETE
+p, admin, {tenant}, /api/v1/users/batch-delete, DELETE
+p, admin, {tenant}, /api/v1/users/status, PUT
+p, admin, {tenant}, /api/v1/users/roles, GET
+p, admin, {tenant}, /api/v1/users/roles, PUT
+p, admin, {tenant}, /api/v1/users/password/reset, POST
 
 # 角色管理
 p, admin, {tenant}, /api/v1/roles, GET
 p, admin, {tenant}, /api/v1/roles, POST
-p, admin, {tenant}, /api/v1/roles/*, GET
-p, admin, {tenant}, /api/v1/roles/*, PUT
-p, admin, {tenant}, /api/v1/roles/*, DELETE
-p, admin, {tenant}, /api/v1/roles/*/status/*, PUT
+p, admin, {tenant}, /api/v1/roles/all, GET
+p, admin, {tenant}, /api/v1/roles/detail, GET
+p, admin, {tenant}, /api/v1/roles, PUT
+p, admin, {tenant}, /api/v1/roles, DELETE
+p, admin, {tenant}, /api/v1/roles/status, PUT
+p, admin, {tenant}, /api/v1/roles/permissions, PUT
+p, admin, {tenant}, /api/v1/roles/permissions, GET
 
 # 菜单管理
 p, admin, {tenant}, /api/v1/menus, GET
 p, admin, {tenant}, /api/v1/menus, POST
 p, admin, {tenant}, /api/v1/menus/all, GET
 p, admin, {tenant}, /api/v1/menus/tree, GET
-p, admin, {tenant}, /api/v1/menus/*, GET
-p, admin, {tenant}, /api/v1/menus/*, PUT
-p, admin, {tenant}, /api/v1/menus/*, DELETE
-p, admin, {tenant}, /api/v1/menus/*/status/*, PUT
+p, admin, {tenant}, /api/v1/menus/detail, GET
+p, admin, {tenant}, /api/v1/menus, PUT
+p, admin, {tenant}, /api/v1/menus, DELETE
+p, admin, {tenant}, /api/v1/menus/status, PUT
 
 # 用户菜单
 p, admin, {tenant}, /api/v1/user/menus, GET
-p, admin, {tenant}, /api/v1/user/buttons/*, GET
+p, admin, {tenant}, /api/v1/user/buttons, GET
 
 # 登录日志
-p, admin, {tenant}, /api/v1/login-logs, GET
-p, admin, {tenant}, /api/v1/login-logs/*, GET
+p, admin, {tenant}, /api/v1/logs/login, GET
+p, admin, {tenant}, /api/v1/logs/login/detail, GET
 
 # 操作日志
-p, admin, {tenant}, /api/v1/operation-logs, GET
-p, admin, {tenant}, /api/v1/operation-logs/*, GET
+p, admin, {tenant}, /api/v1/logs/operation, GET
+p, admin, {tenant}, /api/v1/logs/operation/detail, GET
+
+# 部门管理
+p, admin, {tenant}, /api/v1/departments, GET
+p, admin, {tenant}, /api/v1/departments, POST
+p, admin, {tenant}, /api/v1/departments/tree, GET
+p, admin, {tenant}, /api/v1/departments/detail, GET
+p, admin, {tenant}, /api/v1/departments, PUT
+p, admin, {tenant}, /api/v1/departments, DELETE
+p, admin, {tenant}, /api/v1/departments/status, PUT
+p, admin, {tenant}, /api/v1/departments/children, GET
+
+# 岗位管理
+p, admin, {tenant}, /api/v1/positions, GET
+p, admin, {tenant}, /api/v1/positions, POST
+p, admin, {tenant}, /api/v1/positions/all, GET
+p, admin, {tenant}, /api/v1/positions/detail, GET
+p, admin, {tenant}, /api/v1/positions, PUT
+p, admin, {tenant}, /api/v1/positions, DELETE
+p, admin, {tenant}, /api/v1/positions/status, PUT
+
+# 字典管理
+p, admin, {tenant}, /api/v1/dicts, GET
+p, admin, {tenant}, /api/v1/dicts/items, PUT
+p, admin, {tenant}, /api/v1/dicts/items, DELETE
+p, admin, {tenant}, /api/v1/dicts/types, GET
+
+# 系统字典管理（仅超管，但此处保留便于扩展）
+p, admin, {tenant}, /api/v1/system/dicts, POST
+p, admin, {tenant}, /api/v1/system/dicts, GET
+p, admin, {tenant}, /api/v1/system/dicts, PUT
+p, admin, {tenant}, /api/v1/system/dicts, DELETE
+p, admin, {tenant}, /api/v1/system/dicts/items, DELETE
+
+# 视频管理
+p, admin, {tenant}, /api/v1/videos, POST
+p, admin, {tenant}, /api/v1/videos, GET
+p, admin, {tenant}, /api/v1/videos/detail, GET
+p, admin, {tenant}, /api/v1/videos, DELETE
+p, admin, {tenant}, /api/v1/videos/batch-delete, DELETE
+p, admin, {tenant}, /api/v1/videos/detect, POST
+p, admin, {tenant}, /api/v1/videos/retry-detect, POST
+p, admin, {tenant}, /api/v1/videos/risks, GET
+p, admin, {tenant}, /api/v1/videos/signature, POST
+
+# 设备管理
+p, admin, {tenant}, /api/v1/devices, POST
+p, admin, {tenant}, /api/v1/devices, GET
+p, admin, {tenant}, /api/v1/devices/detail, GET
+p, admin, {tenant}, /api/v1/devices, PUT
+p, admin, {tenant}, /api/v1/devices, DELETE
+p, admin, {tenant}, /api/v1/devices/status, PUT
+p, admin, {tenant}, /api/v1/devices/apply, POST
+p, admin, {tenant}, /api/v1/devices/approve, POST
+p, admin, {tenant}, /api/v1/devices/approvals, GET
+p, admin, {tenant}, /api/v1/devices/access, GET
+p, admin, {tenant}, /api/v1/devices/access, POST
 
 # 认证相关
 p, admin, {tenant}, /api/v1/auth/logout, POST
+p, admin, {tenant}, /api/v1/auth/switch-tenant, POST
+p, admin, {tenant}, /api/v1/auth/available-tenants, GET
+
+# 边缘节点相关
+p, admin, {tenant}, /api/v1/edge/pending, GET
+p, admin, {tenant}, /api/v1/edge/pull-stream, POST
+p, admin, {tenant}, /api/v1/edge/playlist, GET
+p, admin, {tenant}, /api/v1/edge/playlist/push, POST
+p, admin, {tenant}, /api/v1/edge/control, POST
+p, admin, {tenant}, /api/v1/edge/insert, POST
+p, admin, {tenant}, /api/v1/edge/online, GET
+p, admin, {tenant}, /api/v1/edge/stream/pull, GET
 
 # ========== 普通用户策略 ==========
 # 当前用户信息
-p, user, {tenant}, /api/v1/profile, GET
+p, user, {tenant}, /api/v1/user/profile, GET
+p, user, {tenant}, /api/v1/user/password/change, POST
 
 # 用户列表查看
 p, user, {tenant}, /api/v1/users, GET
 
 # 角色查看（只能看到自己的角色）
 p, user, {tenant}, /api/v1/roles, GET
-p, user, {tenant}, /api/v1/roles/*, GET
+p, user, {tenant}, /api/v1/roles/all, GET
 
 # 菜单查看
 p, user, {tenant}, /api/v1/menus, GET
 p, user, {tenant}, /api/v1/menus/all, GET
 p, user, {tenant}, /api/v1/menus/tree, GET
-p, user, {tenant}, /api/v1/menus/*, GET
+p, user, {tenant}, /api/v1/menus/detail, GET
 
 # 用户菜单
 p, user, {tenant}, /api/v1/user/menus, GET
-p, user, {tenant}, /api/v1/user/buttons/*, GET
+p, user, {tenant}, /api/v1/user/buttons, GET
 
 # 登录日志
-p, user, {tenant}, /api/v1/login-logs, GET
-p, user, {tenant}, /api/v1/login-logs/*, GET
+p, user, {tenant}, /api/v1/logs/login, GET
+p, user, {tenant}, /api/v1/logs/login/detail, GET
 
 # 操作日志
-p, user, {tenant}, /api/v1/operation-logs, GET
-p, user, {tenant}, /api/v1/operation-logs/*, GET
+p, user, {tenant}, /api/v1/logs/operation, GET
+p, user, {tenant}, /api/v1/logs/operation/detail, GET
+
+# 部门查看
+p, user, {tenant}, /api/v1/departments, GET
+p, user, {tenant}, /api/v1/departments/tree, GET
+p, user, {tenant}, /api/v1/departments/detail, GET
+p, user, {tenant}, /api/v1/departments/children, GET
+
+# 岗位查看
+p, user, {tenant}, /api/v1/positions, GET
+p, user, {tenant}, /api/v1/positions/all, GET
+p, user, {tenant}, /api/v1/positions/detail, GET
+
+# 字典查看
+p, user, {tenant}, /api/v1/dicts, GET
+p, user, {tenant}, /api/v1/dicts/types, GET
+
+# 视频管理（普通用户可以上传、查看和删除自己的视频）
+p, user, {tenant}, /api/v1/videos, POST
+p, user, {tenant}, /api/v1/videos, GET
+p, user, {tenant}, /api/v1/videos/detail, GET
+p, user, {tenant}, /api/v1/videos, DELETE
+p, user, {tenant}, /api/v1/videos/batch-delete, DELETE
+p, user, {tenant}, /api/v1/videos/detect, POST
+p, user, {tenant}, /api/v1/videos/retry-detect, POST
+p, user, {tenant}, /api/v1/videos/risks, GET
+p, user, {tenant}, /api/v1/videos/signature, POST
+
+# 设备查看和编辑
+p, user, {tenant}, /api/v1/devices, GET
+p, user, {tenant}, /api/v1/devices/detail, GET
+p, user, {tenant}, /api/v1/devices, PUT
+p, user, {tenant}, /api/v1/devices/apply, POST
+
+# 接入设备查看
+p, user, {tenant}, /api/v1/devices/access, GET
 
 # 认证相关
 p, user, {tenant}, /api/v1/auth/logout, POST
 
+# 边缘节点相关
+p, user, {tenant}, /api/v1/edge/pending, GET
+p, user, {tenant}, /api/v1/edge/pull-stream, POST
+p, user, {tenant}, /api/v1/edge/playlist, GET
+p, user, {tenant}, /api/v1/edge/playlist/push, POST
+p, user, {tenant}, /api/v1/edge/control, POST
+p, user, {tenant}, /api/v1/edge/insert, POST
+p, user, {tenant}, /api/v1/edge/online, GET
+p, user, {tenant}, /api/v1/edge/stream/pull, GET
+
 # ========== 审计员策略 ==========
 # 当前用户信息
-p, auditor, {tenant}, /api/v1/profile, GET
+p, auditor, {tenant}, /api/v1/user/profile, GET
+p, auditor, {tenant}, /api/v1/user/password/change, POST
 
-# 用户查看（只读）
+# 租户查看（只读，用于跨租户监管）
+p, auditor, {tenant}, /api/v1/tenants/all, GET
+
+# 用户管理（新增、修改、删除）
 p, auditor, {tenant}, /api/v1/users, GET
-p, auditor, {tenant}, /api/v1/users/*, GET
+p, auditor, {tenant}, /api/v1/users, POST
+p, auditor, {tenant}, /api/v1/users/detail, GET
+p, auditor, {tenant}, /api/v1/users, PUT
+p, auditor, {tenant}, /api/v1/users, DELETE
+p, auditor, {tenant}, /api/v1/users/batch-delete, DELETE
+p, auditor, {tenant}, /api/v1/users/status, PUT
+p, auditor, {tenant}, /api/v1/users/roles, GET
+p, auditor, {tenant}, /api/v1/users/roles, PUT
+p, auditor, {tenant}, /api/v1/users/password/reset, POST
 
 # 角色查看（只读）
 p, auditor, {tenant}, /api/v1/roles, GET
-p, auditor, {tenant}, /api/v1/roles/*, GET
+p, auditor, {tenant}, /api/v1/roles/all, GET
+p, auditor, {tenant}, /api/v1/roles/detail, GET
 
 # 菜单查看（只读）
 p, auditor, {tenant}, /api/v1/menus, GET
 p, auditor, {tenant}, /api/v1/menus/all, GET
 p, auditor, {tenant}, /api/v1/menus/tree, GET
-p, auditor, {tenant}, /api/v1/menus/*, GET
+p, auditor, {tenant}, /api/v1/menus/detail, GET
 
 # 用户菜单
 p, auditor, {tenant}, /api/v1/user/menus, GET
-p, auditor, {tenant}, /api/v1/user/buttons/*, GET
+p, auditor, {tenant}, /api/v1/user/buttons, GET
 
-# 登录日志
-p, auditor, {tenant}, /api/v1/login-logs, GET
-p, auditor, {tenant}, /api/v1/login-logs/*, GET
+# 登录日志（跨租户查看）
+p, auditor, {tenant}, /api/v1/logs/login, GET
+p, auditor, {tenant}, /api/v1/logs/login/detail, GET
 
-# 操作日志
-p, auditor, {tenant}, /api/v1/operation-logs, GET
-p, auditor, {tenant}, /api/v1/operation-logs/*, GET
+# 操作日志（跨租户查看）
+p, auditor, {tenant}, /api/v1/logs/operation, GET
+p, auditor, {tenant}, /api/v1/logs/operation/detail, GET
+
+# 视频管理（跨租户查看）
+p, auditor, {tenant}, /api/v1/videos, GET
+p, auditor, {tenant}, /api/v1/videos/detail, GET
+p, auditor, {tenant}, /api/v1/videos/risks, GET
+p, auditor, {tenant}, /api/v1/videos/risk-operations, GET
+
+# 部门查看（只读）
+p, auditor, {tenant}, /api/v1/departments, GET
+p, auditor, {tenant}, /api/v1/departments/tree, GET
+p, auditor, {tenant}, /api/v1/departments/detail, GET
+p, auditor, {tenant}, /api/v1/departments/children, GET
+
+# 岗位查看（只读）
+p, auditor, {tenant}, /api/v1/positions, GET
+p, auditor, {tenant}, /api/v1/positions/all, GET
+p, auditor, {tenant}, /api/v1/positions/detail, GET
+
+# 字典查看
+p, auditor, {tenant}, /api/v1/dicts, GET
+p, auditor, {tenant}, /api/v1/dicts/types, GET
+
+# 设备查看（只读）
+p, auditor, {tenant}, /api/v1/devices, GET
+p, auditor, {tenant}, /api/v1/devices/detail, GET
+
+# 接入设备查看
+p, auditor, {tenant}, /api/v1/devices/access, GET
 
 # 认证相关
 p, auditor, {tenant}, /api/v1/auth/logout, POST
@@ -119,6 +292,12 @@ p, auditor, {tenant}, /api/v1/auth/logout, POST
 # 租户切换（审计员可以在有权限的租户之间切换）
 p, auditor, {tenant}, /api/v1/auth/available-tenants, GET
 p, auditor, {tenant}, /api/v1/auth/switch-tenant, POST
+
+# 边缘节点相关（只读）
+p, auditor, {tenant}, /api/v1/edge/pending, GET
+p, auditor, {tenant}, /api/v1/edge/playlist, GET
+p, auditor, {tenant}, /api/v1/edge/online, GET
+p, auditor, {tenant}, /api/v1/edge/stream/pull, GET
 
 # ========== 用户角色绑定示例 ==========
 # 取消注释下面行来绑定用户到角色

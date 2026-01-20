@@ -4,7 +4,6 @@ import (
 	"admin/internal/dto"
 	"admin/internal/service"
 	"admin/pkg/response"
-	"admin/pkg/xerr"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,21 +27,17 @@ func NewLoginLogHandler(loginLogService *service.LoginLogService) *LoginLogHandl
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param log_id path string true "日志ID"
-// @Success 200 {object} response.Response{data=dto.LoginLogResponse} "获取成功"
-// @Failure 400 {object} response.Response "请求参数错误"
-// @Failure 401 {object} response.Response "未授权访问"
-// @Failure 404 {object} response.Response "资源不存在"
-// @Failure 500 {object} response.Response "服务器内部错误"
-// @Router /api/v1/login-logs/{log_id} [get]
+// @Param log_id query string true "日志ID"
+// @Success 200 {object} response.Response{data=dto.LoginLogInfo} "获取成功"
+// @Router /api/v1/logs/login/detail [get]
 func (h *LoginLogHandler) GetLoginLog(c *gin.Context) {
-	logID := c.Param("log_id")
-	if logID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.LoginLogDetailRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	resp, err := h.loginLogService.GetLoginLogByID(c.Request.Context(), logID)
+	resp, err := h.loginLogService.GetLoginLogByID(c.Request.Context(), req.LogID)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -62,16 +57,13 @@ func (h *LoginLogHandler) GetLoginLog(c *gin.Context) {
 // @Param page_size query int false "每页数量" default(10)
 // @Param user_id query string false "用户ID筛选"
 // @Param user_name query string false "用户名筛选"
-// @Param login_type query string false "登录类型筛选(PASSWORD/SSO/OAUTH)"
-// @Param status query int false "状态筛选(1:成功,0:失败)"
+// @Param login_type query string false "登录类型筛选(PASSWORD:密码登录,EMAIL:邮箱登录,PHONE:手机号登录,SSO:单点登录,OAUTH:第三方登录)" Enums(PASSWORD,EMAIL,PHONE,SSO,OAUTH)
+// @Param status query int false "状态筛选(0:失败,1:成功)" Enums(0,1)
 // @Param start_date query int false "开始时间(毫秒时间戳)"
 // @Param end_date query int false "结束时间(毫秒时间戳)"
 // @Param ip_address query string false "IP地址筛选"
 // @Success 200 {object} response.Response{data=dto.ListLoginLogsResponse} "获取成功"
-// @Failure 400 {object} response.Response "请求参数错误"
-// @Failure 401 {object} response.Response "未授权访问"
-// @Failure 500 {object} response.Response "服务器内部错误"
-// @Router /api/v1/login-logs [get]
+// @Router /api/v1/logs/login [get]
 func (h *LoginLogHandler) ListLoginLogs(c *gin.Context) {
 	var req dto.ListLoginLogsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {

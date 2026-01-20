@@ -14,10 +14,12 @@ func SeedTenant(db *gorm.DB, tenantID string) (*model.Tenant, error) {
 	if err := db.Where("tenant_code = ?", constants.DefaultTenantCode).First(&tenant).Error; err != nil {
 		// 租户不存在，创建新租户
 		tenant = model.Tenant{
-			TenantID:   tenantID,
-			TenantCode: constants.DefaultTenantCode,
-			Name:       "默认租户",
-			Status:     1,
+			TenantID:     tenantID,
+			TenantCode:   constants.DefaultTenantCode,
+			Name:         "默认租户",
+			ContactName:  "张三",
+			ContactPhone: "13800138000",
+			Status:       1,
 		}
 		if err := db.Create(&tenant).Error; err != nil {
 			return nil, fmt.Errorf("创建默认租户失败: %w", err)

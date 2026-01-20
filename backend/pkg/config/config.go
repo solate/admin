@@ -23,7 +23,16 @@ type AppConfig struct {
 }
 
 type ServerConfig struct {
-	Mode string `mapstructure:"mode"`
+	Mode string    `mapstructure:"mode"`
+	TLS  TLSConfig `mapstructure:"tls"`
+}
+
+// TLSConfig TLS/HTTPS 配置
+type TLSConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`   // 是否启用 TLS
+	CertFile string `mapstructure:"cert_file"` // 证书文件路径
+	KeyFile  string `mapstructure:"key_file"`  // 私钥文件路径
+	// MinVersion  string `mapstructure:"min_version"`  // 最低 TLS 版本 (1.0, 1.1, 1.2, 1.3)
 }
 
 type LogConfig struct {

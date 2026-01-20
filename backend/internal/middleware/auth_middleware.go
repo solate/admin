@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"net/http"
 
 	"admin/pkg/jwt"
 	"admin/pkg/response"
@@ -9,6 +10,7 @@ import (
 	"admin/pkg/xerr"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 )
 
 // Auth JWT认证中间件
@@ -20,7 +22,7 @@ func AuthMiddleware(jwtManager *jwt.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
 		if token == "" {
-			response.Error(c, xerr.ErrUnauthorized)
+			response.ErrorWithHttpCode(c, http.StatusUnauthorized, xerr.ErrUnauthorized)
 			c.Abort()
 			return
 		}
@@ -28,7 +30,7 @@ func AuthMiddleware(jwtManager *jwt.Manager) gin.HandlerFunc {
 		// // 解析 "Bearer <token>" 格式
 		// parts := strings.SplitN(token, " ", 2)
 		// if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-		// 	response.Error(c, xerr.ErrTokenInvalid)
+		// 	response.ErrorWithHttpCode(c, http.StatusUnauthorized, xerr.ErrTokenInvalid)
 		// 	c.Abort()
 		// 	return
 		// }
@@ -37,16 +39,39 @@ func AuthMiddleware(jwtManager *jwt.Manager) gin.HandlerFunc {
 		// 验证 token（签名、过期、黑名单）
 		claims, err := jwtManager.VerifyAccessToken(c.Request.Context(), token)
 		if err != nil {
-			response.Error(c, err)
+			// VerifyAccessToken 已经将 JWT 错误转换为 xerr 错误
+			// 这里只需要判断是否是 xerr.ErrTokenExpired 即可
+			if err == xerr.ErrTokenExpired {
+				response.ErrorWithHttpCode(c, http.StatusUnauthorized, xerr.ErrTokenExpired)
+				c.Abort()
+				return
+			}
+			// 其他未知错误也返回 token 无效
+			response.ErrorWithHttpCode(c, http.StatusUnauthorized, xerr.ErrTokenInvalid)
 			c.Abort()
 			return
 		}
+
+		// 调试日志：打印 JWT claims 中的租户信息
+		log.Debug().
+			Str("tenant_id", claims.TenantID).
+			Str("tenant_code", claims.TenantCode).
+			Str("user_id", claims.UserID).
+			Str("user_name", claims.UserName).
+			Strs("roles", claims.Roles).
+			Msg("[AuthMiddleware] JWT claims 解析成功")
 
 		// 将认证信息注入到 request.Context 中，供 service 层使用
 		// SetAuthContext 已经包含了租户ID设置，与database包使用相同的key
 		requestCtx := SetAuthContext(c.Request.Context(), claims)
 		// 更新 request 的 context
 		c.Request = c.Request.WithContext(requestCtx)
+
+		// 调试日志：验证上下文是否设置成功
+		log.Debug().
+			Str("ctx_tenant_id", xcontext.GetTenantID(requestCtx)).
+			Str("ctx_tenant_code", xcontext.GetTenantCode(requestCtx)).
+			Msg("[AuthMiddleware] 上下文设置完成")
 
 		c.Next()
 	}

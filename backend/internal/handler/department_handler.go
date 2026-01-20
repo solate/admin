@@ -4,8 +4,6 @@ import (
 	"admin/internal/dto"
 	"admin/internal/service"
 	"admin/pkg/response"
-	"admin/pkg/xerr"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,11 +28,11 @@ func NewDepartmentHandler(deptService *service.DepartmentService) *DepartmentHan
 // @Produce json
 // @Security ApiKeyAuth
 // @Param request body dto.CreateDepartmentRequest true "创建部门请求参数"
-// @Success 200 {object} response.Response{data=dto.DepartmentResponse} "创建成功"
+// @Success 200 {object} response.Response{data=dto.DepartmentInfo} "创建成功"
 // @Router /api/v1/departments [post]
 func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 	var req dto.CreateDepartmentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, err)
 		return
 	}
@@ -55,17 +53,17 @@ func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param department_id path string true "部门ID"
-// @Success 200 {object} response.Response{data=dto.DepartmentResponse} "获取成功"
-// @Router /api/v1/departments/{department_id} [get]
+// @Param department_id query string true "部门ID"
+// @Success 200 {object} response.Response{data=dto.DepartmentInfo} "获取成功"
+// @Router /api/v1/departments/detail [get]
 func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
-	departmentID := c.Param("department_id")
-	if departmentID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.DepartmentDetailRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	resp, err := h.deptService.GetDepartmentByID(c.Request.Context(), departmentID)
+	resp, err := h.deptService.GetDepartmentByID(c.Request.Context(), req.DepartmentID)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -81,24 +79,17 @@ func (h *DepartmentHandler) GetDepartment(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param department_id path string true "部门ID"
 // @Param request body dto.UpdateDepartmentRequest true "更新部门请求参数"
-// @Success 200 {object} response.Response{data=dto.DepartmentResponse} "更新成功"
-// @Router /api/v1/departments/{department_id} [put]
+// @Success 200 {object} response.Response{data=dto.DepartmentInfo} "更新成功"
+// @Router /api/v1/departments [put]
 func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
-	departmentID := c.Param("department_id")
-	if departmentID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
-		return
-	}
-
 	var req dto.UpdateDepartmentRequest
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	resp, err := h.deptService.UpdateDepartment(c.Request.Context(), departmentID, &req)
+	resp, err := h.deptService.UpdateDepartment(c.Request.Context(), req.DepartmentID, &req)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -114,22 +105,47 @@ func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param department_id path string true "部门ID"
+// @Param request body dto.DepartmentDeleteRequest true "删除部门请求参数"
 // @Success 200 {object} response.Response "删除成功"
-// @Router /api/v1/departments/{department_id} [delete]
+// @Router /api/v1/departments [delete]
 func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
-	departmentID := c.Param("department_id")
-	if departmentID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.DepartmentDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	if err := h.deptService.DeleteDepartment(c.Request.Context(), departmentID); err != nil {
+	if err := h.deptService.DeleteDepartment(c.Request.Context(), req.DepartmentID); err != nil {
 		response.Error(c, err)
 		return
 	}
 
 	response.Success(c, gin.H{"deleted": true})
+}
+
+// BatchDeleteDepartments 批量删除部门
+// @Summary 批量删除部门
+// @Description 批量软删除部门（无子部门且无关联用户的部门才能删除）
+// @Tags 部门管理
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param request body dto.DepartmentBatchDeleteRequest true "批量删除请求参数"
+// @Success 200 {object} response.Response "删除成功"
+// @Router /api/v1/departments/batch-delete [delete]
+func (h *DepartmentHandler) BatchDeleteDepartments(c *gin.Context) {
+	var req dto.DepartmentBatchDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	if err := h.deptService.BatchDeleteDepartments(c.Request.Context(), req.DepartmentIDs); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{"deleted": true, "count": len(req.DepartmentIDs)})
 }
 
 // ListDepartments 获取部门列表
@@ -141,8 +157,8 @@ func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
-// @Param keyword query string false "关键词搜索（部门名称）"
-// @Param status query int false "状态筛选(1:启用,2:禁用)"
+// @Param department_name query string false "部门名称(模糊匹配)"
+// @Param status query int false "状态筛选(1:启用,2:禁用)" Enums(1,2)
 // @Param parent_id query string false "父部门ID"
 // @Success 200 {object} response.Response{data=dto.ListDepartmentsResponse} "获取成功"
 // @Router /api/v1/departments [get]
@@ -188,17 +204,17 @@ func (h *DepartmentHandler) GetDepartmentTree(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param department_id path string true "部门ID"
-// @Success 200 {object} response.Response{data=[]dto.DepartmentResponse} "获取成功"
-// @Router /api/v1/departments/{department_id}/children [get]
+// @Param department_id query string true "部门ID"
+// @Success 200 {object} response.Response{data=[]dto.DepartmentInfo} "获取成功"
+// @Router /api/v1/departments/children [get]
 func (h *DepartmentHandler) GetChildren(c *gin.Context) {
-	departmentID := c.Param("department_id")
-	if departmentID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.DepartmentDetailRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	resp, err := h.deptService.GetChildren(c.Request.Context(), departmentID)
+	resp, err := h.deptService.GetChildren(c.Request.Context(), req.DepartmentID)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -214,30 +230,17 @@ func (h *DepartmentHandler) GetChildren(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param department_id path string true "部门ID"
-// @Param status path int true "状态(1:启用,2:禁用)"
+// @Param request body dto.DepartmentStatusRequest true "更新状态请求参数"
 // @Success 200 {object} response.Response "更新成功"
-// @Router /api/v1/departments/{department_id}/status/{status} [put]
+// @Router /api/v1/departments/status [put]
 func (h *DepartmentHandler) UpdateDepartmentStatus(c *gin.Context) {
-	departmentID := c.Param("department_id")
-	if departmentID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.DepartmentStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	statusStr := c.Param("status")
-	if statusStr == "" {
-		response.Error(c, xerr.ErrInvalidParams)
-		return
-	}
-
-	status, err := strconv.Atoi(statusStr)
-	if err != nil {
-		response.Error(c, xerr.ErrInvalidParams)
-		return
-	}
-
-	if err := h.deptService.UpdateDepartmentStatus(c.Request.Context(), departmentID, status); err != nil {
+	if err := h.deptService.UpdateDepartmentStatus(c.Request.Context(), req.DepartmentID, req.Status); err != nil {
 		response.Error(c, err)
 		return
 	}

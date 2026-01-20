@@ -4,7 +4,6 @@ import (
 	"admin/internal/dto"
 	"admin/internal/service"
 	"admin/pkg/response"
-	"admin/pkg/xerr"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,21 +27,17 @@ func NewOperationLogHandler(operationLogService *service.OperationLogService) *O
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param log_id path string true "日志ID"
-// @Success 200 {object} response.Response{data=dto.OperationLogResponse} "获取成功"
-// @Failure 400 {object} response.Response "请求参数错误"
-// @Failure 401 {object} response.Response "未授权访问"
-// @Failure 404 {object} response.Response "资源不存在"
-// @Failure 500 {object} response.Response "服务器内部错误"
-// @Router /api/v1/operation-logs/{log_id} [get]
+// @Param log_id query string true "日志ID"
+// @Success 200 {object} response.Response{data=dto.OperationLogInfo} "获取成功"
+// @Router /api/v1/logs/operation/detail [get]
 func (h *OperationLogHandler) GetOperationLog(c *gin.Context) {
-	logID := c.Param("log_id")
-	if logID == "" {
-		response.Error(c, xerr.ErrInvalidParams)
+	var req dto.OperationLogDetailRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.Error(c, err)
 		return
 	}
 
-	resp, err := h.operationLogService.GetOperationLogByID(c.Request.Context(), logID)
+	resp, err := h.operationLogService.GetOperationLogByID(c.Request.Context(), req.LogID)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -61,17 +56,14 @@ func (h *OperationLogHandler) GetOperationLog(c *gin.Context) {
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
 // @Param module query string false "模块筛选"
-// @Param operation_type query string false "操作类型筛选(CREATE/UPDATE/DELETE/QUERY)"
+// @Param operation_type query string false "操作类型筛选(CREATE:创建,UPDATE:更新,DELETE:删除,BATCH_DELETE:批量删除,QUERY:查询,EXPORT:导出,IMPORT:导入,LOGIN:登录,LOGOUT:登出)" Enums(CREATE,UPDATE,DELETE,BATCH_DELETE,QUERY,EXPORT,IMPORT,LOGIN,LOGOUT)
 // @Param resource_type query string false "资源类型筛选"
 // @Param user_name query string false "用户名筛选"
-// @Param status query int false "状态筛选(1:成功,2:失败)"
+// @Param status query int false "状态筛选(1:成功,2:失败)" Enums(1,2)
 // @Param start_date query int false "开始时间(毫秒时间戳)"
 // @Param end_date query int false "结束时间(毫秒时间戳)"
 // @Success 200 {object} response.Response{data=dto.ListOperationLogsResponse} "获取成功"
-// @Failure 400 {object} response.Response "请求参数错误"
-// @Failure 401 {object} response.Response "未授权访问"
-// @Failure 500 {object} response.Response "服务器内部错误"
-// @Router /api/v1/operation-logs [get]
+// @Router /api/v1/logs/operation [get]
 func (h *OperationLogHandler) ListOperationLogs(c *gin.Context) {
 	var req dto.ListOperationLogsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {

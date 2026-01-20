@@ -1,7 +1,7 @@
 package service
 
 import (
-	"admin/internal/dal/model"
+	"admin/internal/converter"
 	"admin/internal/dto"
 	"admin/internal/repository"
 	"admin/pkg/pagination"
@@ -25,7 +25,7 @@ func NewOperationLogService(operationLogRepo *repository.OperationLogRepo) *Oper
 }
 
 // GetOperationLogByID 根据ID获取操作日志
-func (s *OperationLogService) GetOperationLogByID(ctx context.Context, logID string) (*dto.OperationLogResponse, error) {
+func (s *OperationLogService) GetOperationLogByID(ctx context.Context, logID string) (*dto.OperationLogInfo, error) {
 	log, err := s.operationLogRepo.GetByID(ctx, logID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -34,7 +34,7 @@ func (s *OperationLogService) GetOperationLogByID(ctx context.Context, logID str
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询操作日志失败", err)
 	}
 
-	return s.toOperationLogResponse(log), nil
+	return converter.ModelToOperationLogInfo(log), nil
 }
 
 // ListOperationLogs 获取操作日志列表
@@ -61,42 +61,8 @@ func (s *OperationLogService) ListOperationLogs(ctx context.Context, req *dto.Li
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询操作日志列表失败", err)
 	}
 
-	responses := make([]*dto.OperationLogResponse, len(logs))
-	for i, log := range logs {
-		responses[i] = s.toOperationLogResponse(log)
-	}
-
 	return &dto.ListOperationLogsResponse{
 		Response: pagination.NewResponse(req.Request, total),
-		List:     responses,
+		List:     converter.ModelListToOperationLogInfoList(logs),
 	}, nil
-}
-
-// toOperationLogResponse 转换为操作日志响应格式
-func (s *OperationLogService) toOperationLogResponse(log *model.OperationLog) *dto.OperationLogResponse {
-	resp := &dto.OperationLogResponse{
-		LogID:         log.LogID,
-		TenantID:      log.TenantID,
-		UserID:        log.UserID,
-		UserName:      log.UserName,
-		Module:        log.Module,
-		OperationType: log.OperationType,
-		ResourceType:  log.ResourceType,
-		ResourceID:    log.ResourceID,
-		ResourceName:  log.ResourceName,
-		RequestMethod: log.RequestMethod,
-		RequestPath:   log.RequestPath,
-		Status:        int(log.Status),
-		ErrorMessage:  log.ErrorMessage,
-		IPAddress:     log.IPAddress,
-		UserAgent:     log.UserAgent,
-		CreatedAt:     log.CreatedAt,
-	}
-
-	// 处理可选字段 - 现在字段是 string 类型，直接赋值
-	resp.RequestParams = log.RequestParams
-	resp.OldValue = log.OldValue
-	resp.NewValue = log.NewValue
-
-	return resp
 }

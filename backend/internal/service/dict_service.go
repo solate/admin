@@ -1,11 +1,14 @@
 package service
 
 import (
+	"admin/internal/converter"
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
 	"admin/pkg/audit"
 	"admin/pkg/cache"
+	"admin/pkg/constants"
+	"admin/pkg/convert"
 	"admin/pkg/idgen"
 	"admin/pkg/pagination"
 	"admin/pkg/xcontext"
@@ -42,13 +45,13 @@ func (s *DictService) CreateSystemDict(ctx context.Context, req *dto.CreateSyste
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithCreate(audit.ModuleDict),
+				audit.WithCreate(constants.ModuleDict),
 				audit.WithError(err),
 			)
 		} else if dictType != nil {
 			s.recorder.Log(ctx,
-				audit.WithCreate(audit.ModuleDict),
-				audit.WithResource(audit.ResourceDict, dictType.TypeID, dictType.TypeName),
+				audit.WithCreate(constants.ModuleDict),
+				audit.WithResource(constants.ResourceTypeDict, dictType.TypeID, dictType.TypeName),
 				audit.WithValue(nil, dictType),
 			)
 		}
@@ -125,13 +128,13 @@ func (s *DictService) UpdateSystemDict(ctx context.Context, typeCode string, req
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithUpdate(audit.ModuleDict),
+				audit.WithUpdate(constants.ModuleDict),
 				audit.WithError(err),
 			)
 		} else if newDictType != nil {
 			s.recorder.Log(ctx,
-				audit.WithUpdate(audit.ModuleDict),
-				audit.WithResource(audit.ResourceDict, newDictType.TypeID, newDictType.TypeName),
+				audit.WithUpdate(constants.ModuleDict),
+				audit.WithResource(constants.ResourceTypeDict, newDictType.TypeID, newDictType.TypeName),
 				audit.WithValue(oldDictType, newDictType),
 			)
 		}
@@ -216,13 +219,13 @@ func (s *DictService) DeleteSystemDict(ctx context.Context, typeCode string) (er
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithDelete(audit.ModuleDict),
+				audit.WithDelete(constants.ModuleDict),
 				audit.WithError(err),
 			)
 		} else if dictType != nil {
 			s.recorder.Log(ctx,
-				audit.WithDelete(audit.ModuleDict),
-				audit.WithResource(audit.ResourceDict, dictType.TypeID, dictType.TypeName),
+				audit.WithDelete(constants.ModuleDict),
+				audit.WithResource(constants.ResourceTypeDict, dictType.TypeID, dictType.TypeName),
 				audit.WithValue(dictType, nil),
 			)
 			log.Info().Str("type_id", dictType.TypeID).Str("type_code", typeCode).Msg("删除系统字典成功")
@@ -257,28 +260,90 @@ func (s *DictService) DeleteSystemDict(ctx context.Context, typeCode string) (er
 	return nil
 }
 
-// ListDictTypes 获取字典类型列表（超管专用）
-func (s *DictService) ListDictTypes(ctx context.Context, req *dto.ListDictTypesRequest) (*dto.ListDictTypesResponse, error) {
-	dictTypes, total, err := s.dictTypeRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.Keyword)
+// BatchDeleteSystemDicts 批量删除系统字典
+func (s *DictService) BatchDeleteSystemDicts(ctx context.Context, typeIDs []string) (err error) {
+	var dictTypeMap map[string]*model.DictType
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithBatchDelete(constants.ModuleDict),
+				audit.WithError(err),
+			)
+		} else if len(dictTypeMap) > 0 {
+			// 收集资源信息用于批量审计日志
+			ids := make([]string, 0, len(dictTypeMap))
+			names := make([]string, 0, len(dictTypeMap))
+			for _, dictType := range dictTypeMap {
+				ids = append(ids, dictType.TypeID)
+				names = append(names, dictType.TypeName)
+			}
+			// 记录批量删除审计日志（单条日志记录所有资源）
+			s.recorder.Log(ctx,
+				audit.WithBatchDelete(constants.ModuleDict),
+				audit.WithBatchResource(constants.ResourceTypeDict, ids, names),
+				audit.WithValue(dictTypeMap, nil),
+			)
+			log.Info().Strs("type_ids", typeIDs).Int("count", len(typeIDs)).Msg("批量删除系统字典成功")
+		}
+	}()
+
+	// 获取所有字典类型信息
+	dictTypes, err := s.dictTypeRepo.GetByIDs(ctx, typeIDs)
 	if err != nil {
-		log.Error().Err(err).Str("keyword", req.Keyword).Msg("查询字典类型列表失败")
-		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询字典类型列表失败", err)
+		log.Error().Err(err).Strs("type_ids", typeIDs).Msg("查询字典类型信息失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "查询字典类型信息失败", err)
+	}
+	dictTypeMap = convert.ToMap(dictTypes, func(dt *model.DictType) string { return dt.TypeID })
+
+	// 验证所有字典类型都存在
+	if len(dictTypeMap) != len(typeIDs) {
+		var missingIDs []string
+		for _, id := range typeIDs {
+			if _, exists := dictTypeMap[id]; !exists {
+				missingIDs = append(missingIDs, id)
+			}
+		}
+		log.Warn().Strs("missing_ids", missingIDs).Msg("部分字典类型不存在")
+		return xerr.New(xerr.ErrNotFound.Code, "部分字典类型不存在")
 	}
 
-	// 转换为响应格式
-	dictTypeResponses := make([]*dto.DictTypeResponse, len(dictTypes))
-	for i, dictType := range dictTypes {
-		dictTypeResponses[i] = s.toDictTypeResponse(dictType)
+	// 批量删除字典项（先删除子记录）
+	for _, typeID := range typeIDs {
+		if err := s.dictItemRepo.DeleteByTypeID(ctx, typeID); err != nil {
+			log.Error().Err(err).Str("type_id", typeID).Msg("删除字典项失败")
+			return xerr.Wrap(xerr.ErrInternal.Code, "删除字典项失败", err)
+		}
+	}
+
+	// 批量删除字典类型
+	if err := s.dictTypeRepo.BatchDelete(ctx, typeIDs); err != nil {
+		log.Error().Err(err).Strs("type_ids", typeIDs).Msg("批量删除字典类型失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "批量删除字典类型失败", err)
+	}
+
+	return nil
+}
+
+// ListDictTypes 获取字典类型列表（超管专用）
+func (s *DictService) ListDictTypes(ctx context.Context, req *dto.ListDictTypesRequest) (*dto.ListDictTypesResponse, error) {
+	dictTypes, total, err := s.dictTypeRepo.ListWithFilters(ctx, req.GetOffset(), req.GetLimit(), req.TypeName, req.TypeCode)
+	if err != nil {
+		log.Error().Err(err).
+			Str("type_name", req.TypeName).
+			Str("type_code", req.TypeCode).
+			Msg("查询字典类型列表失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询字典类型列表失败", err)
 	}
 
 	return &dto.ListDictTypesResponse{
 		Response: pagination.NewResponse(req.Request, total),
-		List:     dictTypeResponses,
+		List:     converter.ModelListToDictTypeInfoList(dictTypes),
 	}, nil
 }
 
 // GetDictByCode 获取字典（合并系统+覆盖）
-func (s *DictService) GetDictByCode(ctx context.Context, typeCode string) (*dto.DictResponse, error) {
+func (s *DictService) GetDictByCode(ctx context.Context, typeCode string) (*dto.DictInfo, error) {
 	currentTenantID := xcontext.GetTenantID(ctx)
 	defaultTenantID := s.tenantCache.GetDefaultTenantID()
 
@@ -293,14 +358,14 @@ func (s *DictService) GetDictByCode(ctx context.Context, typeCode string) (*dto.
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询字典失败", err)
 	}
 
-	// 转换为 Response 格式
-	itemResponses := make([]*dto.DictItemResponse, len(items))
+	// 转换为 Info 格式
+	itemInfos := make([]*dto.DictItemInfo, len(items))
 	for i, item := range items {
 		source := "system"
 		if item.TenantID == currentTenantID {
 			source = "custom"
 		}
-		itemResponses[i] = &dto.DictItemResponse{
+		itemInfos[i] = &dto.DictItemInfo{
 			ItemID: item.ItemID,
 			Label:  item.Label,
 			Value:  item.Value,
@@ -309,11 +374,11 @@ func (s *DictService) GetDictByCode(ctx context.Context, typeCode string) (*dto.
 		}
 	}
 
-	return &dto.DictResponse{
+	return &dto.DictInfo{
 		TypeID:   dictType.TypeID,
 		TypeCode: dictType.TypeCode,
 		TypeName: dictType.TypeName,
-		Items:    itemResponses,
+		Items:    itemInfos,
 	}, nil
 }
 
@@ -544,17 +609,4 @@ func (s *DictService) DeleteSystemDictItem(ctx context.Context, typeCode, value 
 
 	log.Info().Str("type_id", dictType.TypeID).Str("type_code", typeCode).Str("value", value).Msg("删除系统字典项成功")
 	return nil
-}
-
-// toDictTypeResponse 转换为字典类型响应格式
-func (s *DictService) toDictTypeResponse(dictType *model.DictType) *dto.DictTypeResponse {
-	return &dto.DictTypeResponse{
-		TypeID:      dictType.TypeID,
-		TenantID:    dictType.TenantID,
-		TypeCode:    dictType.TypeCode,
-		TypeName:    dictType.TypeName,
-		Description: dictType.Description,
-		CreatedAt:   dictType.CreatedAt,
-		UpdatedAt:   dictType.UpdatedAt,
-	}
 }

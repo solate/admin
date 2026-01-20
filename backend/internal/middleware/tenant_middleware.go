@@ -1,55 +1,43 @@
 package middleware
 
 import (
-	"admin/internal/repository"
-	"admin/pkg/database"
-	"admin/pkg/response"
+	"admin/pkg/constants"
 	"admin/pkg/xcontext"
-	"admin/pkg/xerr"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-// SkipTenantCheck 跳过租户检查的中间件
+// TenantSkipMiddleware 跳过租户检查的中间件
 //
-// 说明：
-// - 某些接口（如登录、注册）在处理时需要跨租户查询，此时需要跳过 GORM 的租户拦截器
-// - 该中间件会在 context 中设置跳过标记，后续的数据库查询将不再自动添加租户条件
-// - 使用场景：登录、注册、获取验证码等无需预先知道租户信息的接口
+// 职责：
+//  1. 超管（super_admin 角色）：跳过租户检查，可以查看所有租户数据
+//  2. 审核员（auditor 角色）：跳过租户检查，可以查看所有租户数据
+//  3. 普通用户：不做任何处理，保持原有的租户检查
+//
+// 执行顺序：CasbinMiddleware（权限校验） → SkipTenantCheck（租户检查跳过） → AuditMiddleware
+//
+// 工作原理：
+//   - 能执行到这里说明已经通过了 CasbinMiddleware 的权限验证
+//   - 超管和审核员在 Casbin 中配置了可访问的接口
+//   - 这些接口允许跨租户查看数据，所以跳过租户检查
+//   - 后续的数据库查询将不再自动添加租户条件
+//
+// 使用场景：
+//   - 登录、注册、获取验证码等无需预先知道租户信息的接口（对所有用户）
+//   - 需要跨租户查看数据的接口（仅超管和审核员，通过 Casbin 验证）
 //
 // 注意：
-// - 该中间件应谨慎使用，仅在明确需要跨租户查询的接口上使用
-// - 正常的业务接口都应该经过租户检查，确保数据隔离
-func SkipTenantCheck() gin.HandlerFunc {
+//   - 正常的业务接口都应该经过租户检查，确保数据隔离
+//   - 该中间件在认证路由组上使用，配合 Casbin 实现权限控制
+func TenantSkipMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := database.SkipTenantCheck(c.Request.Context())
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
-	}
-}
-
-func TenantFromCode(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tenantCode := c.Param("tenant_code")
-		if tenantCode == "" {
-			response.Error(c, xerr.New(xerr.ErrInvalidParams.Code, "租户编码不能为空"))
-			c.Abort()
-			return
-		}
-
-		tenant, err := repository.NewTenantRepo(db).GetByCodeManual(c.Request.Context(), tenantCode)
-		if err != nil {
-			response.Error(c, xerr.New(xerr.ErrNotFound.Code, "租户不存在"))
-			c.Abort()
-			return
-		}
-
 		ctx := c.Request.Context()
-		// xcontext.SetTenantID 和 database.WithTenantID 现在使用相同的 key，只需调用一次
-		ctx = xcontext.SetTenantID(ctx, tenant.TenantID)
-		ctx = xcontext.SetTenantCode(ctx, tenant.TenantCode)
-		c.Request = c.Request.WithContext(ctx)
+
+		// 超管或审核员跳过租户检查
+		if xcontext.HasRole(ctx, constants.SuperAdmin) || xcontext.HasRole(ctx, constants.Auditor) {
+			ctx = xcontext.SkipTenantCheck(ctx)
+			c.Request = c.Request.WithContext(ctx)
+		}
 
 		c.Next()
 	}

@@ -1,7 +1,7 @@
 package service
 
 import (
-	"admin/internal/dal/model"
+	"admin/internal/converter"
 	"admin/internal/dto"
 	"admin/internal/repository"
 	"admin/pkg/audit"
@@ -11,6 +11,7 @@ import (
 	"admin/pkg/constants"
 	"admin/pkg/jwt"
 	"admin/pkg/passwordgen"
+	"admin/pkg/rsapwd"
 	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 	"context"
@@ -32,10 +33,11 @@ type AuthService struct {
 	captcha      *captcha.Manager
 	enforcer     *casbin.Enforcer
 	recorder     *audit.Recorder
+	rsaCipher    *rsapwd.RSACipher // RSA 密码解密器
 }
 
 // NewAuthService 创建认证服务
-func NewAuthService(userRepo *repository.UserRepo, userRoleRepo *repository.UserRoleRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, jwt *jwt.Manager, rdb redis.UniversalClient, enforcer *casbin.Enforcer, recorder *audit.Recorder, config *config.Config) *AuthService {
+func NewAuthService(userRepo *repository.UserRepo, userRoleRepo *repository.UserRoleRepo, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, jwt *jwt.Manager, rdb redis.UniversalClient, enforcer *casbin.Enforcer, recorder *audit.Recorder, config *config.Config, rsaCipher *rsapwd.RSACipher) *AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
 		userRoleRepo: userRoleRepo,
@@ -45,37 +47,39 @@ func NewAuthService(userRepo *repository.UserRepo, userRoleRepo *repository.User
 		captcha:      captcha.NewManager(rdb),
 		enforcer:     enforcer,
 		recorder:     recorder,
+		rsaCipher:    rsaCipher,
 	}
 }
 
 // Login 用户登录
 func (s *AuthService) Login(ctx context.Context, r *http.Request, req *dto.LoginRequest) (*dto.LoginResponse, error) {
-	// 获取租户信息（由 TenantFromCode 中间件设置）
-	tenantID := xcontext.GetTenantID(ctx)
-	tenantCode := xcontext.GetTenantCode(ctx)
-	if tenantCode == "" {
-		log.Error().Str("tenantCode", tenantCode).Msg("租户编码不能为空")
-		return nil, xerr.ErrTenantCodeRequired
-	}
-
 	// 验证码校验
 	if !s.captcha.Verify(req.CaptchaID, req.Captcha) {
 		return nil, xerr.ErrCaptchaInvalid
 	}
 
-	// 查询用户（租户内用户名唯一）
-	user, err := s.userRepo.GetByTenantAndUserName(ctx, tenantID, req.UserName)
+	// 解密前端传来的加密密码
+	// 前端使用 JSEncrypt 库（PKCS#1 v1.5 填充）加密密码
+	// 因此后端必须使用 DecryptPKCS1 方法解密
+	decryptedPassword, err := s.rsaCipher.DecryptPKCS1(req.Password)
+	if err != nil {
+		log.Error().Err(err).Msg("密码解密失败")
+		return nil, xerr.Wrap(xerr.ErrInvalidCredentials.Code, "密码解密失败", err)
+	}
+
+	// 查询用户（通过邮箱全局唯一）
+	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			log.Error().Err(err).Str("username", req.UserName).Str("tenant_id", tenantID).Msg("用户不存在")
+			log.Error().Err(err).Str("email", req.Email).Msg("用户不存在")
 			return nil, xerr.ErrUserNotFound
 		}
-		log.Error().Err(err).Str("username", req.UserName).Str("tenant_id", tenantID).Msg("查询用户失败")
+		log.Error().Err(err).Str("email", req.Email).Msg("查询用户失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
 	}
 
-	// 验证密码
-	if !passwordgen.VerifyPassword(req.Password, user.Password) {
+	// 验证密码（使用解密后的 SHA256 哈希值）
+	if !passwordgen.VerifyPassword(decryptedPassword, user.Password) {
 		return nil, xerr.ErrInvalidCredentials
 	}
 
@@ -84,10 +88,29 @@ func (s *AuthService) Login(ctx context.Context, r *http.Request, req *dto.Login
 		return nil, xerr.ErrUserDisabled
 	}
 
-	// 获取用户在租户中的角色（从 Casbin）
-	roleCodes, err := s.userRoleRepo.GetUserRoles(ctx, user.UserName, tenantCode)
+	// 查询用户所属租户信息(使用手动模式,因为登录接口无租户上下文)
+	tenant, err := s.tenantRepo.GetByIDManual(ctx, user.TenantID)
 	if err != nil {
-		log.Error().Err(err).Str("username", user.UserName).Str("tenant_code", tenantCode).Msg("查询用户角色失败")
+		if err == gorm.ErrRecordNotFound {
+			log.Error().Err(err).Str("user_id", user.UserID).Str("tenant_id", user.TenantID).Msg("用户所属租户不存在")
+			return nil, xerr.ErrTenantNotFound
+		}
+		log.Error().Err(err).Str("tenant_id", user.TenantID).Msg("查询租户信息失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询租户信息失败", err)
+	}
+
+	// 检查租户状态
+	if tenant.Status != constants.StatusEnabled {
+		log.Error().Str("tenant_id", tenant.TenantID).Msg("用户所属租户已禁用")
+		return nil, xerr.ErrTenantDisabled
+	}
+
+	// 获取用户角色（从 Casbin）
+	// 关键修改：统一使用 default 域查询角色
+	// 因为角色分配时使用的是：g, username, role_code, default
+	roleCodes, err := s.userRoleRepo.GetUserRoles(ctx, user.UserName, constants.DefaultTenantCode)
+	if err != nil {
+		log.Error().Err(err).Str("username", user.UserName).Str("tenant_code", constants.DefaultTenantCode).Msg("查询用户角色失败")
 		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询用户角色失败", err)
 	}
 
@@ -97,22 +120,112 @@ func (s *AuthService) Login(ctx context.Context, r *http.Request, req *dto.Login
 	}
 
 	// 生成JWT令牌
-	tokenPair, err := s.jwt.GenerateTokenPair(ctx, tenantID, tenantCode, user.UserID, user.UserName, roleCodes)
+	tokenPair, err := s.jwt.GenerateTokenPair(ctx, tenant.TenantID, tenant.TenantCode, user.UserID, user.UserName, roleCodes)
 	if err != nil {
 		log.Error().Err(err).Str("user_id", user.UserID).Str("username", user.UserName).Msg("生成JWT令牌失败")
 		return nil, err
 	}
 
-	// 更新最后登录时间
-	if err := s.userRepo.Update(ctx, user.UserID, map[string]interface{}{
+	// 更新最后登录时间（使用手动模式，因为此时 context 中没有租户信息）
+	if err := s.userRepo.UpdateManual(ctx, user.UserID, map[string]interface{}{
 		"last_login_time": time.Now().UnixMilli(),
 	}); err != nil {
 		log.Error().Err(err).Str("user_id", user.UserID).Msg("更新最后登录时间失败")
 		// 不影响登录流程，继续返回
 	}
 
-	// 记录登录日志
-	s.recorder.Login(ctx, tenantID, user.UserID, user.UserName, nil)
+	// 记录登录日志（邮箱登录）
+	s.recorder.LoginEmail(ctx, tenant.TenantID, user.UserID, user.UserName, nil)
+
+	return &dto.LoginResponse{
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		ExpiresIn:    tokenPair.ExpiresIn,
+	}, nil
+}
+
+// LoginByPhone 手机号登录
+func (s *AuthService) LoginByPhone(ctx context.Context, req *dto.PhoneLoginRequest) (*dto.LoginResponse, error) {
+	// 解密前端传来的加密密码
+	// 前端使用 JSEncrypt 库（PKCS#1 v1.5 填充）加密密码
+	// 因此后端必须使用 DecryptPKCS1 方法解密
+	decryptedPassword, err := s.rsaCipher.DecryptPKCS1(req.Password)
+	if err != nil {
+		log.Error().Err(err).Msg("密码解密失败")
+		return nil, xerr.Wrap(xerr.ErrInvalidCredentials.Code, "密码解密失败", err)
+	}
+
+	// 查询用户（通过手机号全局唯一）
+	user, err := s.userRepo.GetByPhone(ctx, req.Phone)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Error().Err(err).Str("phone", req.Phone).Msg("用户不存在")
+			return nil, xerr.ErrUserNotFound
+		}
+		log.Error().Err(err).Str("phone", req.Phone).Msg("查询用户失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询用户失败", err)
+	}
+
+	// 验证密码（使用解密后的 SHA256 哈希值）
+	// 注意：前端应该先对密码进行 SHA256 哈希，然后用 RSA 加密
+	// 数据库中存储的是 Argon2id(盐值 + SHA256哈希)
+	if !passwordgen.VerifyPassword(decryptedPassword, user.Password) {
+		return nil, xerr.ErrInvalidCredentials
+	}
+
+	// 检查用户状态
+	if user.Status != constants.StatusEnabled {
+		return nil, xerr.ErrUserDisabled
+	}
+
+	// 查询用户所属租户信息(使用手动模式,因为登录接口无租户上下文)
+	tenant, err := s.tenantRepo.GetByIDManual(ctx, user.TenantID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			log.Error().Err(err).Str("user_id", user.UserID).Str("tenant_id", user.TenantID).Msg("用户所属租户不存在")
+			return nil, xerr.ErrTenantNotFound
+		}
+		log.Error().Err(err).Str("tenant_id", user.TenantID).Msg("查询租户信息失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询租户信息失败", err)
+	}
+
+	// 检查租户状态
+	if tenant.Status != constants.StatusEnabled {
+		log.Error().Str("tenant_id", tenant.TenantID).Msg("用户所属租户已禁用")
+		return nil, xerr.ErrTenantDisabled
+	}
+
+	// 获取用户角色（从 Casbin）
+	// 关键修改：统一使用 default 域查询角色
+	// 因为角色分配时使用的是：g, username, role_code, default
+	roleCodes, err := s.userRoleRepo.GetUserRoles(ctx, user.UserName, constants.DefaultTenantCode)
+	if err != nil {
+		log.Error().Err(err).Str("username", user.UserName).Str("tenant_code", constants.DefaultTenantCode).Msg("查询用户角色失败")
+		return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询用户角色失败", err)
+	}
+
+	// 检查用户是否有角色
+	if len(roleCodes) == 0 {
+		return nil, xerr.ErrUserNoRoles
+	}
+
+	// 生成JWT令牌
+	tokenPair, err := s.jwt.GenerateTokenPair(ctx, tenant.TenantID, tenant.TenantCode, user.UserID, user.UserName, roleCodes)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", user.UserID).Str("username", user.UserName).Msg("生成JWT令牌失败")
+		return nil, err
+	}
+
+	// 更新最后登录时间（使用手动模式，因为此时 context 中没有租户信息）
+	if err := s.userRepo.UpdateManual(ctx, user.UserID, map[string]interface{}{
+		"last_login_time": time.Now().UnixMilli(),
+	}); err != nil {
+		log.Error().Err(err).Str("user_id", user.UserID).Msg("更新最后登录时间失败")
+		// 不影响登录流程，继续返回
+	}
+
+	// 记录登录日志（手机号登录）
+	s.recorder.LoginPhone(ctx, tenant.TenantID, user.UserID, user.UserName, nil)
 
 	return &dto.LoginResponse{
 		AccessToken:  tokenPair.AccessToken,
@@ -258,7 +371,7 @@ func (s *AuthService) GetAvailableTenants(ctx context.Context) (*dto.AvailableTe
 		}
 
 		for _, tenant := range tenantList {
-			tenants = append(tenants, s.toTenantInfo(tenant))
+			tenants = append(tenants, converter.ModelToTenantInfo(tenant))
 		}
 		return &dto.AvailableTenantsResponse{
 			Tenants: tenants,
@@ -293,7 +406,7 @@ func (s *AuthService) GetAvailableTenants(ctx context.Context) (*dto.AvailableTe
 
 		// 按原始顺序构建结果
 		for _, tenant := range tenantList {
-			tenants = append(tenants, s.toTenantInfo(tenant))
+			tenants = append(tenants, converter.ModelToTenantInfo(tenant))
 		}
 		return &dto.AvailableTenantsResponse{
 			Tenants: tenants,
@@ -307,20 +420,10 @@ func (s *AuthService) GetAvailableTenants(ctx context.Context) (*dto.AvailableTe
 			log.Error().Err(err).Str("tenant_id", tenantID).Msg("查询租户信息失败")
 			return nil, xerr.Wrap(xerr.ErrQueryError.Code, "查询租户信息失败", err)
 		}
-		tenants = append(tenants, s.toTenantInfo(tenant))
+		tenants = append(tenants, converter.ModelToTenantInfo(tenant))
 		// 其他角色：返回空列表
 		return &dto.AvailableTenantsResponse{
 			Tenants: tenants,
 		}, nil
-	}
-}
-
-// toTenantInfo 转换为租户信息格式
-func (s *AuthService) toTenantInfo(tenant *model.Tenant) *dto.TenantInfo {
-	return &dto.TenantInfo{
-		TenantID:    tenant.TenantID,
-		TenantCode:  tenant.TenantCode,
-		Name:        tenant.Name,
-		Description: tenant.Description,
 	}
 }

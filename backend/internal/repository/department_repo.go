@@ -43,6 +43,17 @@ func (r *DepartmentRepo) Delete(ctx context.Context, departmentID string) error 
 	return err
 }
 
+// BatchDelete 批量删除部门
+func (r *DepartmentRepo) BatchDelete(ctx context.Context, departmentIDs []string) error {
+	_, err := r.q.Department.WithContext(ctx).Where(r.q.Department.DepartmentID.In(departmentIDs...)).Delete()
+	return err
+}
+
+// GetByIDs 根据部门ID列表获取部门信息
+func (r *DepartmentRepo) GetByIDs(ctx context.Context, departmentIDs []string) ([]*model.Department, error) {
+	return r.q.Department.WithContext(ctx).Where(r.q.Department.DepartmentID.In(departmentIDs...)).Find()
+}
+
 // List 获取租户的所有部门（按排序权重升序）
 func (r *DepartmentRepo) List(ctx context.Context) ([]*model.Department, error) {
 	return r.q.Department.WithContext(ctx).
@@ -51,12 +62,12 @@ func (r *DepartmentRepo) List(ctx context.Context) ([]*model.Department, error) 
 }
 
 // ListWithFilters 根据筛选条件分页获取部门列表
-func (r *DepartmentRepo) ListWithFilters(ctx context.Context, offset, limit int, keywordFilter string, statusFilter int, parentIDFilter string) ([]*model.Department, int64, error) {
+func (r *DepartmentRepo) ListWithFilters(ctx context.Context, offset, limit int, departmentName string, statusFilter int, parentIDFilter string) ([]*model.Department, int64, error) {
 	q := r.q.Department.WithContext(ctx)
 
 	// 应用筛选条件
-	if keywordFilter != "" {
-		q = q.Where(r.q.Department.DepartmentName.Like("%" + keywordFilter + "%"))
+	if departmentName != "" {
+		q = q.Where(r.q.Department.DepartmentName.Like("%" + departmentName + "%"))
 	}
 	if statusFilter != 0 {
 		q = q.Where(r.q.Department.Status.Eq(int16(statusFilter)))

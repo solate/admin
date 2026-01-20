@@ -1,6 +1,7 @@
 package service
 
 import (
+	"admin/internal/converter"
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
@@ -40,13 +41,13 @@ func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithCreate(audit.ModuleMenu),
+				audit.WithCreate(constants.ModuleMenu),
 				audit.WithError(err),
 			)
 		} else if menu != nil {
 			s.recorder.Log(ctx,
-				audit.WithCreate(audit.ModuleMenu),
-				audit.WithResource(audit.ResourceMenu, menu.MenuID, menu.Name),
+				audit.WithCreate(constants.ModuleMenu),
+				audit.WithResource(constants.ResourceTypeMenu, menu.MenuID, menu.Name),
 				audit.WithValue(nil, menu),
 			)
 		}
@@ -75,7 +76,7 @@ func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest
 
 	// 构建菜单模型
 	status := int16(req.Status)
-	if req.Status == 0 {
+	if req.Status == constants.StatusZero {
 		status = constants.MenuStatusShow
 	}
 
@@ -99,7 +100,7 @@ func (s *MenuService) CreateMenu(ctx context.Context, req *dto.CreateMenuRequest
 	}
 
 	log.Info().Str("menu_id", menuID).Str("name", req.Name).Msg("创建菜单成功")
-	return s.toMenuInfo(menu), nil
+	return converter.ModelToMenuInfo(menu), nil
 }
 
 // GetMenuByID 获取菜单详情
@@ -114,7 +115,7 @@ func (s *MenuService) GetMenuByID(ctx context.Context, menuID string) (*dto.Menu
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单失败", err)
 	}
 
-	return s.toMenuInfo(menu), nil
+	return converter.ModelToMenuInfo(menu), nil
 }
 
 // UpdateMenu 更新菜单
@@ -124,13 +125,13 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithUpdate(audit.ModuleMenu),
+				audit.WithUpdate(constants.ModuleMenu),
 				audit.WithError(err),
 			)
 		} else if newMenu != nil {
 			s.recorder.Log(ctx,
-				audit.WithUpdate(audit.ModuleMenu),
-				audit.WithResource(audit.ResourceMenu, newMenu.MenuID, newMenu.Name),
+				audit.WithUpdate(constants.ModuleMenu),
+				audit.WithResource(constants.ResourceTypeMenu, newMenu.MenuID, newMenu.Name),
 				audit.WithValue(oldMenu, newMenu),
 			)
 		}
@@ -190,7 +191,7 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 	if req.Sort != nil {
 		updates["sort"] = int32(*req.Sort)
 	}
-	if req.Status != 0 {
+	if req.Status != constants.StatusZero {
 		updates["status"] = int16(req.Status)
 	}
 	updates["updated_at"] = time.Now().UnixMilli()
@@ -209,7 +210,7 @@ func (s *MenuService) UpdateMenu(ctx context.Context, menuID string, req *dto.Up
 	}
 
 	log.Info().Str("menu_id", menuID).Msg("更新菜单成功")
-	return s.toMenuInfo(newMenu), nil
+	return converter.ModelToMenuInfo(newMenu), nil
 }
 
 // DeleteMenu 删除菜单
@@ -220,13 +221,13 @@ func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) (err error)
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithDelete(audit.ModuleMenu),
+				audit.WithDelete(constants.ModuleMenu),
 				audit.WithError(err),
 			)
 		} else if menu != nil {
 			s.recorder.Log(ctx,
-				audit.WithDelete(audit.ModuleMenu),
-				audit.WithResource(audit.ResourceMenu, menu.MenuID, menu.Name),
+				audit.WithDelete(constants.ModuleMenu),
+				audit.WithResource(constants.ResourceTypeMenu, menu.MenuID, menu.Name),
 				audit.WithValue(menu, nil),
 			)
 			log.Info().Str("menu_id", menuID).Msg("删除菜单成功")
@@ -286,6 +287,75 @@ func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) (err error)
 	return nil
 }
 
+// BatchDeleteMenus 批量删除菜单
+func (s *MenuService) BatchDeleteMenus(ctx context.Context, menuIDs []string) (err error) {
+	var menuMap map[string]*model.Menu
+
+	defer func() {
+		if err != nil {
+			s.recorder.Log(ctx,
+				audit.WithBatchDelete(constants.ModuleMenu),
+				audit.WithError(err),
+			)
+		} else if len(menuMap) > 0 {
+			// 收集资源信息用于批量审计日志
+			ids := make([]string, 0, len(menuMap))
+			names := make([]string, 0, len(menuMap))
+			for _, menu := range menuMap {
+				ids = append(ids, menu.MenuID)
+				names = append(names, menu.Name)
+			}
+			// 记录批量删除审计日志（单条日志记录所有资源）
+			s.recorder.Log(ctx,
+				audit.WithBatchDelete(constants.ModuleMenu),
+				audit.WithBatchResource(constants.ResourceTypeMenu, ids, names),
+				audit.WithValue(menuMap, nil),
+			)
+			log.Info().Strs("menu_ids", menuIDs).Int("count", len(menuIDs)).Msg("批量删除菜单成功")
+		}
+	}()
+
+	// 获取所有菜单信息
+	menuMap, err = s.menuRepo.GetByIDsAsMap(ctx, menuIDs)
+	if err != nil {
+		log.Error().Err(err).Strs("menu_ids", menuIDs).Msg("查询菜单信息失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "查询菜单信息失败", err)
+	}
+
+	// 验证所有菜单都存在
+	if len(menuMap) != len(menuIDs) {
+		var missingIDs []string
+		for _, id := range menuIDs {
+			if _, exists := menuMap[id]; !exists {
+				missingIDs = append(missingIDs, id)
+			}
+		}
+		log.Warn().Strs("missing_ids", missingIDs).Msg("部分菜单不存在")
+		return xerr.New(xerr.ErrNotFound.Code, "部分菜单不存在")
+	}
+
+	// 检查是否有菜单存在子菜单
+	for _, menuID := range menuIDs {
+		childrenCount, err := s.menuRepo.GetChildrenCount(ctx, menuID)
+		if err != nil {
+			log.Error().Err(err).Str("menu_id", menuID).Msg("检查子菜单失败")
+			return xerr.Wrap(xerr.ErrInternal.Code, "检查子菜单失败", err)
+		}
+		if childrenCount > 0 {
+			log.Warn().Str("menu_id", menuID).Int64("children_count", childrenCount).Msg("菜单存在子菜单，无法删除")
+			return xerr.ErrMenuHasChildren
+		}
+	}
+
+	// 批量删除菜单
+	if err := s.menuRepo.DeleteBatch(ctx, menuIDs); err != nil {
+		log.Error().Err(err).Strs("menu_ids", menuIDs).Msg("批量删除菜单失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "批量删除菜单失败", err)
+	}
+
+	return nil
+}
+
 // ListMenus 获取菜单列表
 func (s *MenuService) ListMenus(ctx context.Context, req *dto.ListMenusRequest) (*dto.ListMenusResponse, error) {
 	// 获取菜单列表和总数，支持筛选条件
@@ -300,10 +370,7 @@ func (s *MenuService) ListMenus(ctx context.Context, req *dto.ListMenusRequest) 
 	}
 
 	// 转换为响应格式
-	menuInfos := make([]*dto.MenuInfo, len(menus))
-	for i, menu := range menus {
-		menuInfos[i] = s.toMenuInfo(menu)
-	}
+	menuInfos := converter.ModelListToMenuInfoList(menus)
 
 	return &dto.ListMenusResponse{
 		Response: pagination.NewResponse(req.Request, total),
@@ -321,10 +388,7 @@ func (s *MenuService) GetAllMenus(ctx context.Context) (*dto.AllMenusResponse, e
 	}
 
 	// 转换为响应格式
-	menuInfos := make([]*dto.MenuInfo, len(menus))
-	for i, menu := range menus {
-		menuInfos[i] = s.toMenuInfo(menu)
-	}
+	menuInfos := converter.ModelListToMenuInfoList(menus)
 
 	return &dto.AllMenusResponse{
 		List: menuInfos,
@@ -355,13 +419,13 @@ func (s *MenuService) UpdateMenuStatus(ctx context.Context, menuID string, statu
 	defer func() {
 		if err != nil {
 			s.recorder.Log(ctx,
-				audit.WithUpdate(audit.ModuleMenu),
+				audit.WithUpdate(constants.ModuleMenu),
 				audit.WithError(err),
 			)
 		} else if newMenu != nil {
 			s.recorder.Log(ctx,
-				audit.WithUpdate(audit.ModuleMenu),
-				audit.WithResource(audit.ResourceMenu, newMenu.MenuID, newMenu.Name),
+				audit.WithUpdate(constants.ModuleMenu),
+				audit.WithResource(constants.ResourceTypeMenu, newMenu.MenuID, newMenu.Name),
 				audit.WithValue(oldMenu, newMenu),
 			)
 			log.Info().Str("menu_id", menuID).Int("status", status).Msg("更新菜单状态成功")
@@ -401,7 +465,7 @@ func (s *MenuService) buildMenuTree(menus []*model.Menu) []*dto.MenuTreeNode {
 	nodeMap := make(map[string]*dto.MenuTreeNode)
 	for _, menu := range menus {
 		nodeMap[menu.MenuID] = &dto.MenuTreeNode{
-			MenuInfo: s.toMenuInfo(menu),
+			MenuInfo: converter.ModelToMenuInfo(menu),
 			Children: []*dto.MenuTreeNode{},
 		}
 	}
@@ -420,28 +484,4 @@ func (s *MenuService) buildMenuTree(menus []*model.Menu) []*dto.MenuTreeNode {
 	}
 
 	return roots
-}
-
-// toMenuInfo 转换为菜单信息格式
-func (s *MenuService) toMenuInfo(menu *model.Menu) *dto.MenuInfo {
-	sort := int16(menu.Sort)
-	resource := "menu:" + menu.MenuID
-	action := "*"
-	return &dto.MenuInfo{
-		MenuID:      menu.MenuID,
-		Name:        menu.Name,
-		Type:        constants.TypeMenu,
-		ParentID:    stringPtr(menu.ParentID),
-		Resource:    &resource,
-		Action:      &action,
-		Path:        stringPtr(menu.Path),
-		Component:   stringPtr(menu.Component),
-		Redirect:    stringPtr(menu.Redirect),
-		Icon:        stringPtr(menu.Icon),
-		Sort:        &sort,
-		Status:      menu.Status,
-		Description: stringPtr(menu.Description),
-		CreatedAt:   menu.CreatedAt,
-		UpdatedAt:   menu.UpdatedAt,
-	}
 }
