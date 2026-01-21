@@ -9,6 +9,7 @@ import 'element-plus/theme-chalk/dark/css-vars.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
+import i18n from './locales'
 
 // 配置NProgress
 NProgress.configure({
@@ -24,6 +25,7 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus)
+app.use(i18n)
 
 // 注册所有图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
@@ -37,3 +39,4 @@ app.mount('#app')
 // 在应用挂载后初始化主题
 const themeStore = useThemeStore()
 themeStore.initTheme()
+

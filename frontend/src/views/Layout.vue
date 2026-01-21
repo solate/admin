@@ -110,6 +110,9 @@
             </el-button>
           </el-tooltip>
 
+          <!-- 语言切换 -->
+          <LocaleSelector />
+
           <!-- 主题切换 -->
           <el-tooltip :content="themeStore.theme === 'light' ? '切换到暗色模式' : '切换到亮色模式'" placement="bottom">
             <el-button text @click="themeStore.toggleTheme" class="header-action">
@@ -190,6 +193,7 @@ import { getUserInfo } from '@/utils/token'
 import { resetRouter } from '@/router'
 import NProgress from 'nprogress'
 import UserDropdown from '@/components/user/UserDropdown.vue'
+import LocaleSelector from '@/components/LocaleSelector.vue'
 
 const route = useRoute()
 const themeStore = useThemeStore()

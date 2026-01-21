@@ -1,0 +1,32 @@
+{
+  "name": "multi-tenant-saas",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "@vueuse/core": "^10.11.1",
+    "axios": "^1.13.2",
+    "chart.js": "^4.5.1",
+    "lucide-vue-next": "^0.562.0",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21",
+    "vue-chartjs": "^5.3.3",
+    "vue-i18n": "^9.14.5",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "autoprefixer": "^10.4.18",
+    "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.23.0",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "vite": "^7.3.1"
+  }
+}
