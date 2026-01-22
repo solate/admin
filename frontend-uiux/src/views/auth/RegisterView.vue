@@ -1,8 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import icons from '@/components/icons/index.js'
+import { useAuthStore } from '@/stores/modules/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTenantsStore } from '@/stores/tenants'
+import { useTenantsStore } from '@/stores/modules/tenants'
 import BaseTable from '@/components/ui/BaseTable.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'

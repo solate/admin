@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores/modules/auth'
 import KPICard from '@/components/ui/KPICard.vue'
 import BaseTable from '@/components/ui/BaseTable.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
@@ -28,7 +28,7 @@ const stats = ref([
     change: '+12',
     changeType: 'positive',
     trend: '较上月',
-    icon: OfficeBuilding,
+    icon: markRaw(OfficeBuilding),
     color: 'primary'
   },
   {
@@ -37,7 +37,7 @@ const stats = ref([
     change: '+3',
     changeType: 'positive',
     trend: '较上月',
-    icon: Box,
+    icon: markRaw(Box),
     color: 'success'
   },
   {
@@ -46,7 +46,7 @@ const stats = ref([
     change: '+18',
     changeType: 'positive',
     trend: '较上月',
-    icon: User,
+    icon: markRaw(User),
     color: 'info'
   },
   {
@@ -55,7 +55,7 @@ const stats = ref([
     change: '+24',
     changeType: 'positive',
     trend: '较上月',
-    icon: Coin,
+    icon: markRaw(Coin),
     color: 'warning'
   }
 ])
@@ -66,25 +66,25 @@ const quickActions = ref([
     name: '添加租户',
     description: '创建新的租户账户',
     path: '/dashboard/tenants',
-    icon: OfficeBuilding
+    icon: markRaw(OfficeBuilding)
   },
   {
     name: '配置服务',
     description: '管理平台服务',
     path: '/dashboard/services',
-    icon: Box
+    icon: markRaw(Box)
   },
   {
     name: '用户管理',
     description: '管理平台用户',
     path: '/dashboard/users',
-    icon: User
+    icon: markRaw(User)
   },
   {
     name: '查看报表',
     description: '查看数据分析',
     path: '/dashboard/analytics',
-    icon: DataAnalysis
+    icon: markRaw(DataAnalysis)
   }
 ])
 
@@ -96,7 +96,7 @@ const recentActivities = ref([
     title: '新租户注册',
     description: '科技公司A 已完成注册',
     time: '5 分钟前',
-    icon: OfficeBuilding,
+    icon: markRaw(OfficeBuilding),
     color: 'primary'
   },
   {
@@ -105,7 +105,7 @@ const recentActivities = ref([
     title: '服务升级',
     description: '云存储服务已升级到 v2.0',
     time: '1 小时前',
-    icon: Box,
+    icon: markRaw(Box),
     color: 'success'
   },
   {
@@ -114,7 +114,7 @@ const recentActivities = ref([
     title: '新用户加入',
     description: '张三 加入了创业团队B',
     time: '2 小时前',
-    icon: User,
+    icon: markRaw(User),
     color: 'info'
   },
   {
@@ -123,7 +123,7 @@ const recentActivities = ref([
     title: '系统提醒',
     description: '消息队列服务负载较高',
     time: '3 小时前',
-    icon: TrendCharts,
+    icon: markRaw(TrendCharts),
     color: 'warning'
   }
 ])

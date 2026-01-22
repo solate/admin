@@ -2,10 +2,11 @@ import ElementPlus from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import type { App } from 'vue'
 import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 
-// 自定义主题变量 - 保持现有设计风格
+// Custom theme variables - maintain existing design style
 const elPrimaryColor = '#2563eb' // primary-600
 const elCtaColor = '#f97316' // cta-500
 const elSuccessColor = '#22c55e' // success-600
@@ -13,13 +14,13 @@ const elWarningColor = '#f59e0b' // warning-600
 const elErrorColor = '#ef4444' // error-600
 const elInfoColor = '#0ea5e9' // info-600
 
-export function setupElementPlus(app) {
-  // 注册所有 Element Plus 图标
+export function setupElementPlus(app: App) {
+  // Register all Element Plus icons
   for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
   }
 
-  // 设置 Element Plus CSS 变量以匹配现有设计系统
+  // Set Element Plus CSS variables to match existing design system
   const style = document.createElement('style')
   style.innerHTML = `
     :root {
@@ -46,7 +47,7 @@ export function setupElementPlus(app) {
       --el-font-size-large: 16px;
     }
 
-    /* 暗黑模式适配 */
+    /* Dark mode adaptation */
     .dark {
       --el-bg-color: #1e293b;
       --el-bg-color-page: #0f172a;
@@ -70,7 +71,7 @@ export function setupElementPlus(app) {
       --el-box-shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
     }
 
-    /* 保持与现有卡片样式一致 */
+    /* Keep consistent with existing card styles */
     .el-card {
       border-radius: 12px;
       box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
@@ -82,20 +83,20 @@ export function setupElementPlus(app) {
       border-color: #334155;
     }
 
-    /* 按钮样式优化 */
+    /* Button style optimization */
     .el-button {
       border-radius: 8px;
       font-weight: 500;
       transition: all 0.2s;
     }
 
-    /* 输入框样式优化 */
+    /* Input style optimization */
     .el-input__wrapper {
       border-radius: 8px;
       transition: all 0.2s;
     }
 
-    /* 表格样式优化 */
+    /* Table style optimization */
     .el-table {
       border-radius: 8px;
       overflow: hidden;
@@ -109,12 +110,12 @@ export function setupElementPlus(app) {
       background-color: #1e293b;
     }
 
-    /* 对话框样式优化 */
+    /* Dialog style optimization */
     .el-dialog {
       border-radius: 12px;
     }
 
-    /* Switch 样式优化 */
+    /* Switch style optimization */
     .el-switch {
       --el-switch-on-color: ${elPrimaryColor};
       --el-switch-off-color: #cbd5e1;
@@ -124,7 +125,7 @@ export function setupElementPlus(app) {
       --el-switch-off-color: #475569;
     }
 
-    /* 保持滚动条样式一致 */
+    /* Keep scrollbar styles consistent */
     .el-scrollbar__bar {
       opacity: 0.3;
     }

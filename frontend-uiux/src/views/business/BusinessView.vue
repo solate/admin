@@ -1,6 +1,5 @@
 <script setup>
 import { ref } from 'vue'
-import icons from '@/components/icons/index.js'
 
 const { ChartBar, TrendingUp, Users, DollarSign } = icons
 

@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { setLocale, getCurrentLocale } from '@/locales'
-import { useUiStore } from '@/stores/ui'
-import { Languages } from '@/components/icons/index.js'
+import { useUiStore } from '@/stores/modules/ui'
+import { ChatDotRound } from '@element-plus/icons-vue'
 
 const { locale } = useI18n()
 const uiStore = useUiStore()
@@ -23,16 +23,16 @@ const toggleDropdown = () => {
   isOpen.value = !isOpen.value
 }
 
-const selectLocale = (localeCode) => {
+const selectLocale = (localeCode: string) => {
   setLocale(localeCode)
   // 同步更新 Element Plus locale
-  uiStore.setElementLocale(localeCode)
+  uiStore.setLocale(localeCode)
   isOpen.value = false
 }
 
-const handleClickOutside = (event) => {
+const handleClickOutside = (event: Event) => {
   const dropdown = document.querySelector('[data-language-switcher]')
-  if (dropdown && !dropdown.contains(event.target)) {
+  if (dropdown && !dropdown.contains(event.target as Node)) {
     isOpen.value = false
   }
 }
@@ -53,7 +53,9 @@ onUnmounted(() => {
       class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
       :aria-label="$t('language.title') || 'Switch language'"
     >
-      <Languages class="w-5 h-5 text-slate-600 dark:text-slate-400" />
+      <el-icon :size="20" class="text-slate-600 dark:text-slate-400">
+        <ChatDotRound />
+      </el-icon>
     </button>
 
     <!-- Dropdown Menu -->

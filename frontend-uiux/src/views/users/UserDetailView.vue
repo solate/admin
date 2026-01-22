@@ -1,9 +1,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useTenantsStore } from '@/stores/tenants'
-import { apiService } from '@/services/api'
-import icons from '@/components/icons/index.js'
+import { useTenantsStore } from '@/stores/modules/tenants'
+import { apiService } from '@/api'
 
 const router = useRouter()
 const route = useRoute()

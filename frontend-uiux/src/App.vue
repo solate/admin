@@ -1,7 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import { useRoute } from 'vue-router'
 import { ElConfigProvider } from 'element-plus'
-import { useUiStore } from './stores/ui'
+import { useUiStore } from '@/stores/modules/ui'
 
 const route = useRoute()
 const uiStore = useUiStore()

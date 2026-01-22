@@ -2,9 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 语言规范
+- 所有对话和文档都使用中文
+- 文档使用 markdown 格式
+
 ## 项目概述
 
-这是一个基于 **Vue 3 + Vite + Tailwind CSS** 的多租户 SaaS 管理平台前端项目，采用现代化的 Glassmorphism 设计风格。
+这是一个基于 **Vue 3 + Vite + Tailwind CSS + Element Plus** 的多租户 SaaS 管理平台前端项目，采用现代化的 Glassmorphism 设计风格。
 
 ### 技术栈
 
@@ -16,17 +20,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Pinia | 2.1.7 | 状态管理 |
 | Vue I18n | 9.14.5 | 国际化 (中文/英文) |
 | Axios | 1.13.2 | HTTP 客户端 |
+| Element Plus | 2.13.1 | UI 组件库 |
 | Tailwind CSS | 3.4.1 | 原子化 CSS 框架 |
-| Chart.js | 4.5.1 | 图表可视化 |
-| Lucide Vue | 0.562.0 | 图标库 |
+| ECharts | 6.0.0 | 图表可视化 |
 
 ---
 
 ## 快速开始
 
 ```bash
-cd frontend-uiux
-
 # 安装依赖
 npm install
 
@@ -62,7 +64,7 @@ frontend-uiux/
 ├── src/
 │   ├── assets/              # 静态资源
 │   ├── components/          # 可复用组件
-│   │   ├── icons/          # 图标组件 (Lucide)
+│   │   ├── icons/          # 图标组件
 │   │   ├── layout/         # 布局组件 (TopNavbar, UserMenu)
 │   │   ├── notification/   # 通知组件
 │   │   ├── tenant/         # 租户选择器
@@ -71,10 +73,21 @@ frontend-uiux/
 │   ├── directives/         # 自定义指令 (clickOutside)
 │   ├── layouts/            # 页面布局 (DashboardLayout)
 │   ├── locales/            # 国际化文件 (zh-CN, en-US)
+│   ├── plugins/            # 插件配置 (Element Plus)
 │   ├── router/             # 路由配置
 │   ├── services/           # API 服务层
 │   ├── stores/             # Pinia 状态管理
 │   ├── views/              # 页面组件
+│   │   ├── auth/          # 登录/注册页面
+│   │   ├── dashboard/     # 仪表板
+│   │   ├── tenants/       # 租户管理
+│   │   ├── services/      # 服务管理
+│   │   ├── users/         # 用户管理
+│   │   ├── business/      # 业务管理
+│   │   ├── analytics/     # 数据分析
+│   │   ├── settings/      # 系统设置
+│   │   ├── profile/       # 个人中心
+│   │   └── notifications/ # 通知中心
 │   ├── App.vue             # 根组件
 │   └── main.js             # 应用入口
 ├── index.html
@@ -87,6 +100,21 @@ frontend-uiux/
 ---
 
 ## 核心架构
+
+### Element Plus 集成 (`src/plugins/element.js`)
+
+项目集成了 Element Plus 组件库，并通过自定义 CSS 变量与现有设计系统保持一致：
+
+```javascript
+// 所有 Element Plus 图标已在 main.js 中全局注册
+// 可直接在任何组件中使用，如 <el-icon><Plus /></el-icon>
+
+// 自定义主题颜色与 Tailwind 保持一致
+--el-color-primary: #2563eb  // primary-600
+--el-color-success: #22c55e  // success-600
+--el-color-warning: #f59e0b  // warning-600
+--el-color-danger: #ef4444   // error-600
+```
 
 ### API 服务层 (`src/services/api.js`)
 
@@ -104,7 +132,7 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// 响应拦截器 - 统一错误处理
+// 响应拦截器 - 统一错误处理 (401/403/404/500)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -118,47 +146,56 @@ api.interceptors.response.use(
 ```
 
 **API 服务模块**：
-- `auth` - 认证相关
-- `tenants` - 租户管理
-- `users` - 用户管理
+- `auth` - 认证相关 (login, logout, register, refreshToken, me)
+- `tenants` - 租户管理 (list, getAll, getById, create, update, delete, updateStatus)
+- `users` - 用户管理 (list, getById, create, update, delete, assignRoles, changePassword, profile)
 - `roles` - 角色管理
 - `permissions` - 权限管理
 - `auditLogs` - 审计日志
-- `services` - 服务管理
-- `notifications` - 通知管理
-- `dashboard` - 仪表板数据
+- `services` - 服务管理 (list, getById, create, update, delete, toggle)
+- `notifications` - 通知管理 (list, markAsRead, markAllAsRead, unreadCount)
+- `dashboard` - 仪表板数据 (stats, charts, activity)
 - `settings` - 系统设置
 
 ### 状态管理 (Pinia)
 
 | Store | 文件 | 职责 |
 |-------|------|------|
-| `useAuthStore` | `stores/auth.js` | 用户认证状态 |
+| `useAuthStore` | `stores/auth.js` | 用户认证状态 (当前为 Mock 实现) |
 | `useTenantsStore` | `stores/tenants.js` | 租户数据管理 |
 | `useServicesStore` | `stores/services.js` | 服务状态管理 |
 | `useUIStore` | `stores/ui.js` | UI 状态 (侧边栏、主题等) |
 
+**注意**: `useAuthStore` 目前使用 Mock 认证，需要对接真实后端 API。
+
 ### 路由结构
 
+**公共路由**:
 - `/` - 落地页 (LandingView)
-- `/login` - 登录页
-- `/register` - 注册页
-- `/dashboard` - 仪表板布局 (需认证)
-  - `/dashboard/overview` - 概览
-  - `/dashboard/tenants` - 租户管理
-  - `/dashboard/services` - 服务管理
-  - `/dashboard/users` - 用户管理
-  - `/dashboard/business` - 业务管理
-  - `/dashboard/analytics` - 数据分析
-  - `/dashboard/settings` - 系统设置
-  - `/dashboard/profile` - 个人中心
-  - `/dashboard/notifications` - 通知中心
+- `/login` - 登录页 (LoginView)
+- `/register` - 注册页 (RegisterView)
+
+**Dashboard 路由** (需认证):
+- `/dashboard/overview` - 概览
+- `/dashboard/tenants` - 租户列表
+- `/dashboard/tenants/create` - 创建租户
+- `/dashboard/tenants/:id` - 租户详情
+- `/dashboard/services` - 服务列表
+- `/dashboard/services/:id` - 服务详情
+- `/dashboard/users` - 用户列表
+- `/dashboard/users/create` - 创建用户
+- `/dashboard/users/:id` - 用户详情
+- `/dashboard/business` - 业务管理
+- `/dashboard/analytics` - 数据分析
+- `/dashboard/settings` - 系统设置
+- `/dashboard/profile` - 个人中心
+- `/dashboard/notifications` - 通知中心
 
 ---
 
 ## 设计系统
 
-### 颜色规范
+### 颜色规范 (Tailwind + Element Plus)
 
 ```javascript
 // 主色 - 专业与信任
@@ -184,17 +221,11 @@ info: '#0ea5e9'     // sky-500
 - **Sans**: Fira Sans (现代化技术字体)
 - **Mono**: Fira Code (数据/技术内容)
 
-### UI 组件变体
+### 组件选择优先级
 
-**按钮变体** (`components/ui/BaseButton.vue`):
-- `primary` - 主按钮
-- `secondary` - 次要按钮
-- `cta` - 强调按钮 (渐变)
-- `ghost` - 幽灵按钮
-- `danger` - 危险按钮
-
-**按钮尺寸**:
-- `xs`, `sm`, `md`, `lg`, `xl`
+1. **优先使用 Element Plus 组件**: `el-button`, `el-input`, `el-table`, `el-dialog`, `el-form` 等
+2. **使用 Tailwind CSS**: 用于布局和自定义样式
+3. **自定义组件**: `src/components/ui/` 中的基础组件
 
 ---
 
@@ -225,6 +256,15 @@ function setCurrentTenant(tenantId) {
 
 - `zh-CN` - 简体中文 (默认)
 - `en-US` - 英文
+
+### Element Plus 多语言切换
+
+```javascript
+// 在 main.js 中已配置全局属性
+app.config.globalProperties.$elementLocales = { zhCn, en }
+
+// 切换语言时需要同时更新 Vue I18n 和 Element Plus locale
+```
 
 ### 使用方式
 
@@ -322,8 +362,8 @@ router.beforeEach(async (to, from, next) => {
 
 ### 添加 UI 组件
 
-1. 在 `src/components/ui/` 创建组件
-2. 遵循现有组件的 props/emits 结构
+1. 优先使用 Element Plus 组件
+2. 需要自定义时，在 `src/components/ui/` 创建组件
 3. 使用 Tailwind 类名进行样式设计
 
 ### 添加 API 端点
@@ -357,8 +397,8 @@ export const apiService = {
 
 - 暗色模式: class 策略
 - 自定义颜色系统
-- 自定义字体
-- 自定义动画
+- 自定义字体 (Fira Sans, Fira Code)
+- 自定义动画 (fade-in, slide-up, slide-down, scale-in)
 
 ---
 
@@ -369,3 +409,4 @@ export const apiService = {
 3. **租户隔离**: 所有 API 请求自动携带 `X-Tenant-ID` 请求头
 4. **Token 管理**: 存储在 localStorage，401 时自动清除并跳转登录
 5. **国际化**: 新增文本必须同时添加中英文翻译
+6. **Element Plus**: 图标已全局注册，可直接使用 `<el-icon><IconName /></el-icon>`

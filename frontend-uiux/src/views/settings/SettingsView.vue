@@ -1,15 +1,14 @@
 <script setup>
 import { ref } from 'vue'
 import {
-  Settings as SettingsIcon,
+  Setting as SettingsIcon,
   Bell,
-  Shield,
+  Lock,
   CreditCard,
   User,
   Mail,
-  Lock,
-  Eye,
-  EyeOff
+  View,
+  Hide
 } from '@element-plus/icons-vue'
 
 const activeTab = ref('general')
@@ -18,7 +17,7 @@ const tabs = [
   { id: 'general', name: '通用设置', icon: SettingsIcon },
   { id: 'profile', name: '个人资料', icon: User },
   { id: 'notifications', name: '通知设置', icon: Bell },
-  { id: 'security', name: '安全设置', icon: Shield },
+  { id: 'security', name: '安全设置', icon: Lock },
   { id: 'billing', name: '账单设置', icon: CreditCard }
 ]
 
@@ -304,7 +303,7 @@ const showNewPassword = ref(false)
                 >
                   <template #append>
                     <el-button
-                      :icon="showCurrentPassword ? Eye : EyeOff"
+                      :icon="showCurrentPassword ? View : Hide"
                       @click="showCurrentPassword = !showCurrentPassword"
                     />
                   </template>
@@ -318,7 +317,7 @@ const showNewPassword = ref(false)
                 >
                   <template #append>
                     <el-button
-                      :icon="showNewPassword ? Eye : EyeOff"
+                      :icon="showNewPassword ? View : Hide"
                       @click="showNewPassword = !showNewPassword"
                     />
                   </template>

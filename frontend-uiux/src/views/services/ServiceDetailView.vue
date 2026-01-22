@@ -1,8 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useServicesStore } from '@/stores/services'
-import icons from '@/components/icons/index.js'
+import { useServicesStore } from '@/stores/modules/services'
 
 const route = useRoute()
 const router = useRouter()

@@ -1,9 +1,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { apiService } from '@/services/api'
-import icons from '@/components/icons/index.js'
+import { useAuthStore } from '@/stores/modules/auth'
+import { apiService } from '@/api'
 
 const route = useRoute()
 const authStore = useAuthStore()

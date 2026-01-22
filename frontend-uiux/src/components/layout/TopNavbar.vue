@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { useUiStore } from '@/stores/ui'
-import { useAuthStore } from '@/stores/auth'
+import { useUiStore } from '@/stores/modules/ui'
+import { useAuthStore } from '@/stores/modules/auth'
 import {
   Search,
   Bell,

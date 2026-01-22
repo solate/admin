@@ -1,9 +1,9 @@
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, markRaw } from 'vue'
 import { useRoute } from 'vue-router'
-import { useUiStore } from '@/stores/ui'
-import { useAuthStore } from '@/stores/auth'
-import { useTenantsStore } from '@/stores/tenants'
+import { useUiStore } from '@/stores/modules/ui'
+import { useAuthStore } from '@/stores/modules/auth'
+import { useTenantsStore } from '@/stores/modules/tenants'
 import TopNavbar from '@/components/layout/TopNavbar.vue'
 import {
   HomeFilled,
@@ -37,31 +37,31 @@ const navigation = computed(() => {
     {
       name: '概览',
       path: '/dashboard/overview',
-      icon: HomeFilled,
+      icon: markRaw(HomeFilled),
       key: 'overview'
     },
     {
       name: '租户管理',
       path: '/dashboard/tenants',
-      icon: OfficeBuilding,
+      icon: markRaw(OfficeBuilding),
       key: 'tenants'
     },
     {
       name: '服务管理',
       path: '/dashboard/services',
-      icon: Box,
+      icon: markRaw(Box),
       key: 'services'
     },
     {
       name: '用户管理',
       path: '/dashboard/users',
-      icon: User,
+      icon: markRaw(User),
       key: 'users'
     },
     {
       name: '数据分析',
       path: '/dashboard/analytics',
-      icon: DataAnalysis,
+      icon: markRaw(DataAnalysis),
       key: 'analytics'
     }
   ]
@@ -81,7 +81,7 @@ const bottomNavigation = [
   {
     name: '设置',
     path: '/dashboard/settings',
-    icon: Setting,
+    icon: markRaw(Setting),
     key: 'settings'
   }
 ]

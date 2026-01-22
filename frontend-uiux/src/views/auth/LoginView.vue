@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores/modules/auth'
 import {
   OfficeBuilding,
   Message,
