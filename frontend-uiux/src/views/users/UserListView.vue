@@ -8,16 +8,16 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import {
   Search,
-  Plus,
+  CirclePlus,
   Filter,
   User,
   Edit,
-  Trash2,
-  Eye,
-  Building,
+  Delete,
+  View,
+  OfficeBuilding,
   Clock,
-  X
-} from 'lucide-vue-next'
+  Close
+} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const tenantsStore = useTenantsStore()
@@ -227,7 +227,7 @@ const formatDate = (dateString) => {
         variant="primary"
         @click="handleCreateUser"
       >
-        <Plus class="w-5 h-5" />
+        <el-icon :size="20"><CirclePlus /></el-icon>
         新建用户
       </BaseButton>
     </div>
@@ -237,7 +237,7 @@ const formatDate = (dateString) => {
       <div class="card p-5">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-            <User class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+            <el-icon :size="24" class="text-primary-600 dark:text-primary-400"><User /></el-icon>
           </div>
           <div>
             <p class="text-sm text-slate-600 dark:text-slate-400">总用户数</p>
@@ -279,7 +279,7 @@ const formatDate = (dateString) => {
       <div class="card p-5">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-info-100 dark:bg-info-900/30 flex items-center justify-center">
-            <Building class="w-6 h-6 text-info-600 dark:text-info-400" />
+            <el-icon :size="24" class="text-info-600 dark:text-info-400"><OfficeBuilding /></el-icon>
           </div>
           <div>
             <p class="text-sm text-slate-600 dark:text-slate-400">租户数</p>
@@ -296,7 +296,7 @@ const formatDate = (dateString) => {
       <div class="flex flex-col sm:flex-row gap-4">
         <!-- Search -->
         <div class="relative flex-1">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <el-icon :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Search /></el-icon>
           <input
             v-model="searchQuery"
             type="search"
@@ -310,7 +310,7 @@ const formatDate = (dateString) => {
           @click="showFilters = !showFilters"
           class="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
         >
-          <Filter class="w-4 h-4" />
+          <el-icon :size="16"><Filter /></el-icon>
           <span class="text-sm font-medium">筛选</span>
           <span
             v-if="activeFiltersCount > 0"
@@ -370,7 +370,7 @@ const formatDate = (dateString) => {
               class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
               @click="clearFilters"
             >
-              <X class="w-4 h-4" />
+              <el-icon :size="16"><Close /></el-icon>
               清除筛选
             </button>
           </div>
@@ -409,7 +409,7 @@ const formatDate = (dateString) => {
 
       <template #cell-tenant="{ row }">
         <div class="flex items-center gap-2">
-          <Building class="w-4 h-4 text-slate-400" />
+          <el-icon :size="16" class="text-slate-400"><OfficeBuilding /></el-icon>
           <span class="text-sm text-slate-700 dark:text-slate-300">{{ row.tenantName || '平台' }}</span>
         </div>
       </template>
@@ -425,7 +425,7 @@ const formatDate = (dateString) => {
 
       <template #cell-lastLogin="{ row }">
         <div class="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
-          <Clock class="w-3.5 h-3.5" />
+          <el-icon :size="14"><Clock /></el-icon>
           <span>{{ formatDate(row.lastLoginAt) }}</span>
         </div>
       </template>
@@ -437,21 +437,21 @@ const formatDate = (dateString) => {
             :title="'查看 ' + row.name"
             @click.stop="handleViewUser(row)"
           >
-            <Eye class="w-4 h-4 text-slate-400" />
+            <el-icon :size="16" class="text-slate-400"><View /></el-icon>
           </button>
           <button
             class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
             :title="'编辑 ' + row.name"
             @click.stop="handleEditUser(row)"
           >
-            <Edit class="w-4 h-4 text-slate-400" />
+            <el-icon :size="16" class="text-slate-400"><Edit /></el-icon>
           </button>
           <button
             class="p-1.5 hover:bg-error-50 dark:hover:bg-error-900/30 rounded-lg transition-colors cursor-pointer"
             :title="'删除 ' + row.name"
             @click.stop="confirmDelete(row)"
           >
-            <Trash2 class="w-4 h-4 text-error-400" />
+            <el-icon :size="16" class="text-error-400"><Delete /></el-icon>
           </button>
         </div>
       </template>
@@ -462,7 +462,7 @@ const formatDate = (dateString) => {
       v-if="filteredUsers.length === 0"
       class="card p-12 text-center"
     >
-      <User class="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+      <el-icon :size="64" class="text-slate-300 dark:text-slate-600 mx-auto mb-4"><User /></el-icon>
       <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
         没有找到用户
       </h3>
@@ -474,7 +474,7 @@ const formatDate = (dateString) => {
         variant="primary"
         @click="handleCreateUser"
       >
-        <Plus class="w-5 h-5" />
+        <el-icon :size="20"><CirclePlus /></el-icon>
         新建用户
       </BaseButton>
     </div>

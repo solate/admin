@@ -2,9 +2,11 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { setLocale, getCurrentLocale } from '@/locales'
+import { useUiStore } from '@/stores/ui'
 import { Languages } from '@/components/icons/index.js'
 
 const { locale } = useI18n()
+const uiStore = useUiStore()
 
 const isOpen = ref(false)
 
@@ -23,6 +25,8 @@ const toggleDropdown = () => {
 
 const selectLocale = (localeCode) => {
   setLocale(localeCode)
+  // 同步更新 Element Plus locale
+  uiStore.setElementLocale(localeCode)
   isOpen.value = false
 }
 

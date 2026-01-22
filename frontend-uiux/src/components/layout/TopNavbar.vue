@@ -6,13 +6,13 @@ import { useAuthStore } from '@/stores/auth'
 import {
   Search,
   Bell,
-  Sun,
+  Sunny,
   Moon,
-  Settings,
+  Setting,
   User,
-  ChevronDown,
-  LogOut
-} from 'lucide-vue-next'
+  ArrowDown,
+  SwitchButton
+} from '@element-plus/icons-vue'
 import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
 
 const route = useRoute()
@@ -89,7 +89,7 @@ const notificationCount = computed(() => 5)
       <!-- Center: Search -->
       <div class="hidden md:flex flex-1 justify-center px-8">
         <div class="relative w-full max-w-md">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          <el-icon :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Search /></el-icon>
           <input
             v-model="searchQuery"
             type="search"
@@ -110,13 +110,13 @@ const notificationCount = computed(() => 5)
           :aria-label="uiStore.darkMode ? '切换到浅色模式' : '切换到深色模式'"
           @click="uiStore.toggleDarkMode()"
         >
-          <Sun v-if="uiStore.darkMode" class="w-5 h-5 text-slate-600 dark:text-slate-400" />
-          <Moon v-else class="w-5 h-5 text-slate-600 dark:text-slate-400" />
+          <el-icon v-if="uiStore.darkMode" :size="20" class="text-slate-600 dark:text-slate-400"><Sunny /></el-icon>
+          <el-icon v-else :size="20" class="text-slate-600 dark:text-slate-400"><Moon /></el-icon>
         </button>
 
         <!-- Notifications -->
         <button class="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer">
-          <Bell class="w-5 h-5 text-slate-600 dark:text-slate-400" />
+          <el-icon :size="20" class="text-slate-600 dark:text-slate-400"><Bell /></el-icon>
           <span
             v-if="notificationCount > 0"
             class="absolute top-1 right-1 w-2.5 h-2.5 bg-error-500 rounded-full"
@@ -128,7 +128,7 @@ const notificationCount = computed(() => 5)
           to="/dashboard/settings"
           class="hidden sm:flex p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
         >
-          <Settings class="w-5 h-5 text-slate-600 dark:text-slate-400" />
+          <el-icon :size="20" class="text-slate-600 dark:text-slate-400"><Setting /></el-icon>
         </router-link>
 
         <!-- User Menu -->
@@ -138,7 +138,7 @@ const notificationCount = computed(() => 5)
             @click="showUserMenu = !showUserMenu"
           >
             <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-              <User class="w-4 h-4 text-primary-600 dark:text-primary-400" />
+              <el-icon :size="16" class="text-primary-600 dark:text-primary-400"><User /></el-icon>
             </div>
             <div class="hidden lg:block text-left">
               <p class="text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -148,7 +148,7 @@ const notificationCount = computed(() => 5)
                 {{ authStore.userRole || 'admin' }}
               </p>
             </div>
-            <ChevronDown class="hidden lg:block w-4 h-4 text-slate-400" />
+            <el-icon class="hidden lg:block text-slate-400"><ArrowDown /></el-icon>
           </button>
 
           <!-- Dropdown -->
@@ -170,7 +170,7 @@ const notificationCount = computed(() => 5)
                 class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
                 @click="showUserMenu = false"
               >
-                <User class="w-4 h-4" />
+                <el-icon :size="16"><User /></el-icon>
                 个人资料
               </router-link>
               <router-link
@@ -178,7 +178,7 @@ const notificationCount = computed(() => 5)
                 class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
                 @click="showUserMenu = false"
               >
-                <Settings class="w-4 h-4" />
+                <el-icon :size="16"><Setting /></el-icon>
                 设置
               </router-link>
               <hr class="my-1 border-slate-200 dark:border-slate-700">
@@ -186,7 +186,7 @@ const notificationCount = computed(() => 5)
                 class="w-full flex items-center gap-2 px-3 py-2 text-sm text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/30 cursor-pointer text-left"
                 @click="authStore.logout(); showUserMenu = false"
               >
-                <LogOut class="w-4 h-4" />
+                <el-icon :size="16"><SwitchButton /></el-icon>
                 退出登录
               </button>
             </div>
@@ -198,7 +198,7 @@ const notificationCount = computed(() => 5)
     <!-- Mobile Search Bar -->
     <div class="sm:hidden px-4 pb-3">
       <div class="relative">
-        <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+        <el-icon :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Search /></el-icon>
         <input
           v-model="searchQuery"
           type="search"

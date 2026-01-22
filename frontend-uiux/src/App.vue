@@ -1,15 +1,20 @@
 <script setup>
 import { useRoute } from 'vue-router'
+import { ElConfigProvider } from 'element-plus'
+import { useUiStore } from './stores/ui'
 
 const route = useRoute()
+const uiStore = useUiStore()
 </script>
 
 <template>
-  <router-view v-slot="{ Component }">
-    <transition :name="route.meta.transition || 'fade'" mode="out-in">
-      <component :is="Component" :key="route.path" />
-    </transition>
-  </router-view>
+  <el-config-provider :locale="uiStore.elementLocale">
+    <router-view v-slot="{ Component }">
+      <transition :name="route.meta.transition || 'fade'" mode="out-in">
+        <component :is="Component" :key="route.path" />
+      </transition>
+    </router-view>
+  </el-config-provider>
 </template>
 
 <style>

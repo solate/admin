@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { zhCn, en } from '../plugins/element'
 
 const STORAGE_KEY = 'ui-state'
 
@@ -11,6 +12,9 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(initialState.sidebarOpen ?? true)
   const darkMode = ref(initialState.darkMode ?? false)
   const mobileMenuOpen = ref(false)
+
+  // Element Plus locale
+  const elementLocale = ref(zhCn)
 
   // 初始化时同步主题状态到 DOM
   if (darkMode.value) {
@@ -49,13 +53,20 @@ export const useUiStore = defineStore('ui', () => {
     mobileMenuOpen.value = false
   }
 
+  // 设置 Element Plus locale
+  function setElementLocale(locale) {
+    elementLocale.value = locale === 'zh-CN' ? zhCn : en
+  }
+
   return {
     sidebarOpen,
     darkMode,
     mobileMenuOpen,
+    elementLocale,
     toggleSidebar,
     toggleDarkMode,
     toggleMobileMenu,
-    closeMobileMenu
+    closeMobileMenu,
+    setElementLocale
   }
 })

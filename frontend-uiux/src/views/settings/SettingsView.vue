@@ -1,21 +1,16 @@
 <script setup>
 import { ref } from 'vue'
-import BaseButton from '@/components/ui/BaseButton.vue'
-import BaseInput from '@/components/ui/BaseInput.vue'
 import {
   Settings as SettingsIcon,
   Bell,
   Shield,
   CreditCard,
   User,
-  Globe,
   Mail,
-  Moon,
-  Sun,
   Lock,
   Eye,
   EyeOff
-} from 'lucide-vue-next'
+} from '@element-plus/icons-vue'
 
 const activeTab = ref('general')
 
@@ -78,7 +73,7 @@ const showNewPassword = ref(false)
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 p-6">
     <!-- Header -->
     <div>
       <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">系统设置</h1>
@@ -87,504 +82,296 @@ const showNewPassword = ref(false)
       </p>
     </div>
 
-    <div class="flex flex-col lg:flex-row gap-6">
+    <el-row :gutter="24">
       <!-- Sidebar -->
-      <div class="lg:w-64">
-        <div class="card p-2 space-y-1">
-          <button
-            v-for="tab in tabs"
-            :key="tab.id"
-            @click="activeTab = tab.id"
-            class="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all cursor-pointer"
-            :class="activeTab === tab.id
-              ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'"
+      <el-col :lg="6">
+        <el-card shadow="never">
+          <el-menu
+            :default-active="activeTab"
+            mode="vertical"
+            @select="(key) => activeTab = key"
           >
-            <component :is="tab.icon" class="w-5 h-5" />
-            <span class="font-medium">{{ tab.name }}</span>
-          </button>
-        </div>
-      </div>
+            <el-menu-item
+              v-for="tab in tabs"
+              :key="tab.id"
+              :index="tab.id"
+            >
+              <el-icon><component :is="tab.icon" /></el-icon>
+              <span>{{ tab.name }}</span>
+            </el-menu-item>
+          </el-menu>
+        </el-card>
+      </el-col>
 
       <!-- Content -->
-      <div class="flex-1">
-        <div class="card p-6">
+      <el-col :lg="18">
+        <el-card shadow="never">
           <!-- General Settings -->
           <div v-if="activeTab === 'general'">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">通用设置</h2>
-            <div class="space-y-5">
-              <!-- Site Name -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">站点名称</label>
-                <input
-                  v-model="settings.siteName"
-                  type="text"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+            <el-form label-width="120px">
+              <el-form-item label="站点名称">
+                <el-input v-model="settings.siteName" />
+              </el-form-item>
 
-              <!-- Support Email -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">支持邮箱</label>
-                <input
-                  v-model="settings.supportEmail"
-                  type="email"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+              <el-form-item label="支持邮箱">
+                <el-input v-model="settings.supportEmail" type="email" />
+              </el-form-item>
 
-              <!-- Language -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">语言</label>
-                <select
-                  v-model="settings.language"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-                  <option value="zh-CN">简体中文</option>
-                  <option value="en-US">English</option>
-                  <option value="ja-JP">日本語</option>
-                </select>
-              </div>
+              <el-form-item label="语言">
+                <el-select v-model="settings.language" style="width: 100%">
+                  <el-option label="简体中文" value="zh-CN" />
+                  <el-option label="English" value="en-US" />
+                  <el-option label="日本語" value="ja-JP" />
+                </el-select>
+              </el-form-item>
 
-              <!-- Timezone -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">时区</label>
-                <select
-                  v-model="settings.timezone"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-                  <option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</option>
-                  <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
-                  <option value="America/New_York">America/New_York (UTC-5)</option>
-                  <option value="Europe/London">Europe/London (UTC+0)</option>
-                </select>
-              </div>
+              <el-form-item label="时区">
+                <el-select v-model="settings.timezone" style="width: 100%">
+                  <el-option label="Asia/Shanghai (UTC+8)" value="Asia/Shanghai" />
+                  <el-option label="Asia/Tokyo (UTC+9)" value="Asia/Tokyo" />
+                  <el-option label="America/New_York (UTC-5)" value="America/New_York" />
+                  <el-option label="Europe/London (UTC+0)" value="Europe/London" />
+                </el-select>
+              </el-form-item>
 
-              <!-- Max Tenants -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">最大租户数</label>
-                <input
-                  v-model="settings.maxTenants"
-                  type="number"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+              <el-form-item label="最大租户数">
+                <el-input-number v-model="settings.maxTenants" :min="1" :max="10000" />
+              </el-form-item>
 
-              <!-- Toggles -->
-              <div class="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                <div class="flex items-center justify-between py-2">
-                  <div>
-                    <p class="font-medium text-slate-900 dark:text-slate-100">允许用户注册</p>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">开启后，新用户可以自行注册账户</p>
-                  </div>
-                  <button
-                    @click="settings.enableRegistration = !settings.enableRegistration"
-                    class="relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                    :class="settings.enableRegistration ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'"
-                  >
-                    <span
-                      class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm"
-                      :class="settings.enableRegistration ? 'translate-x-7' : 'translate-x-1'"
-                    ></span>
-                  </button>
-                </div>
+              <el-divider />
 
-                <div class="flex items-center justify-between py-2">
-                  <div>
-                    <p class="font-medium text-slate-900 dark:text-slate-100">维护模式</p>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">开启后，只有管理员可以访问平台</p>
-                  </div>
-                  <button
-                    @click="settings.maintenanceMode = !settings.maintenanceMode"
-                    class="relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-error-500 focus:ring-offset-2"
-                    :class="settings.maintenanceMode ? 'bg-error-600' : 'bg-slate-300 dark:bg-slate-600'"
-                  >
-                    <span
-                      class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm"
-                      :class="settings.maintenanceMode ? 'translate-x-7' : 'translate-x-1'"
-                    ></span>
-                  </button>
-                </div>
-              </div>
-            </div>
+              <el-form-item label="允许用户注册">
+                <el-switch
+                  v-model="settings.enableRegistration"
+                  active-text="开启后，新用户可以自行注册账户"
+                />
+              </el-form-item>
+
+              <el-form-item label="维护模式">
+                <el-switch
+                  v-model="settings.maintenanceMode"
+                  active-text="开启后，只有管理员可以访问平台"
+                />
+              </el-form-item>
+            </el-form>
           </div>
 
           <!-- Profile Settings -->
           <div v-if="activeTab === 'profile'">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">个人资料</h2>
-            <div class="space-y-5">
-              <!-- Avatar -->
-              <div class="flex items-center gap-4">
-                <div class="w-20 h-20 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                  <User class="w-10 h-10 text-primary-600 dark:text-primary-400" />
+            <el-form label-width="120px">
+              <el-form-item label="头像">
+                <div class="flex items-center gap-4">
+                  <el-avatar :size="80" icon="User" />
+                  <el-button size="small">更换头像</el-button>
                 </div>
-                <div>
-                  <BaseButton variant="secondary" size="sm">更换头像</BaseButton>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">支持 JPG, PNG 格式，最大 2MB</p>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  支持 JPG, PNG 格式，最大 2MB
                 </div>
-              </div>
+              </el-form-item>
 
-              <!-- Name -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">姓名</label>
-                <input
-                  v-model="profileSettings.name"
-                  type="text"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+              <el-form-item label="姓名">
+                <el-input v-model="profileSettings.name" />
+              </el-form-item>
 
-              <!-- Email -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">邮箱</label>
-                <input
-                  v-model="profileSettings.email"
-                  type="email"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+              <el-form-item label="邮箱">
+                <el-input v-model="profileSettings.email" type="email" />
+              </el-form-item>
 
-              <!-- Company -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">公司</label>
-                <input
-                  v-model="profileSettings.company"
-                  type="text"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+              <el-form-item label="公司">
+                <el-input v-model="profileSettings.company" />
+              </el-form-item>
 
-              <!-- Position -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">职位</label>
-                <input
-                  v-model="profileSettings.position"
-                  type="text"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+              <el-form-item label="职位">
+                <el-input v-model="profileSettings.position" />
+              </el-form-item>
 
-              <!-- Bio -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">个人简介</label>
-                <textarea
+              <el-form-item label="个人简介">
+                <el-input
                   v-model="profileSettings.bio"
-                  rows="3"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all resize-none"
-                ></textarea>
-              </div>
-            </div>
+                  type="textarea"
+                  :rows="3"
+                />
+              </el-form-item>
+            </el-form>
           </div>
 
           <!-- Notification Settings -->
           <div v-if="activeTab === 'notifications'">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">通知设置</h2>
-            <div class="space-y-4">
-              <div class="flex items-center justify-between py-3">
+            <el-space direction="vertical" :size="16" style="width: 100%">
+              <div class="flex items-center justify-between py-2">
                 <div>
-                  <p class="font-medium text-slate-900 dark:text-slate-100">邮件通知</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">接收重要更新的邮件通知</p>
+                  <div class="font-medium text-slate-900 dark:text-slate-100">邮件通知</div>
+                  <div class="text-sm text-slate-500 dark:text-slate-400">接收重要更新的邮件通知</div>
                 </div>
-                <button
-                  @click="notificationSettings.emailNotifications = !notificationSettings.emailNotifications"
-                  class="relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  :class="notificationSettings.emailNotifications ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'"
-                >
-                  <span
-                    class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm"
-                    :class="notificationSettings.emailNotifications ? 'translate-x-7' : 'translate-x-1'"
-                  ></span>
-                </button>
+                <el-switch v-model="notificationSettings.emailNotifications" />
               </div>
 
-              <div class="flex items-center justify-between py-3">
+              <el-divider />
+
+              <div class="flex items-center justify-between py-2">
                 <div>
-                  <p class="font-medium text-slate-900 dark:text-slate-100">推送通知</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">接收浏览器推送通知</p>
+                  <div class="font-medium text-slate-900 dark:text-slate-100">推送通知</div>
+                  <div class="text-sm text-slate-500 dark:text-slate-400">接收浏览器推送通知</div>
                 </div>
-                <button
-                  @click="notificationSettings.pushNotifications = !notificationSettings.pushNotifications"
-                  class="relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  :class="notificationSettings.pushNotifications ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'"
-                >
-                  <span
-                    class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm"
-                    :class="notificationSettings.pushNotifications ? 'translate-x-7' : 'translate-x-1'"
-                  ></span>
-                </button>
+                <el-switch v-model="notificationSettings.pushNotifications" />
               </div>
 
-              <div class="flex items-center justify-between py-3">
+              <el-divider />
+
+              <div class="flex items-center justify-between py-2">
                 <div>
-                  <p class="font-medium text-slate-900 dark:text-slate-100">周报</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">每周发送活动摘要报告</p>
+                  <div class="font-medium text-slate-900 dark:text-slate-100">周报</div>
+                  <div class="text-sm text-slate-500 dark:text-slate-400">每周发送活动摘要报告</div>
                 </div>
-                <button
-                  @click="notificationSettings.weeklyReports = !notificationSettings.weeklyReports"
-                  class="relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  :class="notificationSettings.weeklyReports ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'"
-                >
-                  <span
-                    class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm"
-                    :class="notificationSettings.weeklyReports ? 'translate-x-7' : 'translate-x-1'"
-                  ></span>
-                </button>
+                <el-switch v-model="notificationSettings.weeklyReports" />
               </div>
 
-              <div class="flex items-center justify-between py-3">
+              <el-divider />
+
+              <div class="flex items-center justify-between py-2">
                 <div>
-                  <p class="font-medium text-slate-900 dark:text-slate-100">租户告警</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">租户资源使用告警</p>
+                  <div class="font-medium text-slate-900 dark:text-slate-100">租户告警</div>
+                  <div class="text-sm text-slate-500 dark:text-slate-400">租户资源使用告警</div>
                 </div>
-                <button
-                  @click="notificationSettings.tenantAlerts = !notificationSettings.tenantAlerts"
-                  class="relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  :class="notificationSettings.tenantAlerts ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'"
-                >
-                  <span
-                    class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm"
-                    :class="notificationSettings.tenantAlerts ? 'translate-x-7' : 'translate-x-1'"
-                  ></span>
-                </button>
+                <el-switch v-model="notificationSettings.tenantAlerts" />
               </div>
 
-              <div class="flex items-center justify-between py-3">
+              <el-divider />
+
+              <div class="flex items-center justify-between py-2">
                 <div>
-                  <p class="font-medium text-slate-900 dark:text-slate-100">安全告警</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">异常登录等安全事件通知</p>
+                  <div class="font-medium text-slate-900 dark:text-slate-100">安全告警</div>
+                  <div class="text-sm text-slate-500 dark:text-slate-400">异常登录等安全事件通知</div>
                 </div>
-                <button
-                  @click="notificationSettings.securityAlerts = !notificationSettings.securityAlerts"
-                  class="relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  :class="notificationSettings.securityAlerts ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'"
-                >
-                  <span
-                    class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm"
-                    :class="notificationSettings.securityAlerts ? 'translate-x-7' : 'translate-x-1'"
-                  ></span>
-                </button>
+                <el-switch v-model="notificationSettings.securityAlerts" />
               </div>
 
-              <!-- Alert Threshold -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">告警阈值 (%)</label>
-                <input
+              <el-divider />
+
+              <el-form-item label="告警阈值 (%)" label-width="120px">
+                <el-input-number
                   v-model="notificationSettings.alertThreshold"
-                  type="number"
-                  min="0"
-                  max="100"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
-            </div>
+                  :min="0"
+                  :max="100"
+                />
+              </el-form-item>
+            </el-space>
           </div>
 
           <!-- Security Settings -->
           <div v-if="activeTab === 'security'">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">安全设置</h2>
-            <div class="space-y-5">
-              <div class="flex items-center justify-between py-3">
-                <div>
-                  <p class="font-medium text-slate-900 dark:text-slate-100">双因素认证</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">要求用户使用双因素认证</p>
-                </div>
-                <button
-                  @click="securitySettings.twoFactorAuth = !securitySettings.twoFactorAuth"
-                  class="relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  :class="securitySettings.twoFactorAuth ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'"
-                >
-                  <span
-                    class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm"
-                    :class="securitySettings.twoFactorAuth ? 'translate-x-7' : 'translate-x-1'"
-                  ></span>
-                </button>
-              </div>
+            <el-form label-width="140px">
+              <el-form-item label="双因素认证">
+                <el-switch
+                  v-model="securitySettings.twoFactorAuth"
+                  active-text="要求用户使用双因素认证"
+                />
+              </el-form-item>
 
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">会话超时 (分钟)</label>
-                <input
-                  v-model="securitySettings.sessionTimeout"
-                  type="number"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+              <el-form-item label="会话超时 (分钟)">
+                <el-input-number v-model="securitySettings.sessionTimeout" :min="5" :max="120" />
+              </el-form-item>
 
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">最小密码长度</label>
-                <input
-                  v-model="securitySettings.passwordMinLength"
-                  type="number"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+              <el-form-item label="最小密码长度">
+                <el-input-number v-model="securitySettings.passwordMinLength" :min="6" :max="32" />
+              </el-form-item>
 
-              <div class="flex items-center justify-between py-3">
-                <div>
-                  <p class="font-medium text-slate-900 dark:text-slate-100">强密码要求</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">密码必须包含大小写字母、数字和特殊字符</p>
-                </div>
-                <button
-                  @click="securitySettings.requireStrongPassword = !securitySettings.requireStrongPassword"
-                  class="relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  :class="securitySettings.requireStrongPassword ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'"
-                >
-                  <span
-                    class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm"
-                    :class="securitySettings.requireStrongPassword ? 'translate-x-7' : 'translate-x-1'"
-                  ></span>
-                </button>
-              </div>
+              <el-form-item label="强密码要求">
+                <el-switch
+                  v-model="securitySettings.requireStrongPassword"
+                  active-text="密码必须包含大小写字母、数字和特殊字符"
+                />
+              </el-form-item>
 
-              <div class="flex items-center justify-between py-3">
-                <div>
-                  <p class="font-medium text-slate-900 dark:text-slate-100">登录通知</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">新设备登录时发送通知</p>
-                </div>
-                <button
-                  @click="securitySettings.loginNotifications = !securitySettings.loginNotifications"
-                  class="relative w-12 h-6 rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                  :class="securitySettings.loginNotifications ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600'"
-                >
-                  <span
-                    class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm"
-                    :class="securitySettings.loginNotifications ? 'translate-x-7' : 'translate-x-1'"
-                  ></span>
-                </button>
-              </div>
+              <el-form-item label="登录通知">
+                <el-switch
+                  v-model="securitySettings.loginNotifications"
+                  active-text="新设备登录时发送通知"
+                />
+              </el-form-item>
 
-              <!-- Change Password Section -->
-              <div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700">
-                <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">修改密码</h3>
-                <div class="space-y-4">
-                  <div class="relative">
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">当前密码</label>
-                    <input
-                      :type="showCurrentPassword ? 'text' : 'password'"
-                      class="w-full px-4 py-2.5 pr-10 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                    >
-                    <button
-                      type="button"
-                      class="absolute right-3 top-9 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
+              <el-divider />
+
+              <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">修改密码</h3>
+              <el-form-item label="当前密码">
+                <el-input
+                  v-model="securitySettings.currentPassword"
+                  :type="showCurrentPassword ? 'text' : 'password'"
+                >
+                  <template #append>
+                    <el-button
+                      :icon="showCurrentPassword ? Eye : EyeOff"
                       @click="showCurrentPassword = !showCurrentPassword"
-                    >
-                      <Eye v-if="showCurrentPassword" class="w-5 h-5" />
-                      <EyeOff v-else class="w-5 h-5" />
-                    </button>
-                  </div>
+                    />
+                  </template>
+                </el-input>
+              </el-form-item>
 
-                  <div class="relative">
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">新密码</label>
-                    <input
-                      :type="showNewPassword ? 'text' : 'password'"
-                      class="w-full px-4 py-2.5 pr-10 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                    >
-                    <button
-                      type="button"
-                      class="absolute right-3 top-9 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
+              <el-form-item label="新密码">
+                <el-input
+                  v-model="securitySettings.newPassword"
+                  :type="showNewPassword ? 'text' : 'password'"
+                >
+                  <template #append>
+                    <el-button
+                      :icon="showNewPassword ? Eye : EyeOff"
                       @click="showNewPassword = !showNewPassword"
-                    >
-                      <Eye v-if="showNewPassword" class="w-5 h-5" />
-                      <EyeOff v-else class="w-5 h-5" />
-                    </button>
-                  </div>
+                    />
+                  </template>
+                </el-input>
+              </el-form-item>
 
-                  <BaseButton variant="secondary" size="sm">修改密码</BaseButton>
-                </div>
-              </div>
-            </div>
+              <el-form-item>
+                <el-button type="primary">修改密码</el-button>
+              </el-form-item>
+            </el-form>
           </div>
 
           <!-- Billing Settings -->
           <div v-if="activeTab === 'billing'">
             <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">账单设置</h2>
-            <div class="space-y-5">
-              <!-- Billing Cycle -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">账单周期</label>
-                <select
-                  v-model="billingSettings.billingCycle"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-                  <option value="monthly">每月</option>
-                  <option value="quarterly">每季度</option>
-                  <option value="annually">每年</option>
-                </select>
-              </div>
+            <el-form label-width="120px">
+              <el-form-item label="账单周期">
+                <el-select v-model="billingSettings.billingCycle" style="width: 100%">
+                  <el-option label="每月" value="monthly" />
+                  <el-option label="每季度" value="quarterly" />
+                  <el-option label="每年" value="annually" />
+                </el-select>
+              </el-form-item>
 
-              <!-- Invoice Email -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">发票邮箱</label>
-                <input
-                  v-model="billingSettings.invoiceEmail"
-                  type="email"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+              <el-form-item label="发票邮箱">
+                <el-input v-model="billingSettings.invoiceEmail" type="email" />
+              </el-form-item>
 
-              <!-- Tax ID -->
-              <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">税号</label>
-                <input
-                  v-model="billingSettings.taxId"
-                  type="text"
-                  class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-                >
-              </div>
+              <el-form-item label="税号">
+                <el-input v-model="billingSettings.taxId" />
+              </el-form-item>
 
-              <!-- Payment Methods -->
-              <div class="pt-4 border-t border-slate-200 dark:border-slate-700">
-                <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">支付方式</h3>
-                <div class="space-y-3">
-                  <label class="flex items-center gap-3 cursor-pointer">
-                    <input
-                      v-model="billingSettings.paymentMethods"
-                      type="checkbox"
-                      value="alipay"
-                      class="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                    >
-                    <span class="text-slate-700 dark:text-slate-300">支付宝</span>
-                  </label>
-                  <label class="flex items-center gap-3 cursor-pointer">
-                    <input
-                      v-model="billingSettings.paymentMethods"
-                      type="checkbox"
-                      value="wechat"
-                      class="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                    >
-                    <span class="text-slate-700 dark:text-slate-300">微信支付</span>
-                  </label>
-                  <label class="flex items-center gap-3 cursor-pointer">
-                    <input
-                      v-model="billingSettings.paymentMethods"
-                      type="checkbox"
-                      value="bank"
-                      class="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                    >
-                    <span class="text-slate-700 dark:text-slate-300">银行转账</span>
-                  </label>
-                  <label class="flex items-center gap-3 cursor-pointer">
-                    <input
-                      v-model="billingSettings.paymentMethods"
-                      type="checkbox"
-                      value="card"
-                      class="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                    >
-                    <span class="text-slate-700 dark:text-slate-300">信用卡</span>
-                  </label>
-                </div>
-              </div>
-            </div>
+              <el-divider />
+
+              <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">支付方式</h3>
+              <el-checkbox-group v-model="billingSettings.paymentMethods">
+                <el-checkbox label="alipay">支付宝</el-checkbox>
+                <el-checkbox label="wechat">微信支付</el-checkbox>
+                <el-checkbox label="bank">银行转账</el-checkbox>
+                <el-checkbox label="card">信用卡</el-checkbox>
+              </el-checkbox-group>
+            </el-form>
           </div>
 
           <!-- Save Button -->
-          <div class="pt-6 mt-6 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <span class="text-sm text-slate-500 dark:text-slate-400">上次保存: 2小时前</span>
-            <BaseButton variant="primary">
-              保存设置
-            </BaseButton>
-          </div>
-        </div>
-      </div>
-    </div>
+          <template #footer>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-slate-500 dark:text-slate-400">上次保存: 2小时前</span>
+              <el-button type="primary">保存设置</el-button>
+            </div>
+          </template>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
