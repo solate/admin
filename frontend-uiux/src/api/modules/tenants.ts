@@ -1,47 +1,89 @@
 // Tenants API
 
 import { api } from '@/utils/request'
+import { tenantMock } from '@/mock/handlers'
+import { env } from '@/config/env'
 import type { ApiResponse, ListResponse, ListParams } from '@/types/api'
 import type { Tenant } from '@/types/models'
 
+/**
+ * 租户 API
+ * 根据 env.useMock 决定使用真实 API 还是 Mock 数据
+ */
 export const tenantsApi = {
   /**
-   * Get tenants list with pagination
+   * 获取租户列表（分页）
    */
-  list: (params?: ListParams) =>
-    api.get<ApiResponse<ListResponse<Tenant>>>('/tenants', { params }),
+  async list(params?: ListParams): Promise<ListResponse<Tenant>> {
+    if (env.useMock) {
+      return tenantMock.list(params)
+    }
+    const res = await api.get<ApiResponse<ListResponse<Tenant>>>('/tenants', { params })
+    return res.data.data
+  },
 
   /**
-   * Get all tenants (without pagination)
+   * 获取所有租户（不分页）
    */
-  getAll: () => api.get<ApiResponse<Tenant[]>>('/tenants/all'),
+  async getAll(): Promise<Tenant[]> {
+    if (env.useMock) {
+      return tenantMock.getAll()
+    }
+    const res = await api.get<ApiResponse<Tenant[]>>('/tenants/all')
+    return res.data.data
+  },
 
   /**
-   * Get tenant by ID
+   * 根据 ID 获取租户
    */
-  getById: (id: string) =>
-    api.get<ApiResponse<Tenant>>(`/tenants/${id}`),
+  async getById(id: string): Promise<Tenant> {
+    if (env.useMock) {
+      return tenantMock.detail(id)
+    }
+    const res = await api.get<ApiResponse<Tenant>>(`/tenants/${id}`)
+    return res.data.data
+  },
 
   /**
-   * Create new tenant
+   * 创建租户
    */
-  create: (data: Partial<Tenant>) =>
-    api.post<ApiResponse<Tenant>>('/tenants', data),
+  async create(data: Partial<Tenant>): Promise<Tenant> {
+    if (env.useMock) {
+      return tenantMock.create(data)
+    }
+    const res = await api.post<ApiResponse<Tenant>>('/tenants', data)
+    return res.data.data
+  },
 
   /**
-   * Update tenant
+   * 更新租户
    */
-  update: (id: string, data: Partial<Tenant>) =>
-    api.put<ApiResponse<Tenant>>(`/tenants/${id}`, data),
+  async update(id: string, data: Partial<Tenant>): Promise<Tenant> {
+    if (env.useMock) {
+      return tenantMock.update(id, data)
+    }
+    const res = await api.put<ApiResponse<Tenant>>(`/tenants/${id}`, data)
+    return res.data.data
+  },
 
   /**
-   * Delete tenant
+   * 删除租户
    */
-  delete: (id: string) => api.delete<ApiResponse<void>>(`/tenants/${id}`),
+  async delete(id: string): Promise<void> {
+    if (env.useMock) {
+      return tenantMock.delete(id)
+    }
+    await api.delete<ApiResponse<void>>(`/tenants/${id}`)
+  },
 
   /**
-   * Update tenant status
+   * 更新租户状态
    */
-  updateStatus: (id: string, status: Tenant['status']) =>
-    api.put<ApiResponse<Tenant>>('/tenants/status', { id, status })
+  async updateStatus(id: string, status: Tenant['status']): Promise<Tenant> {
+    if (env.useMock) {
+      return tenantMock.updateStatus(id, status)
+    }
+    const res = await api.put<ApiResponse<Tenant>>('/tenants/status', { id, status })
+    return res.data.data
+  }
 }

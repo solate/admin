@@ -5,7 +5,7 @@ import router from './router'
 import i18n, { getCurrentLocale } from './locales'
 import directives from './directives'
 import { setupElementPlus, zhCn, en } from './plugins/element'
-import './assets/main.css'
+import './styles/index.css'
 
 const app = createApp(App)
 

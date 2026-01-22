@@ -1,0 +1,135 @@
+/**
+ * 全局样式入口
+ * 统一导入所有样式文件
+ */
+
+/* Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS 变量 */
+@import './variables.css';
+
+/* 样式重置 */
+@import './reset.css';
+
+/* 基础样式 */
+@import './base.css';
+
+/* 原有的自定义样式（保留 Tailwind 类和组件样式）*/
+@layer base {
+  :root {
+    --color-primary: 37 99 235;
+    --color-cta: 249 115 22;
+    --color-bg: 248 250 252;
+    --color-text: 30 41 59;
+  }
+
+  .dark {
+    --color-primary: 59 130 246;
+    --color-cta: 251 146 60;
+    --color-bg: 15 23 42;
+    --color-text: 241 245 249;
+  }
+
+  * {
+    @apply border-slate-200 dark:border-slate-700;
+  }
+
+  body {
+    @apply bg-[#F8FAFC] dark:bg-slate-900 text-slate-900 dark:text-slate-100;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100 dark:bg-slate-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400 dark:bg-slate-500;
+  }
+}
+
+@layer components {
+  /* Glass Effect - Optimized for light/dark mode */
+  .glass {
+    @apply bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50;
+  }
+
+  .glass-card {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-card;
+  }
+
+  .glass-card-hover {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-card hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200;
+  }
+
+  /* Card variants */
+  .card {
+    @apply bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-card;
+  }
+
+  .card-elevated {
+    @apply bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-panel;
+  }
+
+  /* Gradients */
+  .gradient-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  }
+
+  .gradient-cta {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Focus States for Accessibility */
+@layer base {
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-900;
+  }
+}
+
+/* Smooth transitions */
+@layer base {
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    @apply transition-colors duration-200;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -4,9 +4,9 @@ import {
   Setting as SettingsIcon,
   Bell,
   Lock,
-  CreditCard,
+  Wallet,
   User,
-  Mail,
+  Message,
   View,
   Hide
 } from '@element-plus/icons-vue'
@@ -18,7 +18,7 @@ const tabs = [
   { id: 'profile', name: '个人资料', icon: User },
   { id: 'notifications', name: '通知设置', icon: Bell },
   { id: 'security', name: '安全设置', icon: Lock },
-  { id: 'billing', name: '账单设置', icon: CreditCard }
+  { id: 'billing', name: '账单设置', icon: Wallet }
 ]
 
 const settings = ref({

@@ -5,17 +5,7 @@ import { ref, computed } from 'vue'
 import { authStorage } from '@/utils/storage'
 import { authApi } from '@/api/modules/auth'
 import type { User } from '@/types/models'
-
-export interface LoginCredentials {
-  email: string
-  password: string
-}
-
-export interface RegisterData {
-  name: string
-  email: string
-  password: string
-}
+import type { LoginRequest, RegisterRequest } from '@/types/api'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -30,33 +20,18 @@ export const useAuthStore = defineStore('auth', () => {
   const tenantId = computed(() => user.value?.tenantId || null)
 
   // Actions
-  async function login(credentials: LoginCredentials) {
+  async function login(credentials: LoginRequest) {
     isLoading.value = true
     error.value = null
 
     try {
-      // Mock implementation - replace with actual API call
-      // const response = await authApi.login(credentials)
-      // const { user: userData, token: accessToken } = response.data
-
-      // Mock login
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      const userData: User = {
-        id: '1',
-        name: credentials.email.split('@')[0],
-        email: credentials.email,
-        role: 'admin',
-        tenantId: 'tenant-1'
-      }
-      const accessToken = 'mock-jwt-token-' + Date.now()
-
-      user.value = userData
-      token.value = accessToken
-      authStorage.setToken(accessToken)
-
-      return userData
+      const response = await authApi.login(credentials)
+      user.value = response.user
+      token.value = response.token
+      authStorage.setToken(response.token)
+      return response.user
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Login failed'
+      error.value = err instanceof Error ? err.message : '登录失败'
       throw err
     } finally {
       isLoading.value = false
@@ -67,47 +42,30 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
 
     try {
-      // Mock implementation - replace with actual API call
-      // await authApi.logout()
-
+      await authApi.logout()
       user.value = null
       token.value = null
       authStorage.removeToken()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Logout failed'
+      error.value = err instanceof Error ? err.message : '登出失败'
       throw err
     } finally {
       isLoading.value = false
     }
   }
 
-  async function register(data: RegisterData) {
+  async function register(data: RegisterRequest) {
     isLoading.value = true
     error.value = null
 
     try {
-      // Mock implementation - replace with actual API call
-      // const response = await authApi.register(data)
-      // const { user: userData, token: accessToken } = response.data
-
-      // Mock registration
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      const userData: User = {
-        id: Date.now().toString(),
-        name: data.name,
-        email: data.email,
-        role: 'user',
-        tenantId: null
-      }
-      const accessToken = 'mock-jwt-token-' + Date.now()
-
-      user.value = userData
-      token.value = accessToken
-      authStorage.setToken(accessToken)
-
-      return userData
+      const response = await authApi.register(data)
+      user.value = response.user
+      token.value = response.token
+      authStorage.setToken(response.token)
+      return response.user
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Registration failed'
+      error.value = err instanceof Error ? err.message : '注册失败'
       throw err
     } finally {
       isLoading.value = false
@@ -121,13 +79,10 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      // Mock implementation - replace with actual API call
-      // const response = await authApi.me()
-      // user.value = response.data
-
+      user.value = await authApi.me()
       return user.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch user'
+      error.value = err instanceof Error ? err.message : '获取用户信息失败'
       throw err
     } finally {
       isLoading.value = false

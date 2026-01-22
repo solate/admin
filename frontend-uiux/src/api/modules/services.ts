@@ -1,41 +1,78 @@
 // Services API
 
 import { api } from '@/utils/request'
+import { serviceMock } from '@/mock/handlers'
+import { env } from '@/config/env'
 import type { ApiResponse, ListResponse, ListParams } from '@/types/api'
 import type { Service } from '@/types/models'
 
+/**
+ * 服务 API
+ * 根据 env.useMock 决定使用真实 API 还是 Mock 数据
+ */
 export const servicesApi = {
   /**
-   * Get services list with pagination
+   * 获取服务列表（分页）
    */
-  list: (params?: ListParams) =>
-    api.get<ApiResponse<ListResponse<Service>>>('/services', { params }),
+  async list(params?: ListParams): Promise<ListResponse<Service>> {
+    if (env.useMock) {
+      return serviceMock.list(params)
+    }
+    const res = await api.get<ApiResponse<ListResponse<Service>>>('/services', { params })
+    return res.data.data
+  },
 
   /**
-   * Get service by ID
+   * 根据 ID 获取服务
    */
-  getById: (id: string) => api.get<ApiResponse<Service>>(`/services/${id}`),
+  async getById(id: string): Promise<Service> {
+    if (env.useMock) {
+      return serviceMock.detail(id)
+    }
+    const res = await api.get<ApiResponse<Service>>(`/services/${id}`)
+    return res.data.data
+  },
 
   /**
-   * Create new service
+   * 创建服务
    */
-  create: (data: Partial<Service>) =>
-    api.post<ApiResponse<Service>>('/services', data),
+  async create(data: Partial<Service>): Promise<Service> {
+    if (env.useMock) {
+      return serviceMock.create(data)
+    }
+    const res = await api.post<ApiResponse<Service>>('/services', data)
+    return res.data.data
+  },
 
   /**
-   * Update service
+   * 更新服务
    */
-  update: (id: string, data: Partial<Service>) =>
-    api.put<ApiResponse<Service>>(`/services/${id}`, data),
+  async update(id: string, data: Partial<Service>): Promise<Service> {
+    if (env.useMock) {
+      return serviceMock.update(id, data)
+    }
+    const res = await api.put<ApiResponse<Service>>(`/services/${id}`, data)
+    return res.data.data
+  },
 
   /**
-   * Delete service
+   * 删除服务
    */
-  delete: (id: string) => api.delete<ApiResponse<void>>(`/services/${id}`),
+  async delete(id: string): Promise<void> {
+    if (env.useMock) {
+      return serviceMock.delete(id)
+    }
+    await api.delete<ApiResponse<void>>(`/services/${id}`)
+  },
 
   /**
-   * Toggle service enabled status
+   * 切换服务启用状态
    */
-  toggle: (id: string, enabled: boolean) =>
-    api.put<ApiResponse<Service>>(`/services/${id}/toggle`, { enabled })
+  async toggle(id: string, enabled: boolean): Promise<Service> {
+    if (env.useMock) {
+      return serviceMock.toggle(id, enabled)
+    }
+    const res = await api.put<ApiResponse<Service>>(`/services/${id}/toggle`, { enabled })
+    return res.data.data
+  }
 }

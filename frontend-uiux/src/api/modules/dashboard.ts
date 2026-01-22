@@ -1,55 +1,168 @@
 // Dashboard API
 
 import { api } from '@/utils/request'
-import type { ApiResponse } from '@/types/api'
+import { dashboardMock, roleMock, permissionMock, auditLogMock, notificationMock, settingMock } from '@/mock/handlers'
+import { env } from '@/config/env'
+import type { ApiResponse, ListParams } from '@/types/api'
 import type { DashboardStats, ChartData, AuditLog } from '@/types/models'
 
+/**
+ * Dashboard API
+ * 根据 env.useMock 决定使用真实 API 还是 Mock 数据
+ */
 export const dashboardApi = {
   /**
-   * Get dashboard statistics
+   * 获取仪表板统计数据
    */
-  stats: () => api.get<ApiResponse<DashboardStats>>('/dashboard/stats'),
+  async stats(): Promise<DashboardStats> {
+    if (env.useMock) {
+      return dashboardMock.stats()
+    }
+    const res = await api.get<ApiResponse<DashboardStats>>('/dashboard/stats')
+    return res.data.data
+  },
 
   /**
-   * Get dashboard chart data
+   * 获取仪表板图表数据
    */
-  charts: () => api.get<ApiResponse<ChartData>>('/dashboard/charts'),
+  async charts(): Promise<ChartData> {
+    if (env.useMock) {
+      return dashboardMock.charts()
+    }
+    const res = await api.get<ApiResponse<ChartData>>('/dashboard/charts')
+    return res.data.data
+  },
 
   /**
-   * Get recent activity
+   * 获取最近活动
    */
-  activity: (params?: { limit?: number }) =>
-    api.get<ApiResponse<AuditLog[]>>('/dashboard/activity', { params })
+  async activity(params?: { limit?: number }): Promise<AuditLog[]> {
+    if (env.useMock) {
+      return dashboardMock.activity(params)
+    }
+    const res = await api.get<ApiResponse<AuditLog[]>>('/dashboard/activity', { params })
+    return res.data.data
+  }
 }
 
-// Additional API modules that can be added later
+/**
+ * 角色 API
+ */
 export const rolesApi = {
-  list: (params?: any) => api.get('/roles', { params }),
-  getById: (id: string) => api.get(`/roles/${id}`),
-  create: (data: any) => api.post('/roles', data),
-  update: (id: string, data: any) => api.put(`/roles/${id}`, data),
-  delete: (id: string) => api.delete(`/roles/${id}`)
+  async list(params?: ListParams) {
+    if (env.useMock) {
+      return roleMock.list(params)
+    }
+    return api.get('/roles', { params })
+  },
+
+  async getById(id: string) {
+    if (env.useMock) {
+      return roleMock.detail(id)
+    }
+    return api.get(`/roles/${id}`)
+  },
+
+  async create(data: any) {
+    return api.post('/roles', data)
+  },
+
+  async update(id: string, data: any) {
+    return api.put(`/roles/${id}`, data)
+  },
+
+  async delete(id: string) {
+    return api.delete(`/roles/${id}`)
+  }
 }
 
+/**
+ * 权限 API
+ */
 export const permissionsApi = {
-  list: () => api.get('/permissions'),
-  getByRole: (roleId: string) => api.get(`/permissions/role/${roleId}`)
+  async list() {
+    if (env.useMock) {
+      return permissionMock.list()
+    }
+    return api.get('/permissions')
+  },
+
+  async getByRole(roleId: string) {
+    return api.get(`/permissions/role/${roleId}`)
+  }
 }
 
+/**
+ * 审计日志 API
+ */
 export const auditLogsApi = {
-  list: (params?: any) => api.get('/audit-logs', { params }),
-  getById: (id: string) => api.get(`/audit-logs/${id}`)
+  async list(params?: ListParams) {
+    if (env.useMock) {
+      return auditLogMock.list(params)
+    }
+    return api.get('/audit-logs', { params })
+  },
+
+  async getById(id: string) {
+    return api.get(`/audit-logs/${id}`)
+  }
 }
 
+/**
+ * 通知 API
+ */
 export const notificationsApi = {
-  list: (params?: any) => api.get('/notifications', { params }),
-  markAsRead: (id: string) => api.put(`/notifications/${id}/read`),
-  markAllAsRead: () => api.put('/notifications/read-all'),
-  unreadCount: () => api.get('/notifications/unread-count')
+  async list(params?: ListParams) {
+    if (env.useMock) {
+      return notificationMock.list(params)
+    }
+    return api.get('/notifications', { params })
+  },
+
+  async markAsRead(id: string) {
+    if (env.useMock) {
+      return notificationMock.markAsRead(id)
+    }
+    return api.put(`/notifications/${id}/read`)
+  },
+
+  async markAllAsRead() {
+    if (env.useMock) {
+      return notificationMock.markAllAsRead()
+    }
+    return api.put('/notifications/read-all')
+  },
+
+  async unreadCount() {
+    if (env.useMock) {
+      return notificationMock.unreadCount()
+    }
+    return api.get('/notifications/unread-count')
+  }
 }
 
+/**
+ * 设置 API
+ */
 export const settingsApi = {
-  get: (key: string) => api.get(`/settings/${key}`),
-  set: (key: string, value: any) => api.put(`/settings/${key}`, { value }),
-  getAll: () => api.get('/settings')
+  async get(key: string) {
+    if (env.useMock) {
+      return settingMock.get(key)
+    }
+    return api.get(`/settings/${key}`)
+  },
+
+  async set(key: string, value: any) {
+    if (env.useMock) {
+      return settingMock.set(key, value)
+    }
+    return api.put(`/settings/${key}`, { value })
+  },
+
+  async getAll() {
+    if (env.useMock) {
+      return settingMock.getAll()
+    }
+    return api.get('/settings')
+  }
 }
