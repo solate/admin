@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { Setting as SettingsIcon, Bell, Lock, Wallet, User, Mail, Eye, EyeOff } from 'lucide-vue-next'
+import { Settings as SettingsIcon, Bell, Lock, Wallet, User, Mail, Eye, EyeOff } from 'lucide-vue-next'
 
 const activeTab = ref('general')
 
@@ -345,10 +345,10 @@ const showNewPassword = ref(false)
 
               <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">支付方式</h3>
               <el-checkbox-group v-model="billingSettings.paymentMethods">
-                <el-checkbox label="alipay">支付宝</el-checkbox>
-                <el-checkbox label="wechat">微信支付</el-checkbox>
-                <el-checkbox label="bank">银行转账</el-checkbox>
-                <el-checkbox label="card">信用卡</el-checkbox>
+                <el-checkbox value="alipay">支付宝</el-checkbox>
+                <el-checkbox value="wechat">微信支付</el-checkbox>
+                <el-checkbox value="bank">银行转账</el-checkbox>
+                <el-checkbox value="card">信用卡</el-checkbox>
               </el-checkbox-group>
             </el-form>
           </div>
