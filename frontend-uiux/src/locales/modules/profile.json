@@ -1,0 +1,103 @@
+{
+  "title": "个人资料设置",
+  "subtitle": "管理您的账户和偏好设置",
+  "defaultUser": "用户",
+  "personalInfo": "个人信息",
+  "saving": "保存中...",
+  "updating": "更新中...",
+  "saveChanges": "保存更改",
+  "tabs": {
+    "profile": "个人资料",
+    "security": "安全设置",
+    "sessions": "会话管理",
+    "notifications": "通知偏好"
+  },
+  "fields": {
+    "fullName": "全名",
+    "email": "邮箱",
+    "phone": "电话",
+    "location": "所在地",
+    "bio": "个人简介",
+    "currentPassword": "当前密码",
+    "newPassword": "新密码",
+    "confirmPassword": "确认新密码"
+  },
+  "placeholders": {
+    "fullName": "请输入姓名",
+    "email": "请输入邮箱地址",
+    "phone": "+86 138 0000 0000",
+    "location": "北京市朝阳区",
+    "bio": "介绍一下自己...",
+    "password": "••••••••"
+  },
+  "passwordStrength": {
+    "weak": "弱",
+    "fair": "一般",
+    "good": "良好",
+    "strong": "强",
+    "veryStrong": "非常强"
+  },
+  "security": {
+    "title": "安全设置",
+    "changePassword": "修改密码",
+    "changePasswordDesc": "定期更换密码有助于保护您的账户",
+    "updatePassword": "更新密码",
+    "twoFactor": "双因素认证",
+    "twoFactorEnabled": "您的账户已启用双因素认证",
+    "twoFactorDisabled": "为您的账户添加额外的安全保护层",
+    "enable": "启用",
+    "disable": "禁用"
+  },
+  "sessions": {
+    "title": "活动会话",
+    "current": "当前",
+    "revoke": "撤销会话",
+    "revokeAll": "撤销其他会话",
+    "noSessions": "未找到活动会话"
+  },
+  "device": {
+    "mobile": "手机",
+    "tablet": "平板",
+    "desktop": "电脑"
+  },
+  "notifications": {
+    "title": "通知偏好",
+    "save": "保存偏好",
+    "items": {
+      "email": {
+        "title": "邮件通知",
+        "description": "接收邮件通知"
+      },
+      "security": {
+        "title": "安全告警",
+        "description": "重要的安全告警信息"
+      },
+      "marketing": {
+        "title": "营销信息",
+        "description": "促销优惠和新闻资讯"
+      },
+      "updates": {
+        "title": "产品更新",
+        "description": "新功能和改进更新"
+      }
+    }
+  },
+  "messages": {
+    "profileUpdated": "个人资料更新成功",
+    "passwordChanged": "密码修改成功",
+    "twoFactorDisabled": "双因素认证已禁用",
+    "sessionRevoked": "会话撤销成功",
+    "allSessionsRevoked": "所有其他会话已撤销",
+    "notificationsSaved": "通知偏好已保存"
+  },
+  "errors": {
+    "updateProfileFailed": "更新个人资料失败",
+    "passwordMismatch": "两次输入的密码不一致",
+    "passwordTooShort": "密码长度至少需要 8 个字符",
+    "changePasswordFailed": "修改密码失败",
+    "disableTwoFactorFailed": "禁用双因素认证失败",
+    "revokeSessionFailed": "撤销会话失败",
+    "revokeSessionsFailed": "撤销会话失败",
+    "saveNotificationsFailed": "保存通知偏好失败"
+  }
+}

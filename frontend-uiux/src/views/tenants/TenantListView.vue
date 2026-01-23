@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTenantsStore } from '@/stores/modules/tenants'
+import { useI18n } from '@/locales/composables'
 import BaseTable from '@/components/ui/BaseTable.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -10,17 +11,18 @@ import { Search, CirclePlus, Building, Pencil, Trash2, Eye, ChevronRight } from 
 
 const router = useRouter()
 const tenantsStore = useTenantsStore()
+const { t } = useI18n()
 
 // Search and Filter
 const searchQuery = ref('')
 const selectedPlan = ref('all')
 
-const plans = [
-  { value: 'all', label: '全部套餐' },
-  { value: 'basic', label: '基础版' },
-  { value: 'pro', label: '专业版' },
-  { value: 'enterprise', label: '企业版' }
-]
+const plans = computed(() => [
+  { value: 'all', label: t('tenant.allPlans') },
+  { value: 'basic', label: t('tenant.basic') },
+  { value: 'pro', label: t('tenant.pro') },
+  { value: 'enterprise', label: t('tenant.enterprise') }
+])
 
 // Filtered Data
 const filteredTenants = computed(() => {
@@ -33,26 +35,26 @@ const filteredTenants = computed(() => {
 })
 
 // Status Config
-const statusConfig = {
-  active: { variant: 'success', label: '活跃' },
-  suspended: { variant: 'error', label: '暂停' },
-  trial: { variant: 'warning', label: '试用' }
-}
+const statusConfig = computed(() => ({
+  active: { variant: 'success', label: t('tenant.active') },
+  suspended: { variant: 'error', label: t('tenant.suspended') },
+  trial: { variant: 'warning', label: t('tenant.trial') }
+}))
 
 // Plan Config
-const planConfig = {
-  basic: { variant: 'default', label: '基础版' },
-  pro: { variant: 'primary', label: '专业版' },
-  enterprise: { variant: 'info', label: '企业版' }
-}
+const planConfig = computed(() => ({
+  basic: { variant: 'default', label: t('tenant.basic') },
+  pro: { variant: 'primary', label: t('tenant.pro') },
+  enterprise: { variant: 'info', label: t('tenant.enterprise') }
+}))
 
 // Table Columns
-const columns = ref([
-  { key: 'name', label: '租户', width: '25%' },
-  { key: 'domain', label: '域名', width: '20%' },
-  { key: 'plan', label: '套餐', width: '12%' },
-  { key: 'users', label: '用户数', width: '13%' },
-  { key: 'status', label: '状态', width: '12%' },
+const columns = computed(() => [
+  { key: 'name', label: t('tenant.name'), width: '25%' },
+  { key: 'domain', label: t('tenant.domain'), width: '20%' },
+  { key: 'plan', label: t('tenant.plan'), width: '12%' },
+  { key: 'users', label: t('tenant.users'), width: '13%' },
+  { key: 'status', label: t('tenant.status'), width: '12%' },
   { key: 'actions', label: '', width: '18%' }
 ])
 
@@ -96,9 +98,9 @@ const handleRowClick = ({ row }) => {
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">租户管理</h1>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ t('tenant.title') }}</h1>
         <p class="text-slate-600 dark:text-slate-400 mt-1">
-          管理平台上的所有租户账户
+          {{ t('tenant.description') }}
         </p>
       </div>
       <BaseButton
@@ -106,7 +108,7 @@ const handleRowClick = ({ row }) => {
         @click="handleCreateTenant"
       >
         <CirclePlus  :size="20"  />
-        新建租户
+        {{ t('tenant.addTenant') }}
       </BaseButton>
     </div>
 
@@ -118,7 +120,7 @@ const handleRowClick = ({ row }) => {
             <Building  :size="24"  class="text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">总租户数</p>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ t('tenant.totalTenants') }}</p>
             <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ tenantsStore.tenants.length }}</p>
           </div>
         </div>
@@ -132,7 +134,7 @@ const handleRowClick = ({ row }) => {
             </span>
           </div>
           <div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">活跃租户</p>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ t('tenant.activeTenants') }}</p>
             <p class="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {{ Math.round(tenantsStore.getActiveTenants().length / tenantsStore.tenants.length * 100) || 0 }}%
             </p>
@@ -146,7 +148,7 @@ const handleRowClick = ({ row }) => {
             <span class="text-lg font-bold text-info-600 dark:text-info-400">👥</span>
           </div>
           <div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">总用户数</p>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ t('tenant.totalUsers') }}</p>
             <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">
               {{ tenantsStore.tenants.reduce((sum, t) => sum + t.users, 0) }}
             </p>
@@ -160,7 +162,7 @@ const handleRowClick = ({ row }) => {
             <span class="text-lg font-bold text-warning-600 dark:text-warning-400">💎</span>
           </div>
           <div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">企业版</p>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ t('tenant.enterpriseCount') }}</p>
             <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">
               {{ tenantsStore.getTenantsByPlan('enterprise').length }}
             </p>
@@ -178,7 +180,7 @@ const handleRowClick = ({ row }) => {
           <input
             v-model="searchQuery"
             type="search"
-            placeholder="搜索租户名称或域名..."
+            :placeholder="t('tenant.searchPlaceholder')"
             class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
           />
         </div>
@@ -202,7 +204,7 @@ const handleRowClick = ({ row }) => {
 
     <!-- Tenants Table -->
     <BaseTable
-      :columns="columns"
+      :columns="columns.value"
       :data="filteredTenants"
       :striped="true"
       :hoverable="true"
@@ -228,10 +230,10 @@ const handleRowClick = ({ row }) => {
 
       <template #cell-plan="{ row }">
         <BaseBadge
-          :variant="planConfig[row.plan]?.variant || 'default'"
+          :variant="planConfig.value[row.plan]?.variant || 'default'"
           :size="'sm'"
         >
-          {{ planConfig[row.plan]?.label || row.plan }}
+          {{ planConfig.value[row.plan]?.label || row.plan }}
         </BaseBadge>
       </template>
 
@@ -245,10 +247,10 @@ const handleRowClick = ({ row }) => {
 
       <template #cell-status="{ row }">
         <BaseBadge
-          :variant="statusConfig[row.status]?.variant || 'default'"
+          :variant="statusConfig.value[row.status]?.variant || 'default'"
           :size="'sm'"
         >
-          {{ statusConfig[row.status]?.label || row.status }}
+          {{ statusConfig.value[row.status]?.label || row.status }}
         </BaseBadge>
       </template>
 
@@ -256,21 +258,21 @@ const handleRowClick = ({ row }) => {
         <div class="flex items-center justify-end gap-1">
           <button
             class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-            :title="'查看 ' + row.name"
+            :title="t('tenant.viewTenant') + ' ' + row.name"
             @click.stop="handleViewTenant(row)"
           >
             <Eye  :size="16"  class="text-slate-400" />
           </button>
           <button
             class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-            :title="'编辑 ' + row.name"
+            :title="t('tenant.editTenant') + ' ' + row.name"
             @click.stop="handleEditTenant(row)"
           >
             <Pencil  :size="16"  class="text-slate-400" />
           </button>
           <button
             class="p-1.5 hover:bg-error-50 dark:hover:bg-error-900/30 rounded-lg transition-colors cursor-pointer"
-            :title="'删除 ' + row.name"
+            :title="t('tenant.delete') + ' ' + row.name"
             @click.stop="confirmDelete(row)"
           >
             <Trash2  :size="16"  class="text-error-400" />
@@ -286,10 +288,10 @@ const handleRowClick = ({ row }) => {
     >
       <Building  :size="64"  class="text-slate-300 dark:text-slate-600 mx-auto mb-4" />
       <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-        没有找到租户
+        {{ t('tenant.noTenant') }}
       </h3>
       <p class="text-slate-500 dark:text-slate-400 mb-6">
-        {{ searchQuery || selectedPlan !== 'all' ? '尝试调整搜索条件或筛选器' : '开始创建第一个租户' }}
+        {{ searchQuery || selectedPlan !== 'all' ? t('tenant.noTenantFilter') : t('tenant.noTenantDesc') }}
       </p>
       <BaseButton
         v-if="!searchQuery && selectedPlan === 'all'"
@@ -297,33 +299,33 @@ const handleRowClick = ({ row }) => {
         @click="handleCreateTenant"
       >
         <CirclePlus  :size="20"  />
-        新建租户
+        {{ t('tenant.addTenant') }}
       </BaseButton>
     </div>
 
     <!-- Delete Confirmation Modal -->
     <BaseModal
       v-model:open="showDeleteModal"
-      title="确认删除"
+      :title="t('tenant.deleteConfirm')"
       size="sm"
     >
       <p class="text-slate-600 dark:text-slate-400">
-        确定要删除租户 <span class="font-semibold text-slate-900 dark:text-slate-100">{{ tenantToDelete?.name }}</span> 吗？
+        {{ t('tenant.deleteConfirmMessage', { name: tenantToDelete?.name }) }}
         <br>
-        <span class="text-error-600 dark:text-error-400">此操作不可撤销。</span>
+        <span class="text-error-600 dark:text-error-400">{{ t('tenant.deleteWarning') }}</span>
       </p>
       <template #footer>
         <BaseButton
           variant="ghost"
           @click="showDeleteModal = false"
         >
-          取消
+          {{ t('tenant.cancel') }}
         </BaseButton>
         <BaseButton
           variant="danger"
           @click="handleDelete"
         >
-          删除
+          {{ t('common.delete') }}
         </BaseButton>
       </template>
     </BaseModal>

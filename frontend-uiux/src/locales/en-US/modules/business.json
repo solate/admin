@@ -1,0 +1,33 @@
+{
+  "title": "Business Management",
+  "description": "View and manage platform business data",
+  "metrics": {
+    "totalRevenue": "Total Revenue",
+    "activeTenants": "Active Tenants",
+    "conversionRate": "Conversion Rate",
+    "avgRevenue": "Average Revenue",
+    "vsLastMonth": "vs last month"
+  },
+  "charts": {
+    "revenueTrend": "Revenue Trend",
+    "tenantDistribution": "Tenant Distribution",
+    "placeholder": "Chart Placeholder",
+    "integrationNote": "Integrate Chart.js or ECharts"
+  },
+  "orders": {
+    "title": "Recent Orders",
+    "table": {
+      "id": "Order ID",
+      "tenant": "Tenant",
+      "amount": "Amount",
+      "status": "Status",
+      "date": "Date"
+    },
+    "status": {
+      "completed": "Completed",
+      "pending": "Pending",
+      "processing": "Processing",
+      "failed": "Failed"
+    }
+  }
+}

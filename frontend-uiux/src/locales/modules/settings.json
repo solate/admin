@@ -1,0 +1,76 @@
+{
+  "title": "系统设置",
+  "description": "管理平台配置和个人偏好",
+  "tabs": {
+    "general": "通用设置",
+    "profile": "个人资料",
+    "notifications": "通知设置",
+    "security": "安全设置",
+    "billing": "账单设置"
+  },
+  "general": {
+    "title": "通用设置",
+    "siteName": "站点名称",
+    "supportEmail": "支持邮箱",
+    "language": "语言",
+    "timezone": "时区",
+    "maxTenants": "最大租户数",
+    "enableRegistration": "允许用户注册",
+    "enableRegistrationOn": "开启后，新用户可以自行注册账户",
+    "maintenanceMode": "维护模式",
+    "maintenanceModeOn": "开启后，只有管理员可以访问平台"
+  },
+  "profile": {
+    "title": "个人资料",
+    "avatar": "头像",
+    "changeAvatar": "更换头像",
+    "avatarHint": "支持 JPG, PNG 格式，最大 2MB",
+    "name": "姓名",
+    "email": "邮箱",
+    "company": "公司",
+    "position": "职位",
+    "bio": "个人简介"
+  },
+  "notifications": {
+    "title": "通知设置",
+    "emailNotifications": "邮件通知",
+    "emailNotificationsDesc": "接收重要更新的邮件通知",
+    "pushNotifications": "推送通知",
+    "pushNotificationsDesc": "接收浏览器推送通知",
+    "weeklyReports": "周报",
+    "weeklyReportsDesc": "每周发送活动摘要报告",
+    "tenantAlerts": "租户告警",
+    "tenantAlertsDesc": "租户资源使用告警",
+    "securityAlerts": "安全告警",
+    "securityAlertsDesc": "异常登录等安全事件通知",
+    "alertThreshold": "告警阈值 (%)"
+  },
+  "security": {
+    "title": "安全设置",
+    "twoFactorAuth": "双因素认证",
+    "twoFactorAuthOn": "要求用户使用双因素认证",
+    "sessionTimeout": "会话超时 (分钟)",
+    "passwordMinLength": "最小密码长度",
+    "requireStrongPassword": "强密码要求",
+    "requireStrongPasswordOn": "密码必须包含大小写字母、数字和特殊字符",
+    "loginNotifications": "登录通知",
+    "loginNotificationsOn": "新设备登录时发送通知",
+    "changePassword": "修改密码",
+    "currentPassword": "当前密码",
+    "newPassword": "新密码"
+  },
+  "billing": {
+    "title": "账单设置",
+    "billingCycle": "账单周期",
+    "invoiceEmail": "发票邮箱",
+    "taxId": "税号",
+    "paymentMethods": "支付方式",
+    "methods": {
+      "monthly": "每月",
+      "quarterly": "每季度",
+      "annually": "每年"
+    }
+  },
+  "lastSaved": "上次保存: {time}",
+  "saveSettings": "保存设置"
+}

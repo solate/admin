@@ -16,7 +16,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Computed
   const isAuthenticated = computed(() => !!token.value)
-  const userRole = computed(() => user.value?.role || null)
+  // 确保始终返回有效的角色值，避免 null
+  const userRole = computed(() => user.value?.role || 'user')
   const tenantId = computed(() => user.value?.tenantId || null)
 
   // Actions

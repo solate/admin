@@ -2,6 +2,7 @@
 import { ref, computed, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
+import { useI18n } from '@/locales/composables'
 import KPICard from '@/components/ui/KPICard.vue'
 import BaseTable from '@/components/ui/BaseTable.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
@@ -9,121 +10,158 @@ import { Building, User, Box, BarChart3, TrendingUp, ChevronRight, Plus, Coins, 
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
-// KPI Stats
-const stats = ref([
+// KPI Stats - 原始数据
+const statsData = ref([
   {
-    title: '总租户数',
+    titleKey: 'stats.totalTenants',
     value: '156',
     change: '+12',
     changeType: 'positive',
-    trend: '较上月',
+    trendKey: 'stats.vsLastMonth',
     icon: markRaw(Building),
     color: 'primary'
   },
   {
-    title: '活跃服务',
+    titleKey: 'stats.activeServices',
     value: '24',
     change: '+3',
     changeType: 'positive',
-    trend: '较上月',
+    trendKey: 'stats.vsLastMonth',
     icon: markRaw(Box),
     color: 'success'
   },
   {
-    title: '总用户数',
+    titleKey: 'stats.totalUsers',
     value: '8,542',
     change: '+18',
     changeType: 'positive',
-    trend: '较上月',
+    trendKey: 'stats.vsLastMonth',
     icon: markRaw(User),
     color: 'info'
   },
   {
-    title: '本月收入',
+    titleKey: 'stats.monthlyRevenue',
     value: '¥89,500',
     change: '+24',
     changeType: 'positive',
-    trend: '较上月',
+    trendKey: 'stats.vsLastMonth',
     icon: markRaw(Coins),
     color: 'warning'
   }
 ])
 
-// Quick Actions
-const quickActions = ref([
+// KPI Stats - 使用 computed 动态获取翻译
+const stats = computed(() => {
+  return statsData.value.map(stat => ({
+    ...stat,
+    title: t(`dashboard.${stat.titleKey}`),
+    trend: t(`dashboard.${stat.trendKey}`)
+  }))
+})
+
+// Quick Actions - 原始数据
+const quickActionsData = ref([
   {
-    name: '添加租户',
-    description: '创建新的租户账户',
+    nameKey: 'actions.addTenant',
+    descKey: 'actions.addTenantDesc',
     path: '/dashboard/tenants',
     icon: markRaw(Building)
   },
   {
-    name: '配置服务',
-    description: '管理平台服务',
+    nameKey: 'actions.configService',
+    descKey: 'actions.configServiceDesc',
     path: '/dashboard/services',
     icon: markRaw(Box)
   },
   {
-    name: '用户管理',
-    description: '管理平台用户',
+    nameKey: 'actions.manageUsers',
+    descKey: 'actions.manageUsersDesc',
     path: '/dashboard/users',
     icon: markRaw(User)
   },
   {
-    name: '查看报表',
-    description: '查看数据分析',
+    nameKey: 'actions.viewReport',
+    descKey: 'actions.viewReportDesc',
     path: '/dashboard/analytics',
     icon: markRaw(BarChart3)
   }
 ])
 
-// Recent Activities
-const recentActivities = ref([
+// Quick Actions - 使用 computed 动态获取翻译
+const quickActions = computed(() => {
+  return quickActionsData.value.map(action => ({
+    ...action,
+    name: t(`dashboard.${action.nameKey}`),
+    description: t(`dashboard.${action.descKey}`)
+  }))
+})
+
+// Recent Activities - 原始数据
+const recentActivitiesData = ref([
   {
     id: 1,
     type: 'tenant',
-    title: '新租户注册',
-    description: '科技公司A 已完成注册',
-    time: '5 分钟前',
+    titleKey: 'activities.newTenant',
+    descKey: 'activities.newTenantDesc',
+    descParams: { name: '科技公司A' },
+    timeValue: 5,
+    timeUnit: 'minutes',
     icon: markRaw(Building),
     color: 'primary'
   },
   {
     id: 2,
     type: 'service',
-    title: '服务升级',
-    description: '云存储服务已升级到 v2.0',
-    time: '1 小时前',
+    titleKey: 'activities.serviceUpgrade',
+    descKey: 'activities.serviceUpgradeDesc',
+    descParams: { name: '云存储服务' },
+    timeValue: 1,
+    timeUnit: 'hours',
     icon: markRaw(Box),
     color: 'success'
   },
   {
     id: 3,
     type: 'user',
-    title: '新用户加入',
-    description: '张三 加入了创业团队B',
-    time: '2 小时前',
+    titleKey: 'activities.newUser',
+    descKey: 'activities.newUserDesc',
+    descParams: { name: '张三', team: '创业团队B' },
+    timeValue: 2,
+    timeUnit: 'hours',
     icon: markRaw(User),
     color: 'info'
   },
   {
     id: 4,
     type: 'alert',
-    title: '系统提醒',
-    description: '消息队列服务负载较高',
-    time: '3 小时前',
+    titleKey: 'activities.systemAlert',
+    descKey: 'activities.systemAlertDesc',
+    descParams: { name: '消息队列服务' },
+    timeValue: 3,
+    timeUnit: 'hours',
     icon: markRaw(TrendingUp),
     color: 'warning'
   }
 ])
 
-// Top Tenants Table
-const tenantColumns = ref([
-  { key: 'name', label: '租户名称', width: '30%' },
-  { key: 'users', label: '用户数', width: '20%' },
-  { key: 'revenue', label: '收入', width: '20%' },
-  { key: 'status', label: '状态', width: '15%' },
+// Recent Activities - 使用 computed 动态获取翻译
+const recentActivities = computed(() => {
+  return recentActivitiesData.value.map(activity => ({
+    ...activity,
+    title: t(`dashboard.${activity.titleKey}`),
+    description: t(`dashboard.${activity.descKey}`, activity.descParams),
+    time: t(`dashboard.timeAgo.${activity.timeUnit}`, { n: activity.timeValue })
+  }))
+})
+
+// Top Tenants Table - 使用 computed 动态获取翻译
+const tenantColumns = computed(() => [
+  { key: 'name', label: t('dashboard.table.tenantName'), width: '30%' },
+  { key: 'users', label: t('dashboard.table.users'), width: '20%' },
+  { key: 'revenue', label: t('dashboard.table.revenue'), width: '20%' },
+  { key: 'status', label: t('dashboard.table.status'), width: '15%' },
   { key: 'action', label: '', width: '15%' }
 ])
 
@@ -135,11 +173,12 @@ const tenantsData = ref([
   { name: '设计工作室F', users: 8, revenue: '¥4,200', status: 'trial' }
 ])
 
-const statusConfig = {
-  active: { variant: 'success', label: '活跃' },
-  suspended: { variant: 'error', label: '暂停' },
-  trial: { variant: 'warning', label: '试用' }
-}
+// Status Config - 使用 computed 动态获取翻译
+const statusConfig = computed(() => ({
+  active: { variant: 'success', label: t('dashboard.status.active') },
+  suspended: { variant: 'error', label: t('dashboard.status.suspended') },
+  trial: { variant: 'warning', label: t('dashboard.status.trial') }
+}))
 
 const handleTenantClick = (tenant) => {
   router.push(`/dashboard/tenants/${tenant.id}`)
@@ -171,9 +210,9 @@ const getColorClass = (color) => {
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">概览</h1>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ t('dashboard.title') }}</h1>
         <p class="text-slate-600 dark:text-slate-400 mt-1">
-          欢迎回来，{{ authStore.user?.name || 'Admin' }}
+          {{ t('dashboard.welcome') }}，{{ authStore.user?.name || 'Admin' }}
         </p>
       </div>
       <button
@@ -181,7 +220,7 @@ const getColorClass = (color) => {
         @click="router.push('/dashboard/tenants/create')"
       >
         <Plus :size="20" />
-        新建租户
+        {{ t('dashboard.createTenant') }}
       </button>
     </div>
 
@@ -203,11 +242,11 @@ const getColorClass = (color) => {
     <div class="grid lg:grid-cols-3 gap-6">
       <!-- Quick Actions -->
       <div class="lg:col-span-2">
-        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">快捷操作</h2>
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">{{ t('dashboard.quickActions') }}</h2>
         <div class="grid sm:grid-cols-2 gap-4">
           <router-link
             v-for="action in quickActions"
-            :key="action.name"
+            :key="action.nameKey"
             :to="action.path"
             class="card p-5 hover:shadow-card-hover transition-all cursor-pointer group"
           >
@@ -228,7 +267,7 @@ const getColorClass = (color) => {
 
       <!-- Recent Activities -->
       <div>
-        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">最近活动</h2>
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">{{ t('dashboard.recentActivities') }}</h2>
         <div class="card p-4 space-y-3">
           <div
             v-for="activity in recentActivities"
@@ -269,12 +308,12 @@ const getColorClass = (color) => {
     <!-- Top Tenants Table -->
     <div>
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">热门租户</h2>
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ t('dashboard.topTenants') }}</h2>
         <router-link
           to="/dashboard/tenants"
           class="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors cursor-pointer"
         >
-          查看全部
+          {{ t('dashboard.viewAll') }}
           <ChevronRight :size="16" />
         </router-link>
       </div>
@@ -326,8 +365,8 @@ const getColorClass = (color) => {
       <div class="card p-6">
         <div class="flex items-center justify-between mb-6">
           <div>
-            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">收入趋势</h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">过去6个月</p>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ t('dashboard.revenueTrend') }}</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ t('dashboard.past6Months') }}</p>
           </div>
           <div class="flex items-center gap-2 text-success-600">
             <TrendingUp :size="20" />
@@ -339,8 +378,8 @@ const getColorClass = (color) => {
         <div class="h-64 flex items-center justify-center bg-slate-50 dark:bg-slate-700/30 rounded-lg">
           <div class="text-center">
             <BarChart3 :size="48" class="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-            <p class="text-sm text-slate-500 dark:text-slate-400">图表组件即将推出</p>
-            <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">将集成 Chart.js</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ t('dashboard.chartComingSoon') }}</p>
+            <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">{{ t('dashboard.chartIntegration') }}</p>
           </div>
         </div>
       </div>
@@ -348,8 +387,8 @@ const getColorClass = (color) => {
       <div class="card p-6">
         <div class="flex items-center justify-between mb-6">
           <div>
-            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">用户增长</h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">过去6个月</p>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ t('dashboard.userGrowth') }}</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ t('dashboard.past6Months') }}</p>
           </div>
           <div class="flex items-center gap-2 text-success-600">
             <TrendingUp :size="20" />
@@ -361,8 +400,8 @@ const getColorClass = (color) => {
         <div class="h-64 flex items-center justify-center bg-slate-50 dark:bg-slate-700/30 rounded-lg">
           <div class="text-center">
             <TrendingUp :size="48" class="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-            <p class="text-sm text-slate-500 dark:text-slate-400">图表组件即将推出</p>
-            <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">将集成 Chart.js</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ t('dashboard.chartComingSoon') }}</p>
+            <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">{{ t('dashboard.chartIntegration') }}</p>
           </div>
         </div>
       </div>

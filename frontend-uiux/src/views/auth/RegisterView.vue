@@ -1,11 +1,13 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
+import { useI18n } from '@/locales/composables'
 import { Box, Mail, User, CircleCheck, ArrowRight } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const form = ref({
   name: '',
@@ -17,18 +19,18 @@ const form = ref({
 const loading = ref(false)
 const error = ref('')
 
-const passwordRequirements = [
-  { text: '至少 8 个字符', valid: false },
-  { text: '包含大写字母', valid: false },
-  { text: '包含小写字母', valid: false },
-  { text: '包含数字或特殊字符', valid: false }
-]
+const passwordRequirements = computed(() => [
+  { text: t('auth.require8Chars'), valid: false },
+  { text: t('auth.requireUppercase'), valid: false },
+  { text: t('auth.requireLowercase'), valid: false },
+  { text: t('auth.requireNumberOrSpecial'), valid: false }
+])
 
 const handleRegister = async () => {
   error.value = ''
 
   if (form.value.password !== form.value.confirmPassword) {
-    error.value = '两次输入的密码不一致'
+    error.value = t('auth.passwordNotMatch')
     return
   }
 
@@ -42,7 +44,7 @@ const handleRegister = async () => {
     })
     router.push({ name: 'dashboard-overview' })
   } catch (e) {
-    error.value = '注册失败，请稍后重试'
+    error.value = t('auth.registerFailed')
   } finally {
     loading.value = false
   }
@@ -60,9 +62,9 @@ const goToLogin = () => {
       <div class="text-center mb-8">
         <div class="flex items-center justify-center gap-2 mb-4">
           <component :is="Box" class="w-10 h-10 text-primary-600" />
-          <span class="text-2xl font-display font-bold text-slate-900">MultiTenant</span>
+          <span class="text-2xl font-display font-bold text-slate-900">{{ t('auth.appName') }}</span>
         </div>
-        <p class="text-slate-600">创建您的账户</p>
+        <p class="text-slate-600">{{ t('auth.createYourAccount') }}</p>
       </div>
 
       <!-- Register Form -->
@@ -79,7 +81,7 @@ const goToLogin = () => {
           <!-- Name -->
           <div>
             <label for="name" class="block text-sm font-medium text-slate-700 mb-2">
-              姓名
+              {{ t('auth.name') }}
             </label>
             <div class="relative">
               <component :is="User" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -88,7 +90,7 @@ const goToLogin = () => {
                 v-model="form.name"
                 type="text"
                 required
-                placeholder="张三"
+                :placeholder="t('auth.namePlaceholder')"
                 class="w-full pl-12 pr-4 py-3 bg-white/80 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
               >
             </div>
@@ -97,7 +99,7 @@ const goToLogin = () => {
           <!-- Email -->
           <div>
             <label for="email" class="block text-sm font-medium text-slate-700 mb-2">
-              邮箱地址
+              {{ t('auth.emailAddress') }}
             </label>
             <div class="relative">
               <component :is="Mail" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -106,7 +108,7 @@ const goToLogin = () => {
                 v-model="form.email"
                 type="email"
                 required
-                placeholder="your@email.com"
+                :placeholder="t('auth.emailPlaceholder')"
                 class="w-full pl-12 pr-4 py-3 bg-white/80 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
               >
             </div>
@@ -115,14 +117,14 @@ const goToLogin = () => {
           <!-- Password -->
           <div>
             <label for="password" class="block text-sm font-medium text-slate-700 mb-2">
-              密码
+              {{ t('auth.password') }}
             </label>
             <input
               id="password"
               v-model="form.password"
               type="password"
               required
-              placeholder="••••••••"
+              :placeholder="t('auth.passwordPlaceholder')"
               class="w-full px-4 py-3 bg-white/80 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
             >
           </div>
@@ -130,28 +132,28 @@ const goToLogin = () => {
           <!-- Confirm Password -->
           <div>
             <label for="confirmPassword" class="block text-sm font-medium text-slate-700 mb-2">
-              确认密码
+              {{ t('auth.confirmPassword') }}
             </label>
             <input
               id="confirmPassword"
               v-model="form.confirmPassword"
               type="password"
               required
-              placeholder="••••••••"
+              :placeholder="t('auth.passwordPlaceholder')"
               class="w-full px-4 py-3 bg-white/80 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
             >
           </div>
 
           <!-- Password Requirements -->
           <div class="bg-slate-50 rounded-xl p-4 space-y-2">
-            <p class="text-sm font-medium text-slate-700">密码要求：</p>
+            <p class="text-sm font-medium text-slate-700">{{ t('auth.passwordRequirements') }}</p>
             <div
               v-for="(req, index) in passwordRequirements"
               :key="index"
               class="flex items-center gap-2 text-sm"
             >
               <component
-                :is="CheckCircle"
+                :is="CircleCheck"
                 class="w-4 h-4"
                 :class="req.valid ? 'text-green-500' : 'text-slate-300'"
               />
@@ -163,10 +165,10 @@ const goToLogin = () => {
           <div class="flex items-start gap-2">
             <input type="checkbox" required class="w-4 h-4 mt-1 rounded border-slate-300 text-primary-600 focus:ring-primary-500">
             <span class="text-sm text-slate-600">
-              我同意
-              <a href="#" class="text-primary-600 hover:text-primary-700 font-medium">服务条款</a>
-              和
-              <a href="#" class="text-primary-600 hover:text-primary-700 font-medium">隐私政策</a>
+              {{ t('auth.agreeToTerms') }}
+              <a href="#" class="text-primary-600 hover:text-primary-700 font-medium">{{ t('auth.termsOfService') }}</a>
+              {{ t('auth.and') }}
+              <a href="#" class="text-primary-600 hover:text-primary-700 font-medium">{{ t('auth.privacyPolicy') }}</a>
             </span>
           </div>
 
@@ -176,8 +178,8 @@ const goToLogin = () => {
             :disabled="loading"
             class="w-full py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span v-if="!loading">创建账户</span>
-            <span v-else>创建中...</span>
+            <span v-if="!loading">{{ t('auth.createAccount') }}</span>
+            <span v-else>{{ t('auth.creatingAccount') }}</span>
             <component v-if="!loading" :is="ArrowRight" class="w-5 h-5" />
           </button>
         </form>
@@ -188,7 +190,7 @@ const goToLogin = () => {
             <div class="w-full border-t border-slate-200"></div>
           </div>
           <div class="relative flex justify-center text-sm">
-            <span class="px-4 bg-white/80 text-slate-500">已有账户？</span>
+            <span class="px-4 bg-white/80 text-slate-500">{{ t('auth.hasAccount') }}</span>
           </div>
         </div>
 
@@ -197,7 +199,7 @@ const goToLogin = () => {
           @click="goToLogin"
           class="w-full py-3 bg-white text-slate-700 rounded-xl hover:bg-slate-50 transition-all border border-slate-200 font-medium cursor-pointer"
         >
-          登录
+          {{ t('auth.login') }}
         </button>
       </div>
 
@@ -207,7 +209,7 @@ const goToLogin = () => {
           @click="router.push({ name: 'landing' })"
           class="text-slate-600 hover:text-slate-900 text-sm cursor-pointer"
         >
-          返回首页
+          {{ t('auth.backToHome') }}
         </a>
       </div>
     </div>

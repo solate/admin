@@ -1,0 +1,33 @@
+{
+  "title": "业务管理",
+  "description": "查看和管理平台业务数据",
+  "metrics": {
+    "totalRevenue": "总收入",
+    "activeTenants": "活跃租户",
+    "conversionRate": "转化率",
+    "avgRevenue": "平均收入",
+    "vsLastMonth": "较上月"
+  },
+  "charts": {
+    "revenueTrend": "收入趋势",
+    "tenantDistribution": "租户分布",
+    "placeholder": "图表占位符",
+    "integrationNote": "集成 Chart.js 或 ECharts"
+  },
+  "orders": {
+    "title": "最近订单",
+    "table": {
+      "id": "订单号",
+      "tenant": "租户",
+      "amount": "金额",
+      "status": "状态",
+      "date": "日期"
+    },
+    "status": {
+      "completed": "已完成",
+      "pending": "待支付",
+      "processing": "处理中",
+      "failed": "失败"
+    }
+  }
+}

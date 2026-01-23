@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTenantsStore } from '@/stores/modules/tenants'
+import { useI18n } from '@/locales/composables'
 import BaseTable from '@/components/ui/BaseTable.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -10,6 +11,7 @@ import { Search, CirclePlus, Filter, User, Pencil, Trash2, Eye, Building, Clock,
 
 const router = useRouter()
 const tenantsStore = useTenantsStore()
+const { t } = useI18n()
 
 // Mock Users Data
 const users = ref([
@@ -76,20 +78,22 @@ const selectedRole = ref('all')
 const selectedStatus = ref('all')
 const showFilters = ref(false)
 
-const roleOptions = [
-  { value: 'all', label: '全部角色' },
-  { value: 'super_admin', label: '超级管理员' },
-  { value: 'admin', label: '管理员' },
-  { value: 'auditor', label: '审计员' },
-  { value: 'user', label: '普通用户' }
-]
+// 角色选项 - 使用 computed 实现动态翻译
+const roleOptions = computed(() => [
+  { value: 'all', label: t('user.list.allRoles') },
+  { value: 'super_admin', label: t('user.roles.super_admin') },
+  { value: 'admin', label: t('user.roles.admin') },
+  { value: 'auditor', label: t('user.roles.auditor') },
+  { value: 'user', label: t('user.roles.user') }
+])
 
-const statusOptions = [
-  { value: 'all', label: '全部状态' },
-  { value: 'active', label: '活跃' },
-  { value: 'inactive', label: '未激活' },
-  { value: 'suspended', label: '已暂停' }
-]
+// 状态选项 - 使用 computed 实现动态翻译
+const statusOptions = computed(() => [
+  { value: 'all', label: t('user.list.allStatuses') },
+  { value: 'active', label: t('user.list.status.active') },
+  { value: 'inactive', label: t('user.list.status.inactive') },
+  { value: 'suspended', label: t('user.list.status.suspended') }
+])
 
 // Filtered Data
 const filteredUsers = computed(() => {
@@ -112,28 +116,28 @@ const activeFiltersCount = computed(() => {
   return count
 })
 
-// Status Config
-const statusConfig = {
-  active: { variant: 'success', label: '活跃' },
-  inactive: { variant: 'default', label: '未激活' },
-  suspended: { variant: 'error', label: '已暂停' }
-}
+// Status Config - 使用 computed 实现动态翻译
+const statusConfig = computed(() => ({
+  active: { variant: 'success', label: t('user.list.status.active') },
+  inactive: { variant: 'default', label: t('user.list.status.inactive') },
+  suspended: { variant: 'error', label: t('user.list.status.suspended') }
+}))
 
-// Role Config
-const roleConfig = {
-  super_admin: { variant: 'error', label: '超级管理员' },
-  admin: { variant: 'primary', label: '管理员' },
-  auditor: { variant: 'warning', label: '审计员' },
-  user: { variant: 'default', label: '普通用户' }
-}
+// Role Config - 使用 computed 实现动态翻译
+const roleConfig = computed(() => ({
+  super_admin: { variant: 'error', label: t('user.roles.super_admin') },
+  admin: { variant: 'primary', label: t('user.roles.admin') },
+  auditor: { variant: 'warning', label: t('user.roles.auditor') },
+  user: { variant: 'default', label: t('user.roles.user') }
+}))
 
-// Table Columns
-const columns = ref([
-  { key: 'user', label: '用户', width: '30%' },
-  { key: 'role', label: '角色', width: '12%' },
-  { key: 'tenant', label: '租户', width: '18%' },
-  { key: 'status', label: '状态', width: '12%' },
-  { key: 'lastLogin', label: '最后登录', width: '14%' },
+// Table Columns - 使用 computed 实现动态翻译
+const columns = computed(() => [
+  { key: 'user', label: t('user.list.table.user'), width: '30%' },
+  { key: 'role', label: t('user.list.table.role'), width: '12%' },
+  { key: 'tenant', label: t('user.list.table.tenant'), width: '18%' },
+  { key: 'status', label: t('user.list.table.status'), width: '12%' },
+  { key: 'lastLogin', label: t('user.list.table.lastLogin'), width: '14%' },
   { key: 'actions', label: '', width: '14%' }
 ])
 
@@ -188,15 +192,15 @@ const getInitials = (name) => {
 }
 
 const formatDate = (dateString) => {
-  if (!dateString) return '从未'
+  if (!dateString) return t('user.list.timeAgo.never')
   const date = new Date(dateString)
   const now = new Date()
   const diff = now - date
 
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
-  if (diff < 604800000) return `${Math.floor(diff / 86400000)} 天前`
+  if (diff < 60000) return t('user.list.timeAgo.justNow')
+  if (diff < 3600000) return t('user.list.timeAgo.minutes', { n: Math.floor(diff / 60000) })
+  if (diff < 86400000) return t('user.list.timeAgo.hours', { n: Math.floor(diff / 3600000) })
+  if (diff < 604800000) return t('user.list.timeAgo.days', { n: Math.floor(diff / 86400000) })
 
   return date.toLocaleDateString('zh-CN')
 }
@@ -207,9 +211,9 @@ const formatDate = (dateString) => {
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">用户管理</h1>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ t('user.list.title') }}</h1>
         <p class="text-slate-600 dark:text-slate-400 mt-1">
-          管理所有租户的用户账户
+          {{ t('user.list.subtitle') }}
         </p>
       </div>
       <BaseButton
@@ -217,7 +221,7 @@ const formatDate = (dateString) => {
         @click="handleCreateUser"
       >
         <CirclePlus  :size="20"  />
-        新建用户
+        {{ t('user.list.createUser') }}
       </BaseButton>
     </div>
 
@@ -229,7 +233,7 @@ const formatDate = (dateString) => {
             <User  :size="24"  class="text-primary-600 dark:text-primary-400" />
           </div>
           <div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">总用户数</p>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ t('user.list.stats.totalUsers') }}</p>
             <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ users.length }}</p>
           </div>
         </div>
@@ -243,7 +247,7 @@ const formatDate = (dateString) => {
             </span>
           </div>
           <div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">活跃用户</p>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ t('user.list.stats.activeUsers') }}</p>
             <p class="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {{ Math.round(users.filter(u => u.status === 'active').length / users.length * 100) || 0 }}%
             </p>
@@ -257,7 +261,7 @@ const formatDate = (dateString) => {
             <span class="text-lg font-bold text-warning-600 dark:text-warning-400">👑</span>
           </div>
           <div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">管理员</p>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ t('user.list.stats.admins') }}</p>
             <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">
               {{ users.filter(u => u.role === 'admin' || u.role === 'super_admin').length }}
             </p>
@@ -271,7 +275,7 @@ const formatDate = (dateString) => {
             <Building  :size="24"  class="text-info-600 dark:text-info-400" />
           </div>
           <div>
-            <p class="text-sm text-slate-600 dark:text-slate-400">租户数</p>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ t('user.list.stats.tenantCount') }}</p>
             <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">
               {{ new Set(users.map(u => u.tenantId)).size }}
             </p>
@@ -289,7 +293,7 @@ const formatDate = (dateString) => {
           <input
             v-model="searchQuery"
             type="search"
-            placeholder="搜索用户名或邮箱..."
+            :placeholder="t('user.list.searchPlaceholder')"
             class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
           />
         </div>
@@ -300,7 +304,7 @@ const formatDate = (dateString) => {
           class="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
         >
           <Filter  :size="16"  />
-          <span class="text-sm font-medium">筛选</span>
+          <span class="text-sm font-medium">{{ t('user.list.filter') }}</span>
           <span
             v-if="activeFiltersCount > 0"
             class="w-5 h-5 bg-primary-600 text-white text-xs font-semibold rounded-full flex items-center justify-center"
@@ -318,7 +322,7 @@ const formatDate = (dateString) => {
         <div class="flex flex-col sm:flex-row gap-4">
           <!-- Role Filter -->
           <div class="flex-1">
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">角色</label>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('user.list.roleFilter') }}</label>
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="option in roleOptions"
@@ -336,7 +340,7 @@ const formatDate = (dateString) => {
 
           <!-- Status Filter -->
           <div class="flex-1">
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">状态</label>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('user.list.statusFilter') }}</label>
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="option in statusOptions"
@@ -360,7 +364,7 @@ const formatDate = (dateString) => {
               @click="clearFilters"
             >
               <X  :size="16"  />
-              清除筛选
+              {{ t('user.list.clearFilters') }}
             </button>
           </div>
         </div>
@@ -399,7 +403,7 @@ const formatDate = (dateString) => {
       <template #cell-tenant="{ row }">
         <div class="flex items-center gap-2">
           <Building  :size="16"  class="text-slate-400" />
-          <span class="text-sm text-slate-700 dark:text-slate-300">{{ row.tenantName || '平台' }}</span>
+          <span class="text-sm text-slate-700 dark:text-slate-300">{{ row.tenantName || t('user.list.platform') }}</span>
         </div>
       </template>
 
@@ -423,21 +427,21 @@ const formatDate = (dateString) => {
         <div class="flex items-center justify-end gap-1">
           <button
             class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-            :title="'查看 ' + row.name"
+            :title="t('user.list.actions.view') + ' ' + row.name"
             @click.stop="handleViewUser(row)"
           >
             <Eye  :size="16"  class="text-slate-400" />
           </button>
           <button
             class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-            :title="'编辑 ' + row.name"
+            :title="t('user.list.actions.edit') + ' ' + row.name"
             @click.stop="handleEditUser(row)"
           >
             <Pencil  :size="16"  class="text-slate-400" />
           </button>
           <button
             class="p-1.5 hover:bg-error-50 dark:hover:bg-error-900/30 rounded-lg transition-colors cursor-pointer"
-            :title="'删除 ' + row.name"
+            :title="t('user.list.actions.delete') + ' ' + row.name"
             @click.stop="confirmDelete(row)"
           >
             <Trash2  :size="16"  class="text-error-400" />
@@ -453,10 +457,10 @@ const formatDate = (dateString) => {
     >
       <User  :size="64"  class="text-slate-300 dark:text-slate-600 mx-auto mb-4" />
       <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
-        没有找到用户
+        {{ t('user.list.emptyState.title') }}
       </h3>
       <p class="text-slate-500 dark:text-slate-400 mb-6">
-        {{ searchQuery || activeFiltersCount > 0 ? '尝试调整搜索条件或筛选器' : '开始创建第一个用户' }}
+        {{ searchQuery || activeFiltersCount > 0 ? t('user.list.emptyState.adjustFilters') : t('user.list.emptyState.createFirst') }}
       </p>
       <BaseButton
         v-if="!searchQuery && activeFiltersCount === 0"
@@ -464,33 +468,33 @@ const formatDate = (dateString) => {
         @click="handleCreateUser"
       >
         <CirclePlus  :size="20"  />
-        新建用户
+        {{ t('user.list.createUser') }}
       </BaseButton>
     </div>
 
     <!-- Delete Confirmation Modal -->
     <BaseModal
       v-model:open="showDeleteModal"
-      title="确认删除"
+      :title="t('user.list.deleteModal.title')"
       size="sm"
     >
       <p class="text-slate-600 dark:text-slate-400">
-        确定要删除用户 <span class="font-semibold text-slate-900 dark:text-slate-100">{{ userToDelete?.name }}</span> 吗？
+        {{ t('user.list.deleteModal.message').replace('<name>', userToDelete?.name || '') }}
         <br>
-        <span class="text-error-600 dark:text-error-400">此操作不可撤销，将永久删除该用户的所有数据。</span>
+        <span class="text-error-600 dark:text-error-400">{{ t('user.list.deleteModal.warning') }}</span>
       </p>
       <template #footer>
         <BaseButton
           variant="ghost"
           @click="showDeleteModal = false"
         >
-          取消
+          {{ t('common.cancel') }}
         </BaseButton>
         <BaseButton
           variant="danger"
           @click="handleDelete"
         >
-          删除
+          {{ t('common.delete') }}
         </BaseButton>
       </template>
     </BaseModal>

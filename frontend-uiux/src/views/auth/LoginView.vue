@@ -2,6 +2,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
+import { useI18n } from '@/locales/composables'
 import {
   Building,
   Mail,
@@ -14,6 +15,7 @@ import {
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const showPassword = ref(false)
 const isLoading = ref(false)
@@ -30,11 +32,11 @@ const handleLogin = async () => {
 
   // Basic validation
   if (!form.email) {
-    error.value = '请输入邮箱地址'
+    error.value = t('auth.enterEmail')
     return
   }
   if (!form.password) {
-    error.value = '请输入密码'
+    error.value = t('auth.enterPassword')
     return
   }
 
@@ -50,7 +52,7 @@ const handleLogin = async () => {
     const redirect = route.query.redirect || '/dashboard/overview'
     router.push(redirect)
   } catch (err) {
-    error.value = err.message || '登录失败，请检查您的凭据'
+    error.value = err.message || t('auth.loginError')
   } finally {
     isLoading.value = false
   }
@@ -65,13 +67,13 @@ const handleLogin = async () => {
         <div class="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
           <Building :size="20" class="text-white" />
         </div>
-        <span class="text-lg font-semibold text-slate-900 dark:text-slate-100">AdminSystem</span>
+        <span class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ t('auth.appName') }}</span>
       </div>
       <router-link
         to="/"
         class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
       >
-        返回首页
+        {{ t('auth.backToHome') }}
       </router-link>
     </div>
 
@@ -83,17 +85,17 @@ const handleLogin = async () => {
           <div class="w-16 h-16 rounded-2xl bg-primary-600 flex items-center justify-center mx-auto mb-4">
             <Building :size="40" class="text-white" />
           </div>
-          <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">AdminSystem</h1>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ t('auth.appName') }}</h1>
         </div>
 
         <!-- Login Card -->
         <div class="card p-8 sm:p-10">
           <div class="text-center mb-8">
             <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-              欢迎回来
+              {{ t('auth.welcomeBack') }}
             </h1>
             <p class="text-slate-600 dark:text-slate-400">
-              登录到多租户SaaS管理平台
+              {{ t('auth.loginToPlatform') }}
             </p>
           </div>
 
@@ -124,7 +126,7 @@ const handleLogin = async () => {
             <!-- Email Field -->
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                邮箱地址
+                {{ t('auth.emailAddress') }}
               </label>
               <div class="relative">
                 <Mail :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -142,7 +144,7 @@ const handleLogin = async () => {
             <!-- Password Field -->
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                密码
+                {{ t('auth.password') }}
               </label>
               <div class="relative">
                 <Lock :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -174,13 +176,13 @@ const handleLogin = async () => {
                   :disabled="isLoading"
                   class="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                <span class="text-sm text-slate-600 dark:text-slate-400">记住我</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{{ t('auth.rememberMe') }}</span>
               </label>
               <router-link
                 to="/forgot-password"
                 class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors cursor-pointer"
               >
-                忘记密码?
+                {{ t('auth.forgotPassword') }}
               </router-link>
             </div>
 
@@ -211,7 +213,7 @@ const handleLogin = async () => {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              <span v-else>登录</span>
+              <span v-else>{{ t('auth.login') }}</span>
               <ArrowRight v-if="!isLoading" :size="20" />
             </button>
           </form>
@@ -223,29 +225,29 @@ const handleLogin = async () => {
             </div>
             <div class="relative flex justify-center text-sm">
               <span class="px-4 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                或
+                {{ t('auth.or') }}
               </span>
             </div>
           </div>
 
           <!-- Register Link -->
           <p class="text-center text-sm text-slate-600 dark:text-slate-400">
-            还没有账号?
+            {{ t('auth.noAccount') }}
             <router-link
               to="/register"
               class="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors cursor-pointer"
             >
-              立即注册
+              {{ t('auth.createAccount') }}
             </router-link>
           </p>
         </div>
 
         <!-- Footer Info -->
         <p class="mt-8 text-center text-xs text-slate-500 dark:text-slate-400">
-          登录即表示您同意我们的
-          <a href="#" class="text-primary-600 hover:text-primary-700 dark:text-primary-400 transition-colors cursor-pointer">服务条款</a>
-          和
-          <a href="#" class="text-primary-600 hover:text-primary-700 dark:text-primary-400 transition-colors cursor-pointer">隐私政策</a>
+          {{ t('auth.agreeToTerms') }}
+          <a href="#" class="text-primary-600 hover:text-primary-700 dark:text-primary-400 transition-colors cursor-pointer">{{ t('auth.termsOfService') }}</a>
+          {{ t('auth.and') }}
+          <a href="#" class="text-primary-600 hover:text-primary-700 dark:text-primary-400 transition-colors cursor-pointer">{{ t('auth.privacyPolicy') }}</a>
         </p>
       </div>
     </main>

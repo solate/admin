@@ -1,10 +1,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from '@/locales/composables'
 import { apiService } from '@/api'
 import { Bell, Check, Trash22, ChevronLeft, User, Shield, CircleCheck, Info, AlertTriangle, TriangleAlert, Clock, Filter } from 'lucide-vue-next'
 
 const router = useRouter()
+const { t } = useI18n()
 
 const notifications = ref([])
 const loading = ref(false)
@@ -12,13 +14,13 @@ const error = ref(null)
 const selectedFilter = ref('all')
 const searchQuery = ref('')
 
-const filterOptions = [
-  { label: 'All', value: 'all' },
-  { label: 'Unread', value: 'unread' },
-  { label: 'User', value: 'user' },
-  { label: 'Security', value: 'security' },
-  { label: 'System', value: 'system' }
-]
+const filterOptions = computed(() => [
+  { label: t('notification.filters.all'), value: 'all' },
+  { label: t('notification.filters.unread'), value: 'unread' },
+  { label: t('notification.filters.user'), value: 'user' },
+  { label: t('notification.filters.security'), value: 'security' },
+  { label: t('notification.filters.system'), value: 'system' }
+])
 
 const notificationIcons = {
   user: User,
@@ -132,10 +134,10 @@ function formatTime(date) {
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
 
-  if (minutes < 1) return 'Just now'
-  if (minutes < 60) return `${minutes}m ago`
-  if (hours < 24) return `${hours}h ago`
-  if (days < 7) return `${days}d ago`
+  if (minutes < 1) return t('notification.time.justNow')
+  if (minutes < 60) return t('notification.time.minutesAgo', { minutes })
+  if (hours < 24) return t('notification.time.hoursAgo', { hours })
+  if (days < 7) return t('notification.time.daysAgo', { days })
   return new Date(date).toLocaleDateString()
 }
 
@@ -151,28 +153,28 @@ onMounted(() => {
       <button
         @click="router.back()"
         class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-        aria-label="Go back"
+        :aria-label="t('notification.aria.goBack')"
       >
         <ChevronLeft class="w-5 h-5 text-slate-600 dark:text-slate-400" />
       </button>
       <div class="flex-1">
         <div class="flex items-center gap-3">
-          <h1 class="text-2xl font-display font-bold text-slate-900 dark:text-slate-100">Notifications</h1>
+          <h1 class="text-2xl font-display font-bold text-slate-900 dark:text-slate-100">{{ t('notification.title') }}</h1>
           <span
             v-if="unreadCount > 0"
             class="px-2.5 py-1 bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 text-sm font-medium rounded-full"
           >
-            {{ unreadCount }} unread
+            {{ unreadCount }} {{ t('notification.unread') }}
           </span>
         </div>
-        <p class="text-slate-600 dark:text-slate-400">View and manage all your notifications</p>
+        <p class="text-slate-600 dark:text-slate-400">{{ t('notification.description') }}</p>
       </div>
       <button
         v-if="unreadCount > 0"
         @click="markAllAsRead"
         class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-colors font-medium cursor-pointer"
       >
-        Mark All Read
+        {{ t('notification.markAllRead') }}
       </button>
     </div>
 
@@ -191,7 +193,7 @@ onMounted(() => {
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Search notifications..."
+          :placeholder="t('notification.search')"
           class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
         >
         <Bell class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -230,10 +232,10 @@ onMounted(() => {
         <Bell class="w-10 h-10 text-slate-400" />
       </div>
       <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
-        {{ searchQuery || selectedFilter !== 'all' ? 'No notifications found' : 'All caught up!' }}
+        {{ searchQuery || selectedFilter !== 'all' ? t('notification.empty.noResults') : t('notification.empty.allCaughtUp') }}
       </h3>
       <p class="text-slate-500 dark:text-slate-400">
-        {{ searchQuery || selectedFilter !== 'all' ? 'Try adjusting your search or filters' : 'You have no notifications at the moment' }}
+        {{ searchQuery || selectedFilter !== 'all' ? t('notification.empty.adjustFilters') : t('notification.empty.noNotifications') }}
       </p>
     </div>
 
@@ -278,14 +280,14 @@ onMounted(() => {
             v-if="!notification.read"
             @click="markAsRead(notification.id)"
             class="p-2 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg transition-colors cursor-pointer"
-            aria-label="Mark as read"
+            :aria-label="t('notification.aria.markAsRead')"
           >
             <Check class="w-4 h-4 text-slate-400" />
           </button>
           <button
             @click="deleteNotification(notification.id)"
             class="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
-            aria-label="Delete notification"
+            :aria-label="t('notification.aria.delete')"
           >
             <Trash2 class="w-4 h-4 text-slate-400 hover:text-red-600 dark:hover:text-red-400" />
           </button>

@@ -1,0 +1,15 @@
+{
+  "account": "账户",
+  "profile": "个人资料",
+  "profileDesc": "查看和编辑您的个人信息",
+  "security": "安全设置",
+  "securityDesc": "密码和两步验证设置",
+  "workspace": "工作区",
+  "settings": "系统设置",
+  "settingsDesc": "偏好设置和系统配置",
+  "helpCenter": "帮助中心",
+  "helpCenterDesc": "文档和常见问题",
+  "logout": "退出登录",
+  "logoutDesc": "安全退出您的账户",
+  "defaultTenant": "默认租户"
+}

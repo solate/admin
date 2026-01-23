@@ -3,7 +3,9 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTenantsStore } from '@/stores/modules/tenants'
 import { Building, Users, Box, ChevronLeft, Pencil, Trash22, CircleCheck, Mail } from 'lucide-vue-next'
+import { useI18n } from '@/locales/composables'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const tenantsStore = useTenantsStore()
@@ -19,15 +21,15 @@ const statusColors = {
 }
 
 const statusLabels = {
-  active: '活跃',
-  suspended: '暂停',
-  trial: '试用'
+  active: computed(() => t('tenant.active')),
+  suspended: computed(() => t('tenant.suspended')),
+  trial: computed(() => t('tenant.trial'))
 }
 
 const planLabels = {
-  basic: '基础版',
-  pro: '专业版',
-  enterprise: '企业版'
+  basic: computed(() => t('tenant.planBasic')),
+  pro: computed(() => t('tenant.planPro')),
+  enterprise: computed(() => t('tenant.planEnterprise'))
 }
 
 const goBack = () => {
@@ -70,14 +72,14 @@ const deleteTenant = () => {
           class="px-4 py-2 bg-white text-slate-700 rounded-lg hover:bg-slate-50 transition-colors border border-slate-200 font-medium cursor-pointer flex items-center gap-2"
         >
           <component :is="Pencil" class="w-4 h-4" />
-          编辑
+          {{ t('common.edit') }}
         </button>
         <button
           @click="deleteTenant"
           class="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium cursor-pointer flex items-center gap-2"
         >
           <component :is="Trash2" class="w-4 h-4" />
-          删除
+          {{ t('common.delete') }}
         </button>
       </div>
     </div>
@@ -91,10 +93,10 @@ const deleteTenant = () => {
         <component :is="CircleCheck" class="w-5 h-5" :class="tenant.status === 'active' ? 'text-green-600' : 'text-yellow-600'" />
         <div>
           <p class="font-medium" :class="tenant.status === 'active' ? 'text-green-900' : 'text-yellow-900'">
-            {{ tenant.status === 'active' ? '租户状态正常' : '租户状态异常' }}
+            {{ tenant.status === 'active' ? t('tenant.statusNormal') : t('tenant.statusAbnormal') }}
           </p>
           <p class="text-sm" :class="tenant.status === 'active' ? 'text-green-700' : 'text-yellow-700'">
-            {{ tenant.status === 'active' ? '所有服务运行正常' : '请检查租户配置和账单状态' }}
+            {{ tenant.status === 'active' ? t('tenant.statusNormalDesc') : t('tenant.statusAbnormalDesc') }}
           </p>
         </div>
       </div>
@@ -108,9 +110,9 @@ const deleteTenant = () => {
             <component :is="Users" class="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <p class="text-sm text-slate-600">用户数</p>
+            <p class="text-sm text-slate-600">{{ t('tenant.users') }}</p>
             <p class="text-2xl font-bold text-slate-900">{{ tenant.users }}</p>
-            <p class="text-xs text-slate-500">/ {{ tenant.maxUsers }} 最大</p>
+            <p class="text-xs text-slate-500">/ {{ tenant.maxUsers }} {{ t('tenant.maxUsers') }}</p>
           </div>
         </div>
       </div>
@@ -120,7 +122,7 @@ const deleteTenant = () => {
             <component :is="Box" class="w-6 h-6 text-purple-600" />
           </div>
           <div>
-            <p class="text-sm text-slate-600">订阅方案</p>
+            <p class="text-sm text-slate-600">{{ t('tenant.subscriptionPlan') }}</p>
             <p class="text-2xl font-bold text-slate-900">{{ planLabels[tenant.plan] }}</p>
           </div>
         </div>
@@ -131,7 +133,7 @@ const deleteTenant = () => {
             <component :is="CircleCheck" class="w-6 h-6 text-green-600" />
           </div>
           <div>
-            <p class="text-sm text-slate-600">状态</p>
+            <p class="text-sm text-slate-600">{{ t('tenant.status') }}</p>
             <p class="text-2xl font-bold text-slate-900">{{ statusLabels[tenant.status] }}</p>
           </div>
         </div>
@@ -142,7 +144,7 @@ const deleteTenant = () => {
             <component :is="Mail" class="w-6 h-6 text-orange-600" />
           </div>
           <div>
-            <p class="text-sm text-slate-600">创建时间</p>
+            <p class="text-sm text-slate-600">{{ t('tenant.createdAt') }}</p>
             <p class="text-2xl font-bold text-slate-900">{{ tenant.createdAt }}</p>
           </div>
         </div>
@@ -153,26 +155,26 @@ const deleteTenant = () => {
     <div class="grid lg:grid-cols-2 gap-6">
       <!-- Tenant Information -->
       <div class="glass-card rounded-2xl p-6">
-        <h2 class="text-lg font-display font-semibold text-slate-900 mb-4">租户信息</h2>
+        <h2 class="text-lg font-display font-semibold text-slate-900 mb-4">{{ t('tenant.tenantInfo') }}</h2>
         <div class="space-y-4">
           <div class="flex justify-between py-3 border-b border-slate-100">
-            <span class="text-slate-600">租户 ID</span>
+            <span class="text-slate-600">{{ t('tenant.id') }}</span>
             <span class="font-medium text-slate-900 font-mono text-sm">{{ tenant.id }}</span>
           </div>
           <div class="flex justify-between py-3 border-b border-slate-100">
-            <span class="text-slate-600">租户名称</span>
+            <span class="text-slate-600">{{ t('tenant.name') }}</span>
             <span class="font-medium text-slate-900">{{ tenant.name }}</span>
           </div>
           <div class="flex justify-between py-3 border-b border-slate-100">
-            <span class="text-slate-600">访问域名</span>
+            <span class="text-slate-600">{{ t('tenant.accessDomain') }}</span>
             <span class="font-medium text-slate-900 font-mono text-sm">{{ tenant.domain }}</span>
           </div>
           <div class="flex justify-between py-3 border-b border-slate-100">
-            <span class="text-slate-600">订阅方案</span>
+            <span class="text-slate-600">{{ t('tenant.subscriptionPlan') }}</span>
             <span class="font-medium text-slate-900">{{ planLabels[tenant.plan] }}</span>
           </div>
           <div class="flex justify-between py-3">
-            <span class="text-slate-600">创建日期</span>
+            <span class="text-slate-600">{{ t('common.createdAt') }}</span>
             <span class="font-medium text-slate-900">{{ tenant.createdAt }}</span>
           </div>
         </div>
@@ -180,11 +182,11 @@ const deleteTenant = () => {
 
       <!-- Usage Statistics -->
       <div class="glass-card rounded-2xl p-6">
-        <h2 class="text-lg font-display font-semibold text-slate-900 mb-4">使用统计</h2>
+        <h2 class="text-lg font-display font-semibold text-slate-900 mb-4">{{ t('tenant.usageStats') }}</h2>
         <div class="space-y-6">
           <div>
             <div class="flex justify-between mb-2">
-              <span class="text-sm text-slate-600">用户数使用</span>
+              <span class="text-sm text-slate-600">{{ t('tenant.usersUsage') }}</span>
               <span class="text-sm font-medium text-slate-900">{{ tenant.users }} / {{ tenant.maxUsers }}</span>
             </div>
             <div class="w-full bg-slate-200 rounded-full h-2">
@@ -196,7 +198,7 @@ const deleteTenant = () => {
           </div>
           <div>
             <div class="flex justify-between mb-2">
-              <span class="text-sm text-slate-600">存储使用</span>
+              <span class="text-sm text-slate-600">{{ t('tenant.storageUsage') }}</span>
               <span class="text-sm font-medium text-slate-900">45 GB / 100 GB</span>
             </div>
             <div class="w-full bg-slate-200 rounded-full h-2">
@@ -205,7 +207,7 @@ const deleteTenant = () => {
           </div>
           <div>
             <div class="flex justify-between mb-2">
-              <span class="text-sm text-slate-600">API 调用</span>
+              <span class="text-sm text-slate-600">{{ t('tenant.apiCalls') }}</span>
               <span class="text-sm font-medium text-slate-900">78,432 / 100,000</span>
             </div>
             <div class="w-full bg-slate-200 rounded-full h-2">
@@ -222,13 +224,13 @@ const deleteTenant = () => {
     <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
       <component :is="Building" class="w-8 h-8 text-slate-400" />
     </div>
-    <h2 class="text-xl font-display font-semibold text-slate-900 mb-2">租户未找到</h2>
-    <p class="text-slate-600 mb-4">请检查租户 ID 是否正确</p>
+    <h2 class="text-xl font-display font-semibold text-slate-900 mb-2">{{ t('tenant.notFound') }}</h2>
+    <p class="text-slate-600 mb-4">{{ t('tenant.notFoundDesc') }}</p>
     <button
       @click="goBack"
       class="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium cursor-pointer"
     >
-      返回列表
+      {{ t('tenant.backToList') }}
     </button>
   </div>
 </template>

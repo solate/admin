@@ -1,0 +1,76 @@
+{
+  "title": "System Settings",
+  "description": "Manage platform configuration and preferences",
+  "tabs": {
+    "general": "General Settings",
+    "profile": "Profile",
+    "notifications": "Notification Settings",
+    "security": "Security Settings",
+    "billing": "Billing Settings"
+  },
+  "general": {
+    "title": "General Settings",
+    "siteName": "Site Name",
+    "supportEmail": "Support Email",
+    "language": "Language",
+    "timezone": "Timezone",
+    "maxTenants": "Max Tenants",
+    "enableRegistration": "Allow User Registration",
+    "enableRegistrationOn": "When enabled, new users can register their own accounts",
+    "maintenanceMode": "Maintenance Mode",
+    "maintenanceModeOn": "When enabled, only administrators can access the platform"
+  },
+  "profile": {
+    "title": "Profile",
+    "avatar": "Avatar",
+    "changeAvatar": "Change Avatar",
+    "avatarHint": "Supports JPG, PNG formats, max 2MB",
+    "name": "Name",
+    "email": "Email",
+    "company": "Company",
+    "position": "Position",
+    "bio": "Bio"
+  },
+  "notifications": {
+    "title": "Notification Settings",
+    "emailNotifications": "Email Notifications",
+    "emailNotificationsDesc": "Receive email notifications for important updates",
+    "pushNotifications": "Push Notifications",
+    "pushNotificationsDesc": "Receive browser push notifications",
+    "weeklyReports": "Weekly Reports",
+    "weeklyReportsDesc": "Send weekly activity summary reports",
+    "tenantAlerts": "Tenant Alerts",
+    "tenantAlertsDesc": "Tenant resource usage alerts",
+    "securityAlerts": "Security Alerts",
+    "securityAlertsDesc": "Security event notifications such as abnormal logins",
+    "alertThreshold": "Alert Threshold (%)"
+  },
+  "security": {
+    "title": "Security Settings",
+    "twoFactorAuth": "Two-Factor Authentication",
+    "twoFactorAuthOn": "Require users to use two-factor authentication",
+    "sessionTimeout": "Session Timeout (minutes)",
+    "passwordMinLength": "Minimum Password Length",
+    "requireStrongPassword": "Strong Password Requirement",
+    "requireStrongPasswordOn": "Password must contain uppercase, lowercase, numbers, and special characters",
+    "loginNotifications": "Login Notifications",
+    "loginNotificationsOn": "Send notification when logging in from a new device",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password"
+  },
+  "billing": {
+    "title": "Billing Settings",
+    "billingCycle": "Billing Cycle",
+    "invoiceEmail": "Invoice Email",
+    "taxId": "Tax ID",
+    "paymentMethods": "Payment Methods",
+    "methods": {
+      "monthly": "Monthly",
+      "quarterly": "Quarterly",
+      "annually": "Annually"
+    }
+  },
+  "lastSaved": "Last saved: {time}",
+  "saveSettings": "Save Settings"
+}

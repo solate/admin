@@ -1,0 +1,103 @@
+{
+  "title": "Profile Settings",
+  "subtitle": "Manage your account and preferences",
+  "defaultUser": "User",
+  "personalInfo": "Personal Information",
+  "saving": "Saving...",
+  "updating": "Updating...",
+  "saveChanges": "Save Changes",
+  "tabs": {
+    "profile": "Profile",
+    "security": "Security",
+    "sessions": "Sessions",
+    "notifications": "Notifications"
+  },
+  "fields": {
+    "fullName": "Full Name",
+    "email": "Email",
+    "phone": "Phone",
+    "location": "Location",
+    "bio": "Bio",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password"
+  },
+  "placeholders": {
+    "fullName": "John Doe",
+    "email": "john@example.com",
+    "phone": "+1 234 567 890",
+    "location": "San Francisco, CA",
+    "bio": "Tell us about yourself...",
+    "password": "••••••••"
+  },
+  "passwordStrength": {
+    "weak": "Weak",
+    "fair": "Fair",
+    "good": "Good",
+    "strong": "Strong",
+    "veryStrong": "Very Strong"
+  },
+  "security": {
+    "title": "Security Settings",
+    "changePassword": "Change Password",
+    "changePasswordDesc": "Regular password changes help protect your account",
+    "updatePassword": "Update Password",
+    "twoFactor": "Two-Factor Authentication",
+    "twoFactorEnabled": "Your account is protected with 2FA",
+    "twoFactorDisabled": "Add an extra layer of security to your account",
+    "enable": "Enable",
+    "disable": "Disable"
+  },
+  "sessions": {
+    "title": "Active Sessions",
+    "current": "Current",
+    "revoke": "Revoke session",
+    "revokeAll": "Revoke All Others",
+    "noSessions": "No active sessions found"
+  },
+  "device": {
+    "mobile": "Mobile",
+    "tablet": "Tablet",
+    "desktop": "Desktop"
+  },
+  "notifications": {
+    "title": "Notification Preferences",
+    "save": "Save Preferences",
+    "items": {
+      "email": {
+        "title": "Email Notifications",
+        "description": "Receive email notifications"
+      },
+      "security": {
+        "title": "Security Alerts",
+        "description": "Important security alerts"
+      },
+      "marketing": {
+        "title": "Marketing Communications",
+        "description": "Promotional offers and news"
+      },
+      "updates": {
+        "title": "Product Updates",
+        "description": "New features and improvements"
+      }
+    }
+  },
+  "messages": {
+    "profileUpdated": "Profile updated successfully",
+    "passwordChanged": "Password changed successfully",
+    "twoFactorDisabled": "Two-factor authentication disabled",
+    "sessionRevoked": "Session revoked successfully",
+    "allSessionsRevoked": "All other sessions revoked",
+    "notificationsSaved": "Notification preferences saved"
+  },
+  "errors": {
+    "updateProfileFailed": "Failed to update profile",
+    "passwordMismatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "changePasswordFailed": "Failed to change password",
+    "disableTwoFactorFailed": "Failed to disable two-factor authentication",
+    "revokeSessionFailed": "Failed to revoke session",
+    "revokeSessionsFailed": "Failed to revoke sessions",
+    "saveNotificationsFailed": "Failed to save preferences"
+  }
+}

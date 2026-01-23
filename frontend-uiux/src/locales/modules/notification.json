@@ -1,0 +1,31 @@
+{
+  "title": "通知",
+  "description": "查看和管理所有通知",
+  "markAllRead": "全部已读",
+  "unread": "未读",
+  "filters": {
+    "all": "全部",
+    "unread": "未读",
+    "user": "用户",
+    "security": "安全",
+    "system": "系统"
+  },
+  "search": "搜索通知...",
+  "empty": {
+    "noResults": "未找到通知",
+    "allCaughtUp": "已全部查看！",
+    "adjustFilters": "尝试调整搜索或筛选条件",
+    "noNotifications": "目前没有通知"
+  },
+  "time": {
+    "justNow": "刚刚",
+    "minutesAgo": "{minutes}分钟前",
+    "hoursAgo": "{hours}小时前",
+    "daysAgo": "{days}天前"
+  },
+  "aria": {
+    "goBack": "返回",
+    "markAsRead": "标记为已读",
+    "delete": "删除通知"
+  }
+}

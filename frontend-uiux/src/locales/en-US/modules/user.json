@@ -1,0 +1,127 @@
+{
+  "roles": {
+    "super_admin": "Super Admin",
+    "admin": "Admin",
+    "auditor": "Auditor",
+    "user": "User",
+    "guest": "Guest"
+  },
+  "menu": {
+    "account": "Account",
+    "profile": "Profile",
+    "profileDesc": "Manage your personal information",
+    "security": "Security",
+    "securityDesc": "Password and two-factor authentication",
+    "workspace": "Workspace",
+    "settings": "Settings",
+    "settingsDesc": "Application preferences",
+    "helpCenter": "Help Center",
+    "helpCenterDesc": "Get support and documentation",
+    "logout": "Logout",
+    "logoutDesc": "Sign out of your account safely"
+  },
+  "defaultTenant": "Default Tenant",
+  "list": {
+    "title": "User Management",
+    "subtitle": "Manage user accounts across all tenants",
+    "createUser": "Create User",
+    "stats": {
+      "totalUsers": "Total Users",
+      "activeUsers": "Active Users",
+      "admins": "Admins",
+      "tenantCount": "Tenants"
+    },
+    "searchPlaceholder": "Search by name or email...",
+    "filter": "Filter",
+    "roleFilter": "Role",
+    "statusFilter": "Status",
+    "clearFilters": "Clear Filters",
+    "allRoles": "All Roles",
+    "allStatuses": "All Statuses",
+    "table": {
+      "user": "User",
+      "role": "Role",
+      "tenant": "Tenant",
+      "status": "Status",
+      "lastLogin": "Last Login",
+      "actions": "Actions"
+    },
+    "actions": {
+      "view": "View",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "suspended": "Suspended"
+    },
+    "emptyState": {
+      "title": "No users found",
+      "adjustFilters": "Try adjusting your search or filters",
+      "createFirst": "Start by creating your first user"
+    },
+    "deleteModal": {
+      "title": "Confirm Delete",
+      "message": "Are you sure you want to delete user <name>?",
+      "warning": "This action cannot be undone and will permanently delete all user data."
+    },
+    "timeAgo": {
+      "never": "Never",
+      "justNow": "Just now",
+      "minutes": "{n} minutes ago",
+      "hours": "{n} hours ago",
+      "days": "{n} days ago"
+    },
+    "platform": "Platform"
+  },
+  "detail": {
+    "edit": "Edit User",
+    "create": "Create User",
+    "editSubtitle": "Update user information and permissions",
+    "createSubtitle": "Add a new user to the platform",
+    "basicInfo": "Basic Information",
+    "rolePermissions": "Role & Permissions",
+    "fullName": "Full Name",
+    "email": "Email",
+    "phone": "Phone",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "tenant": "Tenant",
+    "role": "Role",
+    "status": "Status",
+    "selectTenant": "Select a tenant",
+    "preview": "Preview",
+    "accountInfo": "Account Information",
+    "created": "Created",
+    "lastLogin": "Last Login",
+    "saveChanges": "Save Changes",
+    "createUser": "Create User",
+    "saving": "Saving...",
+    "roleDescriptions": {
+      "super_admin": "Full system access",
+      "admin": "Tenant administrator",
+      "auditor": "Read-only access",
+      "user": "Standard user"
+    },
+    "validation": {
+      "nameRequired": "Name is required",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email format",
+      "tenantRequired": "Tenant is required",
+      "passwordRequired": "Password is required",
+      "passwordMinLength": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match"
+    },
+    "errors": {
+      "fetchFailed": "Failed to fetch user",
+      "saveFailed": "Failed to save user"
+    },
+    "placeholders": {
+      "name": "John Doe",
+      "email": "john@example.com",
+      "phone": "+1 234 567 890",
+      "password": "••••••••"
+    }
+  }
+}

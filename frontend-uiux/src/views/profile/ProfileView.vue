@@ -3,22 +3,24 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
 import { apiService } from '@/api'
+import { useI18n } from '@/locales/composables'
 import { UserCircle, Mail, Shield, Bell, Key, Smartphone, Clock, Check, X, AlertTriangle, Globe, Building, Badge } from 'lucide-vue-next'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const activeTab = ref(route.query.tab || 'profile')
 const saving = ref(false)
 const message = ref(null)
 const error = ref(null)
 
-const tabs = [
-  { id: 'profile', name: 'Profile', icon: UserCircle },
-  { id: 'security', name: 'Security', icon: Shield },
-  { id: 'sessions', name: 'Sessions', icon: Smartphone },
-  { id: 'notifications', name: 'Notifications', icon: Bell }
-]
+const tabs = computed(() => [
+  { id: 'profile', name: t('profile.tabs.profile'), icon: UserCircle },
+  { id: 'security', name: t('profile.tabs.security'), icon: Shield },
+  { id: 'sessions', name: t('profile.tabs.sessions'), icon: Smartphone },
+  { id: 'notifications', name: t('profile.tabs.notifications'), icon: Bell }
+])
 
 // Profile form
 const profile = ref({
@@ -73,11 +75,11 @@ const passwordStrength = computed(() => {
   if (/[^a-zA-Z0-9]/.test(password)) strength++
 
   const levels = [
-    { label: 'Weak', color: 'bg-red-500' },
-    { label: 'Fair', color: 'bg-amber-500' },
-    { label: 'Good', color: 'bg-yellow-500' },
-    { label: 'Strong', color: 'bg-emerald-500' },
-    { label: 'Very Strong', color: 'bg-emerald-600' }
+    { label: t('profile.passwordStrength.weak'), color: 'bg-red-500' },
+    { label: t('profile.passwordStrength.fair'), color: 'bg-amber-500' },
+    { label: t('profile.passwordStrength.good'), color: 'bg-yellow-500' },
+    { label: t('profile.passwordStrength.strong'), color: 'bg-emerald-500' },
+    { label: t('profile.passwordStrength.veryStrong'), color: 'bg-emerald-600' }
   ]
 
   return { level: strength, ...levels[strength - 1] || levels[0] }
@@ -119,10 +121,10 @@ async function saveProfile() {
 
   try {
     await apiService.users.update(authStore.user?.id, profile.value)
-    message.value = 'Profile updated successfully'
+    message.value = t('profile.messages.profileUpdated')
     authStore.user = { ...authStore.user, ...profile.value }
   } catch (err) {
-    error.value = err.response?.data?.message || 'Failed to update profile'
+    error.value = err.response?.data?.message || t('profile.errors.updateProfileFailed')
   } finally {
     saving.value = false
   }
@@ -130,12 +132,12 @@ async function saveProfile() {
 
 async function changePassword() {
   if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-    error.value = 'Passwords do not match'
+    error.value = t('profile.errors.passwordMismatch')
     return
   }
 
   if (passwordForm.value.newPassword.length < 8) {
-    error.value = 'Password must be at least 8 characters'
+    error.value = t('profile.errors.passwordTooShort')
     return
   }
 
@@ -149,14 +151,14 @@ async function changePassword() {
       newPassword: passwordForm.value.newPassword
     })
 
-    message.value = 'Password changed successfully'
+    message.value = t('profile.messages.passwordChanged')
     passwordForm.value = {
       currentPassword: '',
       newPassword: '',
       confirmPassword: ''
     }
   } catch (err) {
-    error.value = err.response?.data?.message || 'Failed to change password'
+    error.value = err.response?.data?.message || t('profile.errors.changePasswordFailed')
   } finally {
     saving.value = false
   }
@@ -168,9 +170,9 @@ async function toggleTwoFactor() {
     try {
       await apiService.users.disableTwoFactor()
       twoFactorEnabled.value = false
-      message.value = 'Two-factor authentication disabled'
+      message.value = t('profile.messages.twoFactorDisabled')
     } catch (err) {
-      error.value = 'Failed to disable two-factor authentication'
+      error.value = t('profile.errors.disableTwoFactorFailed')
     }
   } else {
     showTwoFactorSetup.value = true
@@ -181,9 +183,9 @@ async function revokeSession(sessionId) {
   try {
     await apiService.users.revokeSession(sessionId)
     sessions.value = sessions.value.filter(s => s.id !== sessionId)
-    message.value = 'Session revoked successfully'
+    message.value = t('profile.messages.sessionRevoked')
   } catch (err) {
-    error.value = 'Failed to revoke session'
+    error.value = t('profile.errors.revokeSessionFailed')
   }
 }
 
@@ -191,9 +193,9 @@ async function revokeAllOtherSessions() {
   try {
     await apiService.users.revokeAllOtherSessions()
     sessions.value = sessions.value.filter(s => s.current)
-    message.value = 'All other sessions revoked'
+    message.value = t('profile.messages.allSessionsRevoked')
   } catch (err) {
-    error.value = 'Failed to revoke sessions'
+    error.value = t('profile.errors.revokeSessionsFailed')
   }
 }
 
@@ -201,9 +203,9 @@ async function saveNotifications() {
   saving.value = true
   try {
     await apiService.users.updateNotifications(notifications.value)
-    message.value = 'Notification preferences saved'
+    message.value = t('profile.messages.notificationsSaved')
   } catch (err) {
-    error.value = 'Failed to save preferences'
+    error.value = t('profile.errors.saveNotificationsFailed')
   } finally {
     saving.value = false
   }
@@ -221,9 +223,9 @@ function getInitials(name) {
 
 function formatDevice(session) {
   const ua = session.userAgent || ''
-  if (ua.includes('Mobile')) return 'Mobile'
-  if (ua.includes('Tablet')) return 'Tablet'
-  return 'Desktop'
+  if (ua.includes('Mobile')) return t('profile.device.mobile')
+  if (ua.includes('Tablet')) return t('profile.device.tablet')
+  return t('profile.device.desktop')
 }
 
 function formatDate(date) {
@@ -240,8 +242,8 @@ onMounted(() => {
   <div class="space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-2xl font-display font-bold text-slate-900 dark:text-slate-100">Profile Settings</h1>
-      <p class="text-slate-600 dark:text-slate-400">Manage your account and preferences</p>
+      <h1 class="text-2xl font-display font-bold text-slate-900 dark:text-slate-100">{{ t('profile.title') }}</h1>
+      <p class="text-slate-600 dark:text-slate-400">{{ t('profile.subtitle') }}</p>
     </div>
 
     <!-- Message/Error -->
@@ -277,7 +279,7 @@ onMounted(() => {
           <div class="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <span class="text-2xl font-semibold text-white">{{ getInitials(profile.name) }}</span>
           </div>
-          <h3 class="font-semibold text-slate-900 dark:text-slate-100">{{ profile.name || 'User' }}</h3>
+          <h3 class="font-semibold text-slate-900 dark:text-slate-100">{{ profile.name || t('profile.defaultUser') }}</h3>
           <p class="text-sm text-slate-500 dark:text-slate-400">{{ profile.email }}</p>
         </div>
 
@@ -302,30 +304,30 @@ onMounted(() => {
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
           <!-- Profile Tab -->
           <div v-if="activeTab === 'profile'">
-            <h2 class="text-lg font-display font-semibold text-slate-900 dark:text-slate-100 mb-6">Personal Information</h2>
+            <h2 class="text-lg font-display font-semibold text-slate-900 dark:text-slate-100 mb-6">{{ t('profile.personalInfo') }}</h2>
 
             <div class="space-y-6">
               <div class="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Full Name</label>
+                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('profile.fields.fullName') }}</label>
                   <div class="relative">
                     <Badge class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       v-model="profile.name"
                       type="text"
-                      placeholder="John Doe"
+                      :placeholder="t('profile.placeholders.fullName')"
                       class="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                     >
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Email</label>
+                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('profile.fields.email') }}</label>
                   <div class="relative">
                     <Mail class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       v-model="profile.email"
                       type="email"
-                      placeholder="john@example.com"
+                      :placeholder="t('profile.placeholders.email')"
                       class="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                     >
                   </div>
@@ -334,25 +336,25 @@ onMounted(() => {
 
               <div class="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Phone</label>
+                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('profile.fields.phone') }}</label>
                   <div class="relative">
                     <Smartphone class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       v-model="profile.phone"
                       type="tel"
-                      placeholder="+1 234 567 890"
+                      :placeholder="t('profile.placeholders.phone')"
                       class="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                     >
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Location</label>
+                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('profile.fields.location') }}</label>
                   <div class="relative">
                     <Globe class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       v-model="profile.location"
                       type="text"
-                      placeholder="San Francisco, CA"
+                      :placeholder="t('profile.placeholders.location')"
                       class="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                     >
                   </div>
@@ -360,11 +362,11 @@ onMounted(() => {
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Bio</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('profile.fields.bio') }}</label>
                 <textarea
                   v-model="profile.bio"
                   rows="3"
-                  placeholder="Tell us about yourself..."
+                  :placeholder="t('profile.placeholders.bio')"
                   class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all resize-none"
                 ></textarea>
               </div>
@@ -374,7 +376,7 @@ onMounted(() => {
                   @click="fetchProfile"
                   class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-xl transition-colors font-medium cursor-pointer"
                 >
-                  Cancel
+                  {{ t('common.cancel') }}
                 </button>
                 <button
                   @click="saveProfile"
@@ -382,7 +384,7 @@ onMounted(() => {
                   class="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl transition-colors font-medium cursor-pointer flex items-center gap-2"
                 >
                   <div v-if="saving" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span>{{ saving ? 'Saving...' : 'Save Changes' }}</span>
+                  <span>{{ saving ? t('profile.saving') : t('profile.saveChanges') }}</span>
                 </button>
               </div>
             </div>
@@ -390,36 +392,36 @@ onMounted(() => {
 
           <!-- Security Tab -->
           <div v-if="activeTab === 'security'">
-            <h2 class="text-lg font-display font-semibold text-slate-900 dark:text-slate-100 mb-6">Security Settings</h2>
+            <h2 class="text-lg font-display font-semibold text-slate-900 dark:text-slate-100 mb-6">{{ t('profile.security.title') }}</h2>
 
             <div class="space-y-6">
               <!-- Change Password -->
               <div class="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
-                <h3 class="font-medium text-slate-900 dark:text-slate-100 mb-2">Change Password</h3>
-                <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">Regular password changes help protect your account</p>
+                <h3 class="font-medium text-slate-900 dark:text-slate-100 mb-2">{{ t('profile.security.changePassword') }}</h3>
+                <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">{{ t('profile.security.changePasswordDesc') }}</p>
 
                 <div class="space-y-4">
                   <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Current Password</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('profile.fields.currentPassword') }}</label>
                     <div class="relative">
                       <Key class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input
                         v-model="passwordForm.currentPassword"
                         type="password"
-                        placeholder="••••••••"
+                        :placeholder="t('profile.placeholders.password')"
                         class="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                       >
                     </div>
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">New Password</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('profile.fields.newPassword') }}</label>
                     <div class="relative">
                       <Key class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input
                         v-model="passwordForm.newPassword"
                         type="password"
-                        placeholder="••••••••"
+                        :placeholder="t('profile.placeholders.password')"
                         class="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                       >
                     </div>
@@ -441,13 +443,13 @@ onMounted(() => {
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Confirm New Password</label>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('profile.fields.confirmPassword') }}</label>
                     <div class="relative">
                       <Key class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                       <input
                         v-model="passwordForm.confirmPassword"
                         type="password"
-                        placeholder="••••••••"
+                        :placeholder="t('profile.placeholders.password')"
                         class="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                       >
                     </div>
@@ -458,7 +460,7 @@ onMounted(() => {
                     :disabled="!passwordForm.currentPassword || !passwordForm.newPassword || saving"
                     class="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl transition-colors font-medium cursor-pointer"
                   >
-                    {{ saving ? 'Updating...' : 'Update Password' }}
+                    {{ saving ? t('profile.updating') : t('profile.security.updatePassword') }}
                   </button>
                 </div>
               </div>
@@ -467,9 +469,9 @@ onMounted(() => {
               <div class="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
                 <div class="flex items-start justify-between">
                   <div>
-                    <h3 class="font-medium text-slate-900 dark:text-slate-100 mb-2">Two-Factor Authentication</h3>
+                    <h3 class="font-medium text-slate-900 dark:text-slate-100 mb-2">{{ t('profile.security.twoFactor') }}</h3>
                     <p class="text-sm text-slate-600 dark:text-slate-400">
-                      {{ twoFactorEnabled ? 'Your account is protected with 2FA' : 'Add an extra layer of security to your account' }}
+                      {{ twoFactorEnabled ? t('profile.security.twoFactorEnabled') : t('profile.security.twoFactorDisabled') }}
                     </p>
                   </div>
                   <button
@@ -479,7 +481,7 @@ onMounted(() => {
                       ? 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300'
                       : 'bg-primary-600 hover:bg-primary-700 text-white'"
                   >
-                    {{ twoFactorEnabled ? 'Disable' : 'Enable' }}
+                    {{ twoFactorEnabled ? t('profile.security.disable') : t('profile.security.enable') }}
                   </button>
                 </div>
               </div>
@@ -489,13 +491,13 @@ onMounted(() => {
           <!-- Sessions Tab -->
           <div v-if="activeTab === 'sessions'">
             <div class="flex items-center justify-between mb-6">
-              <h2 class="text-lg font-display font-semibold text-slate-900 dark:text-slate-100">Active Sessions</h2>
+              <h2 class="text-lg font-display font-semibold text-slate-900 dark:text-slate-100">{{ t('profile.sessions.title') }}</h2>
               <button
                 v-if="sessions.length > 1"
                 @click="revokeAllOtherSessions"
                 class="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded-lg transition-colors font-medium cursor-pointer"
               >
-                Revoke All Others
+                {{ t('profile.sessions.revokeAll') }}
               </button>
             </div>
 
@@ -512,7 +514,7 @@ onMounted(() => {
                 <div class="flex-1 min-w-0">
                   <p class="font-medium text-slate-900 dark:text-slate-100">
                     {{ formatDevice(session) }}
-                    <span v-if="session.current" class="ml-2 text-xs bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded-full">Current</span>
+                    <span v-if="session.current" class="ml-2 text-xs bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded-full">{{ t('profile.sessions.current') }}</span>
                   </p>
                   <p class="text-sm text-slate-500 dark:text-slate-400">
                     {{ session.ipAddress }} • {{ formatDate(session.lastActive) }}
@@ -522,7 +524,7 @@ onMounted(() => {
                   v-if="!session.current"
                   @click="revokeSession(session.id)"
                   class="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-                  aria-label="Revoke session"
+                  :aria-label="t('profile.sessions.revoke')"
                 >
                   <X class="w-5 h-5 text-slate-400" />
                 </button>
@@ -530,35 +532,30 @@ onMounted(() => {
 
               <div v-if="sessions.length === 0" class="text-center py-8">
                 <Smartphone class="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                <p class="text-slate-500 dark:text-slate-400">No active sessions found</p>
+                <p class="text-slate-500 dark:text-slate-400">{{ t('profile.sessions.noSessions') }}</p>
               </div>
             </div>
           </div>
 
           <!-- Notifications Tab -->
           <div v-if="activeTab === 'notifications'">
-            <h2 class="text-lg font-display font-semibold text-slate-900 dark:text-slate-100 mb-6">Notification Preferences</h2>
+            <h2 class="text-lg font-display font-semibold text-slate-900 dark:text-slate-100 mb-6">{{ t('profile.notifications.title') }}</h2>
 
             <div class="space-y-4">
               <div
                 v-for="(setting, key) in {
-                  email: 'Email Notifications',
-                  security: 'Security Alerts',
-                  marketing: 'Marketing Communications',
-                  updates: 'Product Updates'
+                  email: 'email',
+                  security: 'security',
+                  marketing: 'marketing',
+                  updates: 'updates'
                 }"
                 :key="key"
                 class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl"
               >
                 <div>
-                  <p class="font-medium text-slate-900 dark:text-slate-100">{{ setting }}</p>
+                  <p class="font-medium text-slate-900 dark:text-slate-100">{{ t(`profile.notifications.items.${setting}.title`) }}</p>
                   <p class="text-sm text-slate-500 dark:text-slate-400">
-                    {{
-                      key === 'email' ? 'Receive email notifications' :
-                      key === 'security' ? 'Important security alerts' :
-                      key === 'marketing' ? 'Promotional offers and news' :
-                      'New features and improvements'
-                    }}
+                    {{ t(`profile.notifications.items.${setting}.description`) }}
                   </p>
                 </div>
                 <button
@@ -582,7 +579,7 @@ onMounted(() => {
                 :disabled="saving"
                 class="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl transition-colors font-medium cursor-pointer"
               >
-                {{ saving ? 'Saving...' : 'Save Preferences' }}
+                {{ saving ? t('profile.saving') : t('profile.notifications.save') }}
               </button>
             </div>
           </div>

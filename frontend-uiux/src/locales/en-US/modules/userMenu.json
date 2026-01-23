@@ -1,0 +1,15 @@
+{
+  "account": "Account",
+  "profile": "Profile",
+  "profileDesc": "View and edit your profile",
+  "security": "Security",
+  "securityDesc": "Password and two-factor authentication",
+  "workspace": "Workspace",
+  "settings": "Settings",
+  "settingsDesc": "Preferences and system configuration",
+  "helpCenter": "Help Center",
+  "helpCenterDesc": "Documentation and FAQs",
+  "logout": "Logout",
+  "logoutDesc": "Sign out of your account safely",
+  "defaultTenant": "Default Tenant"
+}

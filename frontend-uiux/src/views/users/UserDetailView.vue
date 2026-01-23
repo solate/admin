@@ -3,11 +3,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTenantsStore } from '@/stores/modules/tenants'
 import { apiService } from '@/api'
+import { useI18n } from '@/locales/composables'
 import { User, Mail, Building, Shield, Key, X, Check, Pencil, ChevronLeft, UserCircle, Clock, Calendar } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
 const tenantsStore = useTenantsStore()
+const { t } = useI18n()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -15,7 +17,7 @@ const user = ref(null)
 const error = ref(null)
 
 const isEditMode = computed(() => !!route.params.id)
-const pageTitle = computed(() => isEditMode.value ? 'Edit User' : 'Create User')
+const pageTitle = computed(() => isEditMode.value ? t('user.detail.edit') : t('user.detail.create'))
 
 // Form state
 const formData = ref({
@@ -29,18 +31,18 @@ const formData = ref({
   confirmPassword: ''
 })
 
-const roleOptions = [
-  { label: 'User', value: 'user' },
-  { label: 'Admin', value: 'admin' },
-  { label: 'Auditor', value: 'auditor' },
-  { label: 'Super Admin', value: 'super_admin' }
-]
+const roleOptions = computed(() => [
+  { label: t('user.roles.user'), value: 'user' },
+  { label: t('user.roles.admin'), value: 'admin' },
+  { label: t('user.roles.auditor'), value: 'auditor' },
+  { label: t('user.roles.super_admin'), value: 'super_admin' }
+])
 
-const statusOptions = [
-  { label: 'Active', value: 'active' },
-  { label: 'Inactive', value: 'inactive' },
-  { label: 'Suspended', value: 'suspended' }
-]
+const statusOptions = computed(() => [
+  { label: t('user.list.status.active'), value: 'active' },
+  { label: t('user.list.status.inactive'), value: 'inactive' },
+  { label: t('user.list.status.suspended'), value: 'suspended' }
+])
 
 const roleBadgeStyles = {
   super_admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
@@ -60,28 +62,28 @@ const formErrors = computed(() => {
   const errors = {}
 
   if (!formData.value.name) {
-    errors.name = 'Name is required'
+    errors.name = t('user.detail.validation.nameRequired')
   }
 
   if (!formData.value.email) {
-    errors.email = 'Email is required'
+    errors.email = t('user.detail.validation.emailRequired')
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.value.email)) {
-    errors.email = 'Invalid email format'
+    errors.email = t('user.detail.validation.emailInvalid')
   }
 
   if (!formData.value.tenantId) {
-    errors.tenantId = 'Tenant is required'
+    errors.tenantId = t('user.detail.validation.tenantRequired')
   }
 
   if (!isEditMode.value) {
     if (!formData.value.password) {
-      errors.password = 'Password is required'
+      errors.password = t('user.detail.validation.passwordRequired')
     } else if (formData.value.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters'
+      errors.password = t('user.detail.validation.passwordMinLength')
     }
 
     if (formData.value.password !== formData.value.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match'
+      errors.confirmPassword = t('user.detail.validation.passwordMismatch')
     }
   }
 
@@ -112,7 +114,7 @@ async function fetchUser() {
       confirmPassword: ''
     }
   } catch (err) {
-    error.value = err.message || 'Failed to fetch user'
+    error.value = err.message || t('user.detail.errors.fetchFailed')
     console.error('Error fetching user:', err)
   } finally {
     loading.value = false
@@ -147,7 +149,7 @@ async function saveUser() {
 
     router.push({ name: 'users' })
   } catch (err) {
-    error.value = err.response?.data?.message || err.message || 'Failed to save user'
+    error.value = err.response?.data?.message || err.message || t('user.detail.errors.saveFailed')
     console.error('Error saving user:', err)
   } finally {
     saving.value = false
@@ -188,7 +190,7 @@ onMounted(() => {
       <div class="flex-1">
         <h1 class="text-2xl font-display font-bold text-slate-900 dark:text-slate-100">{{ pageTitle }}</h1>
         <p class="text-slate-600 dark:text-slate-400">
-          {{ isEditMode ? 'Update user information and permissions' : 'Add a new user to the platform' }}
+          {{ isEditMode ? t('user.detail.editSubtitle') : t('user.detail.createSubtitle') }}
         </p>
       </div>
     </div>
@@ -214,20 +216,20 @@ onMounted(() => {
       <!-- Main Form -->
       <div class="lg:col-span-2 space-y-6">
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-          <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">Basic Information</h2>
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">{{ t('user.detail.basicInfo') }}</h2>
 
           <div class="space-y-6">
             <!-- Name -->
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Full Name <span class="text-red-500">*</span>
+                {{ t('user.detail.fullName') }} <span class="text-red-500">*</span>
               </label>
               <div class="relative">
                 <User class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   v-model="formData.name"
                   type="text"
-                  placeholder="John Doe"
+                  :placeholder="t('user.detail.placeholders.name')"
                   class="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                   :class="{ 'ring-2 ring-red-500': formErrors.name }"
                 >
@@ -238,14 +240,14 @@ onMounted(() => {
             <!-- Email -->
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Email <span class="text-red-500">*</span>
+                {{ t('user.detail.email') }} <span class="text-red-500">*</span>
               </label>
               <div class="relative">
                 <Mail class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   v-model="formData.email"
                   type="email"
-                  placeholder="john@example.com"
+                  :placeholder="t('user.detail.placeholders.email')"
                   class="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                   :class="{ 'ring-2 ring-red-500': formErrors.email }"
                 >
@@ -255,7 +257,7 @@ onMounted(() => {
 
             <!-- Phone -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Phone</label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('user.detail.phone') }}</label>
               <div class="relative">
                 <div class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 flex items-center justify-center">
                   <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -265,7 +267,7 @@ onMounted(() => {
                 <input
                   v-model="formData.phone"
                   type="tel"
-                  placeholder="+1 234 567 890"
+                  :placeholder="t('user.detail.placeholders.phone')"
                   class="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                 >
               </div>
@@ -276,14 +278,14 @@ onMounted(() => {
               <div class="grid md:grid-cols-2 gap-6">
                 <div>
                   <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Password <span class="text-red-500">*</span>
+                    {{ t('user.detail.password') }} <span class="text-red-500">*</span>
                   </label>
                   <div class="relative">
                     <Key class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       v-model="formData.password"
                       type="password"
-                      placeholder="••••••••"
+                      :placeholder="t('user.detail.placeholders.password')"
                       class="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                       :class="{ 'ring-2 ring-red-500': formErrors.password }"
                     >
@@ -293,14 +295,14 @@ onMounted(() => {
 
                 <div>
                   <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Confirm Password <span class="text-red-500">*</span>
+                    {{ t('user.detail.confirmPassword') }} <span class="text-red-500">*</span>
                   </label>
                   <div class="relative">
                     <Key class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       v-model="formData.confirmPassword"
                       type="password"
-                      placeholder="••••••••"
+                      :placeholder="t('user.detail.placeholders.password')"
                       class="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                       :class="{ 'ring-2 ring-red-500': formErrors.confirmPassword }"
                     >
@@ -314,13 +316,13 @@ onMounted(() => {
 
         <!-- Role & Permissions -->
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-          <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">Role & Permissions</h2>
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">{{ t('user.detail.rolePermissions') }}</h2>
 
           <div class="space-y-6">
             <!-- Tenant -->
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Tenant <span class="text-red-500">*</span>
+                {{ t('user.detail.tenant') }} <span class="text-red-500">*</span>
               </label>
               <div class="relative">
                 <Building class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
@@ -329,7 +331,7 @@ onMounted(() => {
                   class="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none appearance-none cursor-pointer"
                   :class="{ 'ring-2 ring-red-500': formErrors.tenantId }"
                 >
-                  <option value="">Select a tenant</option>
+                  <option value="">{{ t('user.detail.selectTenant') }}</option>
                   <option
                     v-for="tenant in tenantsStore.activeTenants"
                     :key="tenant.id"
@@ -345,7 +347,7 @@ onMounted(() => {
             <!-- Role -->
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Role <span class="text-red-500">*</span>
+                {{ t('user.detail.role') }} <span class="text-red-500">*</span>
               </label>
               <div class="grid grid-cols-2 gap-3">
                 <button
@@ -359,7 +361,7 @@ onMounted(() => {
                 >
                   <p class="font-medium text-slate-900 dark:text-slate-100">{{ role.label }}</p>
                   <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    {{ role.value === 'super_admin' ? 'Full system access' : role.value === 'admin' ? 'Tenant administrator' : role.value === 'auditor' ? 'Read-only access' : 'Standard user' }}
+                    {{ t(`user.detail.roleDescriptions.${role.value}`) }}
                   </p>
                 </button>
               </div>
@@ -367,7 +369,7 @@ onMounted(() => {
 
             <!-- Status -->
             <div v-if="isEditMode">
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Status</label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{{ t('user.detail.status') }}</label>
               <div class="flex gap-3">
                 <button
                   v-for="status in statusOptions"
@@ -397,29 +399,29 @@ onMounted(() => {
       <div class="space-y-6">
         <!-- User Preview -->
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6">
-          <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">Preview</h3>
+          <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">{{ t('user.detail.preview') }}</h3>
 
           <div class="flex flex-col items-center text-center">
             <div class="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center mb-4">
               <span class="text-2xl font-semibold text-white">{{ getInitials(formData.name) || '??' }}</span>
             </div>
 
-            <p class="font-semibold text-slate-900 dark:text-slate-100">{{ formData.name || 'User Name' }}</p>
-            <p class="text-sm text-slate-500 dark:text-slate-400">{{ formData.email || 'email@example.com' }}</p>
+            <p class="font-semibold text-slate-900 dark:text-slate-100">{{ formData.name || t('user.detail.fullName') }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ formData.email || t('user.detail.placeholders.email') }}</p>
 
             <div class="flex gap-2 mt-3">
               <span
                 class="px-2.5 py-1 rounded-lg text-xs font-medium"
                 :class="roleBadgeStyles[formData.role]"
               >
-                {{ roleOptions.find(r => r.value === formData.role)?.label }}
+                {{ roleOptions.value.find(r => r.value === formData.role)?.label }}
               </span>
               <span
                 v-if="isEditMode"
                 class="px-2.5 py-1 rounded-lg text-xs font-medium"
                 :class="statusStyles[formData.status]"
               >
-                {{ statusOptions.find(s => s.value === formData.status)?.label }}
+                {{ statusOptions.value.find(s => s.value === formData.status)?.label }}
               </span>
             </div>
           </div>
@@ -434,14 +436,14 @@ onMounted(() => {
           >
             <Check v-if="!saving" class="w-5 h-5" />
             <div v-else class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            <span>{{ saving ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create User' }}</span>
+            <span>{{ saving ? t('user.detail.saving') : isEditMode ? t('user.detail.saveChanges') : t('user.detail.createUser') }}</span>
           </button>
 
           <button
             @click="goBack"
             class="w-full px-4 py-3 mt-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-xl transition-colors font-medium cursor-pointer"
           >
-            Cancel
+            {{ t('common.cancel') }}
           </button>
         </div>
 
@@ -450,16 +452,16 @@ onMounted(() => {
           v-if="isEditMode && user"
           class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6"
         >
-          <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">Account Information</h3>
+          <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">{{ t('user.detail.accountInfo') }}</h3>
 
           <div class="space-y-3 text-sm">
             <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
               <Calendar class="w-4 h-4" />
-              <span>Created: {{ new Date(user.createdAt).toLocaleDateString() }}</span>
+              <span>{{ t('user.detail.created') }}: {{ new Date(user.createdAt).toLocaleDateString() }}</span>
             </div>
             <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
               <Clock class="w-4 h-4" />
-              <span>Last Login: {{ user.lastLoginAt ? formatDate(user.lastLoginAt) : 'Never' }}</span>
+              <span>{{ t('user.detail.lastLogin') }}: {{ user.lastLoginAt ? formatDate(user.lastLoginAt) : t('user.list.timeAgo.never') }}</span>
             </div>
           </div>
         </div>

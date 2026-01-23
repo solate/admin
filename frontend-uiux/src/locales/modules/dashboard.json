@@ -1,0 +1,57 @@
+{
+  "title": "概览",
+  "welcome": "欢迎回来",
+  "createTenant": "新建租户",
+  "quickActions": "快捷操作",
+  "recentActivities": "最近活动",
+  "topTenants": "热门租户",
+  "viewAll": "查看全部",
+  "revenueTrend": "收入趋势",
+  "userGrowth": "用户增长",
+  "past6Months": "过去6个月",
+  "chartComingSoon": "图表组件即将推出",
+  "chartIntegration": "将集成 Chart.js",
+  "stats": {
+    "totalTenants": "总租户数",
+    "activeServices": "活跃服务",
+    "totalUsers": "总用户数",
+    "monthlyRevenue": "本月收入",
+    "vsLastMonth": "较上月"
+  },
+  "actions": {
+    "addTenant": "添加租户",
+    "addTenantDesc": "创建新的租户账户",
+    "configService": "配置服务",
+    "configServiceDesc": "管理平台服务",
+    "manageUsers": "用户管理",
+    "manageUsersDesc": "管理平台用户",
+    "viewReport": "查看报表",
+    "viewReportDesc": "查看数据分析"
+  },
+  "activities": {
+    "newTenant": "新租户注册",
+    "newTenantDesc": "{name} 已完成注册",
+    "serviceUpgrade": "服务升级",
+    "serviceUpgradeDesc": "{name} 已升级到 v2.0",
+    "newUser": "新用户加入",
+    "newUserDesc": "{name} 加入了 {team}",
+    "systemAlert": "系统提醒",
+    "systemAlertDesc": "{name} 负载较高"
+  },
+  "timeAgo": {
+    "minutes": "{n} 分钟前",
+    "hours": "{n} 小时前",
+    "days": "{n} 天前"
+  },
+  "table": {
+    "tenantName": "租户名称",
+    "users": "用户数",
+    "revenue": "收入",
+    "status": "状态"
+  },
+  "status": {
+    "active": "活跃",
+    "suspended": "暂停",
+    "trial": "试用"
+  }
+}

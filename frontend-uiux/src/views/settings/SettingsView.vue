@@ -1,16 +1,18 @@
 <script setup>
-import { ref } from 'vue'
-import { Settings as SettingsIcon, Bell, Lock, Wallet, User, Mail, Eye, EyeOff } from 'lucide-vue-next'
+import { ref, computed } from 'vue'
+import { Settings as SettingsIcon, Bell, Lock, Wallet, User, Eye, EyeOff } from 'lucide-vue-next'
+import { useI18n } from '@/locales/composables'
 
+const { t } = useI18n()
 const activeTab = ref('general')
 
-const tabs = [
-  { id: 'general', name: '通用设置', icon: SettingsIcon },
-  { id: 'profile', name: '个人资料', icon: User },
-  { id: 'notifications', name: '通知设置', icon: Bell },
-  { id: 'security', name: '安全设置', icon: Lock },
-  { id: 'billing', name: '账单设置', icon: Wallet }
-]
+const tabs = computed(() => [
+  { id: 'general', name: t('settings.tabs.general'), icon: SettingsIcon },
+  { id: 'profile', name: t('settings.tabs.profile'), icon: User },
+  { id: 'notifications', name: t('settings.tabs.notifications'), icon: Bell },
+  { id: 'security', name: t('settings.tabs.security'), icon: Lock },
+  { id: 'billing', name: t('settings.tabs.billing'), icon: Wallet }
+])
 
 const settings = ref({
   siteName: 'AdminSystem',
@@ -60,15 +62,28 @@ const billingSettings = ref({
 
 const showCurrentPassword = ref(false)
 const showNewPassword = ref(false)
+
+const billingOptions = computed(() => [
+  { label: t('settings.billing.methods.monthly'), value: 'monthly' },
+  { label: t('settings.billing.methods.quarterly'), value: 'quarterly' },
+  { label: t('settings.billing.methods.annually'), value: 'annually' }
+])
+
+const paymentMethodLabels = {
+  alipay: t('common.alipay'),
+  wechat: t('common.wechat'),
+  bank: t('common.bankTransfer'),
+  card: t('common.creditCard')
+}
 </script>
 
 <template>
-  <div class="space-y-6 p-6">
+  <div class="space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">系统设置</h1>
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ t('settings.title') }}</h1>
       <p class="text-slate-600 dark:text-slate-400 mt-1">
-        管理平台配置和个人偏好
+        {{ t('settings.description') }}
       </p>
     </div>
 
@@ -86,7 +101,7 @@ const showNewPassword = ref(false)
               :key="tab.id"
               :index="tab.id"
             >
-              <component :is="tab.icon"  />
+              <component :is="tab.icon" />
               <span>{{ tab.name }}</span>
             </el-menu-item>
           </el-menu>
@@ -98,25 +113,25 @@ const showNewPassword = ref(false)
         <el-card shadow="never">
           <!-- General Settings -->
           <div v-if="activeTab === 'general'">
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">通用设置</h2>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">{{ t('settings.general.title') }}</h2>
             <el-form label-width="120px">
-              <el-form-item label="站点名称">
+              <el-form-item :label="t('settings.general.siteName')">
                 <el-input v-model="settings.siteName" />
               </el-form-item>
 
-              <el-form-item label="支持邮箱">
+              <el-form-item :label="t('settings.general.supportEmail')">
                 <el-input v-model="settings.supportEmail" type="email" />
               </el-form-item>
 
-              <el-form-item label="语言">
+              <el-form-item :label="t('settings.general.language')">
                 <el-select v-model="settings.language" style="width: 100%">
-                  <el-option label="简体中文" value="zh-CN" />
-                  <el-option label="English" value="en-US" />
+                  <el-option :label="t('common.language.zhCN')" value="zh-CN" />
+                  <el-option :label="t('common.language.enUS')" value="en-US" />
                   <el-option label="日本語" value="ja-JP" />
                 </el-select>
               </el-form-item>
 
-              <el-form-item label="时区">
+              <el-form-item :label="t('settings.general.timezone')">
                 <el-select v-model="settings.timezone" style="width: 100%">
                   <el-option label="Asia/Shanghai (UTC+8)" value="Asia/Shanghai" />
                   <el-option label="Asia/Tokyo (UTC+9)" value="Asia/Tokyo" />
@@ -125,23 +140,23 @@ const showNewPassword = ref(false)
                 </el-select>
               </el-form-item>
 
-              <el-form-item label="最大租户数">
+              <el-form-item :label="t('settings.general.maxTenants')">
                 <el-input-number v-model="settings.maxTenants" :min="1" :max="10000" />
               </el-form-item>
 
               <el-divider />
 
-              <el-form-item label="允许用户注册">
+              <el-form-item :label="t('settings.general.enableRegistration')">
                 <el-switch
                   v-model="settings.enableRegistration"
-                  active-text="开启后，新用户可以自行注册账户"
+                  :active-text="t('settings.general.enableRegistrationOn')"
                 />
               </el-form-item>
 
-              <el-form-item label="维护模式">
+              <el-form-item :label="t('settings.general.maintenanceMode')">
                 <el-switch
                   v-model="settings.maintenanceMode"
-                  active-text="开启后，只有管理员可以访问平台"
+                  :active-text="t('settings.general.maintenanceModeOn')"
                 />
               </el-form-item>
             </el-form>
@@ -149,35 +164,35 @@ const showNewPassword = ref(false)
 
           <!-- Profile Settings -->
           <div v-if="activeTab === 'profile'">
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">个人资料</h2>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">{{ t('settings.profile.title') }}</h2>
             <el-form label-width="120px">
-              <el-form-item label="头像">
+              <el-form-item :label="t('settings.profile.avatar')">
                 <div class="flex items-center gap-4">
                   <el-avatar :size="80" icon="User" />
-                  <el-button size="small">更换头像</el-button>
+                  <el-button size="small">{{ t('settings.profile.changeAvatar') }}</el-button>
                 </div>
                 <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  支持 JPG, PNG 格式，最大 2MB
+                  {{ t('settings.profile.avatarHint') }}
                 </div>
               </el-form-item>
 
-              <el-form-item label="姓名">
+              <el-form-item :label="t('settings.profile.name')">
                 <el-input v-model="profileSettings.name" />
               </el-form-item>
 
-              <el-form-item label="邮箱">
+              <el-form-item :label="t('settings.profile.email')">
                 <el-input v-model="profileSettings.email" type="email" />
               </el-form-item>
 
-              <el-form-item label="公司">
+              <el-form-item :label="t('settings.profile.company')">
                 <el-input v-model="profileSettings.company" />
               </el-form-item>
 
-              <el-form-item label="职位">
+              <el-form-item :label="t('settings.profile.position')">
                 <el-input v-model="profileSettings.position" />
               </el-form-item>
 
-              <el-form-item label="个人简介">
+              <el-form-item :label="t('settings.profile.bio')">
                 <el-input
                   v-model="profileSettings.bio"
                   type="textarea"
@@ -189,12 +204,12 @@ const showNewPassword = ref(false)
 
           <!-- Notification Settings -->
           <div v-if="activeTab === 'notifications'">
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">通知设置</h2>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">{{ t('settings.notifications.title') }}</h2>
             <el-space direction="vertical" :size="16" style="width: 100%">
               <div class="flex items-center justify-between py-2">
                 <div>
-                  <div class="font-medium text-slate-900 dark:text-slate-100">邮件通知</div>
-                  <div class="text-sm text-slate-500 dark:text-slate-400">接收重要更新的邮件通知</div>
+                  <div class="font-medium text-slate-900 dark:text-slate-100">{{ t('settings.notifications.emailNotifications') }}</div>
+                  <div class="text-sm text-slate-500 dark:text-slate-400">{{ t('settings.notifications.emailNotificationsDesc') }}</div>
                 </div>
                 <el-switch v-model="notificationSettings.emailNotifications" />
               </div>
@@ -203,8 +218,8 @@ const showNewPassword = ref(false)
 
               <div class="flex items-center justify-between py-2">
                 <div>
-                  <div class="font-medium text-slate-900 dark:text-slate-100">推送通知</div>
-                  <div class="text-sm text-slate-500 dark:text-slate-400">接收浏览器推送通知</div>
+                  <div class="font-medium text-slate-900 dark:text-slate-100">{{ t('settings.notifications.pushNotifications') }}</div>
+                  <div class="text-sm text-slate-500 dark:text-slate-400">{{ t('settings.notifications.pushNotificationsDesc') }}</div>
                 </div>
                 <el-switch v-model="notificationSettings.pushNotifications" />
               </div>
@@ -213,8 +228,8 @@ const showNewPassword = ref(false)
 
               <div class="flex items-center justify-between py-2">
                 <div>
-                  <div class="font-medium text-slate-900 dark:text-slate-100">周报</div>
-                  <div class="text-sm text-slate-500 dark:text-slate-400">每周发送活动摘要报告</div>
+                  <div class="font-medium text-slate-900 dark:text-slate-100">{{ t('settings.notifications.weeklyReports') }}</div>
+                  <div class="text-sm text-slate-500 dark:text-slate-400">{{ t('settings.notifications.weeklyReportsDesc') }}</div>
                 </div>
                 <el-switch v-model="notificationSettings.weeklyReports" />
               </div>
@@ -223,8 +238,8 @@ const showNewPassword = ref(false)
 
               <div class="flex items-center justify-between py-2">
                 <div>
-                  <div class="font-medium text-slate-900 dark:text-slate-100">租户告警</div>
-                  <div class="text-sm text-slate-500 dark:text-slate-400">租户资源使用告警</div>
+                  <div class="font-medium text-slate-900 dark:text-slate-100">{{ t('settings.notifications.tenantAlerts') }}</div>
+                  <div class="text-sm text-slate-500 dark:text-slate-400">{{ t('settings.notifications.tenantAlertsDesc') }}</div>
                 </div>
                 <el-switch v-model="notificationSettings.tenantAlerts" />
               </div>
@@ -233,15 +248,15 @@ const showNewPassword = ref(false)
 
               <div class="flex items-center justify-between py-2">
                 <div>
-                  <div class="font-medium text-slate-900 dark:text-slate-100">安全告警</div>
-                  <div class="text-sm text-slate-500 dark:text-slate-400">异常登录等安全事件通知</div>
+                  <div class="font-medium text-slate-900 dark:text-slate-100">{{ t('settings.notifications.securityAlerts') }}</div>
+                  <div class="text-sm text-slate-500 dark:text-slate-400">{{ t('settings.notifications.securityAlertsDesc') }}</div>
                 </div>
                 <el-switch v-model="notificationSettings.securityAlerts" />
               </div>
 
               <el-divider />
 
-              <el-form-item label="告警阈值 (%)" label-width="120px">
+              <el-form-item :label="t('settings.notifications.alertThreshold')" label-width="140px">
                 <el-input-number
                   v-model="notificationSettings.alertThreshold"
                   :min="0"
@@ -253,41 +268,41 @@ const showNewPassword = ref(false)
 
           <!-- Security Settings -->
           <div v-if="activeTab === 'security'">
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">安全设置</h2>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">{{ t('settings.security.title') }}</h2>
             <el-form label-width="140px">
-              <el-form-item label="双因素认证">
+              <el-form-item :label="t('settings.security.twoFactorAuth')">
                 <el-switch
                   v-model="securitySettings.twoFactorAuth"
-                  active-text="要求用户使用双因素认证"
+                  :active-text="t('settings.security.twoFactorAuthOn')"
                 />
               </el-form-item>
 
-              <el-form-item label="会话超时 (分钟)">
+              <el-form-item :label="t('settings.security.sessionTimeout')">
                 <el-input-number v-model="securitySettings.sessionTimeout" :min="5" :max="120" />
               </el-form-item>
 
-              <el-form-item label="最小密码长度">
+              <el-form-item :label="t('settings.security.passwordMinLength')">
                 <el-input-number v-model="securitySettings.passwordMinLength" :min="6" :max="32" />
               </el-form-item>
 
-              <el-form-item label="强密码要求">
+              <el-form-item :label="t('settings.security.requireStrongPassword')">
                 <el-switch
                   v-model="securitySettings.requireStrongPassword"
-                  active-text="密码必须包含大小写字母、数字和特殊字符"
+                  :active-text="t('settings.security.requireStrongPasswordOn')"
                 />
               </el-form-item>
 
-              <el-form-item label="登录通知">
+              <el-form-item :label="t('settings.security.loginNotifications')">
                 <el-switch
                   v-model="securitySettings.loginNotifications"
-                  active-text="新设备登录时发送通知"
+                  :active-text="t('settings.security.loginNotificationsOn')"
                 />
               </el-form-item>
 
               <el-divider />
 
-              <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">修改密码</h3>
-              <el-form-item label="当前密码">
+              <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">{{ t('settings.security.changePassword') }}</h3>
+              <el-form-item :label="t('settings.security.currentPassword')">
                 <el-input
                   v-model="securitySettings.currentPassword"
                   :type="showCurrentPassword ? 'text' : 'password'"
@@ -301,7 +316,7 @@ const showNewPassword = ref(false)
                 </el-input>
               </el-form-item>
 
-              <el-form-item label="新密码">
+              <el-form-item :label="t('settings.security.newPassword')">
                 <el-input
                   v-model="securitySettings.newPassword"
                   :type="showNewPassword ? 'text' : 'password'"
@@ -316,39 +331,42 @@ const showNewPassword = ref(false)
               </el-form-item>
 
               <el-form-item>
-                <el-button type="primary">修改密码</el-button>
+                <el-button type="primary">{{ t('settings.security.changePassword') }}</el-button>
               </el-form-item>
             </el-form>
           </div>
 
           <!-- Billing Settings -->
           <div v-if="activeTab === 'billing'">
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">账单设置</h2>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">{{ t('settings.billing.title') }}</h2>
             <el-form label-width="120px">
-              <el-form-item label="账单周期">
+              <el-form-item :label="t('settings.billing.billingCycle')">
                 <el-select v-model="billingSettings.billingCycle" style="width: 100%">
-                  <el-option label="每月" value="monthly" />
-                  <el-option label="每季度" value="quarterly" />
-                  <el-option label="每年" value="annually" />
+                  <el-option
+                    v-for="option in billingOptions"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
                 </el-select>
               </el-form-item>
 
-              <el-form-item label="发票邮箱">
+              <el-form-item :label="t('settings.billing.invoiceEmail')">
                 <el-input v-model="billingSettings.invoiceEmail" type="email" />
               </el-form-item>
 
-              <el-form-item label="税号">
+              <el-form-item :label="t('settings.billing.taxId')">
                 <el-input v-model="billingSettings.taxId" />
               </el-form-item>
 
               <el-divider />
 
-              <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">支付方式</h3>
+              <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">{{ t('settings.billing.paymentMethods') }}</h3>
               <el-checkbox-group v-model="billingSettings.paymentMethods">
-                <el-checkbox value="alipay">支付宝</el-checkbox>
-                <el-checkbox value="wechat">微信支付</el-checkbox>
-                <el-checkbox value="bank">银行转账</el-checkbox>
-                <el-checkbox value="card">信用卡</el-checkbox>
+                <el-checkbox value="alipay">{{ t('common.alipay') }}</el-checkbox>
+                <el-checkbox value="wechat">{{ t('common.wechat') }}</el-checkbox>
+                <el-checkbox value="bank">{{ t('common.bankTransfer') }}</el-checkbox>
+                <el-checkbox value="card">{{ t('common.creditCard') }}</el-checkbox>
               </el-checkbox-group>
             </el-form>
           </div>
@@ -356,8 +374,8 @@ const showNewPassword = ref(false)
           <!-- Save Button -->
           <template #footer>
             <div class="flex items-center justify-between">
-              <span class="text-sm text-slate-500 dark:text-slate-400">上次保存: 2小时前</span>
-              <el-button type="primary">保存设置</el-button>
+              <span class="text-sm text-slate-500 dark:text-slate-400">{{ t('settings.lastSaved', { time: '2小时前' }) }}</span>
+              <el-button type="primary">{{ t('settings.saveSettings') }}</el-button>
             </div>
           </template>
         </el-card>

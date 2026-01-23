@@ -1,32 +1,28 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { setLocale, getCurrentLocale } from '@/locales'
-import { useUiStore } from '@/stores/modules/ui'
+import { LOCALE_CONFIGS, type SupportedLocale } from '@/locales/types'
 import { Languages } from 'lucide-vue-next'
-
-const { locale } = useI18n()
-const uiStore = useUiStore()
 
 const isOpen = ref(false)
 
-const locales = [
-  { code: 'zh-CN', name: '简体中文', flag: '🇨🇳' },
-  { code: 'en-US', name: 'English', flag: '🇺🇸' }
-]
+const locales = Object.entries(LOCALE_CONFIGS).map(([code, config]) => ({
+  code: code as SupportedLocale,
+  name: config.name,
+  flag: config.flag
+}))
 
 const currentLocale = computed(() => {
-  return locales.find(l => l.code === getCurrentLocale()) || locales[0]
+  const current = getCurrentLocale()
+  return locales.find(l => l.code === current) || locales[0]
 })
 
 const toggleDropdown = () => {
   isOpen.value = !isOpen.value
 }
 
-const selectLocale = (localeCode: string) => {
+const selectLocale = (localeCode: SupportedLocale) => {
   setLocale(localeCode)
-  // 同步更新 Element Plus locale
-  uiStore.setLocale(localeCode)
   isOpen.value = false
 }
 
@@ -51,7 +47,7 @@ onUnmounted(() => {
     <button
       @click.stop="toggleDropdown"
       class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-      :aria-label="$t('language.title') || 'Switch language'"
+      :aria-label="$t('common.language.title') || 'Switch language'"
     >
       <Languages :size="20" class="text-slate-600 dark:text-slate-400" />
     </button>

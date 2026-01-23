@@ -1,0 +1,57 @@
+{
+  "title": "Overview",
+  "welcome": "Welcome back",
+  "createTenant": "Create Tenant",
+  "quickActions": "Quick Actions",
+  "recentActivities": "Recent Activities",
+  "topTenants": "Top Tenants",
+  "viewAll": "View All",
+  "revenueTrend": "Revenue Trend",
+  "userGrowth": "User Growth",
+  "past6Months": "Past 6 months",
+  "chartComingSoon": "Chart component coming soon",
+  "chartIntegration": "Chart.js integration",
+  "stats": {
+    "totalTenants": "Total Tenants",
+    "activeServices": "Active Services",
+    "totalUsers": "Total Users",
+    "monthlyRevenue": "Monthly Revenue",
+    "vsLastMonth": "vs last month"
+  },
+  "actions": {
+    "addTenant": "Add Tenant",
+    "addTenantDesc": "Create a new tenant account",
+    "configService": "Configure Services",
+    "configServiceDesc": "Manage platform services",
+    "manageUsers": "Manage Users",
+    "manageUsersDesc": "Manage platform users",
+    "viewReport": "View Reports",
+    "viewReportDesc": "View data analytics"
+  },
+  "activities": {
+    "newTenant": "New Tenant Registered",
+    "newTenantDesc": "{name} has completed registration",
+    "serviceUpgrade": "Service Upgraded",
+    "serviceUpgradeDesc": "{name} upgraded to v2.0",
+    "newUser": "New User Joined",
+    "newUserDesc": "{name} joined {team}",
+    "systemAlert": "System Alert",
+    "systemAlertDesc": "{name} has high load"
+  },
+  "timeAgo": {
+    "minutes": "{n} minutes ago",
+    "hours": "{n} hours ago",
+    "days": "{n} days ago"
+  },
+  "table": {
+    "tenantName": "Tenant Name",
+    "users": "Users",
+    "revenue": "Revenue",
+    "status": "Status"
+  },
+  "status": {
+    "active": "Active",
+    "suspended": "Suspended",
+    "trial": "Trial"
+  }
+}

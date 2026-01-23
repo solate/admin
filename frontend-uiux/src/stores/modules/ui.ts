@@ -2,8 +2,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import en from 'element-plus/es/locale/lang/en'
+import { elementLocales } from '@/locales'
 
 const STORAGE_KEY = 'ui-state'
 // Locale storage key - 必须与 locales/index.ts 保持一致
@@ -24,7 +23,7 @@ export const useUiStore = defineStore('ui', () => {
   const locale = ref(storedLocale || initialState.locale || 'zh-CN')
 
   // Element Plus locale - 根据 locale 初始化
-  const elementLocale = ref(locale.value === 'zh-CN' ? zhCn : en)
+  const elementLocale = ref(elementLocales[locale.value as keyof typeof elementLocales])
 
   // Initialize theme on DOM
   if (darkMode.value) {
@@ -91,7 +90,7 @@ export const useUiStore = defineStore('ui', () => {
 
   function setLocale(newLocale: string) {
     locale.value = newLocale
-    elementLocale.value = newLocale === 'zh-CN' ? zhCn : en
+    elementLocale.value = elementLocales[newLocale as keyof typeof elementLocales]
     document.documentElement.lang = newLocale
     // 存储 locale 到独立的 key
     localStorage.setItem(LOCALE_KEY, newLocale)

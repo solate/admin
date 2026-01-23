@@ -1,8 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUiStore } from '@/stores/modules/ui'
 import { useAuthStore } from '@/stores/modules/auth'
+import { useI18n } from '@/locales/composables'
 import {
   Search,
   Bell,
@@ -25,6 +26,7 @@ import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
 import SearchDialog from '@/components/search/SearchDialog.vue'
 
 const route = useRoute()
+const { t } = useI18n()
 const uiStore = useUiStore()
 const authStore = useAuthStore()
 
@@ -36,7 +38,6 @@ const isRefreshing = ref(false)
 // 刷新页面
 const refreshPage = () => {
   isRefreshing.value = true
-  // 使用 window.location.reload() 刷新页面
   setTimeout(() => {
     window.location.reload()
   }, 150)
@@ -69,7 +70,7 @@ onUnmounted(() => {
 })
 
 const pageTitle = computed(() => {
-  return route.meta?.title || '概览'
+  return route.meta?.title || t('nav.overview')
 })
 
 const breadcrumbs = computed(() => {
@@ -78,15 +79,15 @@ const breadcrumbs = computed(() => {
 
   if (pathSegments[0] === 'dashboard') {
     const labels = {
-      dashboard: '仪表盘',
-      overview: '概览',
-      tenants: '租户管理',
-      services: '服务管理',
-      users: '用户管理',
-      analytics: '数据分析',
-      settings: '设置',
-      profile: '个人资料',
-      notifications: '通知'
+      dashboard: t('nav.dashboard'),
+      overview: t('nav.overview'),
+      tenants: t('nav.tenants'),
+      services: t('nav.services'),
+      users: t('nav.users'),
+      analytics: t('nav.analytics'),
+      settings: t('nav.settings'),
+      profile: t('nav.profile'),
+      notifications: t('nav.notifications')
     }
 
     let currentPath = ''
@@ -115,21 +116,14 @@ const userInitials = computed(() => {
     .slice(0, 2)
 })
 
+// 用户角色 - store 已确保不会返回 null
 const userRoleLabel = computed(() => {
-  const role = authStore.userRole
-  const roleLabels = {
-    super_admin: '超级管理员',
-    admin: '管理员',
-    auditor: '审计员',
-    user: '用户'
-  }
-  return roleLabels[role] || '用户'
+  return t(`user.roles.${authStore.userRole}`)
 })
 
 // 获取当前租户名称
 const currentTenantName = computed(() => {
-  // 从租户 store 获取当前租户名称
-  return authStore.user?.tenantName || '默认租户'
+  return authStore.user?.tenantName || t('userMenu.defaultTenant')
 })
 </script>
 
@@ -160,7 +154,7 @@ const currentTenantName = computed(() => {
         <!-- Sidebar Toggle -->
         <button
           class="hidden lg:flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-          :aria-label="uiStore.sidebarOpen ? '收起侧边栏' : '展开侧边栏'"
+          :aria-label="uiStore.sidebarOpen ? t('common.collapseSidebar') : t('common.expandSidebar')"
           @click="uiStore.toggleSidebar()"
         >
           <PanelLeftClose v-if="uiStore.sidebarOpen" :size="18" class="text-slate-600 dark:text-slate-400" />
@@ -170,7 +164,7 @@ const currentTenantName = computed(() => {
         <!-- Refresh -->
         <button
           class="flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-          :aria-label="'刷新'"
+          :aria-label="t('common.refresh')"
           :disabled="isRefreshing"
           @click="refreshPage"
         >
@@ -209,7 +203,7 @@ const currentTenantName = computed(() => {
           @click="showSearchDialog = true"
         >
           <Search :size="16" class="text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors" />
-          <span class="text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 text-xs transition-colors duration-300">搜索</span>
+          <span class="text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 text-xs transition-colors duration-300">{{ t('common.search') }}</span>
           <span class="ml-0.5 flex items-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-1.5 py-0.5 text-xs text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors duration-300">
             <kbd class="font-sans">⌘</kbd>
             <kbd class="font-sans">K</kbd>
@@ -230,7 +224,7 @@ const currentTenantName = computed(() => {
         <!-- Dark Mode Toggle -->
         <button
           class="flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-          :aria-label="uiStore.darkMode ? '切换到浅色模式' : '切换到深色模式'"
+          :aria-label="uiStore.darkMode ? t('common.switchToLightMode') : t('common.switchToDarkMode')"
           @click="uiStore.toggleDarkMode()"
         >
           <Sun v-if="uiStore.darkMode" :size="20" class="text-slate-600 dark:text-slate-400" />
@@ -243,7 +237,7 @@ const currentTenantName = computed(() => {
         <!-- Fullscreen Toggle -->
         <button
           class="flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-          :aria-label="isFullscreen ? '退出全屏' : '全屏'"
+          :aria-label="isFullscreen ? t('common.exitFullscreen') : t('common.fullscreen')"
           @click="toggleFullscreen"
         >
           <!-- Maximize Icon (进入全屏) -->
@@ -387,7 +381,7 @@ const currentTenantName = computed(() => {
               <div class="p-2">
                 <!-- Account Section -->
                 <div class="px-3 py-2">
-                  <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">账户</p>
+                  <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">{{ t('userMenu.account') }}</p>
                 </div>
 
                 <router-link
@@ -399,8 +393,8 @@ const currentTenantName = computed(() => {
                     <User :size="18" class="text-slate-600 dark:text-slate-400 group-hover/item:text-primary-600 dark:group-hover/item:text-primary-400 transition-colors" />
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">个人资料</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">管理您的个人信息</p>
+                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ t('userMenu.profile') }}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ t('userMenu.profileDesc') }}</p>
                   </div>
                 </router-link>
 
@@ -413,14 +407,14 @@ const currentTenantName = computed(() => {
                     <Shield :size="18" class="text-slate-600 dark:text-slate-400 group-hover/item:text-primary-600 dark:group-hover/item:text-primary-400 transition-colors" />
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">安全设置</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">密码与两步验证</p>
+                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ t('userMenu.security') }}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ t('userMenu.securityDesc') }}</p>
                   </div>
                 </router-link>
 
                 <!-- Workspace Section -->
                 <div class="px-3 py-2 mt-1">
-                  <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">工作区</p>
+                  <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">{{ t('userMenu.workspace') }}</p>
                 </div>
 
                 <router-link
@@ -432,8 +426,8 @@ const currentTenantName = computed(() => {
                     <Settings :size="18" class="text-slate-600 dark:text-slate-400 group-hover/item:text-primary-600 dark:group-hover/item:text-primary-400 transition-colors" />
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">系统设置</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">应用偏好配置</p>
+                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ t('userMenu.settings') }}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ t('userMenu.settingsDesc') }}</p>
                   </div>
                 </router-link>
 
@@ -444,8 +438,8 @@ const currentTenantName = computed(() => {
                     <HelpCircle :size="18" class="text-slate-600 dark:text-slate-400 group-hover/item:text-primary-600 dark:group-hover/item:text-primary-400 transition-colors" />
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">帮助中心</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">获取支持与文档</p>
+                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ t('userMenu.helpCenter') }}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ t('userMenu.helpCenterDesc') }}</p>
                   </div>
                 </button>
               </div>
@@ -460,8 +454,8 @@ const currentTenantName = computed(() => {
                     <LogOut :size="18" class="text-red-600 dark:text-red-400" />
                   </div>
                   <div class="flex-1">
-                    <p class="text-sm font-semibold text-red-600 dark:text-red-400">退出登录</p>
-                    <p class="text-xs text-red-500/70 dark:text-red-400/70">安全退出您的账户</p>
+                    <p class="text-sm font-semibold text-red-600 dark:text-red-400">{{ t('userMenu.logout') }}</p>
+                    <p class="text-xs text-red-500/70 dark:text-red-400/70">{{ t('userMenu.logoutDesc') }}</p>
                   </div>
                 </button>
               </div>
@@ -485,7 +479,7 @@ const currentTenantName = computed(() => {
         <input
           v-model="searchQuery"
           type="search"
-          placeholder="搜索..."
+          :placeholder="t('common.searchPlaceholder')"
           class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-primary-500 outline-none"
         />
       </div>

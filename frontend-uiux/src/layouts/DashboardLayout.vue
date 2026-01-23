@@ -1,9 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, markRaw } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUiStore } from '@/stores/modules/ui'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useTenantsStore } from '@/stores/modules/tenants'
+import { useI18n } from '@/locales/composables'
 import TopNavbar from '@/components/layout/TopNavbar.vue'
 import {
   Home,
@@ -22,6 +23,7 @@ import {
 } from 'lucide-vue-next'
 
 const route = useRoute()
+const { t } = useI18n()
 const uiStore = useUiStore()
 const authStore = useAuthStore()
 const tenantsStore = useTenantsStore()
@@ -34,31 +36,31 @@ tenantsStore.initialize()
 const navigation = computed(() => {
   const baseNav = [
     {
-      name: '概览',
+      name: t('nav.overview'),
       path: '/dashboard/overview',
       icon: markRaw(Home),
       key: 'overview'
     },
     {
-      name: '租户管理',
+      name: t('nav.tenants'),
       path: '/dashboard/tenants',
       icon: markRaw(Building),
       key: 'tenants'
     },
     {
-      name: '服务管理',
+      name: t('nav.services'),
       path: '/dashboard/services',
       icon: markRaw(Box),
       key: 'services'
     },
     {
-      name: '用户管理',
+      name: t('nav.users'),
       path: '/dashboard/users',
       icon: markRaw(User),
       key: 'users'
     },
     {
-      name: '数据分析',
+      name: t('nav.analytics'),
       path: '/dashboard/analytics',
       icon: markRaw(BarChart3),
       key: 'analytics'
@@ -76,14 +78,14 @@ const navigation = computed(() => {
   })
 })
 
-const bottomNavigation = [
+const bottomNavigation = computed(() => [
   {
-    name: '设置',
+    name: t('nav.settings'),
     path: '/dashboard/settings',
     icon: markRaw(Settings),
     key: 'settings'
   }
-]
+])
 
 const isActive = (path) => {
   return route.path === path || route.path.startsWith(path + '/')

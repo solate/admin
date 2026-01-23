@@ -1,0 +1,31 @@
+{
+  "title": "Notifications",
+  "description": "View and manage all your notifications",
+  "markAllRead": "Mark All Read",
+  "unread": "unread",
+  "filters": {
+    "all": "All",
+    "unread": "Unread",
+    "user": "User",
+    "security": "Security",
+    "system": "System"
+  },
+  "search": "Search notifications...",
+  "empty": {
+    "noResults": "No notifications found",
+    "allCaughtUp": "All caught up!",
+    "adjustFilters": "Try adjusting your search or filters",
+    "noNotifications": "You have no notifications at the moment"
+  },
+  "time": {
+    "justNow": "Just now",
+    "minutesAgo": "{minutes}m ago",
+    "hoursAgo": "{hours}h ago",
+    "daysAgo": "{days}d ago"
+  },
+  "aria": {
+    "goBack": "Go back",
+    "markAsRead": "Mark as read",
+    "delete": "Delete notification"
+  }
+}
