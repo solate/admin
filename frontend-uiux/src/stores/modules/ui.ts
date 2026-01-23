@@ -6,31 +6,31 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
 
 const STORAGE_KEY = 'ui-state'
+// Locale storage key - 必须与 locales/index.ts 保持一致
+const LOCALE_KEY = 'locale'
 
 export const useUiStore = defineStore('ui', () => {
   // Read initial state from localStorage
   const storedState = localStorage.getItem(STORAGE_KEY)
   const initialState = storedState ? JSON.parse(storedState) : {}
 
+  // 读取 locale 时使用独立的 key（与 locales/index.ts 保持一致）
+  const storedLocale = localStorage.getItem(LOCALE_KEY)
+
   // State
   const sidebarOpen = ref(initialState.sidebarOpen ?? true)
   const darkMode = ref(initialState.darkMode ?? false)
   const mobileMenuOpen = ref(false)
-  const locale = ref(initialState.locale ?? 'zh-CN')
+  const locale = ref(storedLocale || initialState.locale || 'zh-CN')
 
-  // Element Plus locale
-  const elementLocale = ref(zhCn)
+  // Element Plus locale - 根据 locale 初始化
+  const elementLocale = ref(locale.value === 'zh-CN' ? zhCn : en)
 
   // Initialize theme on DOM
   if (darkMode.value) {
     document.documentElement.classList.add('dark')
   } else {
     document.documentElement.classList.remove('dark')
-  }
-
-  // Initialize Element Plus locale
-  if (locale.value) {
-    elementLocale.value = locale.value === 'zh-CN' ? zhCn : en
   }
 
   // Watch state changes and persist to localStorage
@@ -41,7 +41,15 @@ export const useUiStore = defineStore('ui', () => {
       locale: locale.value
     }),
     (state) => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+      // 将 locale 单独存储到独立的 key（与 locales/index.ts 保持一致）
+      if (state.locale) {
+        localStorage.setItem(LOCALE_KEY, state.locale)
+      }
+      // 其他状态存储到 ui-state
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        sidebarOpen: state.sidebarOpen,
+        darkMode: state.darkMode
+      }))
     },
     { deep: true }
   )
@@ -85,6 +93,8 @@ export const useUiStore = defineStore('ui', () => {
     locale.value = newLocale
     elementLocale.value = newLocale === 'zh-CN' ? zhCn : en
     document.documentElement.lang = newLocale
+    // 存储 locale 到独立的 key
+    localStorage.setItem(LOCALE_KEY, newLocale)
   }
 
   return {

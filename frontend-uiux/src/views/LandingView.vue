@@ -1,35 +1,35 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { House, Box, Lock, TrendCharts, ArrowRight, CircleCheck, Cloudy, OfficeBuilding } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const { t } = useI18n()
-const { Home, Cube, Shield, ChartBar, ArrowRight, CheckCircle, Cloud, Building } = icons
 
 const features = [
   {
     nameKey: 'multiTenant',
-    icon: Building
+    icon: OfficeBuilding
   },
   {
     nameKey: 'basicServices',
-    icon: Cube
+    icon: Box
   },
   {
     nameKey: 'security',
-    icon: Shield
+    icon: Lock
   },
   {
     nameKey: 'monitoring',
-    icon: ChartBar
+    icon: TrendCharts
   },
   {
     nameKey: 'highAvailability',
-    icon: Cloud
+    icon: Cloudy
   },
   {
     nameKey: 'quickDeploy',
-    icon: Home
+    icon: House
   }
 ]
 
@@ -71,7 +71,7 @@ const goToLogin = () => {
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center gap-2">
-            <component :is="Cube" class="w-8 h-8 text-primary-600" />
+            <component :is="Box" class="w-8 h-8 text-primary-600" />
             <span class="text-xl font-display font-bold text-slate-900">{{ $t('common.appName') }}</span>
           </div>
           <div class="hidden md:flex items-center gap-8">
@@ -149,7 +149,7 @@ const goToLogin = () => {
         <div class="glass-card rounded-3xl p-2 sm:p-4">
           <div class="bg-slate-900 rounded-2xl p-4 sm:p-8 aspect-video flex items-center justify-center">
             <div class="text-center">
-              <component :is="ChartBar" class="w-16 h-16 text-primary-400 mx-auto mb-4" />
+              <component :is="TrendCharts" class="w-16 h-16 text-primary-400 mx-auto mb-4" />
               <p class="text-slate-400 text-lg">{{ $t('landing.productDemo') }}</p>
               <p class="text-slate-500 text-sm mt-2">{{ $t('landing.clickToView') }}</p>
             </div>
@@ -231,7 +231,7 @@ const goToLogin = () => {
                 :key="feature"
                 class="flex items-center gap-3 text-slate-600"
               >
-                <component :is="CheckCircle" class="w-5 h-5 text-primary-600 flex-shrink-0" />
+                <component :is="CircleCheck" class="w-5 h-5 text-primary-600 flex-shrink-0" />
                 <span>{{ feature }}</span>
               </li>
             </ul>
@@ -275,7 +275,7 @@ const goToLogin = () => {
         <div class="grid md:grid-cols-4 gap-8 mb-8">
           <div>
             <div class="flex items-center gap-2 mb-4">
-              <component :is="Cube" class="w-8 h-8 text-primary-400" />
+              <component :is="Box" class="w-8 h-8 text-primary-400" />
               <span class="text-xl font-display font-bold">{{ $t('common.appName') }}</span>
             </div>
             <p class="text-slate-400 text-sm">

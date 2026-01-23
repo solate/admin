@@ -9,10 +9,13 @@ import './styles/index.css'
 
 const app = createApp(App)
 
+// 需要先初始化 Pinia，因为 setupElementPlus 中可能需要使用 store
+const pinia = createPinia()
+app.use(pinia)
+
 // Setup Element Plus
 setupElementPlus(app)
 
-app.use(createPinia())
 app.use(router)
 app.use(i18n)
 app.use(directives)

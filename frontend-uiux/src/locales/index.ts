@@ -6,9 +6,12 @@ import enUS from './en-US'
 export const SUPPORT_LOCALES = ['zh-CN', 'en-US'] as const
 export type SupportedLocale = (typeof SUPPORT_LOCALES)[number]
 
+// LocalStorage key - 必须与 ui store 保持一致
+const LOCALE_STORAGE_KEY = 'locale'
+
 // Get browser language or default language
 function getDefaultLocale(): SupportedLocale {
-  const saved = localStorage.getItem('locale')
+  const saved = localStorage.getItem(LOCALE_STORAGE_KEY)
   if (saved && SUPPORT_LOCALES.includes(saved as SupportedLocale)) {
     return saved as SupportedLocale
   }
@@ -38,11 +41,11 @@ const i18n = createI18n({
   }
 })
 
-// Set locale method
+// Set locale method - 同步更新 Vue I18n 和 localStorage
 export function setLocale(locale: SupportedLocale) {
   if (SUPPORT_LOCALES.includes(locale)) {
     i18n.global.locale.value = locale
-    localStorage.setItem('locale', locale)
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale)
     document.documentElement.lang = locale
   }
 }
