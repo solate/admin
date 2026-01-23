@@ -86,19 +86,21 @@ const notificationCount = computed(() => 5)
 </script>
 
 <style scoped>
-/* Bell shake animation on hover */
-@keyframes bell-shake {
-  0%, 100% { transform: rotate(0deg); }
-  10% { transform: rotate(15deg); }
-  20% { transform: rotate(-15deg); }
-  30% { transform: rotate(10deg); }
-  40% { transform: rotate(-10deg); }
-  50% { transform: rotate(5deg); }
-  60% { transform: rotate(-5deg); }
+/* 铃铛摇摆动画 */
+@keyframes bell-ring {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(15deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-8deg); }
+  75% { transform: rotate(5deg); }
+  90% { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); }
 }
 
-.bell-button:hover .bell-icon {
-  animation: bell-shake 0.5s ease-in-out;
+.bell-button:hover svg {
+  animation: bell-ring 0.6s ease-in-out;
+  transform-origin: top center;
 }
 </style>
 
@@ -144,6 +146,27 @@ const notificationCount = computed(() => 5)
 
       <!-- Right: Actions -->
       <div class="flex items-center gap-1 lg:gap-2">
+        <!-- Settings -->
+        <router-link
+          to="/dashboard/settings"
+          class="hidden sm:flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+        >
+          <Settings :size="20" class="text-slate-600 dark:text-slate-400" />
+        </router-link>
+
+        <!-- Dark Mode Toggle -->
+        <button
+          class="flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+          :aria-label="uiStore.darkMode ? '切换到浅色模式' : '切换到深色模式'"
+          @click="uiStore.toggleDarkMode()"
+        >
+          <Sun v-if="uiStore.darkMode" :size="20" class="text-slate-600 dark:text-slate-400" />
+          <Moon v-else :size="20" class="text-slate-600 dark:text-slate-400" />
+        </button>
+
+        <!-- Language Switcher -->
+        <LanguageSwitcher />
+
         <!-- Fullscreen Toggle -->
         <button
           class="flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
@@ -190,35 +213,14 @@ const notificationCount = computed(() => 5)
           </svg>
         </button>
 
-        <!-- Language Switcher -->
-        <LanguageSwitcher />
-
-        <!-- Dark Mode Toggle -->
-        <button
-          class="flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-          :aria-label="uiStore.darkMode ? '切换到浅色模式' : '切换到深色模式'"
-          @click="uiStore.toggleDarkMode()"
-        >
-          <Sun v-if="uiStore.darkMode" :size="20" class="text-slate-600 dark:text-slate-400" />
-          <Moon v-else :size="20" class="text-slate-600 dark:text-slate-400" />
-        </button>
-
         <!-- Notifications -->
-        <button class="relative flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer">
+        <button class="bell-button relative flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer">
           <Bell :size="20" class="text-slate-600 dark:text-slate-400" />
           <span
             v-if="notificationCount > 0"
             class="absolute top-1 right-1 w-2.5 h-2.5 bg-error-500 rounded-full"
           />
         </button>
-
-        <!-- Settings -->
-        <router-link
-          to="/dashboard/settings"
-          class="hidden sm:flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-        >
-          <Settings :size="20" class="text-slate-600 dark:text-slate-400" />
-        </router-link>
 
         <!-- User Menu -->
         <div class="relative">
