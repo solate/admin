@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUiStore } from '@/stores/modules/ui'
 import { useAuthStore } from '@/stores/modules/auth'
@@ -21,6 +21,32 @@ const authStore = useAuthStore()
 
 const searchQuery = ref('')
 const showUserMenu = ref(false)
+
+// Fullscreen functionality
+const isFullscreen = ref(false)
+
+const toggleFullscreen = () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.error('进入全屏失败:', err)
+    })
+  } else {
+    document.exitFullscreen()
+  }
+}
+
+const updateFullscreenState = () => {
+  isFullscreen.value = !!document.fullscreenElement
+}
+
+onMounted(() => {
+  document.addEventListener('fullscreenchange', updateFullscreenState)
+  updateFullscreenState()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('fullscreenchange', updateFullscreenState)
+})
 
 const pageTitle = computed(() => {
   return route.meta?.title || '概览'
@@ -58,6 +84,23 @@ const breadcrumbs = computed(() => {
 
 const notificationCount = computed(() => 5)
 </script>
+
+<style scoped>
+/* Bell shake animation on hover */
+@keyframes bell-shake {
+  0%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(15deg); }
+  20% { transform: rotate(-15deg); }
+  30% { transform: rotate(10deg); }
+  40% { transform: rotate(-10deg); }
+  50% { transform: rotate(5deg); }
+  60% { transform: rotate(-5deg); }
+}
+
+.bell-button:hover .bell-icon {
+  animation: bell-shake 0.5s ease-in-out;
+}
+</style>
 
 <template>
   <header class="sticky top-0 z-20 bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-700">
@@ -101,12 +144,58 @@ const notificationCount = computed(() => 5)
 
       <!-- Right: Actions -->
       <div class="flex items-center gap-1 lg:gap-2">
+        <!-- Fullscreen Toggle -->
+        <button
+          class="flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+          :aria-label="isFullscreen ? '退出全屏' : '全屏'"
+          @click="toggleFullscreen"
+        >
+          <!-- Maximize Icon (进入全屏) -->
+          <svg
+            v-if="!isFullscreen"
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="text-slate-600 dark:text-slate-400"
+          >
+            <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+            <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
+            <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+            <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+          </svg>
+          <!-- Minimize Icon (退出全屏) -->
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="text-slate-600 dark:text-slate-400"
+          >
+            <path d="M8 3v3a2 2 0 0 1-2 2H3"></path>
+            <path d="M21 8h-3a2 2 0 0 1-2-2V3"></path>
+            <path d="M3 16h3a2 2 0 0 1 2 2v3"></path>
+            <path d="M16 21v-3a2 2 0 0 1 2-2h3"></path>
+          </svg>
+        </button>
+
         <!-- Language Switcher -->
         <LanguageSwitcher />
 
         <!-- Dark Mode Toggle -->
         <button
-          class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+          class="flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
           :aria-label="uiStore.darkMode ? '切换到浅色模式' : '切换到深色模式'"
           @click="uiStore.toggleDarkMode()"
         >
@@ -115,7 +204,7 @@ const notificationCount = computed(() => 5)
         </button>
 
         <!-- Notifications -->
-        <button class="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer">
+        <button class="relative flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer">
           <el-icon :size="20" class="text-slate-600 dark:text-slate-400"><Bell /></el-icon>
           <span
             v-if="notificationCount > 0"
@@ -126,7 +215,7 @@ const notificationCount = computed(() => 5)
         <!-- Settings -->
         <router-link
           to="/dashboard/settings"
-          class="hidden sm:flex p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+          class="hidden sm:flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
         >
           <el-icon :size="20" class="text-slate-600 dark:text-slate-400"><Setting /></el-icon>
         </router-link>
