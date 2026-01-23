@@ -18,7 +18,6 @@ import {
   Search,
   Moon,
   Sun,
-  LogOut,
   Menu
 } from 'lucide-vue-next'
 
@@ -88,10 +87,6 @@ const bottomNavigation = [
 
 const isActive = (path) => {
   return route.path === path || route.path.startsWith(path + '/')
-}
-
-const handleLogout = () => {
-  authStore.logout()
 }
 
 const toggleSidebar = () => {
@@ -248,14 +243,6 @@ onUnmounted(() => {
                 </p>
               </div>
             </div>
-
-            <button
-              class="w-full flex items-center gap-3 px-3 py-2.5 text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/30 rounded-lg transition-all cursor-pointer"
-              @click="handleLogout"
-            >
-              <LogOut :size="20" />
-              <span class="font-medium">退出登录</span>
-            </button>
           </div>
         </div>
       </aside>
@@ -384,32 +371,6 @@ onUnmounted(() => {
           </router-link>
         </div>
       </nav>
-
-      <!-- Bottom Section -->
-      <div class="p-3 border-t border-slate-200 dark:border-slate-700 space-y-1">
-        <button
-          class="w-full flex items-center gap-3 px-3 py-2.5 text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/30 rounded-lg transition-all cursor-pointer"
-          :title="!uiStore.sidebarOpen ? '退出登录' : ''"
-          @click="handleLogout"
-        >
-          <LogOut :size="20" class="flex-shrink-0" />
-          <Transition
-            enter-active-class="transition-all duration-200"
-            enter-from-class="opacity-0 w-0"
-            enter-to-class="opacity-100 w-auto"
-            leave-active-class="transition-all duration-200"
-            leave-from-class="opacity-100 w-auto"
-            leave-to-class="opacity-0 w-0"
-          >
-            <span
-              v-if="uiStore.sidebarOpen"
-              class="font-medium whitespace-nowrap overflow-hidden"
-            >
-              退出登录
-            </span>
-          </Transition>
-        </button>
-      </div>
     </aside>
 
     <!-- Main Content -->

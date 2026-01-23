@@ -14,7 +14,12 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
-  RotateCw
+  RotateCw,
+  Shield,
+  Mail,
+  Building,
+  CreditCard,
+  HelpCircle
 } from 'lucide-vue-next'
 import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
 import SearchDialog from '@/components/search/SearchDialog.vue'
@@ -98,6 +103,34 @@ const breadcrumbs = computed(() => {
 })
 
 const notificationCount = computed(() => 5)
+
+// 用户菜单相关
+const userInitials = computed(() => {
+  const name = authStore.user?.name || 'Admin'
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+})
+
+const userRoleLabel = computed(() => {
+  const role = authStore.userRole
+  const roleLabels = {
+    super_admin: '超级管理员',
+    admin: '管理员',
+    auditor: '审计员',
+    user: '用户'
+  }
+  return roleLabels[role] || '用户'
+})
+
+// 获取当前租户名称
+const currentTenantName = computed(() => {
+  // 从租户 store 获取当前租户名称
+  return authStore.user?.tenantName || '默认租户'
+})
 </script>
 
 <style scoped>
@@ -264,64 +297,183 @@ const notificationCount = computed(() => 5)
 
         <!-- User Menu -->
         <div class="relative">
+          <!-- Trigger Button -->
           <button
-            class="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+            class="group flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl transition-all duration-200 cursor-pointer"
+            :class="showUserMenu
+              ? 'bg-primary-50 dark:bg-primary-900/20 shadow-sm'
+              : 'hover:bg-slate-100 dark:hover:bg-slate-700/50'"
             @click="showUserMenu = !showUserMenu"
           >
-            <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-              <User :size="16" class="text-primary-600 dark:text-primary-400" />
+            <!-- Avatar with Gradient -->
+            <div class="relative">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/25 ring-2 ring-white dark:ring-slate-700 ring-offset-2 dark:ring-offset-slate-800 transition-all duration-200"
+                   :class="showUserMenu ? 'ring-primary-500 dark:ring-primary-400 scale-105' : 'group-hover:scale-105'">
+                <span class="text-sm font-bold text-white">{{ userInitials }}</span>
+              </div>
+              <!-- Online Status Indicator -->
+              <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-800"></span>
             </div>
+
+            <!-- User Info -->
             <div class="hidden lg:block text-left">
-              <p class="text-sm font-medium text-slate-900 dark:text-slate-100">
+              <p class="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-tight">
                 {{ authStore.user?.name || 'Admin' }}
               </p>
-              <p class="text-xs text-slate-500 dark:text-slate-400">
-                {{ authStore.userRole || 'admin' }}
+              <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                {{ userRoleLabel }}
               </p>
             </div>
-            <ChevronDown class="hidden lg:block text-slate-400" :size="16" />
+
+            <!-- Chevron -->
+            <ChevronDown
+              class="hidden lg:block text-slate-400 transition-transform duration-200"
+              :size="16"
+              :class="{ 'rotate-180 text-primary-600 dark:text-primary-400': showUserMenu }"
+            />
           </button>
 
           <!-- Dropdown -->
           <Transition
-            enter-active-class="transition-all duration-150"
-            enter-from-class="opacity-0 scale-95"
-            enter-to-class="opacity-100 scale-100"
-            leave-active-class="transition-all duration-150"
-            leave-from-class="opacity-100 scale-100"
-            leave-to-class="opacity-0 scale-95"
+            enter-active-class="transition-all duration-200 ease-out"
+            enter-from-class="opacity-0 scale-95 translate-y-[-10px]"
+            enter-to-class="opacity-100 scale-100 translate-y-0"
+            leave-active-class="transition-all duration-150 ease-in"
+            leave-from-class="opacity-100 scale-100 translate-y-0"
+            leave-to-class="opacity-0 scale-95 translate-y-[-10px]"
           >
             <div
               v-if="showUserMenu"
-              class="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-panel border border-slate-200 dark:border-slate-700 py-1"
               v-click-outside="() => showUserMenu = false"
+              class="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-700/50 overflow-hidden z-50"
             >
-              <router-link
-                to="/dashboard/profile"
-                class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
-                @click="showUserMenu = false"
-              >
-                <User :size="16" />
-                个人资料
-              </router-link>
-              <router-link
-                to="/dashboard/settings"
-                class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
-                @click="showUserMenu = false"
-              >
-                <Settings :size="16" />
-                设置
-              </router-link>
-              <hr class="my-1 border-slate-200 dark:border-slate-700">
-              <button
-                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/30 cursor-pointer text-left"
-                @click="authStore.logout(); showUserMenu = false"
-              >
-                <LogOut :size="16" />
-                退出登录
-              </button>
+              <!-- User Info Header -->
+              <div class="relative p-5 bg-gradient-to-br from-primary-50 via-blue-50 to-indigo-50 dark:from-primary-900/30 dark:via-blue-900/20 dark:to-indigo-900/20">
+                <!-- Decorative Pattern -->
+                <div class="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style="background-image: radial-gradient(circle, currentColor 1px, transparent 1px); background-size: 20px 20px;"></div>
+
+                <div class="relative flex items-center gap-4">
+                  <!-- Large Avatar -->
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-xl shadow-primary-500/30">
+                    <span class="text-xl font-bold text-white">{{ userInitials }}</span>
+                  </div>
+
+                  <!-- User Details -->
+                  <div class="flex-1 min-w-0">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 truncate">
+                      {{ authStore.user?.name || 'Admin' }}
+                    </h3>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
+                      <Mail :size="13" class="flex-shrink-0" />
+                      {{ authStore.user?.email || 'admin@example.com' }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Role & Tenant Badges -->
+                <div class="relative flex items-center gap-2 mt-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-700 rounded-lg text-xs font-semibold text-primary-700 dark:text-primary-300 shadow-sm border border-primary-100 dark:border-primary-800/50">
+                    <Shield :size="12" class="flex-shrink-0" />
+                    {{ userRoleLabel }}
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 shadow-sm border border-slate-200 dark:border-slate-600">
+                    <Building :size="12" class="flex-shrink-0" />
+                    {{ currentTenantName }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Menu Items -->
+              <div class="p-2">
+                <!-- Account Section -->
+                <div class="px-3 py-2">
+                  <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">账户</p>
+                </div>
+
+                <router-link
+                  to="/dashboard/profile"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-150 cursor-pointer group/item"
+                  @click="showUserMenu = false"
+                >
+                  <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 group-hover/item:bg-primary-100 dark:group-hover/item:bg-primary-900/30 transition-colors">
+                    <User :size="18" class="text-slate-600 dark:text-slate-400 group-hover/item:text-primary-600 dark:group-hover/item:text-primary-400 transition-colors" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">个人资料</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">管理您的个人信息</p>
+                  </div>
+                </router-link>
+
+                <router-link
+                  to="/dashboard/profile?tab=security"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-150 cursor-pointer group/item"
+                  @click="showUserMenu = false"
+                >
+                  <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 group-hover/item:bg-primary-100 dark:group-hover/item:bg-primary-900/30 transition-colors">
+                    <Shield :size="18" class="text-slate-600 dark:text-slate-400 group-hover/item:text-primary-600 dark:group-hover/item:text-primary-400 transition-colors" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">安全设置</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">密码与两步验证</p>
+                  </div>
+                </router-link>
+
+                <!-- Workspace Section -->
+                <div class="px-3 py-2 mt-1">
+                  <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">工作区</p>
+                </div>
+
+                <router-link
+                  to="/dashboard/settings"
+                  class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-150 cursor-pointer group/item"
+                  @click="showUserMenu = false"
+                >
+                  <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 group-hover/item:bg-primary-100 dark:group-hover/item:bg-primary-900/30 transition-colors">
+                    <Settings :size="18" class="text-slate-600 dark:text-slate-400 group-hover/item:text-primary-600 dark:group-hover/item:text-primary-400 transition-colors" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">系统设置</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">应用偏好配置</p>
+                  </div>
+                </router-link>
+
+                <button
+                  class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-150 cursor-pointer group/item text-left"
+                >
+                  <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 group-hover/item:bg-primary-100 dark:group-hover/item:bg-primary-900/30 transition-colors">
+                    <HelpCircle :size="18" class="text-slate-600 dark:text-slate-400 group-hover/item:text-primary-600 dark:group-hover/item:text-primary-400 transition-colors" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-slate-900 dark:text-slate-100">帮助中心</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">获取支持与文档</p>
+                  </div>
+                </button>
+              </div>
+
+              <!-- Logout Section -->
+              <div class="p-2 border-t border-slate-200 dark:border-slate-700/50">
+                <button
+                  class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-150 cursor-pointer group/logout text-left"
+                  @click="authStore.logout(); showUserMenu = false"
+                >
+                  <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-red-100 dark:bg-red-900/30 group-hover/logout:bg-red-200 dark:group-hover/logout:bg-red-900/50 transition-colors">
+                    <LogOut :size="18" class="text-red-600 dark:text-red-400" />
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-sm font-semibold text-red-600 dark:text-red-400">退出登录</p>
+                    <p class="text-xs text-red-500/70 dark:text-red-400/70">安全退出您的账户</p>
+                  </div>
+                </button>
+              </div>
             </div>
           </Transition>
+
+          <!-- Overlay -->
+          <div
+            v-if="showUserMenu"
+            @click="showUserMenu = false"
+            class="fixed inset-0 z-40"
+          ></div>
         </div>
       </div>
     </div>
