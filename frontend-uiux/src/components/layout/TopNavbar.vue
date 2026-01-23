@@ -11,9 +11,13 @@ import {
   Settings,
   User,
   ChevronDown,
-  LogOut
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RotateCw
 } from 'lucide-vue-next'
 import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
+import SearchDialog from '@/components/search/SearchDialog.vue'
 
 const route = useRoute()
 const uiStore = useUiStore()
@@ -21,6 +25,17 @@ const authStore = useAuthStore()
 
 const searchQuery = ref('')
 const showUserMenu = ref(false)
+const showSearchDialog = ref(false)
+const isRefreshing = ref(false)
+
+// 刷新页面
+const refreshPage = () => {
+  isRefreshing.value = true
+  // 使用 window.location.reload() 刷新页面
+  setTimeout(() => {
+    window.location.reload()
+  }, 150)
+}
 
 // Fullscreen functionality
 const isFullscreen = ref(false)
@@ -107,24 +122,47 @@ const notificationCount = computed(() => 5)
 <template>
   <header class="sticky top-0 z-20 bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-700">
     <div class="flex items-center justify-between h-16 px-4 lg:px-6">
-      <!-- Left: Breadcrumbs -->
-      <nav class="hidden sm:flex items-center gap-2 flex-1">
-        <template v-for="(crumb, index) in breadcrumbs" :key="crumb.path">
-          <router-link
-            :to="crumb.path"
-            class="text-sm font-medium transition-colors cursor-pointer"
-            :class="index === breadcrumbs.length - 1
-              ? 'text-slate-900 dark:text-slate-100'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'"
-          >
-            {{ crumb.label }}
-          </router-link>
-          <span
-            v-if="index < breadcrumbs.length - 1"
-            class="text-slate-400"
-          >/</span>
-        </template>
-      </nav>
+      <!-- Left: Sidebar Toggle, Refresh & Breadcrumbs -->
+      <div class="hidden sm:flex items-center gap-2 flex-1">
+        <!-- Sidebar Toggle -->
+        <button
+          class="hidden lg:flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+          :aria-label="uiStore.sidebarOpen ? '收起侧边栏' : '展开侧边栏'"
+          @click="uiStore.toggleSidebar()"
+        >
+          <PanelLeftClose v-if="uiStore.sidebarOpen" :size="18" class="text-slate-600 dark:text-slate-400" />
+          <PanelLeftOpen v-else :size="18" class="text-slate-600 dark:text-slate-400" />
+        </button>
+
+        <!-- Refresh -->
+        <button
+          class="flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+          :aria-label="'刷新'"
+          :disabled="isRefreshing"
+          @click="refreshPage"
+        >
+          <RotateCw :size="18" class="text-slate-600 dark:text-slate-400" :class="{ 'animate-spin': isRefreshing }" />
+        </button>
+
+        <!-- Breadcrumbs -->
+        <nav class="flex items-center gap-2">
+          <template v-for="(crumb, index) in breadcrumbs" :key="crumb.path">
+            <router-link
+              :to="crumb.path"
+              class="text-sm font-medium transition-colors cursor-pointer"
+              :class="index === breadcrumbs.length - 1
+                ? 'text-slate-900 dark:text-slate-100'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'"
+            >
+              {{ crumb.label }}
+            </router-link>
+            <span
+              v-if="index < breadcrumbs.length - 1"
+              class="text-slate-400"
+            >/</span>
+          </template>
+        </nav>
+      </div>
 
       <!-- Page Title (Mobile) -->
       <h1 class="sm:hidden text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -132,16 +170,18 @@ const notificationCount = computed(() => 5)
       </h1>
 
       <!-- Center: Search -->
-      <div class="hidden md:flex flex-1 justify-center px-8">
-        <div class="relative w-full max-w-md">
-          <Search :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            v-model="searchQuery"
-            type="search"
-            placeholder="搜索..."
-            class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-          />
-        </div>
+      <div class="hidden md:flex flex-1 justify-end px-8">
+        <button
+          class="group flex h-9 cursor-pointer items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1.5 outline-none transition-all duration-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+          @click="showSearchDialog = true"
+        >
+          <Search :size="16" class="text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors" />
+          <span class="text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 text-xs transition-colors duration-300">搜索</span>
+          <span class="ml-0.5 flex items-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 px-1.5 py-0.5 text-xs text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors duration-300">
+            <kbd class="font-sans">⌘</kbd>
+            <kbd class="font-sans">K</kbd>
+          </span>
+        </button>
       </div>
 
       <!-- Right: Actions -->
@@ -298,5 +338,8 @@ const notificationCount = computed(() => 5)
         />
       </div>
     </div>
+
+    <!-- Search Dialog -->
+    <SearchDialog v-model:visible="showSearchDialog" />
   </header>
 </template>
