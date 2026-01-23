@@ -16,7 +16,9 @@ import {
   Search,
   Moon,
   Sun,
-  Menu
+  Menu,
+  ChevronLeft,
+  X
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -87,10 +89,6 @@ const isActive = (path) => {
   return route.path === path || route.path.startsWith(path + '/')
 }
 
-const toggleSidebar = () => {
-  uiStore.toggleSidebar()
-}
-
 const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
 }
@@ -116,9 +114,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#F8FAFC] dark:bg-slate-900">
-    <!-- Mobile Header -->
-    <header class="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+  <div class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50/80 to-blue-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/60">
+    <!-- Mobile Header - 使用毛玻璃+阴影代替边框，更现代 -->
+    <header class="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm">
       <div class="flex items-center justify-between px-4 h-16">
         <div class="flex items-center gap-3">
           <button
@@ -174,11 +172,11 @@ onUnmounted(() => {
     >
       <aside
         v-if="isMobileMenuOpen"
-        class="lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700"
+        class="lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800"
       >
         <div class="flex flex-col h-full">
           <!-- Logo -->
-          <div class="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+          <div class="flex items-center justify-between p-4 border-b border-slate-200/60 dark:border-slate-800/40">
             <div class="flex items-center gap-2">
               <div class="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
                 <Box :size="20" class="text-white" />
@@ -209,7 +207,7 @@ onUnmounted(() => {
               <span class="font-medium">{{ item.name }}</span>
             </router-link>
 
-            <div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700">
+            <div class="pt-4 mt-4 border-t border-slate-200/60 dark:border-slate-700/30">
               <router-link
                 v-for="item in bottomNavigation"
                 :key="item.key"
@@ -227,7 +225,7 @@ onUnmounted(() => {
           </nav>
 
           <!-- User Section -->
-          <div class="p-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
+          <div class="p-4 border-t border-slate-200/60 dark:border-slate-700/30 space-y-2">
             <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
               <div class="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
                 <User :size="20" class="text-primary-600 dark:text-primary-400" />
@@ -249,12 +247,16 @@ onUnmounted(() => {
     <!-- Desktop Sidebar -->
     <aside
       :class="[
-        'hidden lg:flex flex-col fixed inset-y-0 left-0 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 z-30',
+        'hidden lg:flex flex-col fixed inset-y-0 left-0 transition-all duration-300 z-30',
+        'bg-white/90 dark:bg-slate-900/90',
+        'backdrop-blur-xl',
+        'border-r border-slate-200/60 dark:border-slate-800/60',
+        'shadow-[4px_0_24px_-8px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_24px_-8px_rgba(0,0,0,0.3)]',
         uiStore.sidebarOpen ? 'w-64' : 'w-20'
       ]"
     >
       <!-- Logo -->
-      <div class="flex items-center h-16 px-4 border-b border-slate-200 dark:border-slate-700">
+      <div class="flex items-center h-16 px-4 relative after:content-[''] after:absolute after:inset-x-4 after:-bottom-px after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-slate-300 dark:after:via-slate-600 after:to-transparent after:opacity-50">
         <div class="flex items-center gap-3 flex-1">
           <div class="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center flex-shrink-0">
             <Box :size="20" class="text-white" />
@@ -332,7 +334,8 @@ onUnmounted(() => {
           </Transition>
         </router-link>
 
-        <div :class="['border-t border-slate-200 dark:border-slate-700', uiStore.sidebarOpen ? 'pt-4 mt-4' : 'pt-3 mt-3']">
+        <!-- Divider - 柔和的分割线 -->
+        <div class="border-t border-slate-200/60 dark:border-slate-700/30" :class="uiStore.sidebarOpen ? 'pt-4 mt-4' : 'pt-3 mt-3'">
           <router-link
             v-for="item in bottomNavigation"
             :key="item.key"
@@ -377,7 +380,9 @@ onUnmounted(() => {
 
       <!-- Page Content -->
       <div class="p-4 lg:p-6">
-        <router-view />
+        <div class="bg-white/70 dark:bg-slate-900/60 backdrop-blur-sm rounded-xl p-4 lg:p-6 min-h-[calc(100vh-8rem)] shadow-sm border border-slate-200/50 dark:border-slate-800/50">
+          <router-view />
+        </div>
       </div>
     </main>
   </div>

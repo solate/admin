@@ -153,7 +153,7 @@ const currentTenantName = computed(() => {
 </style>
 
 <template>
-  <header class="sticky top-0 z-20 bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-700">
+  <header class="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-700/60">
     <div class="flex items-center justify-between h-16 px-4 lg:px-6">
       <!-- Left: Sidebar Toggle, Refresh & Breadcrumbs -->
       <div class="hidden sm:flex items-center gap-2 flex-1">
