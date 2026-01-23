@@ -90,10 +90,45 @@ export function setupElementPlus(app: App) {
       transition: all 0.2s;
     }
 
-    /* Input style optimization */
+    /* Input - 单层边框，简洁样式 */
     .el-input__wrapper {
       border-radius: 8px;
-      transition: all 0.2s;
+      box-shadow: 0 0 0 1px var(--el-border-color) inset;
+      transition: box-shadow 0.2s;
+    }
+
+    .el-input__wrapper:hover {
+      box-shadow: 0 0 0 1px var(--el-border-color-hover) inset;
+    }
+
+    .el-input__wrapper.is-focus {
+      box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+    }
+
+    .el-input__inner {
+      box-shadow: none;
+    }
+
+    /* 暗色模式 */
+    .dark .el-input__wrapper {
+      background-color: rgba(15, 23, 42, 0.8);
+      box-shadow: 0 0 0 1px rgba(71, 85, 105, 0.8) inset;
+    }
+
+    .dark .el-input__wrapper:hover {
+      box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.6) inset;
+    }
+
+    .dark .el-input__wrapper.is-focus {
+      box-shadow: 0 0 0 1px #60a5fa inset;
+    }
+
+    .dark .el-input__inner {
+      color: #e2e8f0;
+    }
+
+    .dark .el-input__inner::placeholder {
+      color: #64748b;
     }
 
     /* Table style optimization */

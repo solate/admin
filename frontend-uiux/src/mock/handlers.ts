@@ -108,13 +108,19 @@ export const authMock = {
   async login(credentials: LoginRequest) {
     await delay()
 
-    const user = mockUsers.find(u => u.email === credentials.email)
+    // Mock 模式 - 任意账号密码均可登录
+    let user = mockUsers.find(u => u.email === credentials.email)
     if (!user) {
-      throw new Error('用户不存在')
-    }
-
-    if (credentials.password !== 'password') {
-      throw new Error('密码错误')
+      // 不存在则创建临时用户
+      user = {
+        id: Date.now().toString(),
+        name: credentials.email.split('@')[0] || 'User',
+        email: credentials.email,
+        role: 'admin',
+        tenantId: 'tenant-1',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
     }
 
     return {

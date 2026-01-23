@@ -91,11 +91,11 @@ table {
 
 /* 选中文本样式 */
 ::selection {
-  background-color: var(--color-primary);
+  background-color: rgb(37, 99, 235);
   color: white;
 }
 
 ::-moz-selection {
-  background-color: var(--color-primary);
+  background-color: rgb(37, 99, 235);
   color: white;
 }
