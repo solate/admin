@@ -12,8 +12,6 @@ import {
   User,
   BarChart3,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   Bell,
   Search,
   Moon,
@@ -277,13 +275,6 @@ onUnmounted(() => {
             </span>
           </Transition>
         </div>
-        <button
-          class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-          @click="toggleSidebar"
-        >
-          <ChevronLeft v-if="uiStore.sidebarOpen" :size="16" />
-          <ChevronRight v-else :size="16" />
-        </button>
       </div>
 
       <!-- Tenant Info (when expanded) -->
