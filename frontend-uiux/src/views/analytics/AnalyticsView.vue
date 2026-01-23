@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { DataAnalysis } from '@element-plus/icons-vue'
+import { BarChart3 } from 'lucide-vue-next'
 
 const analyticsData = ref({
   totalRequests: 2458900,
@@ -44,7 +44,7 @@ const analyticsData = ref({
         <h2 class="text-lg font-display font-semibold text-slate-900 mb-4">请求量趋势</h2>
         <div class="h-80 flex items-center justify-center bg-slate-50 rounded-xl">
           <div class="text-center">
-            <el-icon :size="64" class="text-slate-400 mx-auto mb-4"><DataAnalysis /></el-icon>
+            <BarChart3  :size="64"  class="text-slate-400 mx-auto mb-4" />
             <p class="text-slate-500">数据可视化图表</p>
             <p class="text-sm text-slate-400 mt-2">可集成 Chart.js、ECharts 或 ApexCharts</p>
           </div>
@@ -55,7 +55,7 @@ const analyticsData = ref({
         <h2 class="text-lg font-display font-semibold text-slate-900 mb-4">用户活跃度</h2>
         <div class="h-80 flex items-center justify-center bg-slate-50 rounded-xl">
           <div class="text-center">
-            <el-icon :size="64" class="text-slate-400 mx-auto mb-4"><DataAnalysis /></el-icon>
+            <BarChart3  :size="64"  class="text-slate-400 mx-auto mb-4" />
             <p class="text-slate-500">数据可视化图表</p>
             <p class="text-sm text-slate-400 mt-2">可集成 Chart.js、ECharts 或 ApexCharts</p>
           </div>
@@ -66,7 +66,7 @@ const analyticsData = ref({
         <h2 class="text-lg font-display font-semibold text-slate-900 mb-4">服务使用分布</h2>
         <div class="h-80 flex items-center justify-center bg-slate-50 rounded-xl">
           <div class="text-center">
-            <el-icon :size="64" class="text-slate-400 mx-auto mb-4"><DataAnalysis /></el-icon>
+            <BarChart3  :size="64"  class="text-slate-400 mx-auto mb-4" />
             <p class="text-slate-500">数据可视化图表</p>
             <p class="text-sm text-slate-400 mt-2">可集成 Chart.js、ECharts 或 ApexCharts</p>
           </div>
@@ -77,7 +77,7 @@ const analyticsData = ref({
         <h2 class="text-lg font-display font-semibold text-slate-900 mb-4">错误分析</h2>
         <div class="h-80 flex items-center justify-center bg-slate-50 rounded-xl">
           <div class="text-center">
-            <el-icon :size="64" class="text-slate-400 mx-auto mb-4"><DataAnalysis /></el-icon>
+            <BarChart3  :size="64"  class="text-slate-400 mx-auto mb-4" />
             <p class="text-slate-500">数据可视化图表</p>
             <p class="text-sm text-slate-400 mt-2">可集成 Chart.js、ECharts 或 ApexCharts</p>
           </div>

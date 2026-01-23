@@ -1,7 +1,7 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { House, Box, Lock, TrendCharts, ArrowRight, CircleCheck, Cloudy, OfficeBuilding } from '@element-plus/icons-vue'
+import { Building, Box, Lock, BarChart3, ArrowRight, CircleCheck, Cloud, Home } from 'lucide-vue-next'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -9,7 +9,7 @@ const { t } = useI18n()
 const features = [
   {
     nameKey: 'multiTenant',
-    icon: OfficeBuilding
+    icon: Building
   },
   {
     nameKey: 'basicServices',
@@ -21,15 +21,15 @@ const features = [
   },
   {
     nameKey: 'monitoring',
-    icon: TrendCharts
+    icon: BarChart3
   },
   {
     nameKey: 'highAvailability',
-    icon: Cloudy
+    icon: Cloud
   },
   {
     nameKey: 'quickDeploy',
-    icon: House
+    icon: Home
   }
 ]
 
@@ -71,7 +71,7 @@ const goToLogin = () => {
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center gap-2">
-            <component :is="Box" class="w-8 h-8 text-primary-600" />
+            <Box :size="32" class="text-primary-600" />
             <span class="text-xl font-display font-bold text-slate-900">{{ $t('common.appName') }}</span>
           </div>
           <div class="hidden md:flex items-center gap-8">
@@ -116,7 +116,7 @@ const goToLogin = () => {
               class="w-full sm:w-auto px-8 py-4 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-lg hover:shadow-xl font-medium text-lg cursor-pointer flex items-center justify-center gap-2"
             >
               {{ $t('landing.startFreeTrial') }}
-              <component :is="ArrowRight" class="w-5 h-5" />
+              <ArrowRight :size="20" />
             </button>
             <button
               @click="goToLogin"
@@ -149,7 +149,7 @@ const goToLogin = () => {
         <div class="glass-card rounded-3xl p-2 sm:p-4">
           <div class="bg-slate-900 rounded-2xl p-4 sm:p-8 aspect-video flex items-center justify-center">
             <div class="text-center">
-              <component :is="TrendCharts" class="w-16 h-16 text-primary-400 mx-auto mb-4" />
+              <BarChart3 :size="64" class="text-primary-400 mx-auto mb-4" />
               <p class="text-slate-400 text-lg">{{ $t('landing.productDemo') }}</p>
               <p class="text-slate-500 text-sm mt-2">{{ $t('landing.clickToView') }}</p>
             </div>
@@ -177,7 +177,7 @@ const goToLogin = () => {
             class="glass-card p-8 rounded-2xl hover:shadow-xl transition-all cursor-pointer group"
           >
             <div class="w-14 h-14 bg-primary-100 rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary-600 transition-colors">
-              <component :is="feature.icon" class="w-7 h-7 text-primary-600 group-hover:text-white transition-colors" />
+              <component :is="feature.icon" :size="28" class="text-primary-600 group-hover:text-white transition-colors" />
             </div>
             <h3 class="text-xl font-display font-semibold text-slate-900 mb-3">
               {{ $t(`landing.featureNames.${feature.nameKey}`) }}
@@ -231,7 +231,7 @@ const goToLogin = () => {
                 :key="feature"
                 class="flex items-center gap-3 text-slate-600"
               >
-                <component :is="CircleCheck" class="w-5 h-5 text-primary-600 flex-shrink-0" />
+                <CircleCheck :size="20" class="text-primary-600 flex-shrink-0" />
                 <span>{{ feature }}</span>
               </li>
             </ul>
@@ -275,7 +275,7 @@ const goToLogin = () => {
         <div class="grid md:grid-cols-4 gap-8 mb-8">
           <div>
             <div class="flex items-center gap-2 mb-4">
-              <component :is="Box" class="w-8 h-8 text-primary-400" />
+              <Box :size="32" class="text-primary-400" />
               <span class="text-xl font-display font-bold">{{ $t('common.appName') }}</span>
             </div>
             <p class="text-slate-400 text-sm">

@@ -2,21 +2,11 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useServicesStore } from '@/stores/modules/services'
+import { Box, ChevronLeft, CircleCheck, Cloud, Shield, BarChart3, Mail, CreditCard } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
 const servicesStore = useServicesStore()
-
-const {
-  Cube,
-  ChevronLeft,
-  CheckCircle,
-  Cloud,
-  Shield,
-  ChartBar,
-  Envelope,
-  CreditCard
-} = icons
 
 const service = computed(() => {
   return servicesStore.getServiceById(route.params.id)
@@ -24,10 +14,10 @@ const service = computed(() => {
 
 const categoryIcons = {
   storage: Cloud,
-  messaging: Cube,
-  analytics: ChartBar,
+  messaging: Box,
+  analytics: BarChart3,
   security: Shield,
-  communication: Envelope,
+  communication: Mail,
   payment: CreditCard
 }
 
@@ -44,7 +34,7 @@ const statusLabels = {
 }
 
 const CategoryIcon = computed(() => {
-  return service.value ? categoryIcons[service.value.category] || Cube : Cube
+  return service.value ? categoryIcons[service.value.category] || Box : Box
 })
 
 const goBack = () => {
@@ -112,7 +102,7 @@ const goBack = () => {
           :key="index"
           class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl"
         >
-          <component :is="CheckCircle" class="w-5 h-5 text-green-600 flex-shrink-0" />
+          <component :is="CircleCheck" class="w-5 h-5 text-green-600 flex-shrink-0" />
           <span class="text-slate-700">{{ feature }}</span>
         </div>
       </div>
@@ -171,7 +161,7 @@ const goBack = () => {
   <!-- Not Found -->
   <div v-else class="text-center py-12">
     <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-      <component :is="Cube" class="w-8 h-8 text-slate-400" />
+      <component :is="Box" class="w-8 h-8 text-slate-400" />
     </div>
     <h2 class="text-xl font-display font-semibold text-slate-900 mb-2">服务未找到</h2>
     <p class="text-slate-600 mb-4">请检查服务 ID 是否正确</p>

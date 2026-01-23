@@ -2,10 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiService } from '@/api'
+import { Bell, Check, Trash22, ChevronLeft, User, Shield, CircleCheck, Info, AlertTriangle, TriangleAlert, Clock, Filter } from 'lucide-vue-next'
 
 const router = useRouter()
-
-const { Bell, Check, Trash, ArrowLeft, User, Shield, CheckCircle, InformationCircle, AlertCircle, ExclamationTriangle, Clock, Filter } = icons
 
 const notifications = ref([])
 const loading = ref(false)
@@ -24,10 +23,10 @@ const filterOptions = [
 const notificationIcons = {
   user: User,
   security: Shield,
-  success: CheckCircle,
-  info: InformationCircle,
-  warning: AlertCircle,
-  error: ExclamationTriangle
+  success: CircleCheck,
+  info: Info,
+  warning: TriangleAlert,
+  error: AlertTriangle
 }
 
 const notificationColors = {
@@ -119,7 +118,7 @@ function handleNotificationClick(notification) {
 }
 
 function getNotificationIcon(type) {
-  return notificationIcons[type] || InformationCircle
+  return notificationIcons[type] || Info
 }
 
 function getNotificationColor(type) {
@@ -154,7 +153,7 @@ onMounted(() => {
         class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
         aria-label="Go back"
       >
-        <ArrowLeft class="w-5 h-5 text-slate-600 dark:text-slate-400" />
+        <ChevronLeft class="w-5 h-5 text-slate-600 dark:text-slate-400" />
       </button>
       <div class="flex-1">
         <div class="flex items-center gap-3">
@@ -288,7 +287,7 @@ onMounted(() => {
             class="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
             aria-label="Delete notification"
           >
-            <Trash class="w-4 h-4 text-slate-400 hover:text-red-600 dark:hover:text-red-400" />
+            <Trash2 class="w-4 h-4 text-slate-400 hover:text-red-600 dark:hover:text-red-400" />
           </button>
         </div>
       </div>

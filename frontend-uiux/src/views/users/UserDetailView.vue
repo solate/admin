@@ -3,25 +3,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTenantsStore } from '@/stores/modules/tenants'
 import { apiService } from '@/api'
+import { User, Mail, Building, Shield, Key, X, Check, Pencil, ChevronLeft, UserCircle, Clock, Calendar } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
 const tenantsStore = useTenantsStore()
-
-const {
-  User,
-  Envelope,
-  Building,
-  Shield,
-  Key,
-  XMark,
-  Check,
-  Pencil,
-  ArrowLeft,
-  UserCircle,
-  Clock,
-  Calendar
-} = icons
 
 const loading = ref(false)
 const saving = ref(false)
@@ -197,7 +183,7 @@ onMounted(() => {
         class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
         aria-label="Go back"
       >
-        <ArrowLeft class="w-5 h-5 text-slate-600 dark:text-slate-400" />
+        <ChevronLeft class="w-5 h-5 text-slate-600 dark:text-slate-400" />
       </button>
       <div class="flex-1">
         <h1 class="text-2xl font-display font-bold text-slate-900 dark:text-slate-100">{{ pageTitle }}</h1>
@@ -255,7 +241,7 @@ onMounted(() => {
                 Email <span class="text-red-500">*</span>
               </label>
               <div class="relative">
-                <Envelope class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Mail class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   v-model="formData.email"
                   type="email"

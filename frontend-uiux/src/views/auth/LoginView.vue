@@ -3,13 +3,13 @@ import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
 import {
-  OfficeBuilding,
-  Message,
+  Building,
+  Mail,
   Lock,
-  View,
-  Hide,
+  Eye,
+  EyeOff,
   ArrowRight
-} from '@element-plus/icons-vue'
+} from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
@@ -63,7 +63,7 @@ const handleLogin = async () => {
     <div class="flex items-center justify-between px-6 py-4">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
-          <el-icon :size="20" class="text-white"><OfficeBuilding /></el-icon>
+          <Building :size="20" class="text-white" />
         </div>
         <span class="text-lg font-semibold text-slate-900 dark:text-slate-100">AdminSystem</span>
       </div>
@@ -81,7 +81,7 @@ const handleLogin = async () => {
         <!-- Logo and Title (Mobile) -->
         <div class="text-center mb-8 sm:hidden">
           <div class="w-16 h-16 rounded-2xl bg-primary-600 flex items-center justify-center mx-auto mb-4">
-            <el-icon :size="40" class="text-white"><OfficeBuilding /></el-icon>
+            <Building :size="40" class="text-white" />
           </div>
           <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">AdminSystem</h1>
         </div>
@@ -127,7 +127,7 @@ const handleLogin = async () => {
                 邮箱地址
               </label>
               <div class="relative">
-                <el-icon :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Message /></el-icon>
+                <Mail :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   v-model="form.email"
                   type="email"
@@ -145,7 +145,7 @@ const handleLogin = async () => {
                 密码
               </label>
               <div class="relative">
-                <el-icon :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Lock /></el-icon>
+                <Lock :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   v-model="form.password"
                   :type="showPassword ? 'text' : 'password'"
@@ -160,7 +160,7 @@ const handleLogin = async () => {
                   class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                   @click="showPassword = !showPassword"
                 >
-                  <el-icon :size="20"><View v-if="showPassword" /><Hide v-else /></el-icon>
+                  <Eye v-if="showPassword" :size="20" /><EyeOff v-else :size="20" />
                 </button>
               </div>
             </div>
@@ -212,7 +212,7 @@ const handleLogin = async () => {
                 />
               </svg>
               <span v-else>登录</span>
-              <el-icon v-if="!isLoading" :size="20"><ArrowRight /></el-icon>
+              <ArrowRight v-if="!isLoading" :size="20" />
             </button>
           </form>
 

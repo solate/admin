@@ -2,21 +2,11 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTenantsStore } from '@/stores/modules/tenants'
+import { Building, Users, Box, ChevronLeft, Pencil, Trash22, CircleCheck, Mail } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
 const tenantsStore = useTenantsStore()
-
-const {
-  Building,
-  Users,
-  Cube,
-  ChevronLeft,
-  Pencil,
-  Trash,
-  CheckCircle,
-  Envelope
-} = icons
 
 const tenant = computed(() => {
   return tenantsStore.getTenantById(route.params.id)
@@ -86,7 +76,7 @@ const deleteTenant = () => {
           @click="deleteTenant"
           class="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium cursor-pointer flex items-center gap-2"
         >
-          <component :is="Trash" class="w-4 h-4" />
+          <component :is="Trash2" class="w-4 h-4" />
           删除
         </button>
       </div>
@@ -98,7 +88,7 @@ const deleteTenant = () => {
       :class="tenant.status === 'active' ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'"
     >
       <div class="flex items-center gap-3">
-        <component :is="CheckCircle" class="w-5 h-5" :class="tenant.status === 'active' ? 'text-green-600' : 'text-yellow-600'" />
+        <component :is="CircleCheck" class="w-5 h-5" :class="tenant.status === 'active' ? 'text-green-600' : 'text-yellow-600'" />
         <div>
           <p class="font-medium" :class="tenant.status === 'active' ? 'text-green-900' : 'text-yellow-900'">
             {{ tenant.status === 'active' ? '租户状态正常' : '租户状态异常' }}
@@ -127,7 +117,7 @@ const deleteTenant = () => {
       <div class="glass-card p-6 rounded-2xl">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-            <component :is="Cube" class="w-6 h-6 text-purple-600" />
+            <component :is="Box" class="w-6 h-6 text-purple-600" />
           </div>
           <div>
             <p class="text-sm text-slate-600">订阅方案</p>
@@ -138,7 +128,7 @@ const deleteTenant = () => {
       <div class="glass-card p-6 rounded-2xl">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-            <component :is="CheckCircle" class="w-6 h-6 text-green-600" />
+            <component :is="CircleCheck" class="w-6 h-6 text-green-600" />
           </div>
           <div>
             <p class="text-sm text-slate-600">状态</p>
@@ -149,7 +139,7 @@ const deleteTenant = () => {
       <div class="glass-card p-6 rounded-2xl">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-            <component :is="Envelope" class="w-6 h-6 text-orange-600" />
+            <component :is="Mail" class="w-6 h-6 text-orange-600" />
           </div>
           <div>
             <p class="text-sm text-slate-600">创建时间</p>

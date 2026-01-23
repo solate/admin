@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useTenantsStore } from '@/stores/modules/tenants'
 import { useAuthStore } from '@/stores/modules/auth'
-import { OfficeBuilding, ArrowDown, Check, MagicStick } from '@element-plus/icons-vue'
+import { Building, ChevronDown, Check } from 'lucide-vue-next'
 
 const tenantsStore = useTenantsStore()
 const authStore = useAuthStore()
@@ -62,11 +62,11 @@ onMounted(() => {
       aria-label="Select tenant"
     >
       <el-icon :size="18" class="text-primary-600 dark:text-primary-400">
-        <OfficeBuilding />
+        <Building />
       </el-icon>
       <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ currentTenantLabel }}</span>
       <el-icon :size="14" class="text-slate-500" :class="{ 'rotate-180': isOpen }">
-        <ArrowDown />
+        <ChevronDown />
       </el-icon>
     </button>
 

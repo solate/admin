@@ -2,11 +2,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
+import { Box, Mail, User, CircleCheck, ArrowRight } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
-
-const { Cube, Envelope, User, CheckCircle, ArrowRight } = icons
 
 const form = ref({
   name: '',
@@ -60,7 +59,7 @@ const goToLogin = () => {
       <!-- Logo -->
       <div class="text-center mb-8">
         <div class="flex items-center justify-center gap-2 mb-4">
-          <component :is="Cube" class="w-10 h-10 text-primary-600" />
+          <component :is="Box" class="w-10 h-10 text-primary-600" />
           <span class="text-2xl font-display font-bold text-slate-900">MultiTenant</span>
         </div>
         <p class="text-slate-600">创建您的账户</p>
@@ -101,7 +100,7 @@ const goToLogin = () => {
               邮箱地址
             </label>
             <div class="relative">
-              <component :is="Envelope" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <component :is="Mail" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input
                 id="email"
                 v-model="form.email"

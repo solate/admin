@@ -1,10 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import {
-  TrendCharts,
-  Bottom,
-  Minus
-} from '@element-plus/icons-vue'
+import { BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-vue-next'
 
 const props = defineProps({
   title: {
@@ -41,9 +37,9 @@ const props = defineProps({
 const trendIcon = computed(() => {
   switch (props.changeType) {
     case 'positive':
-      return TrendCharts
+      return TrendingUp
     case 'negative':
-      return Bottom
+      return TrendingDown
     default:
       return Minus
   }
@@ -91,7 +87,7 @@ const iconColor = computed(() => {
         v-if="icon"
         :class="['w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0', iconBgColor]"
       >
-        <el-icon :size="28"><component :is="icon" :class="iconColor" /></el-icon>
+        <component :is="icon" :class="iconColor"  :size="28"  />
       </div>
 
       <!-- Content -->
@@ -108,7 +104,7 @@ const iconColor = computed(() => {
 
         <!-- Change indicator -->
         <div v-if="change" class="flex items-center gap-1">
-          <el-icon :size="16"><component :is="trendIcon" :class="['flex-shrink-0', trendColor]" /></el-icon>
+          <component :is="trendIcon" :class="['flex-shrink-0', trendColor]"  :size="16"  />
           <span :class="['text-sm font-semibold', trendColor]">
             {{ change }}
           </span>

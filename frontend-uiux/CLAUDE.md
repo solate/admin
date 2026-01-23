@@ -410,3 +410,4 @@ export const apiService = {
 4. **Token 管理**: 存储在 localStorage，401 时自动清除并跳转登录
 5. **国际化**: 新增文本必须同时添加中英文翻译
 6. **Element Plus**: 图标已全局注册，可直接使用 `<el-icon><IconName /></el-icon>`
+7. **图标使用**: 项目使用 `lucide-vue-next`，详细规范见 `.claude/knowledge.md`

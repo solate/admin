@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiService } from '@/api'
-import { Bell, Close, Check, Delete, User, Shield, Warning, CircleCheck, InfoFilled } from '@element-plus/icons-vue'
+import { Bell, X, Check, Trash2, User, Shield, AlertTriangle, CircleCheck, Info } from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -15,9 +15,9 @@ const loading = ref(false)
 const notificationIcons = {
   user: User,
   security: Shield,
-  warning: Warning,
+  warning: AlertTriangle,
   success: CircleCheck,
-  info: InfoFilled
+  info: Info
 }
 
 // Notification colors mapping
@@ -108,7 +108,7 @@ async function deleteNotification(notificationId: string) {
 }
 
 function getNotificationIcon(type: string) {
-  return notificationIcons[type as keyof typeof notificationIcons] || InfoFilled
+  return notificationIcons[type as keyof typeof notificationIcons] || Info
 }
 
 function getNotificationColor(type: string) {
@@ -222,7 +222,7 @@ onMounted(() => {
                         class="flex-shrink-0 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                       >
                         <el-icon :size="14">
-                          <Delete />
+                          <Trash2 />
                         </el-icon>
                       </button>
                     </div>

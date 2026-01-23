@@ -5,17 +5,7 @@ import { useAuthStore } from '@/stores/modules/auth'
 import KPICard from '@/components/ui/KPICard.vue'
 import BaseTable from '@/components/ui/BaseTable.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
-import {
-  OfficeBuilding,
-  User,
-  Box,
-  TrendCharts,
-  Bottom,
-  ArrowRight,
-  CirclePlus,
-  Coin,
-  DataAnalysis
-} from '@element-plus/icons-vue'
+import { Building, User, Box, BarChart3, TrendingUp, ChevronRight, Plus, Coins, Activity } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -28,7 +18,7 @@ const stats = ref([
     change: '+12',
     changeType: 'positive',
     trend: '较上月',
-    icon: markRaw(OfficeBuilding),
+    icon: markRaw(Building),
     color: 'primary'
   },
   {
@@ -55,7 +45,7 @@ const stats = ref([
     change: '+24',
     changeType: 'positive',
     trend: '较上月',
-    icon: markRaw(Coin),
+    icon: markRaw(Coins),
     color: 'warning'
   }
 ])
@@ -66,7 +56,7 @@ const quickActions = ref([
     name: '添加租户',
     description: '创建新的租户账户',
     path: '/dashboard/tenants',
-    icon: markRaw(OfficeBuilding)
+    icon: markRaw(Building)
   },
   {
     name: '配置服务',
@@ -84,7 +74,7 @@ const quickActions = ref([
     name: '查看报表',
     description: '查看数据分析',
     path: '/dashboard/analytics',
-    icon: markRaw(DataAnalysis)
+    icon: markRaw(BarChart3)
   }
 ])
 
@@ -96,7 +86,7 @@ const recentActivities = ref([
     title: '新租户注册',
     description: '科技公司A 已完成注册',
     time: '5 分钟前',
-    icon: markRaw(OfficeBuilding),
+    icon: markRaw(Building),
     color: 'primary'
   },
   {
@@ -123,7 +113,7 @@ const recentActivities = ref([
     title: '系统提醒',
     description: '消息队列服务负载较高',
     time: '3 小时前',
-    icon: markRaw(TrendCharts),
+    icon: markRaw(TrendingUp),
     color: 'warning'
   }
 ])
@@ -157,12 +147,12 @@ const handleTenantClick = (tenant) => {
 
 const getIconForColor = (color) => {
   const icons = {
-    primary: OfficeBuilding,
+    primary: Building,
     success: Box,
     info: User,
-    warning: Coin
+    warning: Coins
   }
-  return icons[color] || TrendCharts
+  return icons[color] || Activity
 }
 
 const getColorClass = (color) => {
@@ -190,7 +180,7 @@ const getColorClass = (color) => {
         class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 cursor-pointer"
         @click="router.push('/dashboard/tenants/create')"
       >
-        <el-icon :size="20"><CirclePlus /></el-icon>
+        <Plus :size="20" />
         新建租户
       </button>
     </div>
@@ -229,7 +219,7 @@ const getColorClass = (color) => {
                 <p class="text-sm text-slate-600 dark:text-slate-400">{{ action.description }}</p>
               </div>
               <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center group-hover:bg-primary-600 transition-colors">
-                <el-icon :size="20"><component :is="action.icon" class="text-primary-600 dark:text-primary-400 group-hover:text-white transition-colors" /></el-icon>
+                <component :is="action.icon" class="text-primary-600 dark:text-primary-400 group-hover:text-white transition-colors"  :size="20"  />
               </div>
             </div>
           </router-link>
@@ -285,7 +275,7 @@ const getColorClass = (color) => {
           class="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors cursor-pointer"
         >
           查看全部
-          <el-icon :size="16"><ArrowRight /></el-icon>
+          <ChevronRight :size="16" />
         </router-link>
       </div>
 
@@ -299,7 +289,7 @@ const getColorClass = (color) => {
         <template #cell-name="{ row }">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-              <el-icon :size="20" class="text-primary-600 dark:text-primary-400"><OfficeBuilding /></el-icon>
+              <Building :size="20" class="text-primary-600 dark:text-primary-400" />
             </div>
             <span class="font-medium text-slate-900 dark:text-slate-100">{{ row.name }}</span>
           </div>
@@ -307,7 +297,7 @@ const getColorClass = (color) => {
 
         <template #cell-users="{ row }">
           <div class="flex items-center gap-2">
-            <el-icon :size="16" class="text-slate-400"><User /></el-icon>
+            <User  :size="16"  class="text-slate-400" />
             <span class="text-slate-700 dark:text-slate-300">{{ row.users }}</span>
           </div>
         </template>
@@ -326,7 +316,7 @@ const getColorClass = (color) => {
         </template>
 
         <template #cell-action>
-          <el-icon :size="20" class="text-slate-400"><ArrowRight /></el-icon>
+          <ChevronRight :size="20" class="text-slate-400" />
         </template>
       </BaseTable>
     </div>
@@ -340,7 +330,7 @@ const getColorClass = (color) => {
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">过去6个月</p>
           </div>
           <div class="flex items-center gap-2 text-success-600">
-            <el-icon :size="20"><TrendCharts /></el-icon>
+            <TrendingUp :size="20" />
             <span class="text-sm font-medium">+24%</span>
           </div>
         </div>
@@ -348,7 +338,7 @@ const getColorClass = (color) => {
         <!-- Chart Placeholder -->
         <div class="h-64 flex items-center justify-center bg-slate-50 dark:bg-slate-700/30 rounded-lg">
           <div class="text-center">
-            <el-icon :size="48" class="text-slate-300 dark:text-slate-600 mx-auto mb-3"><DataAnalysis /></el-icon>
+            <BarChart3 :size="48" class="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
             <p class="text-sm text-slate-500 dark:text-slate-400">图表组件即将推出</p>
             <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">将集成 Chart.js</p>
           </div>
@@ -362,7 +352,7 @@ const getColorClass = (color) => {
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">过去6个月</p>
           </div>
           <div class="flex items-center gap-2 text-success-600">
-            <el-icon :size="20"><TrendCharts /></el-icon>
+            <TrendingUp :size="20" />
             <span class="text-sm font-medium">+18%</span>
           </div>
         </div>
@@ -370,7 +360,7 @@ const getColorClass = (color) => {
         <!-- Chart Placeholder -->
         <div class="h-64 flex items-center justify-center bg-slate-50 dark:bg-slate-700/30 rounded-lg">
           <div class="text-center">
-            <el-icon :size="48" class="text-slate-300 dark:text-slate-600 mx-auto mb-3"><TrendCharts /></el-icon>
+            <TrendingUp :size="48" class="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
             <p class="text-sm text-slate-500 dark:text-slate-400">图表组件即将推出</p>
             <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">将集成 Chart.js</p>
           </div>

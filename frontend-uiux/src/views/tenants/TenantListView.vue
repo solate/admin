@@ -6,15 +6,7 @@ import BaseTable from '@/components/ui/BaseTable.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
-import {
-  Search,
-  CirclePlus,
-  OfficeBuilding,
-  Edit,
-  Delete,
-  View,
-  ArrowRight
-} from '@element-plus/icons-vue'
+import { Search, CirclePlus, Building, Pencil, Trash2, Eye, ChevronRight } from 'lucide-vue-next'
 
 const router = useRouter()
 const tenantsStore = useTenantsStore()
@@ -113,7 +105,7 @@ const handleRowClick = ({ row }) => {
         variant="primary"
         @click="handleCreateTenant"
       >
-        <el-icon :size="20"><CirclePlus /></el-icon>
+        <CirclePlus  :size="20"  />
         新建租户
       </BaseButton>
     </div>
@@ -123,7 +115,7 @@ const handleRowClick = ({ row }) => {
       <div class="card p-5">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-            <el-icon :size="24" class="text-primary-600 dark:text-primary-400"><OfficeBuilding /></el-icon>
+            <Building  :size="24"  class="text-primary-600 dark:text-primary-400" />
           </div>
           <div>
             <p class="text-sm text-slate-600 dark:text-slate-400">总租户数</p>
@@ -182,7 +174,7 @@ const handleRowClick = ({ row }) => {
       <div class="flex flex-col sm:flex-row gap-4">
         <!-- Search -->
         <div class="relative flex-1">
-          <el-icon :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Search /></el-icon>
+          <Search  :size="20"  class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             v-model="searchQuery"
             type="search"
@@ -219,7 +211,7 @@ const handleRowClick = ({ row }) => {
       <template #cell-name="{ row }">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-            <el-icon :size="20" class="text-primary-600 dark:text-primary-400"><OfficeBuilding /></el-icon>
+            <Building  :size="20"  class="text-primary-600 dark:text-primary-400" />
           </div>
           <div>
             <p class="font-medium text-slate-900 dark:text-slate-100">{{ row.name }}</p>
@@ -267,21 +259,21 @@ const handleRowClick = ({ row }) => {
             :title="'查看 ' + row.name"
             @click.stop="handleViewTenant(row)"
           >
-            <el-icon :size="16" class="text-slate-400"><View /></el-icon>
+            <Eye  :size="16"  class="text-slate-400" />
           </button>
           <button
             class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
             :title="'编辑 ' + row.name"
             @click.stop="handleEditTenant(row)"
           >
-            <el-icon :size="16" class="text-slate-400"><Edit /></el-icon>
+            <Pencil  :size="16"  class="text-slate-400" />
           </button>
           <button
             class="p-1.5 hover:bg-error-50 dark:hover:bg-error-900/30 rounded-lg transition-colors cursor-pointer"
             :title="'删除 ' + row.name"
             @click.stop="confirmDelete(row)"
           >
-            <el-icon :size="16" class="text-error-400"><Delete /></el-icon>
+            <Trash2  :size="16"  class="text-error-400" />
           </button>
         </div>
       </template>
@@ -292,7 +284,7 @@ const handleRowClick = ({ row }) => {
       v-if="filteredTenants.length === 0"
       class="card p-12 text-center"
     >
-      <el-icon :size="64" class="text-slate-300 dark:text-slate-600 mx-auto mb-4"><OfficeBuilding /></el-icon>
+      <Building  :size="64"  class="text-slate-300 dark:text-slate-600 mx-auto mb-4" />
       <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
         没有找到租户
       </h3>
@@ -304,7 +296,7 @@ const handleRowClick = ({ row }) => {
         variant="primary"
         @click="handleCreateTenant"
       >
-        <el-icon :size="20"><CirclePlus /></el-icon>
+        <CirclePlus  :size="20"  />
         新建租户
       </BaseButton>
     </div>

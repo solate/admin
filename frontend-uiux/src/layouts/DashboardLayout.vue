@@ -6,21 +6,21 @@ import { useAuthStore } from '@/stores/modules/auth'
 import { useTenantsStore } from '@/stores/modules/tenants'
 import TopNavbar from '@/components/layout/TopNavbar.vue'
 import {
-  HomeFilled,
-  OfficeBuilding,
+  Home,
+  Building,
   Box,
   User,
-  DataAnalysis,
-  Setting,
-  ArrowLeft,
-  ArrowRight,
+  BarChart3,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
   Bell,
   Search,
   Moon,
-  Sunny,
-  SwitchButton,
+  Sun,
+  LogOut,
   Menu
-} from '@element-plus/icons-vue'
+} from 'lucide-vue-next'
 
 const route = useRoute()
 const uiStore = useUiStore()
@@ -37,13 +37,13 @@ const navigation = computed(() => {
     {
       name: '概览',
       path: '/dashboard/overview',
-      icon: markRaw(HomeFilled),
+      icon: markRaw(Home),
       key: 'overview'
     },
     {
       name: '租户管理',
       path: '/dashboard/tenants',
-      icon: markRaw(OfficeBuilding),
+      icon: markRaw(Building),
       key: 'tenants'
     },
     {
@@ -61,7 +61,7 @@ const navigation = computed(() => {
     {
       name: '数据分析',
       path: '/dashboard/analytics',
-      icon: markRaw(DataAnalysis),
+      icon: markRaw(BarChart3),
       key: 'analytics'
     }
   ]
@@ -81,7 +81,7 @@ const bottomNavigation = [
   {
     name: '设置',
     path: '/dashboard/settings',
-    icon: markRaw(Setting),
+    icon: markRaw(Settings),
     key: 'settings'
   }
 ]
@@ -132,11 +132,11 @@ onUnmounted(() => {
             class="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
             @click="toggleMobileMenu"
           >
-            <el-icon :size="24"><Menu /></el-icon>
+            <Menu :size="24" />
           </button>
           <div class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
-              <el-icon :size="20" class="text-white"><Box /></el-icon>
+              <Box :size="20" class="text-white" />
             </div>
             <span class="text-lg font-semibold text-slate-900 dark:text-slate-100">AdminSystem</span>
           </div>
@@ -145,10 +145,10 @@ onUnmounted(() => {
         <!-- User Menu -->
         <div class="flex items-center gap-2">
           <button class="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
-            <el-icon :size="20"><Bell /></el-icon>
+            <Bell :size="20" />
           </button>
           <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-            <el-icon :size="20" class="text-primary-600 dark:text-primary-400"><User /></el-icon>
+            <User :size="20" class="text-primary-600 dark:text-primary-400" />
           </div>
         </div>
       </div>
@@ -188,7 +188,7 @@ onUnmounted(() => {
           <div class="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
             <div class="flex items-center gap-2">
               <div class="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
-                <el-icon :size="20" class="text-white"><Box /></el-icon>
+                <Box :size="20" class="text-white" />
               </div>
               <span class="text-xl font-semibold text-slate-900 dark:text-slate-100">AdminSystem</span>
             </div>
@@ -196,7 +196,7 @@ onUnmounted(() => {
               class="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               @click="closeMobileMenu"
             >
-              <el-icon :size="20"><ArrowLeft /></el-icon>
+              <ChevronLeft :size="20" />
             </button>
           </div>
 
@@ -237,7 +237,7 @@ onUnmounted(() => {
           <div class="p-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
             <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
               <div class="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                <el-icon :size="20" class="text-primary-600 dark:text-primary-400"><User /></el-icon>
+                <User :size="20" class="text-primary-600 dark:text-primary-400" />
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
@@ -253,7 +253,7 @@ onUnmounted(() => {
               class="w-full flex items-center gap-3 px-3 py-2.5 text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/30 rounded-lg transition-all cursor-pointer"
               @click="handleLogout"
             >
-              <el-icon :size="20"><SwitchButton /></el-icon>
+              <LogOut :size="20" />
               <span class="font-medium">退出登录</span>
             </button>
           </div>
@@ -272,7 +272,7 @@ onUnmounted(() => {
       <div class="flex items-center h-16 px-4 border-b border-slate-200 dark:border-slate-700">
         <div class="flex items-center gap-3 flex-1">
           <div class="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center flex-shrink-0">
-            <el-icon :size="20" class="text-white"><Box /></el-icon>
+            <Box :size="20" class="text-white" />
           </div>
           <Transition
             enter-active-class="transition-all duration-200"
@@ -294,8 +294,8 @@ onUnmounted(() => {
           class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           @click="toggleSidebar"
         >
-          <el-icon v-if="uiStore.sidebarOpen" :size="16"><ArrowLeft /></el-icon>
-          <el-icon v-else :size="16"><ArrowRight /></el-icon>
+          <ChevronLeft v-if="uiStore.sidebarOpen" :size="16" />
+          <ChevronRight v-else :size="16" />
         </button>
       </div>
 
@@ -313,7 +313,7 @@ onUnmounted(() => {
           class="px-4 py-3 bg-primary-50 dark:bg-primary-900/30 rounded-lg overflow-hidden"
         >
           <div class="flex items-center gap-2 text-primary-700 dark:text-primary-300">
-            <el-icon :size="16" class="flex-shrink-0"><OfficeBuilding /></el-icon>
+            <Building :size="16" class="flex-shrink-0" />
             <span class="text-sm font-medium truncate">
               {{ tenantsStore.currentTenant?.name || 'Default Tenant' }}
             </span>
@@ -392,7 +392,7 @@ onUnmounted(() => {
           :title="!uiStore.sidebarOpen ? '退出登录' : ''"
           @click="handleLogout"
         >
-          <el-icon :size="20" class="flex-shrink-0"><SwitchButton /></el-icon>
+          <LogOut :size="20" class="flex-shrink-0" />
           <Transition
             enter-active-class="transition-all duration-200"
             enter-from-class="opacity-0 w-0"

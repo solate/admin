@@ -1,15 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import {
-  Setting as SettingsIcon,
-  Bell,
-  Lock,
-  Wallet,
-  User,
-  Message,
-  View,
-  Hide
-} from '@element-plus/icons-vue'
+import { Setting as SettingsIcon, Bell, Lock, Wallet, User, Mail, Eye, EyeOff } from 'lucide-vue-next'
 
 const activeTab = ref('general')
 
@@ -95,7 +86,7 @@ const showNewPassword = ref(false)
               :key="tab.id"
               :index="tab.id"
             >
-              <el-icon><component :is="tab.icon" /></el-icon>
+              <component :is="tab.icon"  />
               <span>{{ tab.name }}</span>
             </el-menu-item>
           </el-menu>
@@ -303,7 +294,7 @@ const showNewPassword = ref(false)
                 >
                   <template #append>
                     <el-button
-                      :icon="showCurrentPassword ? View : Hide"
+                      :icon="showCurrentPassword ? Eye : EyeOff"
                       @click="showCurrentPassword = !showCurrentPassword"
                     />
                   </template>
@@ -317,7 +308,7 @@ const showNewPassword = ref(false)
                 >
                   <template #append>
                     <el-button
-                      :icon="showNewPassword ? View : Hide"
+                      :icon="showNewPassword ? Eye : EyeOff"
                       @click="showNewPassword = !showNewPassword"
                     />
                   </template>

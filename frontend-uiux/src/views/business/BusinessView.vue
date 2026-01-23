@@ -1,7 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-
-const { ChartBar, TrendingUp, Users, DollarSign } = icons
+import { BarChart3, TrendingUp, Users, DollarSign } from 'lucide-vue-next'
 
 const businessMetrics = ref([
   {
@@ -30,7 +29,7 @@ const businessMetrics = ref([
     value: '¥9,730',
     change: '+6.1%',
     changeType: 'positive',
-    icon: ChartBar
+    icon: BarChart3
   }
 ])
 
@@ -97,7 +96,7 @@ const statusLabels = {
         <h2 class="text-lg font-display font-semibold text-slate-900 mb-4">收入趋势</h2>
         <div class="h-64 flex items-center justify-center bg-slate-50 rounded-xl">
           <div class="text-center">
-            <component :is="ChartBar" class="w-12 h-12 text-slate-400 mx-auto mb-2" />
+            <component :is="BarChart3" class="w-12 h-12 text-slate-400 mx-auto mb-2" />
             <p class="text-slate-500">图表占位符</p>
             <p class="text-sm text-slate-400">集成 Chart.js 或 ECharts</p>
           </div>
@@ -109,7 +108,7 @@ const statusLabels = {
         <h2 class="text-lg font-display font-semibold text-slate-900 mb-4">租户分布</h2>
         <div class="h-64 flex items-center justify-center bg-slate-50 rounded-xl">
           <div class="text-center">
-            <component :is="ChartBar" class="w-12 h-12 text-slate-400 mx-auto mb-2" />
+            <component :is="BarChart3" class="w-12 h-12 text-slate-400 mx-auto mb-2" />
             <p class="text-slate-500">图表占位符</p>
             <p class="text-sm text-slate-400">集成 Chart.js 或 ECharts</p>
           </div>

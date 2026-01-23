@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
-import { User, Setting, SwitchButton, Shield, ArrowDown, Message, OfficeBuilding } from '@element-plus/icons-vue'
+import { User, Settings, LogOut, Shield, ChevronDown, Mail, Building } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -44,7 +44,7 @@ const menuItems = computed(() => [
     action: () => goToProfile('security')
   },
   {
-    icon: Setting,
+    icon: Settings,
     label: 'Settings',
     description: 'App preferences',
     action: () => goToSettings()
@@ -101,7 +101,7 @@ onUnmounted(() => {
         <p class="text-xs text-slate-500 dark:text-slate-400">{{ userRoleLabel }}</p>
       </div>
       <el-icon :size="16" class="text-slate-500 transition-transform hidden md:block" :class="{ 'rotate-180': isOpen }">
-        <ArrowDown />
+        <ChevronDown />
       </el-icon>
     </button>
 
@@ -130,7 +130,7 @@ onUnmounted(() => {
                 {{ authStore.user?.name || 'User' }}
               </p>
               <p class="text-xs text-slate-600 dark:text-slate-400 truncate flex items-center gap-1">
-                <el-icon :size="12"><Message /></el-icon>
+                <Mail  :size="12"  />
                 {{ authStore.user?.email || '' }}
               </p>
             </div>
@@ -145,7 +145,7 @@ onUnmounted(() => {
               v-if="authStore.tenantId"
               class="px-2 py-1 bg-white dark:bg-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1"
             >
-              <el-icon :size="12"><OfficeBuilding /></el-icon>
+              <Building  :size="12"  />
               {{ authStore.tenantId }}
             </span>
           </div>
@@ -179,7 +179,7 @@ onUnmounted(() => {
           >
             <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-red-100 dark:bg-red-900/30 group-hover:bg-red-200 dark:group-hover:bg-red-900/50 transition-colors">
               <el-icon :size="20" class="text-red-600 dark:text-red-400">
-                <SwitchButton />
+                <LogOut />
               </el-icon>
             </div>
             <div class="flex-1">

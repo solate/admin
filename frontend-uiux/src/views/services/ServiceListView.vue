@@ -3,20 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import {
-  Search,
-  CirclePlus,
-  Box,
-  ArrowRight,
-  Cloudy,
-  Lock,
-  DataAnalysis,
-  Message,
-  Wallet,
-  Coin,
-  Setting,
-  Lightning
-} from '@element-plus/icons-vue'
+import { Search, CirclePlus, Box, ChevronRight, Cloudy, Lock, BarChart3, Mail, Wallet, Coins, Settings, Zap } from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -112,11 +99,11 @@ const categories = [
   { value: 'all', label: '全部服务' },
   { value: 'storage', label: '存储', icon: Cloudy },
   { value: 'messaging', label: '消息', icon: Box },
-  { value: 'analytics', label: '分析', icon: DataAnalysis },
+  { value: 'analytics', label: '分析', icon: BarChart3 },
   { value: 'security', label: '安全', icon: Lock },
-  { value: 'communication', label: '通信', icon: Message },
+  { value: 'communication', label: '通信', icon: Mail },
   { value: 'payment', label: '支付', icon: Wallet },
-  { value: 'database', label: '数据库', icon: Coin }
+  { value: 'database', label: '数据库', icon: Coins }
 ]
 
 // Filtered Data
@@ -140,12 +127,12 @@ const statusConfig = {
 const categoryIcons = {
   storage: Cloudy,
   messaging: Box,
-  analytics: DataAnalysis,
+  analytics: BarChart3,
   security: Lock,
-  communication: Message,
+  communication: Mail,
   payment: Wallet,
-  database: Coin,
-  infrastructure: Lightning
+  database: Coins,
+  infrastructure: Zap
 }
 
 // Navigation
@@ -158,7 +145,7 @@ const handleViewService = (service) => {
 }
 
 const getCategoryIcon = (category) => {
-  return categoryIcons[category] || Setting
+  return categoryIcons[category] || Settings
 }
 
 const getCategoryLabel = (category) => {
@@ -185,7 +172,7 @@ const getUsagePercent = (service) => {
         variant="primary"
         @click="handleCreateService"
       >
-        <el-icon :size="20"><CirclePlus /></el-icon>
+        <CirclePlus  :size="20"  />
         添加服务
       </BaseButton>
     </div>
@@ -195,7 +182,7 @@ const getUsagePercent = (service) => {
       <div class="card p-5">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-            <el-icon :size="24" class="text-primary-600 dark:text-primary-400"><Box /></el-icon>
+            <Box  :size="24"  class="text-primary-600 dark:text-primary-400" />
           </div>
           <div>
             <p class="text-sm text-slate-600 dark:text-slate-400">总服务数</p>
@@ -207,7 +194,7 @@ const getUsagePercent = (service) => {
       <div class="card p-5">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-success-100 dark:bg-success-900/30 flex items-center justify-center">
-            <el-icon :size="24" class="text-success-600 dark:text-success-400"><Lightning /></el-icon>
+            <Zap  :size="24"  class="text-success-600 dark:text-success-400" />
           </div>
           <div>
             <p class="text-sm text-slate-600 dark:text-slate-400">运行中</p>
@@ -221,7 +208,7 @@ const getUsagePercent = (service) => {
       <div class="card p-5">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-warning-100 dark:bg-warning-900/30 flex items-center justify-center">
-            <el-icon :size="24" class="text-warning-600 dark:text-warning-400"><Setting /></el-icon>
+            <Settings  :size="24"  class="text-warning-600 dark:text-warning-400" />
           </div>
           <div>
             <p class="text-sm text-slate-600 dark:text-slate-400">维护中</p>
@@ -256,7 +243,7 @@ const getUsagePercent = (service) => {
           : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'"
         @click="selectedCategory = category.value"
       >
-        <el-icon :size="16"><component :is="category.icon || Box" /></el-icon>
+        <component :is="category.icon || Box"  :size="16"  />
         {{ category.label }}
       </button>
     </div>
@@ -264,7 +251,7 @@ const getUsagePercent = (service) => {
     <!-- Search -->
     <div class="card p-4">
       <div class="relative">
-        <el-icon :size="20" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Search /></el-icon>
+        <Search  :size="20"  class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           v-model="searchQuery"
           type="search"
@@ -350,7 +337,7 @@ const getUsagePercent = (service) => {
 
         <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <span class="text-xs text-slate-400 dark:text-slate-500">点击查看详情</span>
-          <el-icon :size="20" class="text-slate-400 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors"><ArrowRight /></el-icon>
+          <ChevronRight  :size="20"  class="text-slate-400 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors" />
         </div>
       </div>
     </div>
@@ -360,7 +347,7 @@ const getUsagePercent = (service) => {
       v-if="filteredServices.length === 0"
       class="card p-12 text-center"
     >
-      <el-icon :size="64" class="text-slate-300 dark:text-slate-600 mx-auto mb-4"><Box /></el-icon>
+      <Box  :size="64"  class="text-slate-300 dark:text-slate-600 mx-auto mb-4" />
       <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
         未找到服务
       </h3>

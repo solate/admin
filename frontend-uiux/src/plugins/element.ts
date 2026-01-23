@@ -1,7 +1,6 @@
 import ElementPlus from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import en from 'element-plus/es/locale/lang/en'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import type { App } from 'vue'
 import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
@@ -15,10 +14,6 @@ const elErrorColor = '#ef4444' // error-600
 const elInfoColor = '#0ea5e9' // info-600
 
 export function setupElementPlus(app: App) {
-  // Register all Element Plus icons
-  for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-    app.component(key, component)
-  }
 
   // Set Element Plus CSS variables to match existing design system
   const style = document.createElement('style')

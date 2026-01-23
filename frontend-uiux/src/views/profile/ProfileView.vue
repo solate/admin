@@ -3,25 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
 import { apiService } from '@/api'
+import { UserCircle, Mail, Shield, Bell, Key, Smartphone, Clock, Check, X, AlertTriangle, Globe, Building, Badge } from 'lucide-vue-next'
 
 const route = useRoute()
 const authStore = useAuthStore()
-
-const {
-  UserCircle,
-  Envelope,
-  Shield,
-  Bell,
-  Key,
-  DevicePhoneMobile,
-  Clock,
-  Check,
-  XMark,
-  ExclamationTriangle,
-  Globe,
-  Building,
-  IdentificationCard
-} = icons
 
 const activeTab = ref(route.query.tab || 'profile')
 const saving = ref(false)
@@ -31,7 +16,7 @@ const error = ref(null)
 const tabs = [
   { id: 'profile', name: 'Profile', icon: UserCircle },
   { id: 'security', name: 'Security', icon: Shield },
-  { id: 'sessions', name: 'Sessions', icon: DevicePhoneMobile },
+  { id: 'sessions', name: 'Sessions', icon: Smartphone },
   { id: 'notifications', name: 'Notifications', icon: Bell }
 ]
 
@@ -280,7 +265,7 @@ onMounted(() => {
         v-if="error"
         class="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-3"
       >
-        <ExclamationTriangle class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+        <AlertTriangle class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
         <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
       </div>
     </Transition>
@@ -324,7 +309,7 @@ onMounted(() => {
                 <div>
                   <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Full Name</label>
                   <div class="relative">
-                    <IdentificationCard class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Badge class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       v-model="profile.name"
                       type="text"
@@ -336,7 +321,7 @@ onMounted(() => {
                 <div>
                   <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Email</label>
                   <div class="relative">
-                    <Envelope class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Mail class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       v-model="profile.email"
                       type="email"
@@ -351,7 +336,7 @@ onMounted(() => {
                 <div>
                   <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Phone</label>
                   <div class="relative">
-                    <DevicePhoneMobile class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Smartphone class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       v-model="profile.phone"
                       type="tel"
@@ -522,7 +507,7 @@ onMounted(() => {
                 :class="{ 'ring-2 ring-primary-500': session.current }"
               >
                 <div class="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                  <DevicePhoneMobile class="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  <Smartphone class="w-5 h-5 text-slate-600 dark:text-slate-400" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="font-medium text-slate-900 dark:text-slate-100">
@@ -539,12 +524,12 @@ onMounted(() => {
                   class="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
                   aria-label="Revoke session"
                 >
-                  <XMark class="w-5 h-5 text-slate-400" />
+                  <X class="w-5 h-5 text-slate-400" />
                 </button>
               </div>
 
               <div v-if="sessions.length === 0" class="text-center py-8">
-                <DevicePhoneMobile class="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                <Smartphone class="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
                 <p class="text-slate-500 dark:text-slate-400">No active sessions found</p>
               </div>
             </div>
