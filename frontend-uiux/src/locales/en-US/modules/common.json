@@ -41,6 +41,7 @@
   "noData": "No Data",
   "total": "Total {count} items",
   "selected": "{count} selected",
+  "allRightsReserved": "All rights reserved.",
   "language": {
     "title": "Language",
     "zhCN": "简体中文",

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, markRaw } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, markRaw } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUiStore } from '@/stores/modules/ui'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useTenantsStore } from '@/stores/modules/tenants'
+import { usePreferencesStore } from '@/stores/modules/preferences'
 import { useI18n } from '@/locales/composables'
 import TopNavbar from '@/components/layout/TopNavbar.vue'
 import {
@@ -27,6 +28,10 @@ const { t } = useI18n()
 const uiStore = useUiStore()
 const authStore = useAuthStore()
 const tenantsStore = useTenantsStore()
+const preferencesStore = usePreferencesStore()
+
+// 初始化偏好设置
+preferencesStore.initialize()
 
 const isMobileMenuOpen = ref(false)
 
@@ -87,6 +92,61 @@ const bottomNavigation = computed(() => [
   }
 ])
 
+// ===== 偏好设置相关计算属性 =====
+
+// 布局偏好
+const layoutPrefs = computed(() => preferencesStore.layout)
+
+// 侧边栏宽度映射
+const sidebarWidthClasses = computed(() => {
+  const widthMap = {
+    narrow: uiStore.sidebarOpen ? 'w-16' : 'w-16',
+    medium: uiStore.sidebarOpen ? 'w-64' : 'w-20',
+    wide: uiStore.sidebarOpen ? 'w-80' : 'w-24'
+  }
+  return widthMap[layoutPrefs.value.sidebarWidth]
+})
+
+const mainMarginClasses = computed(() => {
+  const marginMap = {
+    narrow: 'lg:ml-16',
+    medium: uiStore.sidebarOpen ? 'lg:ml-64' : 'lg:ml-20',
+    wide: uiStore.sidebarOpen ? 'lg:ml-80' : 'lg:ml-24'
+  }
+  return marginMap[layoutPrefs.value.sidebarWidth]
+})
+
+// 导航样式 - 是否仅显示图标
+const iconOnlyNav = computed(() => layoutPrefs.value.navStyle === 'icon-only')
+
+// 通用设置偏好
+const generalPrefs = computed(() => preferencesStore.general)
+
+// 动画控制 - 当禁用动画时添加 no-animation 类
+const animationClasses = computed(() => {
+  if (!generalPrefs.value.enableAnimations) {
+    return 'no-animation'
+  }
+  return ''
+})
+
+// 页脚显示
+const showFooter = computed(() => layoutPrefs.value.showFooter)
+const showCopyright = computed(() => layoutPrefs.value.showCopyright)
+
+// 同步偏好设置的导航样式到 uiStore
+watch(
+  () => layoutPrefs.value.navStyle,
+  (newStyle) => {
+    // 如果设置为仅图标模式，自动收起侧边栏
+    if (newStyle === 'icon-only' && uiStore.sidebarOpen) {
+      uiStore.setSidebarOpen(false)
+    }
+  }
+)
+
+// =================================
+
 const isActive = (path) => {
   return route.path === path || route.path.startsWith(path + '/')
 }
@@ -116,7 +176,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50/80 to-blue-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/60">
+  <div :class="['min-h-screen bg-gradient-to-br from-slate-50 via-slate-50/80 to-blue-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/60', animationClasses]">
     <!-- Mobile Header - 使用毛玻璃+阴影代替边框，更现代 -->
     <header class="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm">
       <div class="flex items-center justify-between px-4 h-16">
@@ -254,7 +314,7 @@ onUnmounted(() => {
         'backdrop-blur-xl',
         'border-r border-slate-200/60 dark:border-slate-800/60',
         'shadow-[4px_0_24px_-8px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_24px_-8px_rgba(0,0,0,0.3)]',
-        uiStore.sidebarOpen ? 'w-64' : 'w-20'
+        sidebarWidthClasses
       ]"
     >
       <!-- Logo -->
@@ -272,7 +332,7 @@ onUnmounted(() => {
             leave-to-class="opacity-0 w-0"
           >
             <span
-              v-if="uiStore.sidebarOpen"
+              v-if="!iconOnlyNav && uiStore.sidebarOpen"
               class="text-lg font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap overflow-hidden"
             >
               AdminSystem
@@ -291,7 +351,7 @@ onUnmounted(() => {
         leave-to-class="opacity-0 h-0 mt-0 mx-0"
       >
         <div
-          v-if="uiStore.sidebarOpen && tenantsStore.currentTenant"
+          v-if="!iconOnlyNav && uiStore.sidebarOpen && tenantsStore.currentTenant"
           class="px-4 py-3 bg-primary-50 dark:bg-primary-900/30 rounded-lg overflow-hidden"
         >
           <div class="flex items-center gap-2 text-primary-700 dark:text-primary-300">
@@ -316,7 +376,7 @@ onUnmounted(() => {
           :class="isActive(item.path)
             ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'"
-          :title="!uiStore.sidebarOpen ? item.name : ''"
+          :title="iconOnlyNav || !uiStore.sidebarOpen ? item.name : ''"
         >
           <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
           <Transition
@@ -328,7 +388,7 @@ onUnmounted(() => {
             leave-to-class="opacity-0 w-0"
           >
             <span
-              v-if="uiStore.sidebarOpen"
+              v-if="!iconOnlyNav && uiStore.sidebarOpen"
               class="font-medium whitespace-nowrap overflow-hidden"
             >
               {{ item.name }}
@@ -337,7 +397,7 @@ onUnmounted(() => {
         </router-link>
 
         <!-- Divider - 柔和的分割线 -->
-        <div class="border-t border-slate-200/60 dark:border-slate-700/30" :class="uiStore.sidebarOpen ? 'pt-4 mt-4' : 'pt-3 mt-3'">
+        <div class="border-t border-slate-200/60 dark:border-slate-700/30" :class="!iconOnlyNav && uiStore.sidebarOpen ? 'pt-4 mt-4' : 'pt-3 mt-3'">
           <router-link
             v-for="item in bottomNavigation"
             :key="item.key"
@@ -346,7 +406,7 @@ onUnmounted(() => {
             :class="isActive(item.path)
               ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'"
-            :title="!uiStore.sidebarOpen ? item.name : ''"
+            :title="iconOnlyNav || !uiStore.sidebarOpen ? item.name : ''"
           >
             <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
             <Transition
@@ -358,7 +418,7 @@ onUnmounted(() => {
               leave-to-class="opacity-0 w-0"
             >
               <span
-                v-if="uiStore.sidebarOpen"
+                v-if="!iconOnlyNav && uiStore.sidebarOpen"
                 class="font-medium whitespace-nowrap overflow-hidden"
               >
                 {{ item.name }}
@@ -373,7 +433,7 @@ onUnmounted(() => {
     <main
       :class="[
         'transition-all duration-300 min-h-screen',
-        uiStore.sidebarOpen ? 'lg:ml-64' : 'lg:ml-20',
+        mainMarginClasses,
         'pt-16 lg:pt-0'
       ]"
     >
@@ -386,6 +446,19 @@ onUnmounted(() => {
           <router-view />
         </div>
       </div>
+
+      <!-- Footer -->
+      <footer
+        v-if="showFooter"
+        class="px-4 lg:px-6 py-4 mt-auto border-t border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm"
+      >
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <p>&copy; 2024 AdminSystem. {{ t('common.allRightsReserved', 'All rights reserved.') }}</p>
+          <p v-if="showCopyright" class="text-xs">
+            Built with Vue 3 + Vite + Tailwind CSS
+          </p>
+        </div>
+      </footer>
     </main>
   </div>
 </template>

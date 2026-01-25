@@ -41,6 +41,7 @@
   "noData": "暂无数据",
   "total": "共 {count} 条",
   "selected": "已选 {count} 项",
+  "allRightsReserved": "All rights reserved.",
   "language": {
     "title": "语言",
     "zhCN": "简体中文",

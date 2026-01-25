@@ -1,0 +1,150 @@
+{
+  "title": "偏好设置",
+  "description": "管理您的个性化配置",
+  "tabs": {
+    "appearance": "外观",
+    "layout": "布局",
+    "shortcuts": "快捷键",
+    "general": "通用"
+  },
+  "appearance": {
+    "title": "外观设置",
+    "description": "自定义界面主题和视觉样式",
+    "themeMode": {
+      "label": "主题模式",
+      "description": "选择应用的主题外观",
+      "light": "浅色",
+      "dark": "深色",
+      "auto": "跟随系统"
+    },
+    "themeColor": {
+      "label": "主题色",
+      "description": "选择应用的主色调",
+      "blue": "蓝色",
+      "purple": "紫色",
+      "pink": "粉色",
+      "red": "红色",
+      "orange": "橙色",
+      "green": "绿色",
+      "teal": "青色",
+      "cyan": "青蓝"
+    },
+    "darkSidebar": {
+      "label": "深色侧边栏",
+      "description": "在浅色模式下使用深色侧边栏"
+    },
+    "borderRadius": {
+      "label": "圆角大小",
+      "description": "界面元素的圆角大小",
+      "none": "无圆角",
+      "small": "小圆角",
+      "medium": "中圆角",
+      "large": "大圆角"
+    },
+    "colorBlindMode": {
+      "label": "色盲模式",
+      "description": "为色觉障碍用户优化色彩显示",
+      "none": "关闭",
+      "protanopia": "红色盲",
+      "deuteranopia": "绿色盲",
+      "tritanopia": "蓝色盲"
+    },
+    "highContrast": {
+      "label": "高对比度",
+      "description": "增强界面元素的对比度"
+    }
+  },
+  "layout": {
+    "title": "布局设置",
+    "description": "自定义界面布局和导航方式",
+    "layoutMode": {
+      "label": "布局模式",
+      "description": "选择应用的布局风格",
+      "sidebar": "侧边栏布局",
+      "topbar": "顶部栏布局"
+    },
+    "sidebarWidth": {
+      "label": "侧边栏宽度",
+      "description": "调整侧边栏的宽度",
+      "narrow": "窄",
+      "medium": "中等",
+      "wide": "宽"
+    },
+    "navStyle": {
+      "label": "导航样式",
+      "description": "导航项的显示方式",
+      "iconText": "图标+文字",
+      "iconOnly": "仅图标"
+    },
+    "showBreadcrumbs": {
+      "label": "显示面包屑",
+      "description": "在顶部显示当前页面路径"
+    },
+    "showTabs": {
+      "label": "显示标签页",
+      "description": "在顶部显示多页面标签"
+    },
+    "showWidgets": {
+      "label": "显示小部件",
+      "description": "在仪表板显示信息小部件"
+    },
+    "showFooter": {
+      "label": "显示页脚",
+      "description": "在页面底部显示页脚信息"
+    },
+    "showCopyright": {
+      "label": "显示版权信息",
+      "description": "在页脚显示版权声明"
+    }
+  },
+  "shortcuts": {
+    "title": "快捷键设置",
+    "description": "自定义键盘快捷键",
+    "search": "搜索",
+    "notifications": "通知中心",
+    "settings": "打开设置",
+    "darkMode": "切换主题",
+    "sidebar": "切换侧边栏",
+    "recordShortcut": "按下快捷键组合",
+    "pressKey": "按下按键...",
+    "clear": "清除",
+    "reset": "重置",
+    "resetAll": "全部重置",
+    "resetAllConfirm": "确定要将所有快捷键重置为默认值吗？",
+    "conflict": "快捷键冲突",
+    "conflictDesc": "该快捷键已被 {action} 使用"
+  },
+  "general": {
+    "title": "通用设置",
+    "description": "常规应用配置",
+    "language": {
+      "label": "语言",
+      "description": "选择应用界面语言"
+    },
+    "dynamicTitle": {
+      "label": "动态标题",
+      "description": "在页面标题中显示当前页面信息"
+    },
+    "enableAnimations": {
+      "label": "启用动画",
+      "description": "启用界面过渡动画效果"
+    },
+    "pageTransition": {
+      "label": "页面过渡",
+      "description": "页面切换时的过渡效果",
+      "fade": "淡入淡出",
+      "slide": "滑动",
+      "scale": "缩放"
+    }
+  },
+  "actions": {
+    "reset": "重置设置",
+    "resetConfirm": "确定要将所有设置重置为默认值吗？",
+    "export": "导出设置",
+    "import": "导入设置",
+    "importSuccess": "设置导入成功",
+    "importError": "设置导入失败，请检查文件格式",
+    "copySuccess": "已复制到剪贴板",
+    "pasteError": "粘贴失败，请检查剪贴板内容"
+  }
+}

@@ -27,7 +27,10 @@
 /* 原有的自定义样式（保留 Tailwind 类和组件样式）*/
 @layer base {
   :root {
+    /* 主题色 - 可通过偏好设置动态修改 */
     --color-primary: 37 99 235;
+    /* 圆角 - 可通过偏好设置动态修改 */
+    --border-radius: 0.5rem;
     --color-cta: 249 115 22;
     --color-bg: 248 250 252;
     --color-text: 30 41 59;
@@ -39,6 +42,23 @@
     --color-bg: 15 23 42;
     --color-text: 241 245 249;
   }
+
+  /* 动态主题色 Tailwind 类 */
+  .bg-primary-50 { background-color: rgb(var(--color-primary) / 0.05); }
+  .bg-primary-100 { background-color: rgb(var(--color-primary) / 0.1); }
+  .bg-primary-500 { background-color: rgb(var(--color-primary)); }
+  .bg-primary-600 { background-color: rgb(var(--color-primary) / 0.9); }
+  .text-primary-500 { color: rgb(var(--color-primary)); }
+  .text-primary-600 { color: rgb(var(--color-primary) / 0.9); }
+  .text-primary-700 { color: rgb(var(--color-primary) / 0.8); }
+  .border-primary-500 { border-color: rgb(var(--color-primary)); }
+  .ring-primary-500 { --tw-ring-color: rgb(var(--color-primary)); }
+
+  /* 暗色模式主题色 */
+  .dark .bg-primary-900\/30 { background-color: rgb(var(--color-primary) / 0.15); }
+  .dark .text-primary-300 { color: rgb(var(--color-primary) / 0.7); }
+  .dark .text-primary-400 { color: rgb(var(--color-primary) / 0.6); }
+  .dark .border-primary-800\/50 { border-color: rgb(var(--color-primary) / 0.3); }
 
   * {
     @apply border-slate-200 dark:border-slate-700;
@@ -139,4 +159,67 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* 用户偏好设置 - 禁用动画 */
+.no-animation,
+.no-animation *,
+.no-animation *::before,
+.no-animation *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ===== 色盲模式滤镜 ===== */
+
+/* 红色盲 (Protanopia) - 无法感知红色 */
+[data-color-blind="protanopia"] {
+  filter: url('data:image/svg+xml;utf8,\
+    <svg xmlns="http://www.w3.org/2000/svg">\
+      <filter id="protanopia">\
+        <feColorMatrix type="matrix" values="\
+          0.567, 0.433, 0, 0, 0\
+          0.558, 0.442, 0, 0, 0\
+          0, 0.242, 0.758, 0, 0\
+          0, 0, 0, 1, 0"/>\
+      </filter>\
+    </svg>#protanopia');
+}
+
+/* 绿色盲 (Deuteranopia) - 无法感知绿色 */
+[data-color-blind="deuteranopia"] {
+  filter: url('data:image/svg+xml;utf8,\
+    <svg xmlns="http://www.w3.org/2000/svg">\
+      <filter id="deuteranopia">\
+        <feColorMatrix type="matrix" values="\
+          0.625, 0.375, 0, 0, 0\
+          0.7, 0.3, 0, 0, 0\
+          0, 0.3, 0.7, 0, 0\
+          0, 0, 0, 1, 0"/>\
+      </filter>\
+    </svg>#deuteranopia');
+}
+
+/* 蓝色盲 (Tritanopia) - 无法感知蓝色 */
+[data-color-blind="tritanopia"] {
+  filter: url('data:image/svg+xml;utf8,\
+    <svg xmlns="http://www.w3.org/2000/svg">\
+      <filter id="tritanopia">\
+        <feColorMatrix type="matrix" values="\
+          0.95, 0.05, 0, 0, 0\
+          0, 0.433, 0.567, 0, 0\
+          0, 0.475, 0.525, 0, 0\
+          0, 0, 0, 1, 0"/>\
+      </filter>\
+    </svg>#tritanopia');
+}
+
+/* 高对比度模式 */
+[data-high-contrast="true"] {
+  --contrast-enhancement: contrast(1.2) saturate(1.3);
+}
+[data-high-contrast="true"] * {
+  filter: var(--contrast-enhancement, none);
 }

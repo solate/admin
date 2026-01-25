@@ -1,0 +1,150 @@
+{
+  "title": "Preferences",
+  "description": "Manage your personalization settings",
+  "tabs": {
+    "appearance": "Appearance",
+    "layout": "Layout",
+    "shortcuts": "Shortcuts",
+    "general": "General"
+  },
+  "appearance": {
+    "title": "Appearance Settings",
+    "description": "Customize your interface theme and visual style",
+    "themeMode": {
+      "label": "Theme Mode",
+      "description": "Choose the application theme appearance",
+      "light": "Light",
+      "dark": "Dark",
+      "auto": "System"
+    },
+    "themeColor": {
+      "label": "Theme Color",
+      "description": "Choose the primary accent color",
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "red": "Red",
+      "orange": "Orange",
+      "green": "Green",
+      "teal": "Teal",
+      "cyan": "Cyan"
+    },
+    "darkSidebar": {
+      "label": "Dark Sidebar",
+      "description": "Use dark sidebar in light mode"
+    },
+    "borderRadius": {
+      "label": "Border Radius",
+      "description": "Border radius for interface elements",
+      "none": "None",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large"
+    },
+    "colorBlindMode": {
+      "label": "Color Blind Mode",
+      "description": "Optimize colors for color vision deficiency",
+      "none": "Off",
+      "protanopia": "Protanopia",
+      "deuteranopia": "Deuteranopia",
+      "tritanopia": "Tritanopia"
+    },
+    "highContrast": {
+      "label": "High Contrast",
+      "description": "Increase contrast for better visibility"
+    }
+  },
+  "layout": {
+    "title": "Layout Settings",
+    "description": "Customize interface layout and navigation",
+    "layoutMode": {
+      "label": "Layout Mode",
+      "description": "Choose the application layout style",
+      "sidebar": "Sidebar Layout",
+      "topbar": "Top Bar Layout"
+    },
+    "sidebarWidth": {
+      "label": "Sidebar Width",
+      "description": "Adjust the sidebar width",
+      "narrow": "Narrow",
+      "medium": "Medium",
+      "wide": "Wide"
+    },
+    "navStyle": {
+      "label": "Navigation Style",
+      "description": "Display style for navigation items",
+      "iconText": "Icon + Text",
+      "iconOnly": "Icon Only"
+    },
+    "showBreadcrumbs": {
+      "label": "Show Breadcrumbs",
+      "description": "Show current page path at the top"
+    },
+    "showTabs": {
+      "label": "Show Tabs",
+      "description": "Show multiple page tabs at the top"
+    },
+    "showWidgets": {
+      "label": "Show Widgets",
+      "description": "Show info widgets on dashboard"
+    },
+    "showFooter": {
+      "label": "Show Footer",
+      "description": "Show footer information at the bottom"
+    },
+    "showCopyright": {
+      "label": "Show Copyright",
+      "description": "Show copyright notice in footer"
+    }
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "description": "Customize keyboard shortcuts",
+    "search": "Search",
+    "notifications": "Notifications",
+    "settings": "Open Settings",
+    "darkMode": "Toggle Theme",
+    "sidebar": "Toggle Sidebar",
+    "recordShortcut": "Press a key combination",
+    "pressKey": "Press a key...",
+    "clear": "Clear",
+    "reset": "Reset",
+    "resetAll": "Reset All",
+    "resetAllConfirm": "Are you sure you want to reset all shortcuts to defaults?",
+    "conflict": "Shortcut Conflict",
+    "conflictDesc": "This shortcut is already used by {action}"
+  },
+  "general": {
+    "title": "General Settings",
+    "description": "General application configuration",
+    "language": {
+      "label": "Language",
+      "description": "Choose the application interface language"
+    },
+    "dynamicTitle": {
+      "label": "Dynamic Title",
+      "description": "Show current page info in page title"
+    },
+    "enableAnimations": {
+      "label": "Enable Animations",
+      "description": "Enable interface transition animations"
+    },
+    "pageTransition": {
+      "label": "Page Transition",
+      "description": "Transition effect when switching pages",
+      "fade": "Fade",
+      "slide": "Slide",
+      "scale": "Scale"
+    }
+  },
+  "actions": {
+    "reset": "Reset Settings",
+    "resetConfirm": "Are you sure you want to reset all settings to defaults?",
+    "export": "Export Settings",
+    "import": "Import Settings",
+    "importSuccess": "Settings imported successfully",
+    "importError": "Failed to import settings, please check the file format",
+    "copySuccess": "Copied to clipboard",
+    "pasteError": "Paste failed, please check clipboard content"
+  }
+}

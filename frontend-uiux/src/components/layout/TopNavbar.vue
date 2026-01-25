@@ -24,6 +24,7 @@ import {
 } from 'lucide-vue-next'
 import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
 import SearchDialog from '@/components/search/SearchDialog.vue'
+import SettingsDrawer from '@/components/preferences/SettingsDrawer.vue'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -33,6 +34,7 @@ const authStore = useAuthStore()
 const searchQuery = ref('')
 const showUserMenu = ref(false)
 const showSearchDialog = ref(false)
+const showSettingsDrawer = ref(false)
 const isRefreshing = ref(false)
 
 // 刷新页面
@@ -213,13 +215,14 @@ const currentTenantName = computed(() => {
 
       <!-- Right: Actions -->
       <div class="flex items-center gap-1 lg:gap-2">
-        <!-- Settings -->
-        <router-link
-          to="/dashboard/settings"
+        <!-- Settings (Preferences) -->
+        <button
           class="hidden sm:flex items-center justify-center p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+          :aria-label="t('preferences.title')"
+          @click="showSettingsDrawer = true"
         >
           <Settings :size="20" class="text-slate-600 dark:text-slate-400" />
-        </router-link>
+        </button>
 
         <!-- Dark Mode Toggle -->
         <button
@@ -488,4 +491,9 @@ const currentTenantName = computed(() => {
     <!-- Search Dialog -->
     <SearchDialog v-model:visible="showSearchDialog" />
   </header>
+
+  <!-- Settings Drawer - Teleport to body for proper z-index context -->
+  <Teleport to="body">
+    <SettingsDrawer v-model:visible="showSettingsDrawer" />
+  </Teleport>
 </template>

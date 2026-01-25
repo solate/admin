@@ -13,6 +13,7 @@ import dashboard from './modules/dashboard.json'
 import business from './modules/business.json'
 import notification from './modules/notification.json'
 import profile from './modules/profile.json'
+import preferences from './modules/preferences.json'
 
 export default {
   common,
@@ -27,5 +28,6 @@ export default {
   dashboard,
   business,
   notification,
-  profile
+  profile,
+  preferences
 }
