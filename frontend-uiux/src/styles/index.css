@@ -43,16 +43,39 @@
     --color-text: 241 245 249;
   }
 
-  /* 动态主题色 Tailwind 类 */
+  /* 动态主题色 Tailwind 类 - 这些类会被 Tailwind 的配置覆盖，这里作为后备 */
   .bg-primary-50 { background-color: rgb(var(--color-primary) / 0.05); }
   .bg-primary-100 { background-color: rgb(var(--color-primary) / 0.1); }
-  .bg-primary-500 { background-color: rgb(var(--color-primary)); }
-  .bg-primary-600 { background-color: rgb(var(--color-primary) / 0.9); }
-  .text-primary-500 { color: rgb(var(--color-primary)); }
-  .text-primary-600 { color: rgb(var(--color-primary) / 0.9); }
-  .text-primary-700 { color: rgb(var(--color-primary) / 0.8); }
-  .border-primary-500 { border-color: rgb(var(--color-primary)); }
-  .ring-primary-500 { --tw-ring-color: rgb(var(--color-primary)); }
+  .bg-primary-200 { background-color: rgb(var(--color-primary) / 0.2); }
+  .bg-primary-300 { background-color: rgb(var(--color-primary) / 0.35); }
+  .bg-primary-400 { background-color: rgb(var(--color-primary) / 0.5); }
+  .bg-primary-500 { background-color: rgb(var(--color-primary) / 0.75); }
+  .bg-primary-600 { background-color: rgb(var(--color-primary) / 1); }
+  .bg-primary-700 { background-color: rgb(var(--color-primary) / 1); }
+  .bg-primary-800 { background-color: rgb(var(--color-primary) / 1); }
+  .bg-primary-900 { background-color: rgb(var(--color-primary) / 1); }
+  .bg-primary-950 { background-color: rgb(var(--color-primary) / 1); }
+  .text-primary-50 { color: rgb(var(--color-primary) / 0.05); }
+  .text-primary-100 { color: rgb(var(--color-primary) / 0.1); }
+  .text-primary-200 { color: rgb(var(--color-primary) / 0.2); }
+  .text-primary-300 { color: rgb(var(--color-primary) / 0.35); }
+  .text-primary-400 { color: rgb(var(--color-primary) / 0.5); }
+  .text-primary-500 { color: rgb(var(--color-primary) / 0.75); }
+  .text-primary-600 { color: rgb(var(--color-primary) / 1); }
+  .text-primary-700 { color: rgb(var(--color-primary) / 1); }
+  .text-primary-800 { color: rgb(var(--color-primary) / 1); }
+  .text-primary-900 { color: rgb(var(--color-primary) / 1); }
+  .text-primary-950 { color: rgb(var(--color-primary) / 1); }
+  .border-primary-50 { border-color: rgb(var(--color-primary) / 0.05); }
+  .border-primary-100 { border-color: rgb(var(--color-primary) / 0.1); }
+  .border-primary-200 { border-color: rgb(var(--color-primary) / 0.2); }
+  .border-primary-500 { border-color: rgb(var(--color-primary) / 0.75); }
+  .border-primary-600 { border-color: rgb(var(--color-primary) / 1); }
+  .ring-primary-500 { --tw-ring-color: rgb(var(--color-primary) / 0.75); }
+  .ring-primary-600 { --tw-ring-color: rgb(var(--color-primary) / 1); }
+  .shadow-primary-500\/25 { box-shadow: 0 10px 15px -3px rgb(var(--color-primary) / 0.25), 0 4px 6px -4px rgb(var(--color-primary) / 0.25); }
+  .shadow-primary-500\/30 { box-shadow: 0 10px 15px -3px rgb(var(--color-primary) / 0.3), 0 4px 6px -4px rgb(var(--color-primary) / 0.3); }
+  .shadow-primary-500\/10 { box-shadow: 0 1px 3px 0 rgb(var(--color-primary) / 0.1), 0 1px 2px -1px rgb(var(--color-primary) / 0.1); }
 
   /* 暗色模式主题色 */
   .dark .bg-primary-900\/30 { background-color: rgb(var(--color-primary) / 0.15); }

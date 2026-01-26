@@ -5,16 +5,20 @@ import router from './router'
 import i18n, { getCurrentLocale } from './locales'
 import directives from './directives'
 import { setupElementPlus, zhCn, en } from './plugins/element'
+import themePlugin from './plugins/theme'
 import './styles/index.css'
 
 const app = createApp(App)
 
-// 需要先初始化 Pinia，因为 setupElementPlus 中可能需要使用 store
+// 需要先初始化 Pinia
 const pinia = createPinia()
 app.use(pinia)
 
 // Setup Element Plus
 setupElementPlus(app)
+
+// 安装主题插件（必须在挂载前完成）
+app.use(themePlugin)
 
 app.use(router)
 app.use(i18n)

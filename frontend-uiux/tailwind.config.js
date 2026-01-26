@@ -8,19 +8,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary Blue - Trust & Professionalism
+        // Primary - 使用 CSS 变量支持动态主题色切换
+        // 浅色级别用于背景，深色级别用于文字/边框
+        // 500-600 是主要的鲜艳颜色，完全不透明
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          DEFAULT: '#2563eb'
+          50: 'rgb(var(--color-primary) / 0.05)',
+          100: 'rgb(var(--color-primary) / 0.1)',
+          200: 'rgb(var(--color-primary) / 0.2)',
+          300: 'rgb(var(--color-primary) / 0.35)',
+          400: 'rgb(var(--color-primary) / 0.5)',
+          500: 'rgb(var(--color-primary) / 0.75)',
+          600: 'rgb(var(--color-primary) / 1)',
+          700: 'rgb(var(--color-primary) / 1)',
+          800: 'rgb(var(--color-primary) / 1)',
+          900: 'rgb(var(--color-primary) / 1)',
+          950: 'rgb(var(--color-primary) / 1)',
+          DEFAULT: 'rgb(var(--color-primary) / 1)'
         },
         // CTA Orange - Contrast & Action
         cta: {

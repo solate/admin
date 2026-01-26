@@ -5,7 +5,6 @@ import { ref, watch, computed } from 'vue'
 import type { UserPreferences } from '@/types/preferences'
 import { DEFAULT_PREFERENCES, PREFERENCES_STORAGE_KEY } from '@/types/preferences'
 import { useUiStore } from './ui'
-import { useI18n } from 'vue-i18n'
 
 export const usePreferencesStore = defineStore('preferences', () => {
   // 从 localStorage 读取初始状态
@@ -32,15 +31,12 @@ export const usePreferencesStore = defineStore('preferences', () => {
     if (isInitialized.value) return
 
     const uiStore = useUiStore()
-    const { locale } = useI18n()
 
     // 同步主题模式
     syncThemeMode(appearance.value.themeMode)
 
     // 同步语言
-    if (general.value.language !== locale.value) {
-      uiStore.setLocale(general.value.language)
-    }
+    uiStore.setLocale(general.value.language)
 
     // 应用外观设置到 DOM
     applyAppearanceSettings()

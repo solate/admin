@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePreferencesStore } from '@/stores/modules/preferences'
+import { useTheme } from '@/composables/useTheme'
 import { THEME_COLORS } from '@/types/preferences'
 import {
   Sun,
@@ -13,7 +14,22 @@ import {
 const { t } = useI18n()
 const preferencesStore = usePreferencesStore()
 
-// 外观设置
+// 使用 useTheme composable 获取主题相关功能
+const {
+  primaryColor,
+  isDark,
+  themeMode,
+  borderRadius,
+  colorBlindMode,
+  highContrast,
+  setThemeColor,
+  setThemeMode,
+  setBorderRadius,
+  setColorBlindMode,
+  toggleHighContrast
+} = useTheme()
+
+// 外观设置（保留以兼容现有代码）
 const appearance = computed(() => preferencesStore.appearance)
 
 // 主题模式选项
@@ -56,32 +72,27 @@ const colorBlindOptions = computed(() => [
 
 // 更新主题模式
 function updateThemeMode(mode: 'light' | 'dark' | 'auto') {
-  preferencesStore.updateAppearance('themeMode', mode)
+  setThemeMode(mode)
 }
 
 // 更新主题色
 function updateThemeColor(color: string) {
-  preferencesStore.updateAppearance('primaryColor', color)
+  setThemeColor(color)
 }
 
 // 更新圆角大小
 function updateBorderRadius(radius: 'none' | 'small' | 'medium' | 'large') {
-  preferencesStore.updateAppearance('borderRadius', radius)
+  setBorderRadius(radius)
 }
 
-// 切换深色侧边栏
+// 切换深色侧边栏（保留原有功能）
 function toggleDarkSidebar() {
   preferencesStore.updateAppearance('darkSidebar', !appearance.value.darkSidebar)
 }
 
 // 更新色盲模式
 function updateColorBlindMode(mode: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia') {
-  preferencesStore.updateAppearance('colorBlindMode', mode)
-}
-
-// 切换高对比度
-function toggleHighContrast() {
-  preferencesStore.updateAppearance('highContrast', !appearance.value.highContrast)
+  setColorBlindMode(mode)
 }
 </script>
 
