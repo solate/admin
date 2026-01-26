@@ -15,6 +15,7 @@
 | [005](005-html-nesting-warning.md) | HTML 嵌套警告（p 元素嵌套） | ✅ 已修复 | 2025-01-25 |
 | [006](006-project-structure-optimization.md) | 项目结构优化与主题切换修复 | ✅ 已完成 | 2025-01-26 |
 | [007](007-claudemd-simplification.md) | CLAUDE.md 精简优化 | ✅ 已完成 | 2026-01-26 |
+| [008](008-preferences-panel-enhancement.md) | 设置面板系统增强 | ✅ 已完成 | 2026-01-26 |
 
 ---
 
@@ -42,6 +43,7 @@
 | [design-system.md](design-system.md) | 设计系统（颜色、字体、组件规范） |
 | [006-project-structure-optimization.md](006-project-structure-optimization.md) | 项目结构优化与主题切换修复 |
 | [007-claudemd-simplification.md](007-claudemd-simplification.md) | CLAUDE.md 精简记录 |
+| [008-preferences-panel-enhancement.md](008-preferences-panel-enhancement.md) | 设置面板系统增强（外观/布局/通用设置） |
 
 ---
 

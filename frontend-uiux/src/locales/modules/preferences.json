@@ -5,7 +5,8 @@
     "appearance": "外观",
     "layout": "布局",
     "shortcuts": "快捷键",
-    "general": "通用"
+    "general": "通用",
+    "advanced": "高级"
   },
   "appearance": {
     "title": "外观设置",
@@ -33,13 +34,22 @@
       "label": "深色侧边栏",
       "description": "在浅色模式下使用深色侧边栏"
     },
+    "darkHeader": {
+      "label": "深色顶栏",
+      "description": "在浅色模式下使用深色顶栏"
+    },
     "borderRadius": {
       "label": "圆角大小",
       "description": "界面元素的圆角大小",
       "none": "无圆角",
       "small": "小圆角",
       "medium": "中圆角",
-      "large": "大圆角"
+      "large": "大圆角",
+      "custom": "自定义"
+    },
+    "customBorderRadius": {
+      "label": "自定义圆角",
+      "placeholder": "例如: 0.25rem 或 4px"
     },
     "colorBlindMode": {
       "label": "色盲模式",
@@ -52,6 +62,13 @@
     "highContrast": {
       "label": "高对比度",
       "description": "增强界面元素的对比度"
+    },
+    "grayMode": {
+      "label": "灰色模式",
+      "description": "将界面转换为灰度显示"
+    },
+    "advanced": {
+      "label": "高级选项"
     }
   },
   "layout": {
@@ -61,20 +78,81 @@
       "label": "布局模式",
       "description": "选择应用的布局风格",
       "sidebar": "侧边栏布局",
-      "topbar": "顶部栏布局"
+      "topbar": "顶部栏布局",
+      "mixed": "混合布局",
+      "horizontal": "水平布局"
     },
-    "sidebarWidth": {
-      "label": "侧边栏宽度",
-      "description": "调整侧边栏的宽度",
-      "narrow": "窄",
-      "medium": "中等",
-      "wide": "宽"
+    "sidebarSettings": {
+      "label": "侧边栏设置",
+      "width": {
+        "label": "侧边栏宽度",
+        "description": "调整侧边栏的宽度"
+      },
+      "collapsedWidth": {
+        "label": "折叠宽度",
+        "description": "侧边栏折叠后的宽度"
+      },
+      "collapsible": {
+        "label": "可折叠",
+        "description": "允许折叠侧边栏"
+      },
+      "defaultCollapsed": {
+        "label": "默认折叠",
+        "description": "侧边栏默认处于折叠状态"
+      },
+      "accordion": {
+        "label": "手风琴模式",
+        "description": "菜单项展开时自动收起其他项"
+      }
+    },
+    "headerSettings": {
+      "label": "顶栏设置",
+      "height": {
+        "label": "顶栏高度",
+        "description": "调整顶栏的高度"
+      },
+      "mode": {
+        "label": "顶栏模式",
+        "static": "静止",
+        "fixed": "固定",
+        "autoHide": "自动隐藏"
+      }
+    },
+    "contentSettings": {
+      "label": "内容区域",
+      "widthMode": {
+        "label": "内容宽度",
+        "fluid": "流式布局",
+        "fixed": "定宽布局"
+      },
+      "fixedWidth": {
+        "label": "定宽数值",
+        "description": "设置内容区域的固定宽度"
+      }
     },
     "navStyle": {
       "label": "导航样式",
       "description": "导航项的显示方式",
       "iconText": "图标+文字",
       "iconOnly": "仅图标"
+    },
+    "tabsSettings": {
+      "label": "标签页设置",
+      "style": {
+        "label": "标签页样式",
+        "chrome": "Chrome 风格",
+        "plain": "简约风格",
+        "card": "卡片风格",
+        "smart": "智能风格"
+      },
+      "persistent": {
+        "label": "持久化",
+        "description": "刷新后保留打开的标签页"
+      },
+      "draggable": {
+        "label": "可拖拽",
+        "description": "允许拖拽调整标签页顺序"
+      }
     },
     "showBreadcrumbs": {
       "label": "显示面包屑",
@@ -86,7 +164,7 @@
     },
     "showWidgets": {
       "label": "显示小部件",
-      "description": "在仪表板显示信息小部件"
+      "description": "在界面显示信息小部件"
     },
     "showFooter": {
       "label": "显示页脚",
@@ -130,11 +208,121 @@
       "description": "启用界面过渡动画效果"
     },
     "pageTransition": {
-      "label": "页面过渡",
+      "label": "页面切换动画",
       "description": "页面切换时的过渡效果",
       "fade": "淡入淡出",
       "slide": "滑动",
-      "scale": "缩放"
+      "scale": "缩放",
+      "zoom": "缩放",
+      "fadeSlide": "淡入滑动"
+    },
+    "pageProgress": {
+      "label": "页面切换进度条",
+      "description": "顶部加载进度条"
+    },
+    "pageLoading": {
+      "label": "页面切换 Loading",
+      "description": "页面加载遮罩层"
+    },
+    "animationEffects": {
+      "label": "动画效果"
+    },
+    "checkUpdates": {
+      "label": "检查更新",
+      "description": "定期检查新版本",
+      "interval": "检查间隔",
+      "intervalUnit": "天"
+    },
+    "about": {
+      "label": "关于",
+      "version": "版本",
+      "techStack": "技术栈"
+    }
+  },
+  "advanced": {
+    "title": "高级设置",
+    "description": "小部件和版权信息配置",
+    "widgets": {
+      "title": "小部件设置",
+      "position": {
+        "label": "小部件位置",
+        "auto": "自动",
+        "autoDesc": "根据布局自动选择",
+        "header": "顶栏",
+        "headerDesc": "显示在顶部导航栏",
+        "sidebar": "侧边栏",
+        "sidebarDesc": "显示在侧边栏底部"
+      },
+      "showWidgets": "显示小部件",
+      "items": {
+        "globalSearch": {
+          "label": "全局搜索",
+          "description": "快捷搜索功能"
+        },
+        "themeToggle": {
+          "label": "主题切换",
+          "description": "明暗主题切换"
+        },
+        "languageToggle": {
+          "label": "语言切换",
+          "description": "中英文切换"
+        },
+        "fullscreen": {
+          "label": "全屏",
+          "description": "全屏显示"
+        },
+        "notification": {
+          "label": "通知",
+          "description": "消息通知"
+        },
+        "lockScreen": {
+          "label": "锁屏",
+          "description": "屏幕锁定"
+        },
+        "sidebarToggle": {
+          "label": "侧边栏切换",
+          "description": "显示/隐藏侧边栏"
+        },
+        "refresh": {
+          "label": "刷新",
+          "description": "刷新当前页面"
+        }
+      }
+    },
+    "copyright": {
+      "title": "版权信息",
+      "enable": {
+        "label": "显示版权信息",
+        "description": "在页脚显示版权声明"
+      },
+      "companyName": {
+        "label": "公司名称",
+        "placeholder": "输入公司名称"
+      },
+      "companySiteLink": {
+        "label": "公司网站",
+        "placeholder": "https://example.com"
+      },
+      "date": {
+        "label": "版权年份",
+        "placeholder": "2024 或 2020-2024"
+      },
+      "icp": {
+        "label": "ICP 备案号",
+        "placeholder": "京ICP备XXXXXXXX号"
+      },
+      "icpLink": {
+        "label": "ICP 查询链接",
+        "placeholder": "https://beian.miit.gov.cn"
+      },
+      "settingShow": {
+        "label": "在设置中显示",
+        "description": "允许在系统设置中修改版权信息"
+      }
+    },
+    "preview": {
+      "label": "设置预览",
+      "description": "实时预览高级设置效果"
     }
   },
   "actions": {

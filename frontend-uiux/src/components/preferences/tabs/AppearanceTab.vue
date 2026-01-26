@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePreferencesStore } from '@/stores/modules/preferences'
 import { useTheme } from '@/composables/useTheme'
@@ -8,7 +8,9 @@ import {
   Sun,
   Moon,
   Monitor,
-  Palette
+  Palette,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-vue-next'
 
 const { t } = useI18n()
@@ -31,6 +33,9 @@ const {
 
 // 外观设置（保留以兼容现有代码）
 const appearance = computed(() => preferencesStore.appearance)
+
+// 折叠面板状态
+const advancedExpanded = ref(false)
 
 // 主题模式选项
 const themeModeOptions = computed(() => [
@@ -59,7 +64,8 @@ const borderRadiusOptions = computed(() => [
   { value: 'none' as const, label: '无' },
   { value: 'small' as const, label: '小' },
   { value: 'medium' as const, label: '中' },
-  { value: 'large' as const, label: '大' }
+  { value: 'large' as const, label: '大' },
+  { value: 'custom' as const, label: '自定义' }
 ])
 
 // 色盲模式选项
@@ -81,18 +87,38 @@ function updateThemeColor(color: string) {
 }
 
 // 更新圆角大小
-function updateBorderRadius(radius: 'none' | 'small' | 'medium' | 'large') {
+function updateBorderRadius(radius: 'none' | 'small' | 'medium' | 'large' | 'custom') {
   setBorderRadius(radius)
 }
 
-// 切换深色侧边栏（保留原有功能）
+// 切换深色侧边栏
 function toggleDarkSidebar() {
   preferencesStore.updateAppearance('darkSidebar', !appearance.value.darkSidebar)
+}
+
+// 切换深色顶栏
+function toggleDarkHeader() {
+  preferencesStore.updateAppearance('darkHeader', !appearance.value.darkHeader)
+}
+
+// 切换灰色模式
+function toggleGrayMode() {
+  preferencesStore.updateAppearance('grayMode', !appearance.value.grayMode)
 }
 
 // 更新色盲模式
 function updateColorBlindMode(mode: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia') {
   setColorBlindMode(mode)
+}
+
+// 更新自定义圆角值
+function updateCustomBorderRadius(value: string) {
+  preferencesStore.updateAppearance('customBorderRadius', value)
+}
+
+// 切换高级选项展开状态
+function toggleAdvanced() {
+  advancedExpanded.value = !advancedExpanded.value
 }
 </script>
 
@@ -113,10 +139,10 @@ function updateColorBlindMode(mode: 'none' | 'protanopia' | 'deuteranopia' | 'tr
       </div>
     </div>
 
-    <!-- 主题模式 - 卡片式选择 -->
+    <!-- 基础主题设置 -->
     <section>
       <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-        {{ t('preferences.appearance.themeMode.label') }}
+        主题模式
       </h4>
       <div class="grid grid-cols-3 gap-3">
         <button
@@ -157,10 +183,10 @@ function updateColorBlindMode(mode: 'none' | 'protanopia' | 'deuteranopia' | 'tr
       </div>
     </section>
 
-    <!-- 主题色 - 精美色板 -->
+    <!-- 主题色 -->
     <section>
       <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-        {{ t('preferences.appearance.themeColor.label') }}
+        主题色
       </h4>
       <div class="flex flex-wrap gap-3">
         <button
@@ -187,12 +213,12 @@ function updateColorBlindMode(mode: 'none' | 'protanopia' | 'deuteranopia' | 'tr
       </div>
     </section>
 
-    <!-- 圆角大小 - 精美卡片 -->
+    <!-- 圆角大小 -->
     <section>
       <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-        {{ t('preferences.appearance.borderRadius.label') }}
+        圆角大小
       </h4>
-      <div class="grid grid-cols-4 gap-3">
+      <div class="grid grid-cols-5 gap-3">
         <button
           v-for="option in borderRadiusOptions"
           :key="option.value"
@@ -201,7 +227,7 @@ function updateColorBlindMode(mode: 'none' | 'protanopia' | 'deuteranopia' | 'tr
             appearance.borderRadius === option.value
               ? 'border-primary-500 shadow-md shadow-primary-500/10'
               : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600',
-            option.value === 'none' ? 'rounded-none' : option.value === 'small' ? 'rounded-lg' : option.value === 'medium' ? 'rounded-xl' : 'rounded-2xl'
+            option.value === 'none' ? 'rounded-none' : option.value === 'small' ? 'rounded-lg' : option.value === 'medium' ? 'rounded-xl' : option.value === 'large' ? 'rounded-2xl' : 'rounded-xl'
           ]"
           @click="updateBorderRadius(option.value)"
         >
@@ -210,102 +236,152 @@ function updateColorBlindMode(mode: 'none' | 'protanopia' | 'deuteranopia' | 'tr
           </span>
         </button>
       </div>
-    </section>
 
-    <!-- 切换开关组 -->
-    <section class="space-y-3">
-      <!-- 深色侧边栏 -->
-      <div class="flex items-center justify-between p-4 bg-white dark:bg-slate-700/30 rounded-2xl border border-slate-200 dark:border-slate-700 transition-all duration-200 hover:shadow-md">
-        <div class="flex items-center gap-3">
-          <div class="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-            <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-            </svg>
-          </div>
-          <div>
-            <h5 class="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              {{ t('preferences.appearance.darkSidebar.label') }}
-            </h5>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {{ t('preferences.appearance.darkSidebar.description') }}
-            </p>
-          </div>
-        </div>
-        <button
-          class="relative w-14 h-7 rounded-full transition-all duration-300 cursor-pointer"
-          :class="appearance.darkSidebar ? 'bg-primary-500 shadow-lg shadow-primary-500/30' : 'bg-slate-300 dark:bg-slate-600'"
-          @click="toggleDarkSidebar"
-        >
-          <span
-            class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300"
-            :class="appearance.darkSidebar ? 'translate-x-7' : ''"
-          />
-        </button>
-      </div>
-
-      <!-- 高对比度 -->
-      <div class="flex items-center justify-between p-4 bg-white dark:bg-slate-700/30 rounded-2xl border border-slate-200 dark:border-slate-700 transition-all duration-200 hover:shadow-md">
-        <div class="flex items-center gap-3">
-          <div class="p-2.5 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
-            <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          </div>
-          <div>
-            <h5 class="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              {{ t('preferences.appearance.highContrast.label') }}
-            </h5>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {{ t('preferences.appearance.highContrast.description') }}
-            </p>
-          </div>
-        </div>
-        <button
-          class="relative w-14 h-7 rounded-full transition-all duration-300 cursor-pointer"
-          :class="appearance.highContrast ? 'bg-primary-500 shadow-lg shadow-primary-500/30' : 'bg-slate-300 dark:bg-slate-600'"
-          @click="toggleHighContrast"
-        >
-          <span
-            class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300"
-            :class="appearance.highContrast ? 'translate-x-7' : ''"
-          />
-        </button>
+      <!-- 自定义圆角输入 -->
+      <div v-if="appearance.borderRadius === 'custom'" class="mt-3">
+        <input
+          type="text"
+          :value="appearance.customBorderRadius"
+          placeholder="例如: 0.25rem 或 4px"
+          class="w-full px-4 py-2.5 bg-white dark:bg-slate-700/50 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-200"
+          @input="(e) => updateCustomBorderRadius((e.target as HTMLInputElement).value)"
+        />
       </div>
     </section>
 
-    <!-- 色盲模式 - 下拉选择 -->
-    <section>
-      <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-        {{ t('preferences.appearance.colorBlindMode.label') }}
-      </h4>
-      <div class="relative">
-        <select
-          :value="appearance.colorBlindMode"
-          class="w-full px-4 py-3 bg-white dark:bg-slate-700/50 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none cursor-pointer appearance-none transition-all duration-200 hover:border-slate-300 dark:hover:border-slate-600"
-          @change="updateColorBlindMode($event.target.value as any)"
-        >
-          <option
-            v-for="option in colorBlindOptions"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </option>
-        </select>
-        <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-          <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
+    <!-- 高级选项折叠面板 -->
+    <section class="border-2 border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+      <button
+        class="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+        @click="toggleAdvanced"
+      >
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+            <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+          </div>
+          <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">高级选项</span>
         </div>
-      </div>
-      <div v-if="appearance.colorBlindMode !== 'none'" class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
-        <p class="text-sm text-amber-800 dark:text-amber-300 flex items-center gap-2">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          色盲模式已启用，页面色彩已调整
-        </p>
-      </div>
+        <component :is="advancedExpanded ? ChevronUp : ChevronDown" :size="18" class="text-slate-500" />
+      </button>
+
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        enter-from-class="opacity-0 -translate-y-2"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition-all duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-2"
+      >
+        <div v-if="advancedExpanded" class="p-4 space-y-3 bg-white dark:bg-slate-900/30">
+          <!-- 深色侧边栏 -->
+          <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              </div>
+              <div>
+                <h5 class="text-sm font-medium text-slate-800 dark:text-slate-200">深色侧边栏</h5>
+                <p class="text-xs text-slate-500 dark:text-slate-400">浅色模式下使用深色侧边栏</p>
+              </div>
+            </div>
+            <button
+              class="relative w-12 h-6 rounded-full transition-all duration-300 cursor-pointer"
+              :class="appearance.darkSidebar ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'"
+              @click="toggleDarkSidebar"
+            >
+              <span
+                class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300"
+                :class="appearance.darkSidebar ? 'translate-x-6' : ''"
+              />
+            </button>
+          </div>
+
+          <!-- 深色顶栏 -->
+          <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+                <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                </svg>
+              </div>
+              <div>
+                <h5 class="text-sm font-medium text-slate-800 dark:text-slate-200">深色顶栏</h5>
+                <p class="text-xs text-slate-500 dark:text-slate-400">浅色模式下使用深色顶栏</p>
+              </div>
+            </div>
+            <button
+              class="relative w-12 h-6 rounded-full transition-all duration-300 cursor-pointer"
+              :class="appearance.darkHeader ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'"
+              @click="toggleDarkHeader"
+            >
+              <span
+                class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300"
+                :class="appearance.darkHeader ? 'translate-x-6' : ''"
+              />
+            </button>
+          </div>
+
+          <!-- 灰色模式 -->
+          <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                <svg class="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              </div>
+              <div>
+                <h5 class="text-sm font-medium text-slate-800 dark:text-slate-200">灰色模式</h5>
+                <p class="text-xs text-slate-500 dark:text-slate-400">将界面转换为灰色调</p>
+              </div>
+            </div>
+            <button
+              class="relative w-12 h-6 rounded-full transition-all duration-300 cursor-pointer"
+              :class="appearance.grayMode ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'"
+              @click="toggleGrayMode"
+            >
+              <span
+                class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300"
+                :class="appearance.grayMode ? 'translate-x-6' : ''"
+              />
+            </button>
+          </div>
+
+          <!-- 色盲模式 -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </div>
+              <h5 class="text-sm font-medium text-slate-800 dark:text-slate-200">色盲模式</h5>
+            </div>
+            <select
+              :value="appearance.colorBlindMode"
+              class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none cursor-pointer"
+              @change="updateColorBlindMode($event.target.value as any)"
+            >
+              <option
+                v-for="option in colorBlindOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+            <div v-if="appearance.colorBlindMode !== 'none'" class="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+              <p class="text-xs text-amber-800 dark:text-amber-300">
+                色盲模式已启用，页面色彩已调整以辅助视觉
+              </p>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </section>
   </div>
 </template>

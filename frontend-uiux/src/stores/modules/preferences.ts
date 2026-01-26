@@ -22,6 +22,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const layout = computed(() => preferences.value.layout)
   const shortcuts = computed(() => preferences.value.shortcuts)
   const general = computed(() => preferences.value.general)
+  const widgets = computed(() => preferences.value.widgets)
+  const copyright = computed(() => preferences.value.copyright)
 
   /**
    * 初始化偏好设置
@@ -98,6 +100,13 @@ export const usePreferencesStore = defineStore('preferences', () => {
       root.removeAttribute('data-high-contrast')
     }
 
+    // 应用灰色模式
+    if (appearance.value.grayMode) {
+      root.setAttribute('data-gray-mode', 'true')
+    } else {
+      root.removeAttribute('data-gray-mode')
+    }
+
     // 应用主题色
     if (appearance.value.primaryColor) {
       // 将十六进制颜色转换为 RGB
@@ -109,13 +118,14 @@ export const usePreferencesStore = defineStore('preferences', () => {
     }
 
     // 应用圆角设置
-    const borderRadiusMap = {
+    const borderRadiusMap: Record<string, string> = {
       none: '0',
       small: '0.125rem',
       medium: '0.5rem',
-      large: '1rem'
+      large: '1rem',
+      custom: appearance.value.customBorderRadius || '0.5rem'
     }
-    root.style.setProperty('--border-radius', borderRadiusMap[appearance.value.borderRadius])
+    root.style.setProperty('--border-radius', borderRadiusMap[appearance.value.borderRadius] || '0.5rem')
   }
 
   /**
@@ -173,8 +183,31 @@ export const usePreferencesStore = defineStore('preferences', () => {
   /**
    * 更新快捷键
    */
-  function updateShortcut(actionId: string, keyCombination: string) {
-    preferences.value.shortcuts[actionId] = keyCombination
+  function updateShortcut<K extends keyof UserPreferences['shortcuts']>(
+    key: K,
+    value: UserPreferences['shortcuts'][K]
+  ) {
+    preferences.value.shortcuts[key] = value
+  }
+
+  /**
+   * 更新小部件设置
+   */
+  function updateWidgets<K extends keyof UserPreferences['widgets']>(
+    key: K,
+    value: UserPreferences['widgets'][K]
+  ) {
+    preferences.value.widgets[key] = value
+  }
+
+  /**
+   * 更新版权设置
+   */
+  function updateCopyright<K extends keyof UserPreferences['copyright']>(
+    key: K,
+    value: UserPreferences['copyright'][K]
+  ) {
+    preferences.value.copyright[key] = value
   }
 
   /**
@@ -216,6 +249,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
     layout,
     shortcuts,
     general,
+    widgets,
+    copyright,
 
     // Actions
     initialize,
@@ -223,6 +258,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
     updateLayout,
     updateGeneral,
     updateShortcut,
+    updateWidgets,
+    updateCopyright,
     resetToDefaults,
     exportSettings,
     importSettings

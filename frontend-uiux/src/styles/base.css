@@ -118,6 +118,37 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* 灰色模式 */
+[data-gray-mode="true"] * {
+  filter: grayscale(100%) !important;
+}
+
+/* 色盲模式 */
+[data-color-blind="protanopia"] * {
+  filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Cfilter id='protanopia'%3E%3CfeColorMatrix type='matrix' values='0.567, 0.433, 0, 0, 0 0.433, 0.567, 0, 0, 0 0, 0, 1, 0'/%3E%3C/filter%3E%3C/svg%3E");
+}
+
+[data-color-blind="deuteranopia"] * {
+  filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Cfilter id='deuteranopia'%3E%3CfeColorMatrix type='matrix' values='0.625, 0.375, 0, 0, 0 0.375, 0.625, 0, 0, 0 0, 0, 1, 0'/%3E%3C/filter%3E%3C/svg%3E");
+}
+
+[data-color-blind="tritanopia"] * {
+  filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Cfilter id='tritanopia'%3E%3CfeColorMatrix type='matrix' values='0.95, 0.05, 0, 0, 0 0, 0.433, 0.475, 0, 0, 0 0, 0.475, 0.95, 0, 0, 0'/%3E%3C/filter%3E%3C/svg%3E");
+}
+
+/* 深色顶栏 */
+[data-dark-header="true"] .topbar {
+  background: hsl(var(--dark-slate-800) / 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid hsl(var(--dark-slate-700) / 0.5);
+}
+
+/* 深色侧边栏 */
+[data-dark-sidebar="true"] .sidebar {
+  background: hsl(var(--dark-slate-800) / 0.95);
+  border-right: 1px solid hsl(var(--dark-slate-700) / 0.5);
+}
+
 .glass-card {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);

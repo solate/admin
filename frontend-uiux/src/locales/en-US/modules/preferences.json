@@ -5,7 +5,8 @@
     "appearance": "Appearance",
     "layout": "Layout",
     "shortcuts": "Shortcuts",
-    "general": "General"
+    "general": "General",
+    "advanced": "Advanced"
   },
   "appearance": {
     "title": "Appearance Settings",
@@ -33,13 +34,22 @@
       "label": "Dark Sidebar",
       "description": "Use dark sidebar in light mode"
     },
+    "darkHeader": {
+      "label": "Dark Header",
+      "description": "Use dark header in light mode"
+    },
     "borderRadius": {
       "label": "Border Radius",
       "description": "Border radius for interface elements",
       "none": "None",
       "small": "Small",
       "medium": "Medium",
-      "large": "Large"
+      "large": "Large",
+      "custom": "Custom"
+    },
+    "customBorderRadius": {
+      "label": "Custom Border Radius",
+      "placeholder": "e.g. 0.25rem or 4px"
     },
     "colorBlindMode": {
       "label": "Color Blind Mode",
@@ -52,6 +62,13 @@
     "highContrast": {
       "label": "High Contrast",
       "description": "Increase contrast for better visibility"
+    },
+    "grayMode": {
+      "label": "Gray Mode",
+      "description": "Convert interface to grayscale display"
+    },
+    "advanced": {
+      "label": "Advanced Options"
     }
   },
   "layout": {
@@ -61,20 +78,81 @@
       "label": "Layout Mode",
       "description": "Choose the application layout style",
       "sidebar": "Sidebar Layout",
-      "topbar": "Top Bar Layout"
+      "topbar": "Top Bar Layout",
+      "mixed": "Mixed Layout",
+      "horizontal": "Horizontal Layout"
     },
-    "sidebarWidth": {
-      "label": "Sidebar Width",
-      "description": "Adjust the sidebar width",
-      "narrow": "Narrow",
-      "medium": "Medium",
-      "wide": "Wide"
+    "sidebarSettings": {
+      "label": "Sidebar Settings",
+      "width": {
+        "label": "Sidebar Width",
+        "description": "Adjust the sidebar width"
+      },
+      "collapsedWidth": {
+        "label": "Collapsed Width",
+        "description": "Width when sidebar is collapsed"
+      },
+      "collapsible": {
+        "label": "Collapsible",
+        "description": "Allow sidebar to be collapsed"
+      },
+      "defaultCollapsed": {
+        "label": "Default Collapsed",
+        "description": "Sidebar is collapsed by default"
+      },
+      "accordion": {
+        "label": "Accordion Mode",
+        "description": "Auto-collapse other items when expanding"
+      }
+    },
+    "headerSettings": {
+      "label": "Header Settings",
+      "height": {
+        "label": "Header Height",
+        "description": "Adjust the header height"
+      },
+      "mode": {
+        "label": "Header Mode",
+        "static": "Static",
+        "fixed": "Fixed",
+        "autoHide": "Auto Hide"
+      }
+    },
+    "contentSettings": {
+      "label": "Content Area",
+      "widthMode": {
+        "label": "Content Width",
+        "fluid": "Fluid Layout",
+        "fixed": "Fixed Width"
+      },
+      "fixedWidth": {
+        "label": "Fixed Width Value",
+        "description": "Set the fixed width of content area"
+      }
     },
     "navStyle": {
       "label": "Navigation Style",
       "description": "Display style for navigation items",
       "iconText": "Icon + Text",
       "iconOnly": "Icon Only"
+    },
+    "tabsSettings": {
+      "label": "Tabs Settings",
+      "style": {
+        "label": "Tabs Style",
+        "chrome": "Chrome Style",
+        "plain": "Plain Style",
+        "card": "Card Style",
+        "smart": "Smart Style"
+      },
+      "persistent": {
+        "label": "Persistent",
+        "description": "Keep open tabs after refresh"
+      },
+      "draggable": {
+        "label": "Draggable",
+        "description": "Allow dragging to reorder tabs"
+      }
     },
     "showBreadcrumbs": {
       "label": "Show Breadcrumbs",
@@ -86,7 +164,7 @@
     },
     "showWidgets": {
       "label": "Show Widgets",
-      "description": "Show info widgets on dashboard"
+      "description": "Show info widgets on interface"
     },
     "showFooter": {
       "label": "Show Footer",
@@ -130,11 +208,121 @@
       "description": "Enable interface transition animations"
     },
     "pageTransition": {
-      "label": "Page Transition",
+      "label": "Page Transition Animation",
       "description": "Transition effect when switching pages",
       "fade": "Fade",
       "slide": "Slide",
-      "scale": "Scale"
+      "scale": "Scale",
+      "zoom": "Zoom",
+      "fadeSlide": "Fade Slide"
+    },
+    "pageProgress": {
+      "label": "Page Progress Bar",
+      "description": "Loading progress bar at the top"
+    },
+    "pageLoading": {
+      "label": "Page Loading",
+      "description": "Page loading overlay"
+    },
+    "animationEffects": {
+      "label": "Animation Effects"
+    },
+    "checkUpdates": {
+      "label": "Check Updates",
+      "description": "Periodically check for new versions",
+      "interval": "Check Interval",
+      "intervalUnit": "days"
+    },
+    "about": {
+      "label": "About",
+      "version": "Version",
+      "techStack": "Tech Stack"
+    }
+  },
+  "advanced": {
+    "title": "Advanced Settings",
+    "description": "Widget and copyright information configuration",
+    "widgets": {
+      "title": "Widget Settings",
+      "position": {
+        "label": "Widget Position",
+        "auto": "Auto",
+        "autoDesc": "Automatically choose based on layout",
+        "header": "Header",
+        "headerDesc": "Display in top navigation bar",
+        "sidebar": "Sidebar",
+        "sidebarDesc": "Display at bottom of sidebar"
+      },
+      "showWidgets": "Show Widgets",
+      "items": {
+        "globalSearch": {
+          "label": "Global Search",
+          "description": "Quick search function"
+        },
+        "themeToggle": {
+          "label": "Theme Toggle",
+          "description": "Light/dark theme toggle"
+        },
+        "languageToggle": {
+          "label": "Language Toggle",
+          "description": "Chinese/English toggle"
+        },
+        "fullscreen": {
+          "label": "Fullscreen",
+          "description": "Fullscreen display"
+        },
+        "notification": {
+          "label": "Notifications",
+          "description": "Message notifications"
+        },
+        "lockScreen": {
+          "label": "Lock Screen",
+          "description": "Screen lock function"
+        },
+        "sidebarToggle": {
+          "label": "Sidebar Toggle",
+          "description": "Show/hide sidebar"
+        },
+        "refresh": {
+          "label": "Refresh",
+          "description": "Refresh current page"
+        }
+      }
+    },
+    "copyright": {
+      "title": "Copyright Information",
+      "enable": {
+        "label": "Show Copyright",
+        "description": "Display copyright notice in footer"
+      },
+      "companyName": {
+        "label": "Company Name",
+        "placeholder": "Enter company name"
+      },
+      "companySiteLink": {
+        "label": "Company Website",
+        "placeholder": "https://example.com"
+      },
+      "date": {
+        "label": "Copyright Year",
+        "placeholder": "2024 or 2020-2024"
+      },
+      "icp": {
+        "label": "ICP License",
+        "placeholder": "京ICP备XXXXXXXX号"
+      },
+      "icpLink": {
+        "label": "ICP Query Link",
+        "placeholder": "https://beian.miit.gov.cn"
+      },
+      "settingShow": {
+        "label": "Show in Settings",
+        "description": "Allow editing copyright in system settings"
+      }
+    },
+    "preview": {
+      "label": "Settings Preview",
+      "description": "Live preview of advanced settings"
     }
   },
   "actions": {

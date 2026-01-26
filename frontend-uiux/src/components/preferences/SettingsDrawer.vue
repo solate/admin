@@ -9,6 +9,7 @@ import {
   Layout,
   Keyboard,
   Settings2,
+  Sliders,
   RotateCcw,
   Download,
   Upload
@@ -17,6 +18,7 @@ import AppearanceTab from './tabs/AppearanceTab.vue'
 import LayoutTab from './tabs/LayoutTab.vue'
 import ShortcutsTab from './tabs/ShortcutsTab.vue'
 import GeneralTab from './tabs/GeneralTab.vue'
+import AdvancedTab from './tabs/AdvancedTab.vue'
 
 // Props
 const props = defineProps<{
@@ -32,7 +34,7 @@ const { t } = useI18n()
 const preferencesStore = usePreferencesStore()
 
 // 当前激活的标签页
-const activeTab = ref<'appearance' | 'layout' | 'shortcuts' | 'general'>('appearance')
+const activeTab = ref<'appearance' | 'layout' | 'shortcuts' | 'general' | 'advanced'>('appearance')
 
 // 导入设置文件输入
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -63,6 +65,11 @@ const tabs = computed(() => [
     id: 'general' as const,
     icon: Settings2,
     label: t('preferences.tabs.general')
+  },
+  {
+    id: 'advanced' as const,
+    icon: Sliders,
+    label: t('preferences.tabs.advanced')
   }
 ])
 
@@ -168,7 +175,7 @@ watch(() => props.visible, (visible) => {
   >
     <div
       v-if="visible"
-      class="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-2xl z-50 flex flex-col"
+      class="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-2xl z-50 flex flex-col"
     >
       <!-- 头部 - 优化的视觉层次 -->
       <div class="relative px-6 py-5 border-b border-slate-200/60 dark:border-slate-700/60 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50">
@@ -229,6 +236,9 @@ watch(() => props.visible, (visible) => {
           <!-- 通用设置 -->
           <GeneralTab v-if="activeTab === 'general'" />
 
+          <!-- 高级设置 -->
+          <AdvancedTab v-if="activeTab === 'advanced'" />
+
           <!-- 设置预览面板 - 优化样式 -->
           <Transition
             enter-active-class="transition-all duration-200"
@@ -239,7 +249,7 @@ watch(() => props.visible, (visible) => {
             leave-to-class="opacity-0 translate-y-2"
           >
             <div
-              v-if="activeTab !== 'shortcuts'"
+              v-if="activeTab !== 'shortcuts' && activeTab !== 'advanced'"
               class="mt-8 p-5 bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800 dark:via-slate-800/50 dark:to-slate-800/30 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm"
             >
               <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
