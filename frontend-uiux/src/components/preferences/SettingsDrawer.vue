@@ -198,17 +198,17 @@ watch(() => props.visible, (visible) => {
 
       <!-- Tab 导航 - 悬浮卡片风格 -->
       <div class="px-6 py-4 border-b border-slate-200/60 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/30">
-        <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+        <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
           <button
             v-for="tab in tabs"
             :key="tab.id"
-            class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap cursor-pointer"
+            class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap cursor-pointer"
             :class="activeTab === tab.id
-              ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25 scale-105'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700/50 hover:shadow-md hover:scale-105'"
+              ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md shadow-primary-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-700/50'"
             @click="activeTab = tab.id"
           >
-            <component :is="tab.icon" :size="16" />
+            <component :is="tab.icon" :size="15" />
             <span>{{ tab.label }}</span>
           </button>
         </div>

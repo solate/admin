@@ -1,26 +1,14 @@
 <!--
 基础表格组件
 提供统一的表格样式和交互
-兼容原有 API 并正确处理百分比宽度
 -->
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
 /**
- * 列定义类型（兼容旧格式）
+ * 列定义类型
  */
-interface LegacyColumn {
-  key: string       // 列的键名（兼容）
-  label?: string     // 列标题
-  width?: string | number
-  align?: 'left' | 'center' | 'right'
-  formatter?: (row: any, column: any, value: any, index: number) => any
-}
-
-/**
- * 新列定义类型
- */
-interface StandardColumn {
+interface Column {
   prop?: string
   label?: string
   width?: string | number
@@ -32,16 +20,13 @@ interface StandardColumn {
   formatter?: (row: any, column: any, cellValue: any) => any
 }
 
-type Column = LegacyColumn | StandardColumn
-
 interface Props {
   data: any[]
   columns: Column[]
   loading?: boolean
   selectable?: boolean
   showIndex?: boolean
-  striped?: boolean    // 兼容旧属性
-  stripe?: boolean      // 新属性名
+  stripe?: boolean
   border?: boolean
   size?: 'large' | 'default' | 'small'
   height?: string | number
@@ -49,7 +34,7 @@ interface Props {
   fit?: boolean
   showHeader?: boolean
   highlightCurrentRow?: boolean
-  hoverable?: boolean   // 兼容旧属性
+  hoverable?: boolean
   emptyText?: string
 }
 
@@ -63,14 +48,13 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   selectable: false,
   showIndex: false,
-  striped: false,     // 兼容旧属性
-  stripe: false,      // 新属性名
+  stripe: false,
   border: false,
   size: 'default',
   fit: true,
   showHeader: true,
   highlightCurrentRow: false,
-  hoverable: false,   // 兼容旧属性
+  hoverable: false,
   emptyText: '暂无数据',
 })
 
@@ -137,41 +121,9 @@ defineExpose({
 })
 
 /**
- * 转换列定义格式（兼容旧格式）
- */
-const normalizedColumns = computed(() => {
-  return props.columns.map(col => {
-    // 如果是旧格式（有 key 但没有 prop），转换为标准格式
-    if ('key' in col && !('prop' in col)) {
-      const legacyCol = col as LegacyColumn
-      const width = legacyCol.width
-      const isPercentage = typeof width === 'string' && width.includes('%')
-
-      return {
-        prop: legacyCol.key,
-        label: legacyCol.label,
-        // 百分比宽度使用 minWidth，固定宽度使用 width
-        ...(isPercentage ? {} : { width }),
-        minWidth: isPercentage ? width : undefined,
-        align: legacyCol.align,
-        formatter: legacyCol.formatter,
-      }
-    }
-    return col as StandardColumn
-  })
-})
-
-/**
- * 计算是否使用斑马纹（兼容旧属性）
- */
-const isStriped = computed(() => {
-  return props.striped || props.stripe
-})
-
-/**
  * 获取列的插槽名称
  */
-function getColumnSlot(column: StandardColumn): string {
+function getColumnSlot(column: Column): string {
   return column.prop ? `cell-${column.prop}` : column.type || ''
 }
 </script>
@@ -182,7 +134,7 @@ function getColumnSlot(column: StandardColumn): string {
       ref="tableRef"
       :data="data"
       :loading="loading"
-      :stripe="isStriped"
+      :stripe="stripe"
       :border="border"
       :size="size"
       :height="height"
@@ -198,7 +150,7 @@ function getColumnSlot(column: StandardColumn): string {
     >
       <!-- 动态生成列 -->
       <el-table-column
-        v-for="col in normalizedColumns"
+        v-for="col in columns"
         :key="col.prop || col.type"
         :prop="col.prop"
         :label="col.label"

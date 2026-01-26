@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { apiService } from '@/api'
+import { notificationsApi } from '@/api'
 import { Bell, X, Check, Trash2, User, Shield, AlertTriangle, CircleCheck, Info } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -65,7 +65,7 @@ const groupLabels = {
 async function fetchNotifications() {
   loading.value = true
   try {
-    const response = await apiService.notifications.list({ limit: 20 })
+    const response = await notificationsApi.list({ limit: 20 })
     notifications.value = response.data.data || []
     unreadCount.value = response.data.unreadCount || 0
   } catch (error) {
@@ -77,7 +77,7 @@ async function fetchNotifications() {
 
 async function markAsRead(notificationId: string) {
   try {
-    await apiService.notifications.markAsRead(notificationId)
+    await notificationsApi.markAsRead(notificationId)
     const notification = notifications.value.find(n => n.id === notificationId)
     if (notification) {
       notification.isRead = true
@@ -90,7 +90,7 @@ async function markAsRead(notificationId: string) {
 
 async function markAllAsRead() {
   try {
-    await apiService.notifications.markAllAsRead()
+    await notificationsApi.markAllAsRead()
     notifications.value.forEach(n => n.isRead = true)
     unreadCount.value = 0
   } catch (error) {
@@ -100,7 +100,7 @@ async function markAllAsRead() {
 
 async function deleteNotification(notificationId: string) {
   try {
-    await apiService.notifications.delete(notificationId)
+    await notificationsApi.delete(notificationId)
     notifications.value = notifications.value.filter(n => n.id !== notificationId)
   } catch (error) {
     console.error('Failed to delete notification:', error)

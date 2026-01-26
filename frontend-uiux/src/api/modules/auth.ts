@@ -1,23 +1,17 @@
 // Authentication API
 
 import { api } from '@/utils/request'
-import { authMock } from '@/mock/handlers'
-import { env } from '@/config/env'
 import type { ApiResponse, LoginRequest, RegisterRequest, AuthResponse } from '@/types/api'
 import type { User } from '@/types/models'
 
 /**
  * 认证 API
- * 根据 env.useMock 决定使用真实 API 还是 Mock 数据
  */
 export const authApi = {
   /**
    * 用户登录
    */
   async login(credentials: LoginRequest): Promise<AuthResponse> {
-    if (env.useMock) {
-      return authMock.login(credentials)
-    }
     const res = await api.post<ApiResponse<AuthResponse>>('/auth/login', credentials)
     return res.data.data
   },
@@ -26,9 +20,6 @@ export const authApi = {
    * 用户登出
    */
   async logout(): Promise<void> {
-    if (env.useMock) {
-      return authMock.logout()
-    }
     await api.post<ApiResponse<void>>('/auth/logout')
   },
 
@@ -36,9 +27,6 @@ export const authApi = {
    * 用户注册
    */
   async register(data: RegisterRequest): Promise<AuthResponse> {
-    if (env.useMock) {
-      return authMock.register(data)
-    }
     const res = await api.post<ApiResponse<AuthResponse>>('/auth/register', data)
     return res.data.data
   },
@@ -47,9 +35,6 @@ export const authApi = {
    * 刷新访问令牌
    */
   async refreshToken(refreshToken: string): Promise<{ token: string }> {
-    if (env.useMock) {
-      return authMock.refreshToken(refreshToken)
-    }
     const res = await api.post<ApiResponse<{ token: string }>>('/auth/refresh', { refreshToken })
     return res.data.data
   },
@@ -58,11 +43,6 @@ export const authApi = {
    * 获取当前用户信息
    */
   async me(): Promise<User> {
-    if (env.useMock) {
-      // 从 localStorage 获取 token
-      const token = localStorage.getItem('token')
-      return authMock.me(token || '')
-    }
     const res = await api.get<ApiResponse<User>>('/auth/me')
     return res.data.data
   }

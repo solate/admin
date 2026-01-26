@@ -6,9 +6,6 @@ export const env = {
   // API 配置
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
 
-  // Mock 开关
-  useMock: import.meta.env.VITE_USE_MOCK === 'true',
-
   // 应用配置
   appTitle: import.meta.env.VITE_APP_TITLE || 'Multi-Tenant SaaS',
   appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',

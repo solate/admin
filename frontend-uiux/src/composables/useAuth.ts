@@ -33,7 +33,7 @@ export function useAuth() {
     const currentToken = authStorage.getToken()
     if (currentToken) {
       // Call API to refresh token
-      // await apiService.auth.refreshToken(currentToken)
+      // TODO: Implement token refresh logic
     }
   }
 

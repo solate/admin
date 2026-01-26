@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePreferencesStore } from '@/stores/modules/preferences'
-import { Keyboard, RotateCcw } from 'lucide-vue-next'
+import { Keyboard, RotateCcw, Search, Bell, Settings2, Moon, PanelLeft } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 
 const { t } = useI18n()
@@ -24,6 +24,15 @@ const defaultShortcuts: Record<string, string> = {
 
 // 当前快捷键配置
 const shortcuts = computed(() => preferencesStore.shortcuts)
+
+// 快捷键图标映射
+const shortcutIconsMap: Record<string, any> = {
+  search: Search,
+  notifications: Bell,
+  settings: Settings2,
+  darkMode: Moon,
+  sidebar: PanelLeft
+}
 
 // 快捷键配置列表
 const shortcutConfigs = computed(() => [
@@ -63,15 +72,6 @@ const shortcutConfigs = computed(() => [
     currentValue: shortcuts.value.sidebar || defaultShortcuts.sidebar
   }
 ])
-
-// 快捷键图标
-const shortcutIcons: Record<string, string> = {
-  search: '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>',
-  notifications: '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4h.006c0 2.692.002 5.32.497 7.578 1.035" /></svg>',
-  settings: '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 2.924-1.756.426 1.756 2.924 1.756 2.924 1.756a2.924 2.924 0 11-5.849 0c0-1.756 2.924-1.756 2.924-1.756zm0 0a2.924 2.924 0 115.849 0 2.924 2.924 0 01-5.849 0zM8.75 6h7.5M12 12h7.5m-7.5 3h7.5m-7.5 3h7.5" /></svg>',
-  darkMode: '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>',
-  sidebar: '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>'
-}
 
 // 检查快捷键冲突
 function checkConflict(actionId: string, keyCombo: string): string | null {
@@ -245,7 +245,7 @@ onUnmounted(() => {
       >
         <div class="flex items-center gap-3">
           <div class="p-2.5 rounded-xl" :class="config.iconBg">
-            <span class="block" :class="config.iconColor" v-html="shortcutIcons[config.id]" />
+            <component :is="shortcutIconsMap[config.id]" :size="20" :class="config.iconColor" />
           </div>
           <div>
             <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">

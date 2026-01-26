@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
-import { apiService } from '@/api'
+import { usersApi } from '@/api'
 import { useI18n } from '@/locales/composables'
 import { UserCircle, Mail, Shield, Bell, Key, Smartphone, Clock, Check, X, AlertTriangle, Globe, Building, Badge } from 'lucide-vue-next'
 
@@ -87,7 +87,7 @@ const passwordStrength = computed(() => {
 
 async function fetchProfile() {
   try {
-    const response = await apiService.users.profile()
+    const response = await usersApi.profile()
     const userData = response.data
 
     profile.value = {
@@ -107,7 +107,7 @@ async function fetchProfile() {
 
 async function fetchSessions() {
   try {
-    const response = await apiService.users.sessions()
+    const response = await usersApi.sessions()
     sessions.value = response.data?.items || []
   } catch (err) {
     console.error('Failed to fetch sessions:', err)
@@ -120,7 +120,7 @@ async function saveProfile() {
   message.value = null
 
   try {
-    await apiService.users.update(authStore.user?.id, profile.value)
+    await usersApi.update(authStore.user?.id, profile.value)
     message.value = t('profile.messages.profileUpdated')
     authStore.user = { ...authStore.user, ...profile.value }
   } catch (err) {
@@ -146,7 +146,7 @@ async function changePassword() {
   message.value = null
 
   try {
-    await apiService.users.changePassword({
+    await usersApi.changePassword({
       currentPassword: passwordForm.value.currentPassword,
       newPassword: passwordForm.value.newPassword
     })
@@ -168,7 +168,7 @@ async function toggleTwoFactor() {
   if (twoFactorEnabled.value) {
     // Disable 2FA
     try {
-      await apiService.users.disableTwoFactor()
+      await usersApi.disableTwoFactor()
       twoFactorEnabled.value = false
       message.value = t('profile.messages.twoFactorDisabled')
     } catch (err) {
@@ -181,7 +181,7 @@ async function toggleTwoFactor() {
 
 async function revokeSession(sessionId) {
   try {
-    await apiService.users.revokeSession(sessionId)
+    await usersApi.revokeSession(sessionId)
     sessions.value = sessions.value.filter(s => s.id !== sessionId)
     message.value = t('profile.messages.sessionRevoked')
   } catch (err) {
@@ -191,7 +191,7 @@ async function revokeSession(sessionId) {
 
 async function revokeAllOtherSessions() {
   try {
-    await apiService.users.revokeAllOtherSessions()
+    await usersApi.revokeAllOtherSessions()
     sessions.value = sessions.value.filter(s => s.current)
     message.value = t('profile.messages.allSessionsRevoked')
   } catch (err) {
@@ -202,7 +202,7 @@ async function revokeAllOtherSessions() {
 async function saveNotifications() {
   saving.value = true
   try {
-    await apiService.users.updateNotifications(notifications.value)
+    await usersApi.updateNotifications(notifications.value)
     message.value = t('profile.messages.notificationsSaved')
   } catch (err) {
     error.value = t('profile.errors.saveNotificationsFailed')

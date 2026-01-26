@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '@/locales/composables'
-import { apiService } from '@/api'
+import { notificationsApi } from '@/api'
 import { Bell, Check, Trash22, ChevronLeft, User, Shield, CircleCheck, Info, AlertTriangle, TriangleAlert, Clock, Filter } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -70,7 +70,7 @@ async function fetchNotifications() {
   loading.value = true
   error.value = null
   try {
-    const response = await apiService.notifications.list({ limit: 100 })
+    const response = await notificationsApi.list({ limit: 100 })
     notifications.value = response.data?.items || []
   } catch (err) {
     error.value = err.message || 'Failed to fetch notifications'
@@ -82,7 +82,7 @@ async function fetchNotifications() {
 
 async function markAsRead(notificationId) {
   try {
-    await apiService.notifications.markAsRead(notificationId)
+    await notificationsApi.markAsRead(notificationId)
     const notification = notifications.value.find(n => n.id === notificationId)
     if (notification) {
       notification.read = true
@@ -94,7 +94,7 @@ async function markAsRead(notificationId) {
 
 async function markAllAsRead() {
   try {
-    await apiService.notifications.markAllAsRead()
+    await notificationsApi.markAllAsRead()
     notifications.value.forEach(n => n.read = true)
   } catch (err) {
     console.error('Failed to mark all as read:', err)
@@ -103,7 +103,7 @@ async function markAllAsRead() {
 
 async function deleteNotification(notificationId) {
   try {
-    await apiService.notifications.delete(notificationId)
+    await notificationsApi.delete(notificationId)
     notifications.value = notifications.value.filter(n => n.id !== notificationId)
   } catch (err) {
     console.error('Failed to delete notification:', err)

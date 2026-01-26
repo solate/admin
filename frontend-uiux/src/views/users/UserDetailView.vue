@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTenantsStore } from '@/stores/modules/tenants'
-import { apiService } from '@/api'
+import { usersApi } from '@/api'
 import { useI18n } from '@/locales/composables'
 import { User, Mail, Building, Shield, Key, X, Check, Pencil, ChevronLeft, UserCircle, Clock, Calendar } from 'lucide-vue-next'
 
@@ -99,7 +99,7 @@ async function fetchUser() {
   error.value = null
 
   try {
-    const response = await apiService.users.getById(route.params.id)
+    const response = await usersApi.getById(route.params.id)
     user.value = response.data
 
     // Populate form
@@ -142,9 +142,9 @@ async function saveUser() {
     }
 
     if (isEditMode.value) {
-      await apiService.users.update(route.params.id, dataToSave)
+      await usersApi.update(route.params.id, dataToSave)
     } else {
-      await apiService.users.create(dataToSave)
+      await usersApi.create(dataToSave)
     }
 
     router.push({ name: 'users' })
