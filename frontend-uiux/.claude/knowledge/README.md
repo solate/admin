@@ -14,6 +14,7 @@
 | [004](004-settings-drawer-positioning.md) | 设置抽屉定位问题 | ✅ 已修复 | 2025-01-25 |
 | [005](005-html-nesting-warning.md) | HTML 嵌套警告（p 元素嵌套） | ✅ 已修复 | 2025-01-25 |
 | [006](006-project-structure-optimization.md) | 项目结构优化与主题切换修复 | ✅ 已完成 | 2025-01-26 |
+| [007](007-claudemd-simplification.md) | CLAUDE.md 精简优化 | ✅ 已完成 | 2026-01-26 |
 
 ---
 
@@ -37,7 +38,10 @@
 | 文档 | 说明 |
 |-----|------|
 | [i18n-implementation.md](i18n-implementation.md) | 国际化实现方案 |
+| [multi-tenant-architecture.md](multi-tenant-architecture.md) | 多租户架构详解 |
+| [design-system.md](design-system.md) | 设计系统（颜色、字体、组件规范） |
 | [006-project-structure-optimization.md](006-project-structure-optimization.md) | 项目结构优化与主题切换修复 |
+| [007-claudemd-simplification.md](007-claudemd-simplification.md) | CLAUDE.md 精简记录 |
 
 ---
 
