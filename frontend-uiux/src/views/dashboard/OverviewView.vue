@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useI18n } from '@/locales/composables'
 import KPICard from '@/components/ui/KPICard.vue'
-import BaseTable from '@/components/ui/BaseTable.vue'
+import BaseTable from '@/components/tables/BaseTable.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import { Building, User, Box, BarChart3, TrendingUp, ChevronRight, Plus, Coins, Activity } from 'lucide-vue-next'
 
