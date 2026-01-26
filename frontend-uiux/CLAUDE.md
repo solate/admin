@@ -62,40 +62,122 @@ VITE_API_BASE_URL=http://localhost:8080/api/v1
 ```
 frontend-uiux/
 ├── src/
-│   ├── assets/              # 静态资源
-│   ├── components/          # 可复用组件
-│   │   ├── icons/          # 图标组件
-│   │   ├── layout/         # 布局组件 (TopNavbar, UserMenu)
-│   │   ├── notification/   # 通知组件
-│   │   ├── tenant/         # 租户选择器
-│   │   ├── ui/             # 基础 UI 组件
-│   │   └── user/           # 用户相关组件
-│   ├── directives/         # 自定义指令 (clickOutside)
-│   ├── layouts/            # 页面布局 (DashboardLayout)
-│   ├── locales/            # 国际化文件 (zh-CN, en-US)
-│   ├── plugins/            # 插件配置 (Element Plus)
-│   ├── router/             # 路由配置
-│   ├── services/           # API 服务层
-│   ├── stores/             # Pinia 状态管理
-│   ├── views/              # 页面组件
-│   │   ├── auth/          # 登录/注册页面
-│   │   ├── dashboard/     # 仪表板
-│   │   ├── tenants/       # 租户管理
-│   │   ├── services/      # 服务管理
-│   │   ├── users/         # 用户管理
-│   │   ├── business/      # 业务管理
-│   │   ├── analytics/     # 数据分析
-│   │   ├── settings/      # 系统设置
-│   │   ├── profile/       # 个人中心
-│   │   └── notifications/ # 通知中心
-│   ├── App.vue             # 根组件
-│   └── main.js             # 应用入口
+│   ├── api/                    # API 接口层
+│   │   ├── index.ts            # API 入口
+│   │   └── modules/            # 模块化 API (auth, tenants, users, services, dashboard)
+│   ├── assets/                 # 静态资源
+│   ├── components/             # 可复用组件
+│   │   ├── business/           # 业务组件
+│   │   │   ├── tenant/         # 租户相关组件
+│   │   │   ├── user/           # 用户相关组件
+│   │   │   ├── notification/   # 通知组件
+│   │   │   └── search/         # 搜索组件
+│   │   ├── forms/              # 表单组件
+│   │   │   ├── BaseForm.vue    # 基础表单组件
+│   │   │   └── index.ts
+│   │   ├── layout/             # 布局组件
+│   │   ├── shared/             # 跨业务共享组件
+│   │   ├── tables/             # 表格组件
+│   │   │   ├── BaseTable.vue   # 基础表格组件
+│   │   │   └── index.ts
+│   │   ├── ui/                 # 基础 UI 组件
+│   │   ├── language/           # 语言切换组件
+│   │   └── preferences/        # 偏好设置组件
+│   ├── composables/            # 组合式函数 (Vue 3)
+│   │   ├── useAuth.ts          # 认证相关 hooks
+│   │   ├── useTenant.ts        # 租户相关 hooks
+│   │   ├── useTheme.ts         # 主题管理 hooks
+│   │   ├── useRequest.ts       # 请求 hooks
+│   │   └── useLocalStorage.ts  # 本地存储 hooks
+│   ├── config/                 # 配置文件
+│   │   ├── app.ts              # 应用配置 (功能开关、分页、存储键等)
+│   │   ├── constants.ts        # 常量定义 (主题色、用户状态、HTTP 状态码等)
+│   │   ├── theme.ts            # 主题配置
+│   │   └── env.ts              # 环境变量配置
+│   ├── directives/             # 自定义指令
+│   │   └── clickOutside.ts     # 点击外部关闭指令
+│   ├── layouts/                # 页面布局
+│   │   └── DashboardLayout.vue # 仪表板布局
+│   ├── lib/                    # 业务库 (共享业务逻辑)
+│   │   ├── auth/               # 认证业务逻辑
+│   │   │   └── permissions.ts   # 权限检查
+│   │   ├── tenant/             # 租户业务逻辑
+│   │   │   └── context.ts       # 租户上下文管理
+│   │   └── validators/         # 业务验证器
+│   │       ├── user.ts         # 用户验证器
+│   │       └── tenant.ts       # 租户验证器
+│   ├── locales/                # 国际化文件
+│   │   ├── zh-CN.ts            # 简体中文
+│   │   ├── en-US.ts            # 英文
+│   │   └── types.ts            # 国际化类型定义
+│   ├── plugins/                # 插件配置
+│   │   ├── element.ts          # Element Plus 配置
+│   │   └── theme.ts            # 主题初始化插件
+│   ├── router/                 # 路由配置
+│   │   ├── index.ts            # 路由入口
+│   │   ├── routes/             # 路由定义
+│   │   ├── guards/             # 路由守卫
+│   │   │   ├── auth.ts         # 认证守卫
+│   │   │   ├── tenant.ts       # 租户守卫
+│   │   │   └── title.ts        # 页面标题守卫
+│   │   └── types.ts            # 路由类型定义
+│   ├── stores/                 # Pinia 状态管理
+│   │   ├── index.ts
+│   │   └── modules/            # 模块化 store
+│   │       ├── auth.ts         # 认证状态
+│   │       ├── tenants.ts      # 租户状态
+│   │       ├── services.ts     # 服务状态
+│   │       ├── preferences.ts  # 偏好设置状态
+│   │       └── ui.ts           # UI 状态
+│   ├── styles/                 # 样式文件
+│   │   ├── index.css           # 样式入口
+│   │   ├── variables.css       # CSS 变量
+│   │   ├── reset.css           # 样式重置
+│   │   └── base.css            # 基础样式
+│   ├── types/                  # TypeScript 类型定义
+│   │   ├── api.ts              # API 类型
+│   │   ├── models.ts           # 数据模型
+│   │   ├── router.ts           # 路由类型
+│   │   ├── preferences.ts      # 偏好设置类型
+│   │   └── index.ts
+│   ├── utils/                  # 工具函数
+│   │   ├── request.ts          # HTTP 请求工具
+│   │   ├── storage.ts          # 本地存储工具
+│   │   ├── format.ts           # 格式化工具
+│   │   ├── helpers.ts          # 辅助函数
+│   │   └── index.ts
+│   ├── views/                  # 页面组件
+│   │   ├── auth/               # 登录/注册页面
+│   │   ├── dashboard/          # 仪表板
+│   │   ├── tenants/            # 租户管理
+│   │   ├── services/           # 服务管理
+│   │   ├── users/              # 用户管理
+│   │   ├── business/           # 业务管理
+│   │   ├── analytics/          # 数据分析
+│   │   ├── settings/           # 系统设置
+│   │   ├── profile/            # 个人中心
+│   │   └── notifications/      # 通知中心
+│   ├── App.vue                 # 根组件
+│   └── main.ts                 # 应用入口
 ├── index.html
 ├── package.json
 ├── vite.config.js
 ├── tailwind.config.js
 └── postcss.config.js
 ```
+
+### 目录设计原则
+
+| 目录 | 用途 | 设计原则 |
+|------|------|----------|
+| `api/` | API 接口层 | 按业务模块组织，统一管理请求 |
+| `components/` | 组件 | 按功能分组 (forms, tables, business, shared) |
+| `composables/` | 组合式函数 | Vue 3 最佳实践，可复用逻辑 |
+| `config/` | 配置文件 | 集中管理应用配置和常量 |
+| `lib/` | 业务库 | 业务相关的共享类库 |
+| `utils/` | 工具函数 | 纯工具函数，无业务逻辑 |
+| `router/guards/` | 路由守卫 | 分离关注点，每个守卫独立文件 |
+| `stores/modules/` | 状态管理 | 按功能模块组织 |
 
 ---
 
@@ -411,3 +493,30 @@ export const apiService = {
 5. **国际化**: 新增文本必须同时添加中英文翻译
 6. **Element Plus**: 图标已全局注册，可直接使用 `<el-icon><IconName /></el-icon>`
 7. **图标使用**: 项目使用 `lucide-vue-next`，详细规范见 `.claude/knowledge.md`
+
+---
+
+## 知识库
+
+项目知识库位于 `.claude/knowledge/`，记录已知问题、解决方案和实现文档：
+
+### 问题索引
+| ID | 问题 | 状态 |
+|----|------|------|
+| [001](.claude/knowledge/001-text-selection-invisible.md) | 文本选中后不可见 | ✅ 已修复 |
+| [002](.claude/knowledge/002-element-plus-double-border.md) | Element Plus 输入框双层边框 | ✅ 已修复 |
+| [003](.claude/knowledge/003-icon-library-migration.md) | 图标库迁移到 lucide-vue-next | ✅ 已完成 |
+| [004](.claude/knowledge/004-settings-drawer-positioning.md) | 设置抽屉定位问题 | ✅ 已修复 |
+| [005](.claude/knowledge/005-html-nesting-warning.md) | HTML 嵌套警告 | ✅ 已修复 |
+| [006](.claude/knowledge/006-project-structure-optimization.md) | 项目结构优化与主题切换修复 | ✅ 已完成 |
+
+### 实现文档
+| 文档 | 说明 |
+|-----|------|
+| [i18n-implementation.md](.claude/knowledge/i18n-implementation.md) | 国际化实现方案 |
+| [006-project-structure-optimization.md](.claude/knowledge/006-project-structure-optimization.md) | 项目结构优化、主题切换修复、最佳实践 |
+
+### 查看完整知识库
+```bash
+cat .claude/knowledge/README.md
+```

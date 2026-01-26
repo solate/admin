@@ -23,7 +23,7 @@ import {
   HelpCircle
 } from 'lucide-vue-next'
 import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
-import SearchDialog from '@/components/search/SearchDialog.vue'
+import SearchDialog from '@/components/business/search/SearchDialog.vue'
 import SettingsDrawer from '@/components/preferences/SettingsDrawer.vue'
 
 const route = useRoute()
