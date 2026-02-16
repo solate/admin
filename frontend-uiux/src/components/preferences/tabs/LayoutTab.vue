@@ -472,29 +472,89 @@ function updateContentFixedWidth(value: number) {
       </div>
 
       <!-- 标签页 -->
-      <div class="flex items-center justify-between p-4 bg-white dark:bg-slate-700/30 rounded-2xl border border-slate-200 dark:border-slate-700">
-        <div class="flex items-center gap-3">
-          <div class="p-2.5 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
-            <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+      <section class="border-2 border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+        <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
+              <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h5 class="text-sm font-semibold text-slate-800 dark:text-slate-200">显示标签页</h5>
+              <p class="text-xs text-slate-500 dark:text-slate-400">多页面标签导航</p>
+            </div>
           </div>
-          <div>
-            <h5 class="text-sm font-semibold text-slate-800 dark:text-slate-200">显示标签页</h5>
-            <p class="text-xs text-slate-500 dark:text-slate-400">多页面标签导航</p>
-          </div>
+          <button
+            class="relative w-14 h-7 rounded-full transition-all duration-300 cursor-pointer"
+            :class="layout.showTabs ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'"
+            @click="toggleOption('showTabs')"
+          >
+            <span
+              class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300"
+              :class="layout.showTabs ? 'translate-x-7' : ''"
+            />
+          </button>
         </div>
-        <button
-          class="relative w-14 h-7 rounded-full transition-all duration-300 cursor-pointer"
-          :class="layout.showTabs ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'"
-          @click="toggleOption('showTabs')"
+
+        <!-- 标签页详细设置 -->
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out"
+          enter-from-class="opacity-0 max-h-0"
+          enter-to-class="opacity-100 max-h-96"
+          leave-active-class="transition-all duration-150 ease-in"
+          leave-from-class="opacity-100 max-h-96"
+          leave-to-class="opacity-0 max-h-0"
         >
-          <span
-            class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300"
-            :class="layout.showTabs ? 'translate-x-7' : ''"
-          />
-        </button>
-      </div>
+          <div v-if="layout.showTabs" class="p-4 space-y-4 bg-white dark:bg-slate-900/30 border-t border-slate-200 dark:border-slate-700">
+            <!-- 标签页风格 -->
+            <div>
+              <label class="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">标签页风格</label>
+              <div class="grid grid-cols-4 gap-2">
+                <button
+                  v-for="option in tabsStyleOptions"
+                  :key="option.value"
+                  class="p-2 border-2 bg-white dark:bg-slate-700/50 rounded-lg text-xs transition-all"
+                  :class="layout.tabsStyle === option.value ? 'border-primary-500 text-primary-700 dark:text-primary-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'"
+                  @click="updateTabsStyle(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 标签页选项 -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <span class="text-sm text-slate-700 dark:text-slate-300">持久化标签页</span>
+                <button
+                  class="relative w-12 h-6 rounded-full transition-all duration-300 cursor-pointer"
+                  :class="layout.tabsPersistent ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'"
+                  @click="toggleOption('tabsPersistent')"
+                >
+                  <span
+                    class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300"
+                    :class="layout.tabsPersistent ? 'translate-x-6' : ''"
+                  />
+                </button>
+              </div>
+              <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <span class="text-sm text-slate-700 dark:text-slate-300">拖拽排序</span>
+                <button
+                  class="relative w-12 h-6 rounded-full transition-all duration-300 cursor-pointer"
+                  :class="layout.tabsDraggable ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'"
+                  @click="toggleOption('tabsDraggable')"
+                >
+                  <span
+                    class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300"
+                    :class="layout.tabsDraggable ? 'translate-x-6' : ''"
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </section>
 
       <!-- 页脚 -->
       <div class="flex items-center justify-between p-4 bg-white dark:bg-slate-700/30 rounded-2xl border border-slate-200 dark:border-slate-700">

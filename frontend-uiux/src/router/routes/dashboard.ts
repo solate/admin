@@ -4,6 +4,24 @@ import type { AppRouteRecordRaw } from '@/types/router'
 
 export const dashboardRoutes: AppRouteRecordRaw[] = [
   {
+    path: '/redirect',
+    component: () => import('@/layouts/DashboardLayout.vue'),
+    meta: {
+      requiresAuth: true
+    },
+    children: [
+      {
+        path: '/redirect/:path(.*)',
+        name: 'redirect',
+        component: () => import('@/views/RedirectView.vue'),
+        meta: {
+          hideTag: true,
+          hideInMenu: true
+        }
+      }
+    ]
+  },
+  {
     path: '/dashboard',
     component: () => import('@/layouts/DashboardLayout.vue'),
     meta: {
@@ -16,10 +34,10 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
       },
       {
         path: 'overview',
-        name: 'dashboard-overview',
+        name: 'overview',
         component: () => import('@/views/dashboard/OverviewView.vue'),
         meta: {
-          title: 'Overview',
+          title: 'nav.overview',
           icon: 'Dashboard'
         }
       },
@@ -29,7 +47,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'tenants',
         component: () => import('@/views/tenants/TenantListView.vue'),
         meta: {
-          title: 'Tenants',
+          title: 'nav.tenants',
           icon: 'Building'
         }
       },
@@ -38,7 +56,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'tenant-create',
         component: () => import('@/views/tenants/TenantDetailView.vue'),
         meta: {
-          title: 'Create Tenant',
+          title: 'tenant.create',
           hideInMenu: true
         }
       },
@@ -47,7 +65,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'tenant-detail',
         component: () => import('@/views/tenants/TenantDetailView.vue'),
         meta: {
-          title: 'Tenant Details',
+          title: 'tenant.detail',
           hideInMenu: true
         }
       },
@@ -57,7 +75,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'services',
         component: () => import('@/views/services/ServiceListView.vue'),
         meta: {
-          title: 'Services',
+          title: 'nav.services',
           icon: 'Grid'
         }
       },
@@ -66,7 +84,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'service-detail',
         component: () => import('@/views/services/ServiceDetailView.vue'),
         meta: {
-          title: 'Service Details',
+          title: 'service.detail',
           hideInMenu: true
         }
       },
@@ -76,7 +94,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'users',
         component: () => import('@/views/users/UserListView.vue'),
         meta: {
-          title: 'Users',
+          title: 'nav.users',
           icon: 'Users'
         }
       },
@@ -85,7 +103,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'user-create',
         component: () => import('@/views/users/UserDetailView.vue'),
         meta: {
-          title: 'Create User',
+          title: 'user.create',
           hideInMenu: true
         }
       },
@@ -94,7 +112,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'user-detail',
         component: () => import('@/views/users/UserDetailView.vue'),
         meta: {
-          title: 'User Details',
+          title: 'user.detail',
           hideInMenu: true
         }
       },
@@ -104,7 +122,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'business',
         component: () => import('@/views/business/BusinessView.vue'),
         meta: {
-          title: 'Business',
+          title: 'nav.business',
           icon: 'Briefcase'
         }
       },
@@ -113,7 +131,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'analytics',
         component: () => import('@/views/analytics/AnalyticsView.vue'),
         meta: {
-          title: 'Analytics',
+          title: 'nav.analytics',
           icon: 'BarChart3'
         }
       },
@@ -123,7 +141,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'settings',
         component: () => import('@/views/settings/SettingsView.vue'),
         meta: {
-          title: 'Settings',
+          title: 'nav.settings',
           icon: 'Settings'
         }
       },
@@ -132,7 +150,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'profile',
         component: () => import('@/views/profile/ProfileView.vue'),
         meta: {
-          title: 'Profile',
+          title: 'nav.profile',
           icon: 'User',
           hideInMenu: true
         }
@@ -143,7 +161,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'notifications',
         component: () => import('@/views/notifications/NotificationView.vue'),
         meta: {
-          title: 'Notifications',
+          title: 'nav.notifications',
           icon: 'Bell',
           hideInMenu: true
         }

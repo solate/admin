@@ -319,17 +319,46 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
 
 /**
  * 主题色选项
+ * 分组：基础色、活力色、自然色、中性色
  */
 export const THEME_COLORS = [
-  { name: 'blue', value: '#2563eb', label: '蓝色' },
-  { name: 'purple', value: '#9333ea', label: '紫色' },
-  { name: 'pink', value: '#ec4899', label: '粉色' },
-  { name: 'red', value: '#ef4444', label: '红色' },
-  { name: 'orange', value: '#f97316', label: '橙色' },
-  { name: 'green', value: '#22c55e', label: '绿色' },
-  { name: 'teal', value: '#14b8a6', label: '青色' },
-  { name: 'cyan', value: '#06b6d4', label: '青蓝' }
+  // 基础色系
+  { name: 'default', value: '#2563eb', label: '默认蓝', group: 'basic' },
+  { name: 'violet', value: '#8b5cf6', label: '紫罗兰', group: 'basic' },
+  { name: 'cherry-blossom', value: '#ec4899', label: '樱花粉', group: 'basic' },
+  { name: 'rose', value: '#f43f5e', label: '玫瑰红', group: 'basic' },
+
+  // 活力色系
+  { name: 'orange', value: '#f97316', label: '橙黄色', group: 'vibrant' },
+  { name: 'lemon', value: '#facc15', label: '柠檬黄', group: 'vibrant' },
+  { name: 'amber', value: '#f59e0b', label: '琥珀金', group: 'vibrant' },
+
+  // 自然色系
+  { name: 'sky', value: '#0ea5e9', label: '天蓝色', group: 'nature' },
+  { name: 'cyan', value: '#06b6d4', label: '青碧色', group: 'nature' },
+  { name: 'light-green', value: '#84cc16', label: '浅绿色', group: 'nature' },
+  { name: 'emerald', value: '#10b981', label: '翡翠绿', group: 'nature' },
+  { name: 'teal', value: '#14b8a6', label: '蓝绿色', group: 'nature' },
+  { name: 'deep-green', value: '#059669', label: '深绿色', group: 'nature' },
+  { name: 'deep-blue', value: '#1d4ed8', label: '深蓝色', group: 'nature' },
+
+  // 中性色系
+  { name: 'zinc', value: '#71717a', label: '锌色灰', group: 'neutral' },
+  { name: 'slate', value: '#64748b', label: '石板灰', group: 'neutral' },
+  { name: 'neutral', value: '#737373', label: '中灰色', group: 'neutral' },
 ]
+
+/**
+ * 主题色分组
+ */
+export const THEME_COLOR_GROUPS = {
+  basic: { name: 'basic', label: '基础色系' },
+  vibrant: { name: 'vibrant', label: '活力色系' },
+  nature: { name: 'nature', label: '自然色系' },
+  neutral: { name: 'neutral', label: '中性色系' },
+} as const
+
+export type ThemeColorGroup = keyof typeof THEME_COLOR_GROUPS
 
 /**
  * localStorage 存储键

@@ -7,6 +7,8 @@ import { useTenantsStore } from '@/stores/modules/tenants'
 import { usePreferencesStore } from '@/stores/modules/preferences'
 import { useI18n } from '@/locales/composables'
 import TopNavbar from '@/components/layout/TopNavbar.vue'
+import TagsView from '@/components/layout/TagsView/index.vue'
+import { useTagsViewStore } from '@/stores/modules/tagsView'
 import {
   Home,
   Building,
@@ -20,7 +22,8 @@ import {
   Sun,
   Menu,
   ChevronLeft,
-  X
+  X,
+  Minimize2
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -29,6 +32,7 @@ const uiStore = useUiStore()
 const authStore = useAuthStore()
 const tenantsStore = useTenantsStore()
 const preferencesStore = usePreferencesStore()
+const tagsViewStore = useTagsViewStore()
 
 // 初始化偏好设置
 preferencesStore.initialize()
@@ -73,9 +77,7 @@ const navigation = computed(() => {
   ]
 
   const userRole = authStore.userRole
-  // Filter navigation based on user role if needed
   return baseNav.filter(item => {
-    // Example: super_admin and auditor only access
     if (item.key === 'tenants' && !['super_admin', 'auditor'].includes(userRole)) {
       return false
     }
@@ -94,34 +96,32 @@ const bottomNavigation = computed(() => [
 
 // ===== 偏好设置相关计算属性 =====
 
-// 布局偏好
 const layoutPrefs = computed(() => preferencesStore.layout)
 
-// 侧边栏宽度（像素值）
+// 侧边栏宽度
 const sidebarWidthPx = computed(() => {
   return uiStore.sidebarOpen
     ? layoutPrefs.value.sidebarWidth
     : layoutPrefs.value.sidebarCollapsedWidth
 })
 
-// 主内容区左边距样式 - 仅桌面端应用
+// 主内容区左边距样式
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
 const mainContentStyle = computed(() => {
-  // 仅在桌面端 (lg: 1024px+) 应用左边距
   if (windowWidth.value >= 1024) {
     return { marginLeft: sidebarWidthPx.value + 'px' }
   }
   return {}
 })
 
-// 导航样式 - 是否仅显示图标
+// 导航样式
 const iconOnlyNav = computed(() => layoutPrefs.value.navStyle === 'icon-only')
 
 // 通用设置偏好
 const generalPrefs = computed(() => preferencesStore.general)
 
-// 动画控制 - 当禁用动画时添加 no-animation 类
+// 动画控制
 const animationClasses = computed(() => {
   if (!generalPrefs.value.enableAnimations) {
     return 'no-animation'
@@ -137,16 +137,16 @@ const showCopyright = computed(() => layoutPrefs.value.showCopyright)
 watch(
   () => layoutPrefs.value.navStyle,
   (newStyle) => {
-    // 如果设置为仅图标模式，自动收起侧边栏
     if (newStyle === 'icon-only' && uiStore.sidebarOpen) {
       uiStore.setSidebarOpen(false)
     }
   }
 )
 
-// =================================
+// 全屏状态
+const isFullscreen = computed(() => tagsViewStore.isMaximized)
 
-const isActive = (path) => {
+const isActive = (path: string) => {
   return route.path === path || route.path.startsWith(path + '/')
 }
 
@@ -156,6 +156,11 @@ const toggleMobileMenu = () => {
 
 const closeMobileMenu = () => {
   isMobileMenuOpen.value = false
+}
+
+// 退出全屏
+const exitFullscreen = () => {
+  tagsViewStore.setMaximized(false)
 }
 
 // Handle window resize
@@ -168,16 +173,61 @@ const handleResize = () => {
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('keydown', handleKeyDown)
 })
+
+// ESC 键退出全屏
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && isFullscreen.value) {
+    exitFullscreen()
+  }
+}
 </script>
 
 <template>
   <div :class="['min-h-screen bg-gradient-to-br from-slate-50 via-slate-50/80 to-blue-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/60', animationClasses]">
-    <!-- Mobile Header - 使用毛玻璃+阴影代替边框，更现代 -->
+    <!-- ==================== 全屏内容区 ==================== -->
+    <!-- 使用 fixed 定位，覆盖在所有内容之上 -->
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transition-all duration-200 ease-in"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div
+        v-if="isFullscreen"
+        class="fixed inset-0 z-[100] bg-gradient-to-br from-slate-50 via-slate-50/80 to-blue-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/60 overflow-auto"
+      >
+        <!-- 全屏退出按钮 -->
+        <button
+          @click="exitFullscreen"
+          class="fixed top-4 right-4 z-[101] flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+        >
+          <Minimize2 :size="16" class="text-slate-600 dark:text-slate-400" />
+          <span class="text-sm text-slate-600 dark:text-slate-400">{{ t('tagsView.restore') }}</span>
+          <kbd class="px-1.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 rounded text-slate-500 dark:text-slate-400">ESC</kbd>
+        </button>
+
+        <!-- 全屏内容 -->
+        <div class="h-full p-4 lg:p-6">
+          <router-view v-slot="{ Component }">
+            <keep-alive :include="tagsViewStore.cachedTags">
+              <component :is="Component" :key="route.path" />
+            </keep-alive>
+          </router-view>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ==================== 正常布局 ==================== -->
+    <!-- Mobile Header -->
     <header class="lg:hidden fixed top-0 left-0 right-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm">
       <div class="flex items-center justify-between px-4 h-16">
         <div class="flex items-center gap-3">
@@ -341,7 +391,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Tenant Info (when expanded) -->
+      <!-- Tenant Info -->
       <Transition
         enter-active-class="transition-all duration-200"
         enter-from-class="opacity-0 h-0 mt-0 mx-0"
@@ -396,7 +446,7 @@ onUnmounted(() => {
           </Transition>
         </router-link>
 
-        <!-- Divider - 柔和的分割线 -->
+        <!-- Divider -->
         <div class="border-t border-slate-200/60 dark:border-slate-700/30" :class="!iconOnlyNav && uiStore.sidebarOpen ? 'pt-4 mt-4' : 'pt-3 mt-3'">
           <router-link
             v-for="item in bottomNavigation"
@@ -431,19 +481,23 @@ onUnmounted(() => {
 
     <!-- Main Content -->
     <main
-      :class="[
-        'transition-all duration-300 min-h-screen',
-        'pt-16 lg:pt-0'
-      ]"
+      class="transition-all duration-300 min-h-screen pt-16 lg:pt-0"
       :style="mainContentStyle"
     >
       <!-- Top Navbar -->
       <TopNavbar />
 
+      <!-- TagsView -->
+      <TagsView v-if="layoutPrefs.showTabs" />
+
       <!-- Page Content -->
       <div class="p-4 lg:p-6">
         <div class="bg-white/70 dark:bg-slate-900/60 backdrop-blur-sm rounded-xl p-4 lg:p-6 min-h-[calc(100vh-8rem)] shadow-sm border border-slate-200/50 dark:border-slate-800/50">
-          <router-view />
+          <router-view v-slot="{ Component }">
+            <keep-alive :include="tagsViewStore.cachedTags">
+              <component :is="Component" :key="route.path" />
+            </keep-alive>
+          </router-view>
         </div>
       </div>
 

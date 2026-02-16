@@ -8,5 +8,16 @@
   "analytics": "Analytics",
   "settings": "Settings",
   "profile": "Profile",
-  "notifications": "Notifications"
+  "notifications": "Notifications",
+  "tenant": {
+    "create": "Create Tenant",
+    "detail": "Tenant Details"
+  },
+  "user": {
+    "create": "Create User",
+    "detail": "User Details"
+  },
+  "service": {
+    "detail": "Service Details"
+  }
 }
