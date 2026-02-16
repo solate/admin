@@ -97,23 +97,22 @@ const bottomNavigation = computed(() => [
 // 布局偏好
 const layoutPrefs = computed(() => preferencesStore.layout)
 
-// 侧边栏宽度映射
-const sidebarWidthClasses = computed(() => {
-  const widthMap = {
-    narrow: uiStore.sidebarOpen ? 'w-16' : 'w-16',
-    medium: uiStore.sidebarOpen ? 'w-64' : 'w-20',
-    wide: uiStore.sidebarOpen ? 'w-80' : 'w-24'
-  }
-  return widthMap[layoutPrefs.value.sidebarWidth]
+// 侧边栏宽度（像素值）
+const sidebarWidthPx = computed(() => {
+  return uiStore.sidebarOpen
+    ? layoutPrefs.value.sidebarWidth
+    : layoutPrefs.value.sidebarCollapsedWidth
 })
 
-const mainMarginClasses = computed(() => {
-  const marginMap = {
-    narrow: 'lg:ml-16',
-    medium: uiStore.sidebarOpen ? 'lg:ml-64' : 'lg:ml-20',
-    wide: uiStore.sidebarOpen ? 'lg:ml-80' : 'lg:ml-24'
+// 主内容区左边距样式 - 仅桌面端应用
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
+
+const mainContentStyle = computed(() => {
+  // 仅在桌面端 (lg: 1024px+) 应用左边距
+  if (windowWidth.value >= 1024) {
+    return { marginLeft: sidebarWidthPx.value + 'px' }
   }
-  return marginMap[layoutPrefs.value.sidebarWidth]
+  return {}
 })
 
 // 导航样式 - 是否仅显示图标
@@ -161,6 +160,7 @@ const closeMobileMenu = () => {
 
 // Handle window resize
 const handleResize = () => {
+  windowWidth.value = window.innerWidth
   if (window.innerWidth >= 1024) {
     isMobileMenuOpen.value = false
   }
@@ -313,9 +313,9 @@ onUnmounted(() => {
         'bg-white/90 dark:bg-slate-900/90',
         'backdrop-blur-xl',
         'border-r border-slate-200/60 dark:border-slate-800/60',
-        'shadow-[4px_0_24px_-8px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_24px_-8px_rgba(0,0,0,0.3)]',
-        sidebarWidthClasses
+        'shadow-[4px_0_24px_-8px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_24px_-8px_rgba(0,0,0,0.3)]'
       ]"
+      :style="{ width: sidebarWidthPx + 'px' }"
     >
       <!-- Logo -->
       <div class="flex items-center h-16 px-4 relative after:content-[''] after:absolute after:inset-x-4 after:-bottom-px after:h-[1px] after:bg-gradient-to-r after:from-transparent after:via-slate-300 dark:after:via-slate-600 after:to-transparent after:opacity-50">
@@ -433,9 +433,9 @@ onUnmounted(() => {
     <main
       :class="[
         'transition-all duration-300 min-h-screen',
-        mainMarginClasses,
         'pt-16 lg:pt-0'
       ]"
+      :style="mainContentStyle"
     >
       <!-- Top Navbar -->
       <TopNavbar />

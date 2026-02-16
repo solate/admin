@@ -1,95 +1,98 @@
-<script setup>
-import { computed } from 'vue'
+<!--
+基础输入框组件
+提供统一的表单输入样式和交互
+-->
+<script setup lang="ts">
+import { computed, type Component } from 'vue'
 
-const props = defineProps({
-  modelValue: {
-    type: [String, Number],
-    default: ''
-  },
-  type: {
-    type: String,
-    default: 'text'
-  },
-  placeholder: {
-    type: String,
-    default: ''
-  },
-  label: {
-    type: String,
-    default: ''
-  },
-  error: {
-    type: String,
-    default: ''
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  readonly: {
-    type: Boolean,
-    default: false
-  },
-  required: {
-    type: Boolean,
-    default: false
-  },
-  fullWidth: {
-    type: Boolean,
-    default: false
-  },
-  size: {
-    type: String,
-    default: 'md',
-    validator: (value) => ['sm', 'md', 'lg'].includes(value)
-  },
-  leftIcon: {
-    type: Object,
-    default: null
-  },
-  rightIcon: {
-    type: Object,
-    default: null
+/** 输入框尺寸类型 */
+export type InputSize = 'sm' | 'md' | 'lg'
+
+/** 输入框类型 */
+export type InputType = 'text' | 'password' | 'email' | 'number' | 'tel' | 'url' | 'search'
+
+/** 输入框组件属性 */
+export interface InputProps {
+  modelValue?: string | number
+  type?: InputType
+  placeholder?: string
+  label?: string
+  error?: string
+  disabled?: boolean
+  readonly?: boolean
+  required?: boolean
+  fullWidth?: boolean
+  size?: InputSize
+  leftIcon?: Component
+  rightIcon?: Component
+}
+
+interface Emits {
+  (e: 'update:modelValue', value: string | number): void
+  (e: 'focus', event: FocusEvent): void
+  (e: 'blur', event: FocusEvent): void
+}
+
+const props = withDefaults(defineProps<InputProps>(), {
+  modelValue: '',
+  type: 'text',
+  placeholder: '',
+  label: '',
+  error: '',
+  disabled: false,
+  readonly: false,
+  required: false,
+  fullWidth: false,
+  size: 'md'
+})
+
+const emit = defineEmits<Emits>()
+
+const SIZE_CLASSES: Record<InputSize, string> = {
+  sm: 'px-3 py-1.5 text-sm',
+  md: 'px-3 py-2 text-sm',
+  lg: 'px-4 py-2.5 text-base'
+}
+
+const inputClass = computed(() => [
+  'block w-full rounded-lg border transition-colors duration-200',
+  'bg-white dark:bg-slate-800',
+  'text-slate-900 dark:text-slate-100',
+  'placeholder:text-slate-400 dark:placeholder:text-slate-500',
+  'focus:outline-none focus:ring-2 focus:border-transparent',
+  'disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:cursor-not-allowed',
+  'read-only:bg-slate-50 dark:read-only:bg-slate-800/50 read-only:cursor-default',
+  props.error
+    ? 'border-error-500 focus:ring-error-500'
+    : 'border-slate-300 dark:border-slate-600 focus:ring-primary-500 focus:border-primary-500',
+  props.leftIcon ? 'pl-10' : '',
+  props.rightIcon ? 'pr-10' : '',
+  SIZE_CLASSES[props.size]
+].join(' '))
+
+function handleInput(event: Event) {
+  const target = event.target as HTMLInputElement
+  const value = target.value
+
+  // number 类型时，空字符串返回空字符串而非 0
+  if (props.type === 'number' && value !== '') {
+    emit('update:modelValue', Number(value))
+  } else {
+    emit('update:modelValue', value)
   }
-})
+}
 
-const emit = defineEmits(['update:modelValue', 'focus', 'blur'])
+function handleFocus(event: FocusEvent) {
+  emit('focus', event)
+}
 
-const inputClasses = computed(() => {
-  const sizes = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-3 py-2 text-sm',
-    lg: 'px-4 py-2.5 text-base'
-  }
-
-  return [
-    'block w-full rounded-lg border transition-colors duration-200',
-    'bg-white dark:bg-slate-800',
-    'text-slate-900 dark:text-slate-100',
-    'placeholder:text-slate-400 dark:placeholder:text-slate-500',
-    'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
-    'disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:cursor-not-allowed',
-    'read-only:bg-slate-50 dark:read-only:bg-slate-800/50 read-only:cursor-default',
-    props.error
-      ? 'border-error-500 focus:ring-error-500'
-      : 'border-slate-300 dark:border-slate-600 focus:border-primary-500',
-    props.leftIcon ? 'pl-10' : '',
-    props.rightIcon ? 'pr-10' : '',
-    sizes[props.size]
-  ].filter(Boolean).join(' ')
-})
-
-const containerClasses = computed(() => {
-  return props.fullWidth ? 'w-full' : ''
-})
-
-const handleInput = (event) => {
-  emit('update:modelValue', event.target.value)
+function handleBlur(event: FocusEvent) {
+  emit('blur', event)
 }
 </script>
 
 <template>
-  <div :class="containerClasses">
+  <div :class="fullWidth ? 'w-full' : undefined">
     <label
       v-if="label"
       class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
@@ -110,10 +113,10 @@ const handleInput = (event) => {
         :disabled="disabled"
         :readonly="readonly"
         :required="required"
-        :class="inputClasses"
+        :class="inputClass"
         @input="handleInput"
-        @focus="emit('focus')"
-        @blur="emit('blur')"
+        @focus="handleFocus"
+        @blur="handleBlur"
       />
       <component
         v-if="rightIcon"

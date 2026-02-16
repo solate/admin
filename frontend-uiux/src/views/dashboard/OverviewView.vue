@@ -158,11 +158,11 @@ const recentActivities = computed(() => {
 
 // Top Tenants Table - 使用 computed 动态获取翻译
 const tenantColumns = computed(() => [
-  { key: 'name', label: t('dashboard.table.tenantName'), width: '30%' },
-  { key: 'users', label: t('dashboard.table.users'), width: '20%' },
-  { key: 'revenue', label: t('dashboard.table.revenue'), width: '20%' },
-  { key: 'status', label: t('dashboard.table.status'), width: '15%' },
-  { key: 'action', label: '', width: '15%' }
+  { prop: 'name', label: t('dashboard.table.tenantName') },
+  { prop: 'users', label: t('dashboard.table.users') },
+  { prop: 'revenue', label: t('dashboard.table.revenue') },
+  { prop: 'status', label: t('dashboard.table.status') },
+  { prop: 'action', label: '' }
 ])
 
 const tenantsData = ref([
@@ -322,7 +322,6 @@ const getColorClass = (color) => {
         :columns="tenantColumns"
         :data="tenantsData"
         :striped="true"
-        :hoverable="true"
         @row-click="handleTenantClick"
       >
         <template #cell-name="{ row }">

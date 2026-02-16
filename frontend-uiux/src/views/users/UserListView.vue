@@ -133,12 +133,12 @@ const roleConfig = computed(() => ({
 
 // Table Columns - 使用 computed 实现动态翻译
 const columns = computed(() => [
-  { key: 'user', label: t('user.list.table.user'), width: '30%' },
-  { key: 'role', label: t('user.list.table.role'), width: '12%' },
-  { key: 'tenant', label: t('user.list.table.tenant'), width: '18%' },
-  { key: 'status', label: t('user.list.table.status'), width: '12%' },
-  { key: 'lastLogin', label: t('user.list.table.lastLogin'), width: '14%' },
-  { key: 'actions', label: '', width: '14%' }
+  { prop: 'user', label: t('user.list.table.user') },
+  { prop: 'role', label: t('user.list.table.role') },
+  { prop: 'tenant', label: t('user.list.table.tenant') },
+  { prop: 'status', label: t('user.list.table.status') },
+  { prop: 'lastLogin', label: t('user.list.table.lastLogin') },
+  { prop: 'actions', label: '' }
 ])
 
 // Delete Modal
@@ -376,7 +376,6 @@ const formatDate = (dateString) => {
       :columns="columns"
       :data="filteredUsers"
       :striped="true"
-      :hoverable="true"
       @row-click="handleRowClick"
     >
       <template #cell-user="{ row }">
