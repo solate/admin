@@ -1,33 +1,43 @@
-<script setup>
-import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
+<!--
+基础模态框组件
+提供弹窗交互功能，支持 v-model:open 双向绑定
+-->
+<script setup lang="ts">
+import { computed, watch, onMounted, onBeforeUnmount, useId } from 'vue'
+import { X } from 'lucide-vue-next'
 
-const props = defineProps({
-  open: {
-    type: Boolean,
-    default: false
-  },
-  title: {
-    type: String,
-    default: ''
-  },
-  size: {
-    type: String,
-    default: 'md',
-    validator: (value) => ['xs', 'sm', 'md', 'lg', 'xl', 'full'].includes(value)
-  },
-  closable: {
-    type: Boolean,
-    default: true
-  },
-  maskClosable: {
-    type: Boolean,
-    default: true
-  }
+/** 模态框尺寸类型 */
+export type ModalSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full'
+
+/** 模态框组件属性 */
+export interface ModalProps {
+  open?: boolean
+  title?: string
+  size?: ModalSize
+  closable?: boolean
+  maskClosable?: boolean
+}
+
+interface Emits {
+  (e: 'update:open', value: boolean): void
+  (e: 'close'): void
+  (e: 'open'): void
+}
+
+const props = withDefaults(defineProps<ModalProps>(), {
+  open: false,
+  title: '',
+  size: 'md',
+  closable: true,
+  maskClosable: true
 })
 
-const emit = defineEmits(['close', 'open'])
+const emit = defineEmits<Emits>()
 
-const modalSizes = {
+// 生成唯一 ID 用于无障碍属性
+const titleId = useId()
+
+const SIZE_CLASSES: Record<ModalSize, string> = {
   xs: 'max-w-xs',
   sm: 'max-w-sm',
   md: 'max-w-md',
@@ -36,29 +46,32 @@ const modalSizes = {
   full: 'max-w-6xl'
 }
 
-const modalClass = computed(() => {
-  return [
-    'relative bg-white dark:bg-slate-800 rounded-2xl shadow-panel w-full',
-    modalSizes[props.size],
-    'transform transition-all duration-200'
-  ].join(' ')
-})
+const modalClass = computed(() => [
+  'relative bg-white dark:bg-slate-800 rounded-2xl shadow-panel w-full',
+  SIZE_CLASSES[props.size],
+  'transform transition-all duration-200'
+].join(' '))
 
-const handleMaskClick = () => {
+function close() {
+  emit('update:open', false)
+  emit('close')
+}
+
+function handleMaskClick() {
   if (props.maskClosable) {
-    emit('close')
+    close()
   }
 }
 
-const handleEscape = (e) => {
-  if (e.key === 'Escape' && props.closable) {
-    emit('close')
+function handleEscape(e: KeyboardEvent) {
+  if (e.key === 'Escape' && props.closable && props.open) {
+    close()
   }
 }
 
 watch(() => props.open, (isOpen) => {
-  emit('open', isOpen)
   if (isOpen) {
+    emit('open')
     document.body.style.overflow = 'hidden'
   } else {
     document.body.style.overflow = ''
@@ -109,6 +122,7 @@ onBeforeUnmount(() => {
             :class="modalClass"
             role="dialog"
             aria-modal="true"
+            :aria-labelledby="title ? titleId : undefined"
           >
             <!-- Header -->
             <div
@@ -116,18 +130,22 @@ onBeforeUnmount(() => {
               class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700"
             >
               <slot name="header">
-                <h3 class="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                <h3
+                  v-if="title"
+                  :id="titleId"
+                  class="text-lg font-semibold text-slate-900 dark:text-slate-100"
+                >
                   {{ title }}
                 </h3>
               </slot>
               <button
                 v-if="closable"
+                type="button"
                 class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                @click="emit('close')"
+                aria-label="关闭"
+                @click="close"
               >
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X :size="20" />
               </button>
             </div>
 

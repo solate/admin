@@ -207,7 +207,6 @@ const handleRowClick = ({ row }) => {
       :columns="columns.value"
       :data="filteredTenants"
       :striped="true"
-      :hoverable="true"
       @row-click="handleRowClick"
     >
       <template #cell-name="{ row }">

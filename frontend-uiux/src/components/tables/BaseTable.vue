@@ -1,14 +1,15 @@
 <!--
 基础表格组件
-提供统一的表格样式和交互
+封装 Element Plus el-table，提供统一的 API 和样式
 -->
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 /**
  * 列定义类型
+ * 与 Element Plus el-table-column 属性对齐
  */
-interface Column {
+export interface TableColumn {
   prop?: string
   label?: string
   width?: string | number
@@ -16,16 +17,23 @@ interface Column {
   align?: 'left' | 'center' | 'right'
   fixed?: boolean | 'left' | 'right'
   type?: 'selection' | 'index' | 'expand'
-  sortable?: boolean
-  formatter?: (row: any, column: any, cellValue: any) => any
+  sortable?: boolean | string
+  formatter?: (row: any, column: any, cellValue: any, index: number) => any
+}
+
+/**
+ * 行点击事件参数
+ */
+export interface RowClickPayload {
+  row: any
+  column: any
+  event: Event
 }
 
 interface Props {
   data: any[]
-  columns: Column[]
+  columns: TableColumn[]
   loading?: boolean
-  selectable?: boolean
-  showIndex?: boolean
   stripe?: boolean
   border?: boolean
   size?: 'large' | 'default' | 'small'
@@ -34,27 +42,23 @@ interface Props {
   fit?: boolean
   showHeader?: boolean
   highlightCurrentRow?: boolean
-  hoverable?: boolean
   emptyText?: string
 }
 
 interface Emits {
   (e: 'selection-change', selection: any[]): void
-  (e: 'row-click', row: any, column: any, event: Event): void
-  (e: 'row-dblclick', row: any, column: any, event: Event): void
+  (e: 'row-click', payload: RowClickPayload): void
+  (e: 'row-dblclick', payload: RowClickPayload): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
-  selectable: false,
-  showIndex: false,
   stripe: false,
   border: false,
   size: 'default',
   fit: true,
   showHeader: true,
   highlightCurrentRow: false,
-  hoverable: false,
   emptyText: '暂无数据',
 })
 
@@ -62,70 +66,31 @@ const emit = defineEmits<Emits>()
 
 const tableRef = ref()
 
-/**
- * 处理选择变化
- */
 function handleSelectionChange(selection: any[]) {
   emit('selection-change', selection)
 }
 
-/**
- * 处理行点击
- */
 function handleRowClick(row: any, column: any, event: Event) {
   emit('row-click', { row, column, event })
 }
 
-/**
- * 处理行双击
- */
 function handleRowDblclick(row: any, column: any, event: Event) {
   emit('row-dblclick', { row, column, event })
 }
 
-/**
- * 清除选择
- */
-function clearSelection() {
-  tableRef.value?.clearSelection()
-}
-
-/**
- * 切换某一行的选中状态
- */
-function toggleRowSelection(row: any, selected?: boolean) {
-  tableRef.value?.toggleRowSelection(row, selected)
-}
-
-/**
- * 清除排序
- */
-function clearSort() {
-  tableRef.value?.clearSort()
-}
-
-/**
- * 切换所有行的选中状态
- */
-function toggleAllSelection() {
-  tableRef.value?.toggleAllSelection()
+/** 获取列的插槽名称 */
+function getColumnSlot(column: TableColumn): string {
+  return column.prop ? `cell-${column.prop}` : column.type || ''
 }
 
 // 暴露方法给父组件
 defineExpose({
-  clearSelection,
-  toggleRowSelection,
-  clearSort,
-  toggleAllSelection,
+  clearSelection: () => tableRef.value?.clearSelection(),
+  toggleRowSelection: (row: any, selected?: boolean) => tableRef.value?.toggleRowSelection(row, selected),
+  clearSort: () => tableRef.value?.clearSort(),
+  toggleAllSelection: () => tableRef.value?.toggleAllSelection(),
   tableRef,
 })
-
-/**
- * 获取列的插槽名称
- */
-function getColumnSlot(column: Column): string {
-  return column.prop ? `cell-${column.prop}` : column.type || ''
-}
 </script>
 
 <template>
@@ -142,13 +107,11 @@ function getColumnSlot(column: Column): string {
       :fit="fit"
       :show-header="showHeader"
       :highlight-current-row="highlightCurrentRow"
-      :hoverable="hoverable"
       :empty-text="emptyText"
       @selection-change="handleSelectionChange"
       @row-click="handleRowClick"
       @row-dblclick="handleRowDblclick"
     >
-      <!-- 动态生成列 -->
       <el-table-column
         v-for="col in columns"
         :key="col.prop || col.type"
@@ -162,7 +125,6 @@ function getColumnSlot(column: Column): string {
         :sortable="col.sortable"
       >
         <template #default="scope">
-          <!-- 优先使用插槽，如果没有插槽则使用格式化函数或默认值 -->
           <slot
             :name="getColumnSlot(col)"
             :row="scope.row"
@@ -180,7 +142,6 @@ function getColumnSlot(column: Column): string {
       </el-table-column>
     </el-table>
 
-    <!-- 分页插槽 -->
     <slot name="pagination" />
   </div>
 </template>
@@ -190,16 +151,25 @@ function getColumnSlot(column: Column): string {
   width: 100%;
 }
 
-.el-table {
-  width: 100%;
+.base-table-wrapper :deep(.el-table) {
+  width: 100% !important;
 }
 
-/* 添加表格过渡动画 */
-.el-table :deep(.el-table__body tr) {
+.base-table-wrapper :deep(.el-table__header-wrapper),
+.base-table-wrapper :deep(.el-table__body-wrapper) {
+  width: 100% !important;
+}
+
+.base-table-wrapper :deep(.el-table__header),
+.base-table-wrapper :deep(.el-table__body) {
+  width: 100% !important;
+}
+
+.base-table-wrapper :deep(.el-table__body tr) {
   transition: background-color 0.2s ease;
 }
 
-.el-table :deep(.el-table__body tr:hover > td) {
+.base-table-wrapper :deep(.el-table__body tr:hover > td) {
   background-color: var(--el-table-row-hover-bg-color);
 }
 </style>
