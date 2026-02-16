@@ -8,5 +8,16 @@
   "analytics": "数据分析",
   "settings": "系统设置",
   "profile": "个人资料",
-  "notifications": "通知"
+  "notifications": "通知",
+  "tenant": {
+    "create": "创建租户",
+    "detail": "租户详情"
+  },
+  "user": {
+    "create": "创建用户",
+    "detail": "用户详情"
+  },
+  "service": {
+    "detail": "服务详情"
+  }
 }

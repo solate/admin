@@ -33,7 +33,7 @@ export interface AppRouteMeta {
   keepAlive?: boolean
 
   // 页面过渡动画
-  transition?: string | string[]
+  transition?: string
 
   // 外链
   external?: string

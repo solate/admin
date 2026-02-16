@@ -1,0 +1,15 @@
+{
+  "refresh": "Refresh",
+  "close": "Close",
+  "closeOther": "Close Other Tabs",
+  "closeLeft": "Close Left Tabs",
+  "closeRight": "Close Right Tabs",
+  "closeAll": "Close All Tabs",
+  "maximize": "Maximize",
+  "restore": "Restore",
+  "pin": "Pin",
+  "unpin": "Unpin",
+  "dragToSort": "Drag to Sort",
+  "noTags": "No Tags",
+  "openInNewWindow": "Open in New Window"
+}

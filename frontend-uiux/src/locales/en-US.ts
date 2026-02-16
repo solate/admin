@@ -13,6 +13,7 @@ import business from './en-US/modules/business.json'
 import notification from './en-US/modules/notification.json'
 import profile from './en-US/modules/profile.json'
 import preferences from './en-US/modules/preferences.json'
+import tagsView from './en-US/modules/tagsView.json'
 
 export default {
   common,
@@ -28,5 +29,6 @@ export default {
   business,
   notification,
   profile,
-  preferences
+  preferences,
+  tagsView
 }

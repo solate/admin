@@ -3,14 +3,15 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePreferencesStore } from '@/stores/modules/preferences'
 import { useTheme } from '@/composables/useTheme'
-import { THEME_COLORS } from '@/types/preferences'
+import { THEME_COLORS, THEME_COLOR_GROUPS } from '@/types/preferences'
 import {
   Sun,
   Moon,
   Monitor,
   Palette,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Pipette
 } from 'lucide-vue-next'
 
 const { t } = useI18n()
@@ -36,6 +37,33 @@ const appearance = computed(() => preferencesStore.appearance)
 
 // 折叠面板状态
 const advancedExpanded = ref(false)
+
+// 自定义颜色选择器状态
+const showCustomColorPicker = ref(false)
+const customColor = ref('#2563eb')
+
+// 是否使用自定义颜色
+const isCustomColor = computed(() => {
+  const presetColors = THEME_COLORS.map(c => c.value.toLowerCase())
+  return !presetColors.includes(appearance.value.primaryColor.toLowerCase())
+})
+
+// 按分组获取主题色
+const themeColorsByGroup = computed(() => {
+  const groups: Record<string, typeof THEME_COLORS> = {}
+  for (const color of THEME_COLORS) {
+    if (!groups[color.group]) {
+      groups[color.group] = []
+    }
+    groups[color.group].push(color)
+  }
+  return groups
+})
+
+// 获取分组标签
+function getGroupLabel(group: string): string {
+  return THEME_COLOR_GROUPS[group as keyof typeof THEME_COLOR_GROUPS]?.label || group
+}
 
 // 主题模式选项
 const themeModeOptions = computed(() => [
@@ -84,6 +112,30 @@ function updateThemeMode(mode: 'light' | 'dark' | 'auto') {
 // 更新主题色
 function updateThemeColor(color: string) {
   setThemeColor(color)
+  showCustomColorPicker.value = false
+}
+
+// 打开自定义颜色选择器
+function openCustomColorPicker() {
+  customColor.value = appearance.value.primaryColor
+  showCustomColorPicker.value = true
+}
+
+// 应用自定义颜色
+function applyCustomColor() {
+  setThemeColor(customColor.value)
+  showCustomColorPicker.value = false
+}
+
+// 取消自定义颜色
+function cancelCustomColor() {
+  showCustomColorPicker.value = false
+}
+
+// 处理颜色输入变化
+function onColorInputChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  customColor.value = target.value
 }
 
 // 更新圆角大小
@@ -188,29 +240,150 @@ function toggleAdvanced() {
       <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
         主题色
       </h4>
-      <div class="flex flex-wrap gap-3">
+
+      <!-- 分组显示预设主题色 -->
+      <div class="space-y-4">
+        <div v-for="(colors, group) in themeColorsByGroup" :key="group">
+          <h5 class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+            {{ getGroupLabel(group) }}
+          </h5>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="color in colors"
+              :key="color.name"
+              class="group relative w-11 h-11 rounded-xl transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:scale-105"
+              :class="appearance.primaryColor === color.value
+                ? 'ring-2 ring-offset-2 ring-primary-500 dark:ring-offset-slate-800 scale-105'
+                : 'ring-offset-2 dark:ring-offset-slate-800'"
+              :style="{ backgroundColor: color.value }"
+              :title="color.label"
+              @click="updateThemeColor(color.value)"
+            >
+              <!-- 选中指示器 -->
+              <span
+                v-if="appearance.primaryColor === color.value"
+                class="flex items-center justify-center h-full text-white"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+              <!-- 悬浮标签 -->
+              <span
+                class="absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10"
+              >
+                {{ color.label }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 自定义颜色按钮 -->
+      <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
         <button
-          v-for="color in THEME_COLORS"
-          :key="color.name"
-          class="group relative w-12 h-12 rounded-2xl transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg hover:scale-110"
-          :class="appearance.primaryColor === color.value
-            ? 'ring-2 ring-offset-2 ring-primary-500 dark:ring-offset-slate-800 scale-110'
-            : 'ring-offset-2 dark:ring-offset-slate-800'"
-          :style="{ backgroundColor: color.value }"
-          :title="color.label"
-          @click="updateThemeColor(color.value)"
+          class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:from-slate-200 hover:to-slate-300 dark:hover:from-slate-600 dark:hover:to-slate-500 transition-all duration-200 cursor-pointer"
+          :class="isCustomColor ? 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-800' : ''"
+          @click="openCustomColorPicker"
         >
-          <!-- 选中指示器 -->
-          <span
-            v-if="appearance.primaryColor === color.value"
-            class="flex items-center justify-center h-full text-white"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-            </svg>
+          <Pipette :size="18" />
+          <span>自定义颜色</span>
+          <span v-if="isCustomColor" class="ml-2 px-2 py-0.5 bg-primary-500 text-white text-xs rounded-full">
+            使用中
           </span>
         </button>
       </div>
+
+      <!-- 自定义颜色选择器弹窗 -->
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition-all duration-150 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div v-if="showCustomColorPicker" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="cancelCustomColor">
+          <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-80 max-w-[90vw]">
+            <h4 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+              <Pipette :size="20" class="text-primary-500" />
+              自定义主题色
+            </h4>
+
+            <!-- 颜色选择器 -->
+            <div class="space-y-4">
+              <!-- 原生颜色选择器 -->
+              <div class="flex items-center gap-4">
+                <div
+                  class="w-20 h-20 rounded-xl border-2 border-slate-200 dark:border-slate-600 shadow-inner overflow-hidden cursor-pointer relative"
+                  :style="{ backgroundColor: customColor }"
+                >
+                  <input
+                    type="color"
+                    :value="customColor"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    @input="onColorInputChange"
+                  />
+                </div>
+                <div class="flex-1">
+                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    HEX 色值
+                  </label>
+                  <input
+                    type="text"
+                    :value="customColor"
+                    placeholder="#2563eb"
+                    class="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-900 dark:text-slate-100 font-mono focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    @input="(e) => customColor = (e.target as HTMLInputElement).value"
+                  />
+                </div>
+              </div>
+
+              <!-- 预览 -->
+              <div class="p-4 rounded-xl bg-slate-100 dark:bg-slate-700/50">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">预览效果</p>
+                <div class="flex items-center gap-3">
+                  <button
+                    class="px-4 py-2 rounded-lg text-white text-sm font-medium shadow-md"
+                    :style="{ backgroundColor: customColor }"
+                  >
+                    主要按钮
+                  </button>
+                  <button
+                    class="px-4 py-2 rounded-lg border-2 text-sm font-medium"
+                    :style="{ borderColor: customColor, color: customColor }"
+                  >
+                    次要按钮
+                  </button>
+                  <div
+                    class="w-8 h-8 rounded-full flex items-center justify-center"
+                    :style="{ backgroundColor: customColor + '20' }"
+                  >
+                    <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: customColor }"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 操作按钮 -->
+              <div class="flex gap-3 pt-2">
+                <button
+                  class="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                  @click="cancelCustomColor"
+                >
+                  取消
+                </button>
+                <button
+                  class="flex-1 px-4 py-2.5 text-white rounded-xl text-sm font-medium shadow-md hover:shadow-lg transition-all cursor-pointer"
+                  :style="{ backgroundColor: customColor }"
+                  @click="applyCustomColor"
+                >
+                  应用颜色
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </section>
 
     <!-- 圆角大小 -->
