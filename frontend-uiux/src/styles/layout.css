@@ -1,0 +1,265 @@
+/**
+ * 布局相关 CSS 变量和工具类
+ */
+
+/* ==================== CSS 变量 ==================== */
+
+:root {
+  /* 顶栏高度 */
+  --header-height: 60px;
+
+  /* 侧边栏宽度 */
+  --sidebar-width: 256px;
+  --sidebar-collapsed-width: 64px;
+
+  /* 内容区域最大宽度 */
+  --content-max-width: 100%;
+
+  /* 布局过渡时间 */
+  --layout-transition-duration: 300ms;
+
+  /* 页脚高度 */
+  --footer-height: auto;
+}
+
+/* ==================== 布局过渡 ==================== */
+
+.layout-transition {
+  transition:
+    margin-left var(--layout-transition-duration) ease,
+    width var(--layout-transition-duration) ease,
+    padding-top var(--layout-transition-duration) ease,
+    transform var(--layout-transition-duration) ease;
+}
+
+/* ==================== 顶栏模式 ==================== */
+
+/* 固定顶栏 */
+.app-header--fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+}
+
+/* 静态顶栏 */
+.app-header--static {
+  position: relative;
+}
+
+/* 自动隐藏顶栏 */
+.app-header--auto-hide {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  transition: transform var(--layout-transition-duration) ease;
+}
+
+.app-header--auto-hide.app-header--hidden {
+  transform: translateY(-100%);
+}
+
+/* ==================== 主内容区 ==================== */
+
+.main-content {
+  min-height: 100vh;
+  transition: margin-left var(--layout-transition-duration) ease;
+}
+
+/* 有固定顶栏时的内容区 */
+.main-content--with-fixed-header {
+  padding-top: var(--header-height);
+}
+
+/* ==================== 内容宽度模式 ==================== */
+
+/* 流式宽度 */
+.content-fluid {
+  width: 100%;
+}
+
+/* 定宽模式 */
+.content-fixed {
+  max-width: var(--content-max-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ==================== 侧边栏 ==================== */
+
+/* 侧边栏基础样式 */
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 30;
+  transition: width var(--layout-transition-duration) ease;
+}
+
+/* 侧边栏折叠状态 */
+.app-sidebar--collapsed .sidebar-text {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+/* ==================== 页脚 ==================== */
+
+/* 固定页脚 */
+.app-footer--fixed {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: inherit;
+}
+
+/* ==================== 面包屑样式 ==================== */
+
+/* 常规样式 */
+.app-breadcrumbs--normal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 背景样式 */
+.app-breadcrumbs--background {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: rgb(var(--color-bg-secondary) / 1);
+  border-radius: var(--border-radius);
+}
+
+.dark .app-breadcrumbs--background {
+  background-color: rgb(30 41 59 / 0.5);
+}
+
+/* ==================== 标签页样式 ==================== */
+
+/* Chrome 风格 */
+.tabs--chrome {
+  /* Chrome 样式在 TagsView 组件中实现 */
+}
+
+/* 朴素风格 */
+.tabs--plain {
+  /* Plain 样式在 TagsView 组件中实现 */
+}
+
+/* 卡片风格 */
+.tabs--card {
+  /* Card 样式在 TagsView 组件中实现 */
+}
+
+/* 轻快风格 */
+.tabs--smart {
+  /* Smart 样式在 TagsView 组件中实现 */
+}
+
+/* ==================== 布局模式容器 ==================== */
+
+/* 侧边栏布局 */
+.layout-sidebar {
+  min-height: 100vh;
+}
+
+/* 顶部导航布局 */
+.layout-topbar {
+  min-height: 100vh;
+}
+
+/* 混合布局 */
+.layout-mixed {
+  min-height: 100vh;
+}
+
+/* 水平布局 */
+.layout-horizontal {
+  min-height: 100vh;
+}
+
+/* ==================== 响应式适配 ==================== */
+
+/* 移动端隐藏桌面端侧边栏 */
+@media (max-width: 1023px) {
+  .app-sidebar--desktop {
+    display: none;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+  }
+}
+
+/* 桌面端隐藏移动端菜单 */
+@media (min-width: 1024px) {
+  .app-sidebar--mobile {
+    display: none;
+  }
+}
+
+/* ==================== 深色模式增强 ==================== */
+
+/* 深色侧边栏（浅色模式下） */
+[data-dark-sidebar="true"] .app-sidebar {
+  background-color: rgb(15 23 42 / 0.95) !important;
+}
+
+[data-dark-sidebar="true"] .app-sidebar * {
+  --tw-text-opacity: 1;
+}
+
+/* 深色顶栏（浅色模式下） */
+[data-dark-header="true"] .app-header {
+  background-color: rgb(15 23 42 / 0.95) !important;
+}
+
+[data-dark-header="true"] .app-header * {
+  --tw-text-opacity: 1;
+}
+
+/* ==================== 动画禁用 ==================== */
+
+.no-animation * {
+  animation: none !important;
+  transition: none !important;
+}
+
+.no-animation .layout-transition {
+  transition: none !important;
+}
+
+/* ==================== 辅助类 ==================== */
+
+/* Flex 布局辅助 */
+.layout-flex {
+  display: flex;
+}
+
+.layout-flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 占满剩余空间 */
+.layout-grow {
+  flex-grow: 1;
+}
+
+/* 滚动容器 */
+.layout-scroll {
+  overflow: auto;
+  flex-grow: 1;
+}
+
+/* 固定在视口内 */
+.layout-viewport {
+  height: 100vh;
+  overflow: hidden;
+}

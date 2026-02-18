@@ -130,13 +130,13 @@ const handleRowClick = ({ row }) => {
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-success-100 dark:bg-success-900/30 flex items-center justify-center">
             <span class="text-2xl font-bold text-success-600 dark:text-success-400">
-              {{ tenantsStore.getActiveTenants().length }}
+              {{ tenantsStore.activeTenants.length }}
             </span>
           </div>
           <div>
             <p class="text-sm text-slate-600 dark:text-slate-400">{{ t('tenant.activeTenants') }}</p>
             <p class="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              {{ Math.round(tenantsStore.getActiveTenants().length / tenantsStore.tenants.length * 100) || 0 }}%
+              {{ Math.round(tenantsStore.activeTenants.length / tenantsStore.tenants.length * 100) || 0 }}%
             </p>
           </div>
         </div>

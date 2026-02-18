@@ -20,6 +20,9 @@
 /* 基础样式 */
 @import './base.css';
 
+/* 布局样式 */
+@import './layout.css';
+
 /* Tailwind CSS */
 @tailwind base;
 @tailwind components;

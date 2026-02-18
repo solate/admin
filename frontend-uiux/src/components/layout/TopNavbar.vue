@@ -5,6 +5,7 @@ import { useUiStore } from '@/stores/modules/ui'
 import { useAuthStore } from '@/stores/modules/auth'
 import { usePreferencesStore } from '@/stores/modules/preferences'
 import { useI18n } from '@/locales/composables'
+import { useLayout, useHeaderAutoHide } from '@/composables/useLayout'
 import {
   Search,
   Bell,
@@ -26,12 +27,36 @@ import {
 import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
 import SearchDialog from '@/components/business/search/SearchDialog.vue'
 import SettingsDrawer from '@/components/preferences/SettingsDrawer.vue'
+import AppBreadcrumbs from '@/layouts/components/AppBreadcrumbs.vue'
 
 const route = useRoute()
 const { t } = useI18n()
 const uiStore = useUiStore()
 const authStore = useAuthStore()
 const preferencesStore = usePreferencesStore()
+
+// 使用布局 composable
+const {
+  headerMode,
+  headerHeightPx,
+  headerPositionClass,
+  showBreadcrumbs,
+  isHeaderAutoHide
+} = useLayout()
+
+// 自动隐藏逻辑
+const { isVisible: isHeaderVisible } = useHeaderAutoHide(
+  () => isHeaderAutoHide.value,
+  60 // 滚动阈值
+)
+
+// 顶栏可见性类
+const headerVisibilityClass = computed(() => {
+  if (isHeaderAutoHide.value && !isHeaderVisible.value) {
+    return 'header-hidden -translate-y-full'
+  }
+  return ''
+})
 
 const searchQuery = ref('')
 const showUserMenu = ref(false)
@@ -47,6 +72,11 @@ const darkHeaderClass = computed(() => {
   }
   return ''
 })
+
+// 顶栏样式（动态高度）
+const headerStyle = computed(() => ({
+  height: headerHeightPx.value
+}))
 
 // 刷新页面
 const refreshPage = () => {
@@ -84,36 +114,6 @@ onUnmounted(() => {
 
 const pageTitle = computed(() => {
   return route.meta?.title || t('nav.overview')
-})
-
-const breadcrumbs = computed(() => {
-  const pathSegments = route.path.split('/').filter(Boolean)
-  const crumbs = []
-
-  if (pathSegments[0] === 'dashboard') {
-    const labels = {
-      dashboard: t('nav.dashboard'),
-      overview: t('nav.overview'),
-      tenants: t('nav.tenants'),
-      services: t('nav.services'),
-      users: t('nav.users'),
-      analytics: t('nav.analytics'),
-      settings: t('nav.settings'),
-      profile: t('nav.profile'),
-      notifications: t('nav.notifications')
-    }
-
-    let currentPath = ''
-    for (let i = 0; i < pathSegments.length; i++) {
-      currentPath += `/${pathSegments[i]}`
-      crumbs.push({
-        label: labels[pathSegments[i]] || pathSegments[i],
-        path: currentPath
-      })
-    }
-  }
-
-  return crumbs
 })
 
 const notificationCount = computed(() => 5)
@@ -160,8 +160,11 @@ const currentTenantName = computed(() => {
 </style>
 
 <template>
-  <header :class="['topbar sticky top-0 z-20 backdrop-blur-xl transition-colors', darkHeaderClass, 'bg-white/80 dark:bg-slate-900/70', 'border-b border-slate-200/60 dark:border-slate-700/60']">
-    <div class="flex items-center justify-between h-16 px-4 lg:px-6">
+  <header
+    :class="['topbar backdrop-blur-xl transition-all duration-300', headerPositionClass, darkHeaderClass, headerVisibilityClass, 'bg-white/80 dark:bg-slate-900/70', 'border-b border-slate-200/60 dark:border-slate-700/60']"
+    :style="headerStyle"
+  >
+    <div class="flex items-center justify-between px-4 lg:px-6 h-full">
       <!-- Left: Sidebar Toggle, Refresh & Breadcrumbs -->
       <div class="hidden sm:flex items-center gap-2 flex-1">
         <!-- Sidebar Toggle -->
@@ -184,24 +187,8 @@ const currentTenantName = computed(() => {
           <RotateCw :size="18" class="text-slate-600 dark:text-slate-400" :class="{ 'animate-spin': isRefreshing }" />
         </button>
 
-        <!-- Breadcrumbs -->
-        <nav class="flex items-center gap-2">
-          <template v-for="(crumb, index) in breadcrumbs" :key="crumb.path">
-            <router-link
-              :to="crumb.path"
-              class="text-sm font-medium transition-colors cursor-pointer"
-              :class="index === breadcrumbs.length - 1
-                ? 'text-slate-900 dark:text-slate-100'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'"
-            >
-              {{ crumb.label }}
-            </router-link>
-            <span
-              v-if="index < breadcrumbs.length - 1"
-              class="text-slate-400"
-            >/</span>
-          </template>
-        </nav>
+        <!-- Breadcrumbs - 使用 AppBreadcrumbs 组件 -->
+        <AppBreadcrumbs v-if="showBreadcrumbs" />
       </div>
 
       <!-- Page Title (Mobile) -->

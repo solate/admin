@@ -71,8 +71,15 @@ export const usePreferencesStore = defineStore('preferences', () => {
     // 同步语言
     uiStore.setLocale(general.value.language)
 
+    // 同步侧边栏初始状态 - 始终默认展开
+    // 忽略本地存储的折叠状态，确保每次刷新都展开
+    uiStore.setSidebarOpen(true)
+
     // 应用外观设置到 DOM
     applyAppearanceSettings()
+
+    // 应用布局设置到 DOM
+    applyLayoutSettings()
 
     // 监听主题模式变化
     watch(
@@ -91,6 +98,21 @@ export const usePreferencesStore = defineStore('preferences', () => {
       () => appearance.value,
       () => applyAppearanceSettings(),
       { deep: true }
+    )
+
+    // 监听布局设置变化，应用到 DOM
+    watch(
+      () => layout.value,
+      () => applyLayoutSettings(),
+      { deep: true }
+    )
+
+    // 监听侧边栏折叠状态变化
+    watch(
+      () => layout.value.sidebarCollapsed,
+      (collapsed) => {
+        uiStore.setSidebarOpen(!collapsed)
+      }
     )
 
     // 监听偏好设置变化，持久化到 localStorage
@@ -169,6 +191,27 @@ export const usePreferencesStore = defineStore('preferences', () => {
     root.style.setProperty('--el-border-radius-base', radius)
     root.style.setProperty('--el-border-radius-small', `calc(${radius} * 0.5)`)
     root.style.setProperty('--el-border-radius-round', `calc(${radius} * 2.5)`)
+  }
+
+  /**
+   * 应用布局设置到 DOM
+   */
+  function applyLayoutSettings() {
+    const root = document.documentElement
+
+    // 设置顶栏高度 CSS 变量
+    root.style.setProperty('--header-height', `${layout.value.headerHeight}px`)
+
+    // 设置侧边栏宽度 CSS 变量
+    root.style.setProperty('--sidebar-width', `${layout.value.sidebarWidth}px`)
+    root.style.setProperty('--sidebar-collapsed-width', `${layout.value.sidebarCollapsedWidth}px`)
+
+    // 设置内容宽度
+    if (layout.value.contentWidthMode === 'fixed' && layout.value.contentFixedWidth) {
+      root.style.setProperty('--content-max-width', `${layout.value.contentFixedWidth}px`)
+    } else {
+      root.style.setProperty('--content-max-width', '100%')
+    }
   }
 
   /**
