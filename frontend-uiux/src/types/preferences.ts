@@ -88,6 +88,8 @@ export interface LayoutPreferences {
   navStyle: NavStyle
   /** 导航菜单手风琴模式 */
   navAccordion: boolean
+  /** 双列菜单样式 */
+  doubleSidebarStyle: DoubleSidebarStyle
   /** 顶栏模式 */
   headerMode: HeaderMode
   /** 顶栏高度 */
@@ -127,7 +129,7 @@ export interface LayoutPreferences {
 /**
  * 布局模式
  */
-export type LayoutMode = 'sidebar' | 'topbar' | 'mixed' | 'horizontal'
+export type LayoutMode = 'sidebar' | 'topbar' | 'mixed' | 'horizontal' | 'double-sidebar'
 
 /**
  * 顶栏模式
@@ -143,6 +145,13 @@ export type ContentWidthMode = 'fluid' | 'fixed'
  * 导航样式
  */
 export type NavStyle = 'icon-text' | 'icon-only'
+
+/**
+ * 双列菜单样式
+ * icon-left: 第一列图标，第二列文字（默认）
+ * text-left: 第一列文字，第二列图标
+ */
+export type DoubleSidebarStyle = 'icon-left' | 'text-left'
 
 /**
  * 面包屑样式
@@ -273,7 +282,8 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
     sidebarCollapsed: false,
     navStyle: 'icon-text',
     navAccordion: true,
-    headerMode: 'fixed',
+    doubleSidebarStyle: 'icon-left',
+    headerMode: 'sticky',
     headerHeight: 60,
     contentWidthMode: 'fluid',
     showBreadcrumbs: true,

@@ -35,8 +35,8 @@ const {
 // 外观设置（保留以兼容现有代码）
 const appearance = computed(() => preferencesStore.appearance)
 
-// 折叠面板状态
-const advancedExpanded = ref(false)
+// 折叠面板状态 - 默认展开
+const advancedExpanded = ref(true)
 
 // 自定义颜色选择器状态
 const showCustomColorPicker = ref(false)

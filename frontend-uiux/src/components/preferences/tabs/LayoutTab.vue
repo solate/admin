@@ -10,12 +10,12 @@ const preferencesStore = usePreferencesStore()
 // 布局设置
 const layout = computed(() => preferencesStore.layout)
 
-// 折叠面板状态
-const sidebarExpanded = ref(false)
-const headerExpanded = ref(false)
-const tabsExpanded = ref(false)
-const breadcrumbExpanded = ref(false)
-const widgetsExpanded = ref(false)
+// 折叠面板状态 - 默认全部展开
+const sidebarExpanded = ref(true)
+const headerExpanded = ref(true)
+const tabsExpanded = ref(true)
+const breadcrumbExpanded = ref(true)
+const widgetsExpanded = ref(true)
 
 // 布局模式选项
 const layoutModeOptions = computed(() => [
@@ -24,6 +24,12 @@ const layoutModeOptions = computed(() => [
     label: '侧边栏模式',
     description: '左侧导航栏布局',
     icon: 'sidebar'
+  },
+  {
+    value: 'double-sidebar' as const,
+    label: '双列菜单',
+    description: '图标主菜单+子菜单',
+    icon: 'double-sidebar'
   },
   {
     value: 'topbar' as const,
@@ -85,8 +91,14 @@ const widgetsPositionOptions = computed(() => [
   { value: 'sidebar' as const, label: '侧边栏' }
 ])
 
+// 双列菜单样式选项
+const doubleSidebarStyleOptions = computed(() => [
+  { value: 'icon-left' as const, label: '图标 + 文字', description: '第一列图标，第二列文字' },
+  { value: 'text-left' as const, label: '文字 + 图标', description: '第一列文字，第二列图标' }
+])
+
 // 更新布局模式
-function updateLayoutMode(mode: 'sidebar' | 'topbar' | 'mixed' | 'horizontal') {
+function updateLayoutMode(mode: 'sidebar' | 'topbar' | 'mixed' | 'horizontal' | 'double-sidebar') {
   preferencesStore.updateLayout('layoutMode', mode)
 }
 
@@ -118,6 +130,11 @@ function updateTabsStyle(style: 'chrome' | 'plain' | 'card' | 'smart') {
 // 更新小部件位置
 function updateWidgetsPosition(position: 'auto' | 'header' | 'sidebar') {
   preferencesStore.updateLayout('widgetsPosition', position)
+}
+
+// 更新双列菜单样式
+function updateDoubleSidebarStyle(style: 'icon-left' | 'text-left') {
+  preferencesStore.updateLayout('doubleSidebarStyle', style)
 }
 
 // 切换布尔选项
@@ -185,6 +202,15 @@ function updateContentFixedWidth(value: number) {
               <div v-if="option.icon === 'sidebar'" class="h-full border-r-2 border-slate-300 dark:border-slate-600 flex items-center justify-center" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''">
                 <div class="w-1.5 h-2 bg-slate-400 dark:bg-slate-500 rounded-sm" />
               </div>
+              <!-- Double Sidebar Icon -->
+              <div v-else-if="option.icon === 'double-sidebar'" class="h-full flex">
+                <div class="w-2 border-r-2 border-slate-300 dark:border-slate-600" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''" />
+                <div class="w-3 border-r-2 border-slate-300 dark:border-slate-600 flex flex-col justify-center gap-1 p-0.5" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''">
+                  <div class="w-1.5 h-0.5 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                  <div class="w-1.5 h-0.5 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                  <div class="w-1.5 h-0.5 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                </div>
+              </div>
               <!-- Topbar Icon -->
               <div v-else-if="option.icon === 'topbar'" class="h-3 w-full border-b-2 border-slate-300 dark:border-slate-600 mb-1" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''" />
               <!-- Mixed Icon -->
@@ -219,6 +245,56 @@ function updateContentFixedWidth(value: number) {
             </svg>
           </div>
         </button>
+      </div>
+    </section>
+
+    <!-- 双列菜单设置 -->
+    <section v-if="layout.layoutMode === 'double-sidebar'" class="border-2 border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+      <div class="p-4 space-y-4 bg-white dark:bg-slate-900/30">
+        <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          双列菜单样式
+        </h4>
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            v-for="option in doubleSidebarStyleOptions"
+            :key="option.value"
+            class="p-4 border-2 bg-white dark:bg-slate-700/50 rounded-xl transition-all"
+            :class="layout.doubleSidebarStyle === option.value ? 'border-primary-500 shadow-md' : 'border-slate-200 dark:border-slate-700'"
+            @click="updateDoubleSidebarStyle(option.value)"
+          >
+            <div class="flex flex-col items-center gap-2">
+              <!-- 预览图标 -->
+              <div class="w-full h-10 flex border-2 border-slate-300 dark:border-slate-600 rounded" :class="layout.doubleSidebarStyle === option.value ? 'border-primary-500' : ''">
+                <div v-if="option.value === 'icon-left'" class="flex w-full">
+                  <div class="w-6 border-r-2 border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center gap-0.5" :class="layout.doubleSidebarStyle === option.value ? 'border-primary-500' : ''">
+                    <div class="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                    <div class="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                  </div>
+                  <div class="flex-1 flex flex-col justify-center gap-0.5 p-1">
+                    <div class="h-1.5 w-full bg-slate-300 dark:bg-slate-600 rounded-sm" />
+                    <div class="h-1.5 w-3/4 bg-slate-300 dark:bg-slate-600 rounded-sm" />
+                  </div>
+                </div>
+                <div v-else class="flex w-full">
+                  <div class="flex-1 flex flex-col justify-center gap-0.5 p-1">
+                    <div class="h-1.5 w-full bg-slate-300 dark:bg-slate-600 rounded-sm" />
+                    <div class="h-1.5 w-3/4 bg-slate-300 dark:bg-slate-600 rounded-sm" />
+                  </div>
+                  <div class="w-6 border-l-2 border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center gap-0.5" :class="layout.doubleSidebarStyle === option.value ? 'border-primary-500' : ''">
+                    <div class="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                    <div class="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                  </div>
+                </div>
+              </div>
+              <span class="text-sm font-medium" :class="layout.doubleSidebarStyle === option.value ? 'text-primary-700 dark:text-primary-300' : 'text-slate-600 dark:text-slate-400'">
+                {{ option.label }}
+              </span>
+              <span class="text-xs text-slate-500 dark:text-slate-400">
+                {{ option.description }}
+              </span>
+            </div>
+          </button>
+        </div>
       </div>
     </section>
 

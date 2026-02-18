@@ -103,7 +103,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'user-create',
         component: () => import('@/views/users/UserDetailView.vue'),
         meta: {
-          title: 'user.create',
+          title: 'user.detail.create',
           hideInMenu: true
         }
       },
@@ -112,7 +112,7 @@ export const dashboardRoutes: AppRouteRecordRaw[] = [
         name: 'user-detail',
         component: () => import('@/views/users/UserDetailView.vue'),
         meta: {
-          title: 'user.detail',
+          title: 'user.detail.edit',
           hideInMenu: true
         }
       },
