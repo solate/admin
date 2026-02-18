@@ -42,7 +42,7 @@ const handleRegister = async () => {
       email: form.value.email,
       password: form.value.password
     })
-    router.push({ name: 'dashboard-overview' })
+    router.push({ name: 'overview' })
   } catch (e) {
     error.value = t('auth.registerFailed')
   } finally {

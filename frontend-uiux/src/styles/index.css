@@ -3,14 +3,15 @@
  * 统一导入所有样式文件
  *
  * CSS 规则顺序：
- * 1. @charset（可选）
- * 2. @import 语句
- * 3. @tailwind
- * 4. @layer
- * 5. 其他样式
+ * 1. @import 语句
+ * 2. @tailwind
+ * 3. @layer
+ * 4. 其他样式
+ *
+ * 注意：CSS 变量和辅助功能模式样式在 variables.css 中定义
  */
 
-/* CSS 变量 */
+/* CSS 变量 (包含辅助功能模式样式) */
 @import './variables.css';
 
 /* 样式重置 */
@@ -24,65 +25,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 原有的自定义样式（保留 Tailwind 类和组件样式）*/
+/* ===== Tailwind 基础层扩展 ===== */
 @layer base {
-  :root {
-    /* 主题色 - 可通过偏好设置动态修改 */
-    --color-primary: 37 99 235;
-    /* 圆角 - 可通过偏好设置动态修改 */
-    --border-radius: 0.5rem;
-    --color-cta: 249 115 22;
-    --color-bg: 248 250 252;
-    --color-text: 30 41 59;
-  }
-
-  .dark {
-    --color-primary: 59 130 246;
-    --color-cta: 251 146 60;
-    --color-bg: 15 23 42;
-    --color-text: 241 245 249;
-  }
-
-  /* 动态主题色 Tailwind 类 - 这些类会被 Tailwind 的配置覆盖，这里作为后备 */
-  .bg-primary-50 { background-color: rgb(var(--color-primary) / 0.05); }
-  .bg-primary-100 { background-color: rgb(var(--color-primary) / 0.1); }
-  .bg-primary-200 { background-color: rgb(var(--color-primary) / 0.2); }
-  .bg-primary-300 { background-color: rgb(var(--color-primary) / 0.35); }
-  .bg-primary-400 { background-color: rgb(var(--color-primary) / 0.5); }
-  .bg-primary-500 { background-color: rgb(var(--color-primary) / 0.75); }
-  .bg-primary-600 { background-color: rgb(var(--color-primary) / 1); }
-  .bg-primary-700 { background-color: rgb(var(--color-primary) / 1); }
-  .bg-primary-800 { background-color: rgb(var(--color-primary) / 1); }
-  .bg-primary-900 { background-color: rgb(var(--color-primary) / 1); }
-  .bg-primary-950 { background-color: rgb(var(--color-primary) / 1); }
-  .text-primary-50 { color: rgb(var(--color-primary) / 0.05); }
-  .text-primary-100 { color: rgb(var(--color-primary) / 0.1); }
-  .text-primary-200 { color: rgb(var(--color-primary) / 0.2); }
-  .text-primary-300 { color: rgb(var(--color-primary) / 0.35); }
-  .text-primary-400 { color: rgb(var(--color-primary) / 0.5); }
-  .text-primary-500 { color: rgb(var(--color-primary) / 0.75); }
-  .text-primary-600 { color: rgb(var(--color-primary) / 1); }
-  .text-primary-700 { color: rgb(var(--color-primary) / 1); }
-  .text-primary-800 { color: rgb(var(--color-primary) / 1); }
-  .text-primary-900 { color: rgb(var(--color-primary) / 1); }
-  .text-primary-950 { color: rgb(var(--color-primary) / 1); }
-  .border-primary-50 { border-color: rgb(var(--color-primary) / 0.05); }
-  .border-primary-100 { border-color: rgb(var(--color-primary) / 0.1); }
-  .border-primary-200 { border-color: rgb(var(--color-primary) / 0.2); }
-  .border-primary-500 { border-color: rgb(var(--color-primary) / 0.75); }
-  .border-primary-600 { border-color: rgb(var(--color-primary) / 1); }
-  .ring-primary-500 { --tw-ring-color: rgb(var(--color-primary) / 0.75); }
-  .ring-primary-600 { --tw-ring-color: rgb(var(--color-primary) / 1); }
-  .shadow-primary-500\/25 { box-shadow: 0 10px 15px -3px rgb(var(--color-primary) / 0.25), 0 4px 6px -4px rgb(var(--color-primary) / 0.25); }
-  .shadow-primary-500\/30 { box-shadow: 0 10px 15px -3px rgb(var(--color-primary) / 0.3), 0 4px 6px -4px rgb(var(--color-primary) / 0.3); }
-  .shadow-primary-500\/10 { box-shadow: 0 1px 3px 0 rgb(var(--color-primary) / 0.1), 0 1px 2px -1px rgb(var(--color-primary) / 0.1); }
-
-  /* 暗色模式主题色 */
-  .dark .bg-primary-900\/30 { background-color: rgb(var(--color-primary) / 0.15); }
-  .dark .text-primary-300 { color: rgb(var(--color-primary) / 0.7); }
-  .dark .text-primary-400 { color: rgb(var(--color-primary) / 0.6); }
-  .dark .border-primary-800\/50 { border-color: rgb(var(--color-primary) / 0.3); }
-
   * {
     @apply border-slate-200 dark:border-slate-700;
   }
@@ -98,7 +42,7 @@
     scroll-behavior: smooth;
   }
 
-  /* Custom scrollbar */
+  /* 自定义滚动条 */
   ::-webkit-scrollbar {
     @apply w-2 h-2;
   }
@@ -114,56 +58,13 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-400 dark:bg-slate-500;
   }
-}
 
-@layer components {
-  /* Glass Effect - Optimized for light/dark mode */
-  .glass {
-    @apply bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50;
-  }
-
-  .glass-card {
-    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-card;
-  }
-
-  .glass-card-hover {
-    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-card hover:shadow-card-hover hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-200;
-  }
-
-  /* Card variants */
-  .card {
-    @apply bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-card;
-  }
-
-  .card-elevated {
-    @apply bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-panel;
-  }
-
-  /* Gradients */
-  .gradient-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  }
-
-  .gradient-cta {
-    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  }
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
-
-/* Focus States for Accessibility */
-@layer base {
+  /* 焦点状态 - 可访问性 */
   *:focus-visible {
     @apply outline-none ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-slate-900;
   }
-}
 
-/* Smooth transitions */
-@layer base {
+  /* 平滑过渡 */
   button,
   a,
   input,
@@ -173,7 +74,103 @@
   }
 }
 
-/* Reduced motion */
+/* ===== Tailwind 组件层 ===== */
+@layer components {
+  /* 动态主题色类 */
+  .bg-primary-50 { background-color: rgb(var(--color-primary) / 0.05); }
+  .bg-primary-100 { background-color: rgb(var(--color-primary) / 0.1); }
+  .bg-primary-200 { background-color: rgb(var(--color-primary) / 0.2); }
+  .bg-primary-300 { background-color: rgb(var(--color-primary) / 0.35); }
+  .bg-primary-400 { background-color: rgb(var(--color-primary) / 0.5); }
+  .bg-primary-500 { background-color: rgb(var(--color-primary) / 0.75); }
+  .bg-primary-600 { background-color: rgb(var(--color-primary) / 1); }
+  .bg-primary-700 { background-color: rgb(var(--color-primary) / 1); }
+  .bg-primary-800 { background-color: rgb(var(--color-primary) / 1); }
+  .bg-primary-900 { background-color: rgb(var(--color-primary) / 1); }
+
+  .text-primary-50 { color: rgb(var(--color-primary) / 0.05); }
+  .text-primary-100 { color: rgb(var(--color-primary) / 0.1); }
+  .text-primary-200 { color: rgb(var(--color-primary) / 0.2); }
+  .text-primary-300 { color: rgb(var(--color-primary) / 0.35); }
+  .text-primary-400 { color: rgb(var(--color-primary) / 0.5); }
+  .text-primary-500 { color: rgb(var(--color-primary) / 0.75); }
+  .text-primary-600 { color: rgb(var(--color-primary) / 1); }
+  .text-primary-700 { color: rgb(var(--color-primary) / 1); }
+  .text-primary-800 { color: rgb(var(--color-primary) / 1); }
+  .text-primary-900 { color: rgb(var(--color-primary) / 1); }
+
+  .border-primary-50 { border-color: rgb(var(--color-primary) / 0.05); }
+  .border-primary-100 { border-color: rgb(var(--color-primary) / 0.1); }
+  .border-primary-200 { border-color: rgb(var(--color-primary) / 0.2); }
+  .border-primary-500 { border-color: rgb(var(--color-primary) / 0.75); }
+  .border-primary-600 { border-color: rgb(var(--color-primary) / 1); }
+
+  .ring-primary-500 { --tw-ring-color: rgb(var(--color-primary) / 0.75); }
+  .ring-primary-600 { --tw-ring-color: rgb(var(--color-primary) / 1); }
+
+  .shadow-primary-500\/25 { box-shadow: 0 10px 15px -3px rgb(var(--color-primary) / 0.25), 0 4px 6px -4px rgb(var(--color-primary) / 0.25); }
+  .shadow-primary-500\/30 { box-shadow: 0 10px 15px -3px rgb(var(--color-primary) / 0.3), 0 4px 6px -4px rgb(var(--color-primary) / 0.3); }
+  .shadow-primary-500\/10 { box-shadow: 0 1px 3px 0 rgb(var(--color-primary) / 0.1), 0 1px 2px -1px rgb(var(--color-primary) / 0.1); }
+
+  /* 暗色模式主题色 */
+  .dark .bg-primary-900\/30 { background-color: rgb(var(--color-primary) / 0.15); }
+  .dark .text-primary-300 { color: rgb(var(--color-primary) / 0.7); }
+  .dark .text-primary-400 { color: rgb(var(--color-primary) / 0.6); }
+  .dark .border-primary-800\/50 { border-color: rgb(var(--color-primary) / 0.3); }
+
+  /* 玻璃效果 - 优化深浅模式 */
+  .glass {
+    @apply bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50;
+  }
+
+  .glass-card {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-card);
+  }
+
+  .glass-card-hover {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-card);
+    transition: all 0.2s;
+  }
+  .glass-card-hover:hover {
+    box-shadow: var(--shadow-card-hover);
+    @apply border-slate-300 dark:border-slate-600;
+  }
+
+  /* 卡片变体 - 使用动态圆角 */
+  .card {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-card);
+  }
+
+  .card-elevated {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-panel);
+  }
+
+  /* 渐变 */
+  .gradient-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  }
+
+  .gradient-cta {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  }
+}
+
+/* ===== Tailwind 工具层 ===== */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* ===== 响应式动画偏好 ===== */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -195,54 +192,75 @@
   scroll-behavior: auto !important;
 }
 
-/* ===== 色盲模式滤镜 ===== */
+/* ========================================
+   全局圆角覆盖 - 必须放在 Tailwind 之后
+   覆盖所有 Tailwind 圆角类以响应主题设置
+   ======================================== */
 
-/* 红色盲 (Protanopia) - 无法感知红色 */
-[data-color-blind="protanopia"] {
-  filter: url('data:image/svg+xml;utf8,\
-    <svg xmlns="http://www.w3.org/2000/svg">\
-      <filter id="protanopia">\
-        <feColorMatrix type="matrix" values="\
-          0.567, 0.433, 0, 0, 0\
-          0.558, 0.442, 0, 0, 0\
-          0, 0.242, 0.758, 0, 0\
-          0, 0, 0, 1, 0"/>\
-      </filter>\
-    </svg>#protanopia');
+/* 按钮圆角 */
+button.rounded-lg,
+button.rounded-md,
+button.rounded-xl,
+button.rounded-2xl,
+button.rounded-3xl {
+  border-radius: var(--border-radius) !important;
 }
 
-/* 绿色盲 (Deuteranopia) - 无法感知绿色 */
-[data-color-blind="deuteranopia"] {
-  filter: url('data:image/svg+xml;utf8,\
-    <svg xmlns="http://www.w3.org/2000/svg">\
-      <filter id="deuteranopia">\
-        <feColorMatrix type="matrix" values="\
-          0.625, 0.375, 0, 0, 0\
-          0.7, 0.3, 0, 0, 0\
-          0, 0.3, 0.7, 0, 0\
-          0, 0, 0, 1, 0"/>\
-      </filter>\
-    </svg>#deuteranopia');
+button.rounded-sm {
+  border-radius: calc(var(--border-radius) * 0.5) !important;
 }
 
-/* 蓝色盲 (Tritanopia) - 无法感知蓝色 */
-[data-color-blind="tritanopia"] {
-  filter: url('data:image/svg+xml;utf8,\
-    <svg xmlns="http://www.w3.org/2000/svg">\
-      <filter id="tritanopia">\
-        <feColorMatrix type="matrix" values="\
-          0.95, 0.05, 0, 0, 0\
-          0, 0.433, 0.567, 0, 0\
-          0, 0.475, 0.525, 0, 0\
-          0, 0, 0, 1, 0"/>\
-      </filter>\
-    </svg>#tritanopia');
+/* 输入框圆角 */
+input.rounded-lg,
+input.rounded-md,
+input.rounded-xl,
+select.rounded-lg,
+select.rounded-md,
+select.rounded-xl,
+textarea.rounded-lg,
+textarea.rounded-md,
+textarea.rounded-xl {
+  border-radius: var(--border-radius) !important;
 }
 
-/* 高对比度模式 */
-[data-high-contrast="true"] {
-  --contrast-enhancement: contrast(1.2) saturate(1.3);
+/* 链接圆角 */
+a.rounded-lg,
+a.rounded-md,
+a.rounded-xl,
+a.rounded-2xl {
+  border-radius: var(--border-radius) !important;
 }
-[data-high-contrast="true"] * {
-  filter: var(--contrast-enhancement, none);
+
+/* Div 圆角 - 卡片、面板等 */
+div.rounded-lg,
+div.rounded-md {
+  border-radius: var(--border-radius) !important;
+}
+
+div.rounded-xl {
+  border-radius: calc(var(--border-radius) * 1.5) !important;
+}
+
+div.rounded-2xl {
+  border-radius: calc(var(--border-radius) * 2) !important;
+}
+
+div.rounded-3xl {
+  border-radius: calc(var(--border-radius) * 2.5) !important;
+}
+
+/* Span 圆角 */
+span.rounded-lg,
+span.rounded-md,
+span.rounded-xl {
+  border-radius: var(--border-radius) !important;
+}
+
+/* 无圆角和全圆角 - 保持不变 */
+.rounded-none {
+  border-radius: 0 !important;
+}
+
+.rounded-full {
+  border-radius: 9999px !important;
 }

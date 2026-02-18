@@ -1,29 +1,60 @@
-// 用户偏好设置 store
+/**
+ * 用户偏好设置 Store
+ */
 
 import { defineStore } from 'pinia'
 import { ref, watch, computed } from 'vue'
-import type { UserPreferences } from '@/types/preferences'
+import type { UserPreferences, BorderRadius } from '@/types/preferences'
 import { DEFAULT_PREFERENCES, PREFERENCES_STORAGE_KEY } from '@/types/preferences'
 import { useUiStore } from './ui'
 
+/**
+ * 旧的 borderRadius 值到新值的映射（数据迁移）
+ */
+const BORDER_RADIUS_MIGRATION: Record<string, BorderRadius> = {
+  '0': 'none',
+  '0.25': 'small',
+  '0.5': 'medium',
+  '0.75': 'medium',
+  '1': 'large'
+}
+
 export const usePreferencesStore = defineStore('preferences', () => {
+  // ============ State ============
+
   // 从 localStorage 读取初始状态
   const storedPreferences = localStorage.getItem(PREFERENCES_STORAGE_KEY)
-  const initialState: UserPreferences = storedPreferences
-    ? { ...DEFAULT_PREFERENCES, ...JSON.parse(storedPreferences) }
-    : DEFAULT_PREFERENCES
+  let initialState: UserPreferences
 
-  // State
+  if (storedPreferences) {
+    try {
+      const parsed = JSON.parse(storedPreferences)
+      initialState = { ...DEFAULT_PREFERENCES, ...parsed }
+
+      // 数据迁移：旧的 borderRadius 值转换为新值
+      if (parsed.appearance?.borderRadius && BORDER_RADIUS_MIGRATION[parsed.appearance.borderRadius]) {
+        initialState.appearance.borderRadius = BORDER_RADIUS_MIGRATION[parsed.appearance.borderRadius]
+      }
+    } catch {
+      initialState = { ...DEFAULT_PREFERENCES }
+    }
+  } else {
+    initialState = { ...DEFAULT_PREFERENCES }
+  }
+
   const preferences = ref<UserPreferences>(initialState)
   const isInitialized = ref(false)
 
-  // 计算属性 - 便于访问
+  // ============ Getters ============
+
   const appearance = computed(() => preferences.value.appearance)
   const layout = computed(() => preferences.value.layout)
   const shortcuts = computed(() => preferences.value.shortcuts)
   const general = computed(() => preferences.value.general)
   const widgets = computed(() => preferences.value.widgets)
   const copyright = computed(() => preferences.value.copyright)
+
+  // ============ Actions ============
 
   /**
    * 初始化偏好设置
@@ -46,25 +77,19 @@ export const usePreferencesStore = defineStore('preferences', () => {
     // 监听主题模式变化
     watch(
       () => appearance.value.themeMode,
-      (newMode) => {
-        syncThemeMode(newMode)
-      }
+      (newMode) => syncThemeMode(newMode)
     )
 
     // 监听语言变化
     watch(
       () => general.value.language,
-      (newLanguage) => {
-        uiStore.setLocale(newLanguage)
-      }
+      (newLanguage) => uiStore.setLocale(newLanguage)
     )
 
     // 监听外观设置变化，应用到 DOM
     watch(
       () => appearance.value,
-      () => {
-        applyAppearanceSettings()
-      },
+      () => applyAppearanceSettings(),
       { deep: true }
     )
 
@@ -107,25 +132,43 @@ export const usePreferencesStore = defineStore('preferences', () => {
       root.removeAttribute('data-gray-mode')
     }
 
+    // 应用深色侧边栏
+    if (appearance.value.darkSidebar) {
+      root.setAttribute('data-dark-sidebar', 'true')
+    } else {
+      root.removeAttribute('data-dark-sidebar')
+    }
+
+    // 应用深色顶栏
+    if (appearance.value.darkHeader) {
+      root.setAttribute('data-dark-header', 'true')
+    } else {
+      root.removeAttribute('data-dark-header')
+    }
+
     // 应用主题色
     if (appearance.value.primaryColor) {
-      // 将十六进制颜色转换为 RGB
       const hex = appearance.value.primaryColor.replace('#', '')
       const r = parseInt(hex.substring(0, 2), 16)
       const g = parseInt(hex.substring(2, 4), 16)
       const b = parseInt(hex.substring(4, 6), 16)
       root.style.setProperty('--color-primary', `${r} ${g} ${b}`)
+      root.style.setProperty('--el-color-primary', appearance.value.primaryColor)
     }
 
     // 应用圆角设置
-    const borderRadiusMap: Record<string, string> = {
+    const borderRadiusMap: Record<BorderRadius, string> = {
       none: '0',
       small: '0.125rem',
       medium: '0.5rem',
       large: '1rem',
       custom: appearance.value.customBorderRadius || '0.5rem'
     }
-    root.style.setProperty('--border-radius', borderRadiusMap[appearance.value.borderRadius] || '0.5rem')
+    const radius = borderRadiusMap[appearance.value.borderRadius] || '0.5rem'
+    root.style.setProperty('--border-radius', radius)
+    root.style.setProperty('--el-border-radius-base', radius)
+    root.style.setProperty('--el-border-radius-small', `calc(${radius} * 0.5)`)
+    root.style.setProperty('--el-border-radius-round', `calc(${radius} * 2.5)`)
   }
 
   /**
@@ -142,11 +185,6 @@ export const usePreferencesStore = defineStore('preferences', () => {
       // auto 模式：根据系统偏好
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
       uiStore.setDarkMode(prefersDark)
-
-      // 监听系统主题变化
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      const handler = (e: MediaQueryListEvent) => uiStore.setDarkMode(e.matches)
-      mediaQuery.addEventListener('change', handler)
     }
   }
 
@@ -218,7 +256,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   }
 
   /**
-   * 导出设置（用于备份或分享）
+   * 导出设置
    */
   function exportSettings(): string {
     return JSON.stringify(preferences.value, null, 2)
@@ -230,7 +268,6 @@ export const usePreferencesStore = defineStore('preferences', () => {
   function importSettings(jsonString: string): boolean {
     try {
       const imported = JSON.parse(jsonString)
-      // 验证导入的数据结构（简化验证）
       if (imported.appearance && imported.layout && imported.general) {
         preferences.value = { ...DEFAULT_PREFERENCES, ...imported }
         return true
@@ -240,6 +277,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
       return false
     }
   }
+
+  // ============ Return ============
 
   return {
     // State

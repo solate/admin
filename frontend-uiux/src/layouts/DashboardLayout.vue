@@ -34,8 +34,8 @@ const tenantsStore = useTenantsStore()
 const preferencesStore = usePreferencesStore()
 const tagsViewStore = useTagsViewStore()
 
-// 初始化偏好设置
-preferencesStore.initialize()
+// 注意：preferencesStore.initialize() 已移至 plugins/theme.ts 中集中处理
+// 这里只需要获取 store 实例即可
 
 const isMobileMenuOpen = ref(false)
 
@@ -132,6 +132,17 @@ const animationClasses = computed(() => {
 // 页脚显示
 const showFooter = computed(() => layoutPrefs.value.showFooter)
 const showCopyright = computed(() => layoutPrefs.value.showCopyright)
+
+// 外观设置
+const appearancePrefs = computed(() => preferencesStore.appearance)
+
+// 深色侧边栏样式（仅在浅色模式下生效）
+const darkSidebarClasses = computed(() => {
+  if (appearancePrefs.value.darkSidebar && !uiStore.darkMode) {
+    return 'dark-sidebar'
+  }
+  return ''
+})
 
 // 同步偏好设置的导航样式到 uiStore
 watch(
@@ -359,7 +370,8 @@ function handleKeyDown(e: KeyboardEvent) {
     <!-- Desktop Sidebar -->
     <aside
       :class="[
-        'hidden lg:flex flex-col fixed inset-y-0 left-0 transition-all duration-300 z-30',
+        'sidebar hidden lg:flex flex-col fixed inset-y-0 left-0 transition-all duration-300 z-30',
+        darkSidebarClasses,
         'bg-white/90 dark:bg-slate-900/90',
         'backdrop-blur-xl',
         'border-r border-slate-200/60 dark:border-slate-800/60',

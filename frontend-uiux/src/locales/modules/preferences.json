@@ -52,12 +52,16 @@
       "placeholder": "例如: 0.25rem 或 4px"
     },
     "colorBlindMode": {
-      "label": "色盲模式",
-      "description": "为色觉障碍用户优化色彩显示",
+      "label": "色彩视觉模式",
+      "description": "为不同视觉需求调整显示效果",
       "none": "关闭",
       "protanopia": "红色盲",
       "deuteranopia": "绿色盲",
-      "tritanopia": "蓝色盲"
+      "tritanopia": "蓝色盲",
+      "protanomaly": "红色弱",
+      "deuteranomaly": "绿色弱",
+      "tritanomaly": "蓝色弱",
+      "achromatopsia": "全色盲"
     },
     "highContrast": {
       "label": "高对比度",

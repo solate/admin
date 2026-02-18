@@ -87,22 +87,51 @@ const themeModeOptions = computed(() => [
   }
 ])
 
-// 圆角选项
+// 圆角选项 - 使用语义化名称
 const borderRadiusOptions = computed(() => [
-  { value: 'none' as const, label: '无' },
-  { value: 'small' as const, label: '小' },
-  { value: 'medium' as const, label: '中' },
-  { value: 'large' as const, label: '大' },
-  { value: 'custom' as const, label: '自定义' }
+  { value: 'none' as const, label: '无', description: '0px' },
+  { value: 'small' as const, label: '小', description: '2px' },
+  { value: 'medium' as const, label: '中', description: '8px' },
+  { value: 'large' as const, label: '大', description: '16px' },
+  { value: 'custom' as const, label: '自定义', description: '' }
 ])
 
-// 色盲模式选项
+// 色盲模式选项 - 分为色盲和色弱两类
 const colorBlindOptions = computed(() => [
-  { value: 'none' as const, label: t('preferences.appearance.colorBlindMode.none') },
-  { value: 'protanopia' as const, label: t('preferences.appearance.colorBlindMode.protanopia') },
-  { value: 'deuteranopia' as const, label: t('preferences.appearance.colorBlindMode.deuteranopia') },
-  { value: 'tritanopia' as const, label: t('preferences.appearance.colorBlindMode.tritanopia') }
+  { value: 'none' as const, label: t('preferences.appearance.colorBlindMode.none'), description: '正常视觉', group: 'normal' },
+  // 色盲选项（完全无法感知）
+  { value: 'protanopia' as const, label: t('preferences.appearance.colorBlindMode.protanopia'), description: '无法感知红色', group: 'blind' },
+  { value: 'deuteranopia' as const, label: t('preferences.appearance.colorBlindMode.deuteranopia'), description: '无法感知绿色', group: 'blind' },
+  { value: 'tritanopia' as const, label: t('preferences.appearance.colorBlindMode.tritanopia'), description: '无法感知蓝色', group: 'blind' },
+  // 色弱选项（敏感度降低）
+  { value: 'protanomaly' as const, label: t('preferences.appearance.colorBlindMode.protanomaly'), description: '红色敏感度降低', group: 'anomaly' },
+  { value: 'deuteranomaly' as const, label: t('preferences.appearance.colorBlindMode.deuteranomaly'), description: '绿色敏感度降低', group: 'anomaly' },
+  { value: 'tritanomaly' as const, label: t('preferences.appearance.colorBlindMode.tritanomaly'), description: '蓝色敏感度降低', group: 'anomaly' },
+  // 全色盲
+  { value: 'achromatopsia' as const, label: t('preferences.appearance.colorBlindMode.achromatopsia'), description: '只能看到灰度', group: 'achromatic' }
 ])
+
+// 获取分组后的色盲选项
+const colorBlindGroups = computed(() => {
+  const groups: Record<string, typeof colorBlindOptions.value> = {
+    normal: [],
+    blind: [],
+    anomaly: [],
+    achromatic: []
+  }
+  for (const option of colorBlindOptions.value) {
+    groups[option.group].push(option)
+  }
+  return groups
+})
+
+// 分组标签
+const colorBlindGroupLabels: Record<string, { label: string; description: string }> = {
+  normal: { label: '正常', description: '无色彩视觉障碍' },
+  blind: { label: '色盲', description: '完全无法感知某种颜色' },
+  anomaly: { label: '色弱', description: '对某种颜色的敏感度降低' },
+  achromatic: { label: '全色盲', description: '只能看到黑白灰' }
+}
 
 // 更新主题模式
 function updateThemeMode(mode: 'light' | 'dark' | 'auto') {
@@ -159,13 +188,17 @@ function toggleGrayMode() {
 }
 
 // 更新色盲模式
-function updateColorBlindMode(mode: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia') {
+function updateColorBlindMode(mode: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'protanomaly' | 'deuteranomaly' | 'tritanomaly' | 'achromatopsia') {
   setColorBlindMode(mode)
 }
 
 // 更新自定义圆角值
 function updateCustomBorderRadius(value: string) {
   preferencesStore.updateAppearance('customBorderRadius', value)
+  // 触发圆角更新
+  if (appearance.value.borderRadius === 'custom') {
+    setBorderRadius('custom')
+  }
 }
 
 // 切换高级选项展开状态
@@ -395,17 +428,20 @@ function toggleAdvanced() {
         <button
           v-for="option in borderRadiusOptions"
           :key="option.value"
-          class="p-3 border-2 bg-white dark:bg-slate-700/50 transition-all duration-200 cursor-pointer hover:shadow-md"
+          class="flex flex-col items-center gap-1 p-3 border-2 bg-white dark:bg-slate-700/50 transition-all duration-200 cursor-pointer hover:shadow-md"
           :class="[
             appearance.borderRadius === option.value
               ? 'border-primary-500 shadow-md shadow-primary-500/10'
               : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600',
-            option.value === 'none' ? 'rounded-none' : option.value === 'small' ? 'rounded-lg' : option.value === 'medium' ? 'rounded-xl' : option.value === 'large' ? 'rounded-2xl' : 'rounded-xl'
+            option.value === 'none' ? 'rounded-none' : option.value === 'small' ? 'rounded-sm' : option.value === 'medium' ? 'rounded-lg' : option.value === 'large' ? 'rounded-xl' : 'rounded-lg'
           ]"
           @click="updateBorderRadius(option.value)"
         >
           <span class="text-sm font-medium" :class="appearance.borderRadius === option.value ? 'text-primary-700 dark:text-primary-300' : 'text-slate-600 dark:text-slate-400'">
             {{ option.label }}
+          </span>
+          <span v-if="option.description" class="text-xs text-slate-400 dark:text-slate-500">
+            {{ option.description }}
           </span>
         </button>
       </div>
@@ -419,6 +455,9 @@ function toggleAdvanced() {
           class="w-full px-4 py-2.5 bg-white dark:bg-slate-700/50 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all duration-200"
           @input="(e) => updateCustomBorderRadius((e.target as HTMLInputElement).value)"
         />
+        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          支持 rem 单位（如 0.5rem）或 px 单位（如 8px）
+        </p>
       </div>
     </section>
 
@@ -523,33 +562,121 @@ function toggleAdvanced() {
             </button>
           </div>
 
-          <!-- 色盲模式 -->
+          <!-- 色彩视觉模式 -->
           <div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-            <div class="flex items-center gap-2 mb-2">
+            <div class="flex items-center gap-2 mb-3">
               <div class="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
                 <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
               </div>
-              <h5 class="text-sm font-medium text-slate-800 dark:text-slate-200">色盲模式</h5>
+              <div>
+                <h5 class="text-sm font-medium text-slate-800 dark:text-slate-200">色彩视觉模式</h5>
+                <p class="text-xs text-slate-500 dark:text-slate-400">为不同视觉需求调整显示效果</p>
+              </div>
             </div>
-            <select
-              :value="appearance.colorBlindMode"
-              class="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none cursor-pointer"
-              @change="updateColorBlindMode($event.target.value as any)"
-            >
-              <option
-                v-for="option in colorBlindOptions"
-                :key="option.value"
-                :value="option.value"
+
+            <!-- 色彩视觉选项卡片 -->
+            <div class="space-y-3">
+              <!-- 正常视觉 -->
+              <button
+                class="w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 cursor-pointer text-left"
+                :class="appearance.colorBlindMode === 'none'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                  : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'"
+                @click="updateColorBlindMode('none')"
               >
-                {{ option.label }}
-              </option>
-            </select>
-            <div v-if="appearance.colorBlindMode !== 'none'" class="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-red-400 via-green-400 to-blue-400 flex items-center justify-center">
+                  <svg v-if="appearance.colorBlindMode === 'none'" class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-slate-800 dark:text-slate-200">正常视觉</div>
+                  <div class="text-xs text-slate-500 dark:text-slate-400">无色彩视觉障碍</div>
+                </div>
+                <div v-if="appearance.colorBlindMode === 'none'" class="w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center">
+                  <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </button>
+
+              <!-- 色盲分组 -->
+              <div>
+                <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 px-1">色盲模式 - 完全无法感知某种颜色</div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    v-for="option in colorBlindGroups.blind"
+                    :key="option.value"
+                    class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 cursor-pointer"
+                    :class="appearance.colorBlindMode === option.value
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'"
+                    @click="updateColorBlindMode(option.value)"
+                  >
+                    <div class="w-6 h-6 rounded-full" :class="{
+                      'bg-red-500': option.value === 'protanopia',
+                      'bg-green-500': option.value === 'deuteranopia',
+                      'bg-blue-500': option.value === 'tritanopia'
+                    }"></div>
+                    <span class="text-xs font-medium text-center text-slate-700 dark:text-slate-300">{{ option.label }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 色弱分组 -->
+              <div>
+                <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 px-1">色弱模式 - 对某种颜色的敏感度降低</div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    v-for="option in colorBlindGroups.anomaly"
+                    :key="option.value"
+                    class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 cursor-pointer"
+                    :class="appearance.colorBlindMode === option.value
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'"
+                    @click="updateColorBlindMode(option.value)"
+                  >
+                    <div class="w-6 h-6 rounded-full opacity-60" :class="{
+                      'bg-red-400': option.value === 'protanomaly',
+                      'bg-green-400': option.value === 'deuteranomaly',
+                      'bg-blue-400': option.value === 'tritanomaly'
+                    }"></div>
+                    <span class="text-xs font-medium text-center text-slate-700 dark:text-slate-300">{{ option.label }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 全色盲 -->
+              <div>
+                <div class="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 px-1">全色盲</div>
+                <button
+                  class="w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 cursor-pointer text-left"
+                  :class="appearance.colorBlindMode === 'achromatopsia'
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'"
+                  @click="updateColorBlindMode('achromatopsia')"
+                >
+                  <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-r from-gray-300 via-gray-500 to-gray-700"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-slate-800 dark:text-slate-200">全色盲</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400">只能看到黑白灰（灰度模式）</div>
+                  </div>
+                  <div v-if="appearance.colorBlindMode === 'achromatopsia'" class="w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center">
+                    <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- 提示信息 -->
+            <div v-if="appearance.colorBlindMode !== 'none'" class="mt-3 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
               <p class="text-xs text-amber-800 dark:text-amber-300">
-                色盲模式已启用，页面色彩已调整以辅助视觉
+                色彩视觉模式已启用，页面色彩已调整以辅助视觉
               </p>
             </div>
           </div>

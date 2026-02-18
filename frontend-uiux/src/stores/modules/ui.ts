@@ -1,68 +1,79 @@
-// UI state store
+/**
+ * UI 状态 Store
+ *
+ * 职责：
+ * 1. 管理侧边栏、菜单等 UI 状态
+ * 2. 管理 darkMode 状态（由 preferencesStore 同步）
+ * 3. 管理语言设置
+ *
+ * 注意：DOM 操作由 plugins/theme.ts 统一处理
+ */
 
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { elementLocales } from '@/locales'
 
-const STORAGE_KEY = 'ui-state'
-// Locale storage key - 必须与 locales/index.ts 保持一致
+// 存储键名
+const UI_STATE_KEY = 'ui-state'
 const LOCALE_KEY = 'locale'
 
 export const useUiStore = defineStore('ui', () => {
-  // Read initial state from localStorage
-  const storedState = localStorage.getItem(STORAGE_KEY)
+  // ============ 初始化状态 ============
+
+  const storedState = localStorage.getItem(UI_STATE_KEY)
   const initialState = storedState ? JSON.parse(storedState) : {}
 
-  // 读取 locale 时使用独立的 key（与 locales/index.ts 保持一致）
   const storedLocale = localStorage.getItem(LOCALE_KEY)
 
-  // State
+  // ============ State ============
+
+  /** 侧边栏是否展开 */
   const sidebarOpen = ref(initialState.sidebarOpen ?? true)
+
+  /** 是否深色模式（由 preferencesStore 同步） */
   const darkMode = ref(initialState.darkMode ?? false)
+
+  /** 移动端菜单是否展开 */
   const mobileMenuOpen = ref(false)
+
+  /** 当前语言 */
   const locale = ref(storedLocale || initialState.locale || 'zh-CN')
 
-  // Element Plus locale - 根据 locale 初始化
+  /** Element Plus 语言包 */
   const elementLocale = ref(elementLocales[locale.value as keyof typeof elementLocales])
 
-  // Initialize theme on DOM
-  if (darkMode.value) {
-    document.documentElement.classList.add('dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-  }
+  // ============ 持久化 ============
 
-  // Watch state changes and persist to localStorage
   watch(
-    () => ({
-      sidebarOpen: sidebarOpen.value,
-      darkMode: darkMode.value,
-      locale: locale.value
-    }),
-    (state) => {
-      // 将 locale 单独存储到独立的 key（与 locales/index.ts 保持一致）
-      if (state.locale) {
-        localStorage.setItem(LOCALE_KEY, state.locale)
-      }
-      // 其他状态存储到 ui-state
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        sidebarOpen: state.sidebarOpen,
-        darkMode: state.darkMode
+    [sidebarOpen, darkMode],
+    () => {
+      localStorage.setItem(UI_STATE_KEY, JSON.stringify({
+        sidebarOpen: sidebarOpen.value,
+        darkMode: darkMode.value
       }))
-    },
-    { deep: true }
+    }
   )
 
-  // Actions
-  function toggleSidebar() {
+  // ============ Actions ============
+
+  /**
+   * 切换侧边栏展开/折叠
+   */
+  function toggleSidebar(): void {
     sidebarOpen.value = !sidebarOpen.value
   }
 
-  function setSidebarOpen(open: boolean) {
+  /**
+   * 设置侧边栏展开状态
+   */
+  function setSidebarOpen(open: boolean): void {
     sidebarOpen.value = open
   }
 
-  function toggleDarkMode() {
+  /**
+   * 切换深色模式
+   */
+  function toggleDarkMode(): void {
     darkMode.value = !darkMode.value
     if (darkMode.value) {
       document.documentElement.classList.add('dark')
@@ -71,7 +82,10 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
-  function setDarkMode(enabled: boolean) {
+  /**
+   * 设置深色模式
+   */
+  function setDarkMode(enabled: boolean): void {
     darkMode.value = enabled
     if (enabled) {
       document.documentElement.classList.add('dark')
@@ -80,21 +94,31 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
-  function toggleMobileMenu() {
+  /**
+   * 切换移动端菜单
+   */
+  function toggleMobileMenu(): void {
     mobileMenuOpen.value = !mobileMenuOpen.value
   }
 
-  function closeMobileMenu() {
+  /**
+   * 关闭移动端菜单
+   */
+  function closeMobileMenu(): void {
     mobileMenuOpen.value = false
   }
 
-  function setLocale(newLocale: string) {
+  /**
+   * 设置语言
+   */
+  function setLocale(newLocale: string): void {
     locale.value = newLocale
     elementLocale.value = elementLocales[newLocale as keyof typeof elementLocales]
     document.documentElement.lang = newLocale
-    // 存储 locale 到独立的 key
     localStorage.setItem(LOCALE_KEY, newLocale)
   }
+
+  // ============ Return ============
 
   return {
     // State
