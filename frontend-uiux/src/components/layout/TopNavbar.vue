@@ -3,6 +3,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUiStore } from '@/stores/modules/ui'
 import { useAuthStore } from '@/stores/modules/auth'
+import { usePreferencesStore } from '@/stores/modules/preferences'
 import { useI18n } from '@/locales/composables'
 import {
   Search,
@@ -30,12 +31,22 @@ const route = useRoute()
 const { t } = useI18n()
 const uiStore = useUiStore()
 const authStore = useAuthStore()
+const preferencesStore = usePreferencesStore()
 
 const searchQuery = ref('')
 const showUserMenu = ref(false)
 const showSearchDialog = ref(false)
 const showSettingsDrawer = ref(false)
 const isRefreshing = ref(false)
+
+// 深色顶栏样式（仅在浅色模式下生效）
+const darkHeaderClass = computed(() => {
+  const appearance = preferencesStore.appearance
+  if (appearance.darkHeader && !uiStore.darkMode) {
+    return 'dark-header'
+  }
+  return ''
+})
 
 // 刷新页面
 const refreshPage = () => {
@@ -149,7 +160,7 @@ const currentTenantName = computed(() => {
 </style>
 
 <template>
-  <header class="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-700/60">
+  <header :class="['topbar sticky top-0 z-20 backdrop-blur-xl transition-colors', darkHeaderClass, 'bg-white/80 dark:bg-slate-900/70', 'border-b border-slate-200/60 dark:border-slate-700/60']">
     <div class="flex items-center justify-between h-16 px-4 lg:px-6">
       <!-- Left: Sidebar Toggle, Refresh & Breadcrumbs -->
       <div class="hidden sm:flex items-center gap-2 flex-1">

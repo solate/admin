@@ -49,13 +49,26 @@ export type ThemeMode = 'light' | 'dark' | 'auto'
 
 /**
  * 圆角大小
+ * - none: 无圆角 (0px)
+ * - small: 小圆角 (2px)
+ * - medium: 中圆角 (8px) - 默认
+ * - large: 大圆角 (16px)
+ * - custom: 自定义值
  */
 export type BorderRadius = 'none' | 'small' | 'medium' | 'large' | 'custom'
 
 /**
- * 色盲模式
+ * 色彩视觉模式
+ * - none: 正常视觉
+ * - protanopia: 红色盲 (完全无法感知红色)
+ * - deuteranopia: 绿色盲 (完全无法感知绿色)
+ * - tritanopia: 蓝色盲 (完全无法感知蓝色)
+ * - protanomaly: 红色弱 (红色敏感度降低)
+ * - deuteranomaly: 绿色弱 (绿色敏感度降低，最常见)
+ * - tritanomaly: 蓝色弱 (蓝色敏感度降低)
+ * - achromatopsia: 全色盲 (只能看到灰度)
  */
-export type ColorBlindMode = 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia'
+export type ColorBlindMode = 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'protanomaly' | 'deuteranomaly' | 'tritanomaly' | 'achromatopsia'
 
 /**
  * 布局偏好设置
@@ -247,6 +260,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
     darkSidebar: false,
     darkHeader: false,
     borderRadius: 'medium',
+    customBorderRadius: '0.5rem',
     colorBlindMode: 'none',
     highContrast: false,
     grayMode: false

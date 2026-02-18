@@ -17,6 +17,7 @@ export function setupElementPlus(app: App) {
 
   // Set Element Plus CSS variables to match existing design system
   const style = document.createElement('style')
+  style.id = 'element-plus-theme-overrides' // 添加 ID 便于调试
   style.innerHTML = `
     :root {
       --el-color-primary: ${elPrimaryColor};
@@ -32,10 +33,6 @@ export function setupElementPlus(app: App) {
       --el-color-danger: ${elErrorColor};
       --el-color-error: ${elErrorColor};
       --el-color-info: ${elInfoColor};
-
-      --el-border-radius-base: 8px;
-      --el-border-radius-small: 4px;
-      --el-border-radius-round: 20px;
 
       --el-font-size-base: 14px;
       --el-font-size-small: 12px;
@@ -66,9 +63,11 @@ export function setupElementPlus(app: App) {
       --el-box-shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
     }
 
-    /* Keep consistent with existing card styles */
+    /* Keep consistent with existing card styles - 使用最高优先级选择器 */
+    body .el-card,
+    html body .el-card,
     .el-card {
-      border-radius: 12px;
+      border-radius: var(--border-radius) !important;
       box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
       border: 1px solid rgb(226 232 240 / 1);
     }
@@ -78,16 +77,46 @@ export function setupElementPlus(app: App) {
       border-color: #334155;
     }
 
-    /* Button style optimization */
-    .el-button {
-      border-radius: 8px;
+    /* Button style optimization - 使用最高优先级选择器 */
+    body .el-button,
+    html body .el-button,
+    .el-button,
+    button.el-button,
+    span.el-button {
+      border-radius: var(--border-radius) !important;
       font-weight: 500;
       transition: all 0.2s;
     }
 
+    /* 各种按钮类型 */
+    .el-button--default,
+    .el-button--primary,
+    .el-button--success,
+    .el-button--warning,
+    .el-button--danger,
+    .el-button--info {
+      border-radius: var(--border-radius) !important;
+    }
+
+    /* 小按钮 */
+    body .el-button--small,
+    .el-button--small {
+      border-radius: var(--el-border-radius-small) !important;
+    }
+
+    /* 圆形按钮 */
+    body .el-button.is-circle,
+    body .el-button.is-round,
+    .el-button.is-circle,
+    .el-button.is-round {
+      border-radius: var(--el-border-radius-round) !important;
+    }
+
     /* Input - 单层边框，简洁样式 */
+    body .el-input__wrapper,
+    html body .el-input__wrapper,
     .el-input__wrapper {
-      border-radius: 8px;
+      border-radius: var(--border-radius) !important;
       box-shadow: 0 0 0 1px var(--el-border-color) inset;
       transition: box-shadow 0.2s;
     }
@@ -127,8 +156,9 @@ export function setupElementPlus(app: App) {
     }
 
     /* Table style optimization */
-    .el-table {
-      border-radius: 8px;
+    html .el-table,
+    :root .el-table {
+      border-radius: var(--border-radius) !important;
       overflow: hidden;
     }
 
@@ -141,8 +171,51 @@ export function setupElementPlus(app: App) {
     }
 
     /* Dialog style optimization */
-    .el-dialog {
-      border-radius: 12px;
+    html .el-dialog,
+    :root .el-dialog {
+      border-radius: var(--border-radius) !important;
+    }
+
+    /* Select 下拉框 */
+    html .el-select__wrapper,
+    :root .el-select__wrapper {
+      border-radius: var(--border-radius) !important;
+    }
+
+    /* Tag 标签 */
+    html .el-tag,
+    :root .el-tag {
+      border-radius: var(--el-border-radius-small) !important;
+    }
+
+    /* Message 消息提示 */
+    html .el-message,
+    :root .el-message {
+      border-radius: var(--border-radius) !important;
+    }
+
+    /* Notification 通知 */
+    html .el-notification,
+    :root .el-notification {
+      border-radius: var(--border-radius) !important;
+    }
+
+    /* Popover 弹出框 */
+    html .el-popover.el-popper,
+    :root .el-popover.el-popper {
+      border-radius: var(--border-radius) !important;
+    }
+
+    /* Dropdown 下拉菜单 */
+    html .el-dropdown-menu,
+    :root .el-dropdown-menu {
+      border-radius: var(--border-radius) !important;
+    }
+
+    /* Drawer 抽屉 */
+    html .el-drawer,
+    :root .el-drawer {
+      border-radius: var(--border-radius) !important;
     }
 
     /* Switch style optimization */

@@ -52,12 +52,16 @@
       "placeholder": "e.g. 0.25rem or 4px"
     },
     "colorBlindMode": {
-      "label": "Color Blind Mode",
-      "description": "Optimize colors for color vision deficiency",
+      "label": "Color Vision Mode",
+      "description": "Adjust display for different visual needs",
       "none": "Off",
       "protanopia": "Protanopia",
       "deuteranopia": "Deuteranopia",
-      "tritanopia": "Tritanopia"
+      "tritanopia": "Tritanopia",
+      "protanomaly": "Protanomaly",
+      "deuteranomaly": "Deuteranomaly",
+      "tritanomaly": "Tritanomaly",
+      "achromatopsia": "Achromatopsia"
     },
     "highContrast": {
       "label": "High Contrast",

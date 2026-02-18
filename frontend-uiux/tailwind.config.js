@@ -94,6 +94,14 @@ export default {
       backdropBlur: {
         xs: '2px'
       },
+      borderRadius: {
+        'theme': 'var(--border-radius)',
+        'theme-sm': 'calc(var(--border-radius) * 0.5)',
+        'theme-lg': 'calc(var(--border-radius) * 1.5)',
+        'theme-xl': 'calc(var(--border-radius) * 2)',
+        'theme-2xl': 'calc(var(--border-radius) * 2.5)',
+        'theme-3xl': 'calc(var(--border-radius) * 3)',
+      },
       animation: {
         'fade-in': 'fade-in 200ms ease-out',
         'slide-up': 'slide-up 200ms ease-out',

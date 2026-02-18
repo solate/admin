@@ -30,18 +30,16 @@ export function setupAuthGuard(router: Router) {
       (to.name === 'login' || to.name === 'register') &&
       authStore.isAuthenticated
     ) {
-      return next({ name: 'dashboard-overview' })
+      return next({ name: 'overview' })
     }
 
     // 检查权限（如果路由定义了 requiredRoles）
     if (to.meta.requiredRoles && Array.isArray(to.meta.requiredRoles)) {
-      const userRoles = authStore.user?.roles || []
-      const hasRequiredRole = to.meta.requiredRoles.some((role: string) =>
-        userRoles.includes(role)
-      )
+      const userRole = authStore.user?.role
+      const hasRequiredRole = userRole && to.meta.requiredRoles.includes(userRole)
 
       if (!hasRequiredRole) {
-        return next({ name: 'dashboard-overview' }) // 或者 403 页面
+        return next({ name: 'overview' }) // 或者 403 页面
       }
     }
 

@@ -1,9 +1,12 @@
 /**
  * 基础样式
  * 通用类和工具类
+ *
+ * 注意：辅助功能模式（色盲、高对比度、深色导航等）的样式
+ * 已移至 variables.css 统一管理
  */
 
-/* 容器 */
+/* ===== 容器 ===== */
 .container {
   width: 100%;
   max-width: 1280px;
@@ -19,7 +22,7 @@
   max-width: 1536px;
 }
 
-/* 布局 */
+/* ===== 布局 ===== */
 .flex {
   display: flex;
 }
@@ -45,7 +48,7 @@
 .gap-md { gap: var(--spacing-md); }
 .gap-lg { gap: var(--spacing-lg); }
 
-/* 文本 */
+/* ===== 文本 ===== */
 .text-center { text-align: center; }
 .text-left { text-align: left; }
 .text-right { text-align: right; }
@@ -61,15 +64,15 @@
 .font-semibold { font-weight: 600; }
 .font-bold { font-weight: 700; }
 
-/* 颜色 */
-.text-primary { color: var(--color-primary); }
-.text-cta { color: var(--color-cta); }
-.text-success { color: var(--color-success); }
-.text-warning { color: var(--color-warning); }
-.text-error { color: var(--color-error); }
+/* ===== 颜色 ===== */
+.text-primary { color: rgb(var(--color-primary)); }
+.text-cta { color: rgb(var(--color-cta)); }
+.text-success { color: rgb(var(--color-success)); }
+.text-warning { color: rgb(var(--color-warning)); }
+.text-error { color: rgb(var(--color-error)); }
 .text-muted { color: var(--color-gray-500); }
 
-/* 间距 */
+/* ===== 间距 ===== */
 .p-sm { padding: var(--spacing-sm); }
 .p-md { padding: var(--spacing-md); }
 .p-lg { padding: var(--spacing-lg); }
@@ -87,25 +90,31 @@
 .mb-md { margin-bottom: var(--spacing-md); }
 .mb-lg { margin-bottom: var(--spacing-lg); }
 
-/* 圆角 */
+/* ===== 圆角 ===== */
 .rounded-sm { border-radius: var(--radius-sm); }
 .rounded-md { border-radius: var(--radius-md); }
 .rounded-lg { border-radius: var(--radius-lg); }
 .rounded-xl { border-radius: var(--radius-xl); }
 .rounded-full { border-radius: var(--radius-full); }
 
-/* 阴影 */
+/* 全局圆角 - 响应用户设置 */
+.rounded-theme { border-radius: var(--border-radius); }
+.rounded-theme-sm { border-radius: calc(var(--border-radius) * 0.5); }
+.rounded-theme-lg { border-radius: calc(var(--border-radius) * 1.5); }
+.rounded-theme-xl { border-radius: calc(var(--border-radius) * 2); }
+
+/* ===== 阴影 ===== */
 .shadow-sm { box-shadow: var(--shadow-sm); }
 .shadow-md { box-shadow: var(--shadow-md); }
 .shadow-lg { box-shadow: var(--shadow-lg); }
 .shadow-xl { box-shadow: var(--shadow-xl); }
 
-/* 过渡 */
+/* ===== 过渡 ===== */
 .transition { transition: all var(--transition-base); }
 .transition-fast { transition: all var(--transition-fast); }
 .transition-slow { transition: all var(--transition-slow); }
 
-/* 毛玻璃效果 */
+/* ===== 毛玻璃效果 ===== */
 .glass {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
@@ -116,37 +125,6 @@
 .dark .glass {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* 灰色模式 */
-[data-gray-mode="true"] * {
-  filter: grayscale(100%) !important;
-}
-
-/* 色盲模式 */
-[data-color-blind="protanopia"] * {
-  filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Cfilter id='protanopia'%3E%3CfeColorMatrix type='matrix' values='0.567, 0.433, 0, 0, 0 0.433, 0.567, 0, 0, 0 0, 0, 1, 0'/%3E%3C/filter%3E%3C/svg%3E");
-}
-
-[data-color-blind="deuteranopia"] * {
-  filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Cfilter id='deuteranopia'%3E%3CfeColorMatrix type='matrix' values='0.625, 0.375, 0, 0, 0 0.375, 0.625, 0, 0, 0 0, 0, 1, 0'/%3E%3C/filter%3E%3C/svg%3E");
-}
-
-[data-color-blind="tritanopia"] * {
-  filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Cfilter id='tritanopia'%3E%3CfeColorMatrix type='matrix' values='0.95, 0.05, 0, 0, 0 0, 0.433, 0.475, 0, 0, 0 0, 0.475, 0.95, 0, 0, 0'/%3E%3C/filter%3E%3C/svg%3E");
-}
-
-/* 深色顶栏 */
-[data-dark-header="true"] .topbar {
-  background: hsl(var(--dark-slate-800) / 0.95);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid hsl(var(--dark-slate-700) / 0.5);
-}
-
-/* 深色侧边栏 */
-[data-dark-sidebar="true"] .sidebar {
-  background: hsl(var(--dark-slate-800) / 0.95);
-  border-right: 1px solid hsl(var(--dark-slate-700) / 0.5);
 }
 
 .glass-card {
@@ -162,7 +140,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* 工具类 */
+/* ===== 工具类 ===== */
 .hidden { display: none; }
 .block { display: block; }
 .inline-block { display: inline-block; }
@@ -176,7 +154,7 @@
 .cursor-pointer { cursor: pointer; }
 .cursor-not-allowed { cursor: not-allowed; }
 
-/* 动画 */
+/* ===== 动画 ===== */
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
