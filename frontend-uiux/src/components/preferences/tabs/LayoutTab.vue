@@ -185,50 +185,49 @@ function updateContentFixedWidth(value: number) {
       <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
         布局模式
       </h4>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-3 lg:grid-cols-5 gap-2">
         <button
           v-for="option in layoutModeOptions"
           :key="option.value"
-          class="group relative p-4 border-2 rounded-2xl transition-all duration-200 cursor-pointer"
+          class="group relative p-2.5 border-2 rounded-xl transition-all duration-200 cursor-pointer"
           :class="layout.layoutMode === option.value
             ? 'border-primary-500 bg-gradient-to-br from-primary-50 to-primary-100/50 dark:from-primary-900/30 dark:to-primary-800/20 shadow-lg shadow-primary-500/10'
             : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-white dark:hover:bg-slate-700/30'"
           @click="updateLayoutMode(option.value)"
         >
           <!-- 布局预览图标 -->
-          <div class="flex justify-center mb-3 h-16">
-            <div class="w-20 h-full border-2 border-slate-300 dark:border-slate-600 rounded-lg transition-colors p-1.5" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''">
+          <div class="flex justify-center mb-2 h-10">
+            <div class="w-14 h-full border border-slate-300 dark:border-slate-600 rounded transition-colors p-1" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''">
               <!-- Sidebar Icon -->
-              <div v-if="option.icon === 'sidebar'" class="h-full border-r-2 border-slate-300 dark:border-slate-600 flex items-center justify-center" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''">
-                <div class="w-1.5 h-2 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+              <div v-if="option.icon === 'sidebar'" class="h-full border-r border-slate-300 dark:border-slate-600 flex items-center justify-center" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''">
+                <div class="w-1 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-sm" />
               </div>
               <!-- Double Sidebar Icon -->
               <div v-else-if="option.icon === 'double-sidebar'" class="h-full flex">
-                <div class="w-2 border-r-2 border-slate-300 dark:border-slate-600" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''" />
-                <div class="w-3 border-r-2 border-slate-300 dark:border-slate-600 flex flex-col justify-center gap-1 p-0.5" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''">
-                  <div class="w-1.5 h-0.5 bg-slate-400 dark:bg-slate-500 rounded-sm" />
-                  <div class="w-1.5 h-0.5 bg-slate-400 dark:bg-slate-500 rounded-sm" />
-                  <div class="w-1.5 h-0.5 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                <div class="w-1.5 border-r border-slate-300 dark:border-slate-600" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''" />
+                <div class="flex-1 border-r border-slate-300 dark:border-slate-600 flex flex-col justify-center gap-0.5 p-0.5" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''">
+                  <div class="w-full h-0.5 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                  <div class="w-3/4 h-0.5 bg-slate-400 dark:bg-slate-500 rounded-sm" />
                 </div>
               </div>
               <!-- Topbar Icon -->
-              <div v-else-if="option.icon === 'topbar'" class="h-3 w-full border-b-2 border-slate-300 dark:border-slate-600 mb-1" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''" />
+              <div v-else-if="option.icon === 'topbar'" class="h-2 w-full border-b border-slate-300 dark:border-slate-600" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''" />
               <!-- Mixed Icon -->
               <template v-else-if="option.icon === 'mixed'">
-                <div class="h-2 w-full border-b-2 border-slate-300 dark:border-slate-600 mb-1" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''" />
-                <div class="h-full border-r-2 border-slate-300 dark:border-slate-600 flex items-center justify-center" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''">
-                  <div class="w-1 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                <div class="h-1.5 w-full border-b border-slate-300 dark:border-slate-600" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''" />
+                <div class="h-full border-r border-slate-300 dark:border-slate-600 flex items-center justify-center" :class="layout.layoutMode === option.value ? 'border-primary-500' : ''">
+                  <div class="w-0.5 h-1 bg-slate-400 dark:bg-slate-500 rounded-sm" />
                 </div>
               </template>
               <!-- Horizontal Icon -->
-              <div v-else class="flex flex-col gap-1 h-full">
-                <div class="h-1.5 w-full bg-slate-400 dark:bg-slate-500 rounded-sm" />
-                <div class="h-1.5 w-3/4 bg-slate-300 dark:bg-slate-600 rounded-sm" />
+              <div v-else class="flex flex-col gap-0.5 h-full justify-center">
+                <div class="h-1 w-full bg-slate-400 dark:bg-slate-500 rounded-sm" />
+                <div class="h-1 w-2/3 bg-slate-300 dark:bg-slate-600 rounded-sm" />
               </div>
             </div>
           </div>
           <span
-            class="text-sm font-medium block text-center"
+            class="text-xs font-medium block text-center truncate"
             :class="layout.layoutMode === option.value
               ? 'text-primary-700 dark:text-primary-300'
               : 'text-slate-600 dark:text-slate-400'"
@@ -238,9 +237,9 @@ function updateContentFixedWidth(value: number) {
           <!-- 选中指示器 -->
           <div
             v-if="layout.layoutMode === option.value"
-            class="absolute top-3 right-3 w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center text-white"
+            class="absolute top-1.5 right-1.5 w-4 h-4 bg-primary-500 rounded-full flex items-center justify-center text-white"
           >
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
             </svg>
           </div>

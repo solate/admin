@@ -26,7 +26,6 @@ import {
 } from 'lucide-vue-next'
 import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
 import SearchDialog from '@/components/business/search/SearchDialog.vue'
-import SettingsDrawer from '@/components/preferences/SettingsDrawer.vue'
 import AppBreadcrumbs from '@/layouts/components/AppBreadcrumbs.vue'
 
 const route = useRoute()
@@ -41,7 +40,8 @@ const {
   headerHeightPx,
   headerPositionClass,
   showBreadcrumbs,
-  isHeaderAutoHide
+  isHeaderAutoHide,
+  showSettingsDrawer
 } = useLayout()
 
 // 自动隐藏逻辑
@@ -61,7 +61,6 @@ const headerVisibilityClass = computed(() => {
 const searchQuery = ref('')
 const showUserMenu = ref(false)
 const showSearchDialog = ref(false)
-const showSettingsDrawer = ref(false)
 const isRefreshing = ref(false)
 
 // 深色顶栏样式（仅在浅色模式下生效）
@@ -489,9 +488,4 @@ const currentTenantName = computed(() => {
     <!-- Search Dialog -->
     <SearchDialog v-model:visible="showSearchDialog" />
   </header>
-
-  <!-- Settings Drawer - Teleport to body for proper z-index context -->
-  <Teleport to="body">
-    <SettingsDrawer v-model:visible="showSettingsDrawer" />
-  </Teleport>
 </template>
