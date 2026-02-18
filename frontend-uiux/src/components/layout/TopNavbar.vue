@@ -25,7 +25,6 @@ import {
   HelpCircle
 } from 'lucide-vue-next'
 import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
-import SearchDialog from '@/components/business/search/SearchDialog.vue'
 import AppBreadcrumbs from '@/layouts/components/AppBreadcrumbs.vue'
 
 const route = useRoute()
@@ -41,7 +40,8 @@ const {
   headerPositionClass,
   showBreadcrumbs,
   isHeaderAutoHide,
-  showSettingsDrawer
+  showSettingsDrawer,
+  showSearchDialog
 } = useLayout()
 
 // 自动隐藏逻辑
@@ -60,7 +60,6 @@ const headerVisibilityClass = computed(() => {
 
 const searchQuery = ref('')
 const showUserMenu = ref(false)
-const showSearchDialog = ref(false)
 const isRefreshing = ref(false)
 
 // 深色顶栏样式（仅在浅色模式下生效）
@@ -484,8 +483,5 @@ const currentTenantName = computed(() => {
         />
       </div>
     </div>
-
-    <!-- Search Dialog -->
-    <SearchDialog v-model:visible="showSearchDialog" />
   </header>
 </template>
