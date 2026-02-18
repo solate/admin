@@ -11,6 +11,7 @@ import type { LayoutMode, HeaderMode, ContentWidthMode, NavStyle, TabsStyle, Bre
 // 全局设置抽屉状态 - 模块级别变量，布局切换时不会被重置
 const globalShowSettingsDrawer = ref(false)
 const globalSettingsActiveTab = ref<'appearance' | 'layout' | 'shortcuts' | 'general' | 'advanced'>('appearance')
+const globalShowSearchDialog = ref(false)
 
 /**
  * 布局 Composable
@@ -251,6 +252,7 @@ export function useLayout() {
     // 设置抽屉状态（全局共享）
     showSettingsDrawer: globalShowSettingsDrawer,
     settingsActiveTab: globalSettingsActiveTab,
+    showSearchDialog: globalShowSearchDialog,
 
     // 布局模式
     layoutMode,

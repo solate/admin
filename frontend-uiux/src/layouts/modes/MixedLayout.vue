@@ -57,7 +57,8 @@ const {
   showCopyright,
   contentStyle,
   isDesktop,
-  showSettingsDrawer
+  showSettingsDrawer,
+  showSearchDialog
 } = useLayout()
 
 // ==================== 一级导航（顶部） ====================
@@ -261,7 +262,10 @@ onUnmounted(() => {
 
         <!-- 右侧：工具栏 -->
         <div class="flex items-center gap-2">
-          <button class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+          <button
+            class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            @click="showSearchDialog = true"
+          >
             <Search :size="16" />
             <span class="hidden lg:inline">{{ t('common.search') }}</span>
           </button>
