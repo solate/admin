@@ -8,6 +8,10 @@ import { usePreferencesStore } from '@/stores/modules/preferences'
 import { useUiStore } from '@/stores/modules/ui'
 import type { LayoutMode, HeaderMode, ContentWidthMode, NavStyle, TabsStyle, BreadcrumbStyle, WidgetsPosition } from '@/types/preferences'
 
+// 全局设置抽屉状态 - 模块级别变量，布局切换时不会被重置
+const globalShowSettingsDrawer = ref(false)
+const globalSettingsActiveTab = ref<'appearance' | 'layout' | 'shortcuts' | 'general' | 'advanced'>('appearance')
+
 /**
  * 布局 Composable
  */
@@ -244,6 +248,10 @@ export function useLayout() {
   // ==================== 返回 ====================
 
   return {
+    // 设置抽屉状态（全局共享）
+    showSettingsDrawer: globalShowSettingsDrawer,
+    settingsActiveTab: globalSettingsActiveTab,
+
     // 布局模式
     layoutMode,
     isSidebarMode,

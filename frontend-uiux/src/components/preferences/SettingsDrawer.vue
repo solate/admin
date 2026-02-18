@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePreferencesStore } from '@/stores/modules/preferences'
+import { useLayout } from '@/composables/useLayout'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   X,
@@ -33,8 +34,8 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const preferencesStore = usePreferencesStore()
 
-// 当前激活的标签页
-const activeTab = ref<'appearance' | 'layout' | 'shortcuts' | 'general' | 'advanced'>('appearance')
+// 使用全局的 activeTab 状态
+const { settingsActiveTab: activeTab } = useLayout()
 
 // 导入设置文件输入
 const fileInputRef = ref<HTMLInputElement | null>(null)

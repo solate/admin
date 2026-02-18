@@ -15,7 +15,6 @@ import AppBreadcrumbs from '@/layouts/components/AppBreadcrumbs.vue'
 import TagsView from '@/components/layout/TagsView/index.vue'
 import AppFooter from '@/layouts/components/AppFooter.vue'
 import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
-import SettingsDrawer from '@/components/preferences/SettingsDrawer.vue'
 import {
   Box,
   Building,
@@ -54,7 +53,8 @@ const {
   footerFixed,
   showCopyright,
   contentStyle,
-  isDesktop
+  isDesktop,
+  showSettingsDrawer
 } = useLayout()
 
 // ==================== 导航数据 ====================
@@ -114,7 +114,6 @@ const exitFullscreen = () => {
 // ==================== 用户菜单 ====================
 
 const showUserMenu = ref(false)
-const showSettingsDrawer = ref(false)
 
 const userInitials = computed(() => {
   const name = authStore.user?.name || 'Admin'
@@ -384,10 +383,5 @@ onUnmounted(() => {
         :show-copyright="showCopyright"
       />
     </main>
-
-    <!-- 设置抽屉 -->
-    <Teleport to="body">
-      <SettingsDrawer v-model:visible="showSettingsDrawer" />
-    </Teleport>
   </div>
 </template>

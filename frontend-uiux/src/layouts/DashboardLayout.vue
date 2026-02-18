@@ -8,13 +8,14 @@ import { computed, defineAsyncComponent, watch } from 'vue'
 import { usePreferencesStore } from '@/stores/modules/preferences'
 import { useUiStore } from '@/stores/modules/ui'
 import { useLayout } from '@/composables/useLayout'
+import SettingsDrawer from '@/components/preferences/SettingsDrawer.vue'
 import type { LayoutMode } from '@/types/preferences'
 
 const preferencesStore = usePreferencesStore()
 const uiStore = useUiStore()
 
 // 使用布局 composable
-const { layoutMode, generalPrefs } = useLayout()
+const { layoutMode, generalPrefs, showSettingsDrawer } = useLayout()
 
 // 布局组件映射 - 使用异步组件懒加载
 const layoutComponents: Record<LayoutMode, ReturnType<typeof defineAsyncComponent>> = {
@@ -60,5 +61,10 @@ watch(
     >
       <component :is="currentLayoutComponent" :key="layoutMode" />
     </Transition>
+
+    <!-- 设置抽屉 - 放在 DashboardLayout 层级，避免布局切换时被卸载 -->
+    <Teleport to="body">
+      <SettingsDrawer v-model:visible="showSettingsDrawer" />
+    </Teleport>
   </div>
 </template>

@@ -36,7 +36,6 @@ import {
   ChevronDown
 } from 'lucide-vue-next'
 import LanguageSwitcher from '@/components/language/LanguageSwitcher.vue'
-import SettingsDrawer from '@/components/preferences/SettingsDrawer.vue'
 
 const route = useRoute()
 const { t } = useI18n()
