@@ -300,17 +300,7 @@ func (h *UserMenuHandler) GetUserButtons(c *gin.Context) {
 		return
 	}
 
-	// 从上下文获取用户名和租户编码
-	// 这些信息由 Auth 中间件从 JWT token 中提取并设置到 context
-	userName := xcontext.GetUserName(c.Request.Context())
-	tenantCode := xcontext.GetTenantCode(c.Request.Context())
-
-	if userName == "" || tenantCode == "" {
-		response.Error(c, xerr.ErrUnauthorized)
-		return
-	}
-
-	resp, err := h.userMenuService.GetUserButtons(c.Request.Context(), userName, tenantCode, req.MenuID)
+	resp, err := h.userMenuService.GetUserButtons(c.Request.Context(), req.MenuID)
 	if err != nil {
 		response.Error(c, err)
 		return

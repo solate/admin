@@ -42,7 +42,7 @@ COMMENT ON COLUMN tenants.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 -- ========================================
 -- 2. 用户表 (Users)
--- 所有用户都绑定租户，权限由 Casbin 的角色策略控制
+-- 所有用户都绑定租户，权限由 RBAC 角色策略控制
 -- ========================================
 CREATE TABLE users (
     user_id VARCHAR(20) PRIMARY KEY,             -- 18位字符串ID
@@ -70,7 +70,7 @@ CREATE UNIQUE INDEX uk_users_email ON users(email) WHERE deleted_at = 0;
 -- 手机号全局唯一约束（跨租户唯一，用于登录和验证）
 CREATE UNIQUE INDEX uk_users_phone ON users(phone) WHERE deleted_at = 0;
 
-COMMENT ON TABLE users IS '用户表(所有用户都绑定租户，权限由Casbin角色策略控制)';
+COMMENT ON TABLE users IS '用户表(所有用户都绑定租户，权限由RBAC角色策略控制)';
 COMMENT ON COLUMN users.user_id IS '用户ID';
 COMMENT ON COLUMN users.tenant_id IS '租户ID(所有用户都有值)';
 COMMENT ON COLUMN users.user_name IS '用户名(保留字段，默认空字符串)';
@@ -92,7 +92,7 @@ COMMENT ON COLUMN users.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 -- ========================================
 -- 3. 角色表 (Roles)
--- 租户自定义角色，继承关系由 Casbin g2 策略管理
+-- 租户自定义角色，继承关系由 parent_role_id 管理
 -- ========================================
 CREATE TABLE roles (
     role_id VARCHAR(20) PRIMARY KEY,
@@ -109,10 +109,10 @@ CREATE TABLE roles (
 -- 租户内角色编码唯一约束
 CREATE UNIQUE INDEX idx_roles_tenant_code ON roles(tenant_id, role_code) WHERE deleted_at = 0;
 
-COMMENT ON TABLE roles IS '角色表(租户隔离，继承关系由Casbin g2策略管理)';
+COMMENT ON TABLE roles IS '角色表(租户隔离，继承关系由 parent_role_id 管理)';
 COMMENT ON COLUMN roles.role_id IS '角色ID(18位字符串)';
 COMMENT ON COLUMN roles.tenant_id IS '所属租户ID';
-COMMENT ON COLUMN roles.role_code IS '角色编码(租户内唯一，用于Casbin策略)';
+COMMENT ON COLUMN roles.role_code IS '角色编码(租户内唯一，用于权限策略)';
 COMMENT ON COLUMN roles.name IS '角色名称';
 COMMENT ON COLUMN roles.description IS '角色描述';
 COMMENT ON COLUMN roles.status IS '状态(1:启用, 2:禁用)';
@@ -124,7 +124,7 @@ COMMENT ON COLUMN roles.deleted_at IS '删除时间戳(毫秒,软删除)';
 -- ========================================
 -- 4. 菜单表 (Menus)
 -- 全局菜单元数据定义表（不区分租户）
--- 菜单权限通过 Casbin p 策略直接关联角色
+-- 菜单权限通过 role_permissions 表关联角色
 -- ========================================
 
 CREATE TABLE menus (
@@ -153,7 +153,7 @@ CREATE TABLE menus (
 
 CREATE INDEX idx_menus_parent ON menus(parent_id, deleted_at);
 
-COMMENT ON TABLE menus IS '菜单元数据表(全局定义，菜单权限通过Casbin策略直接关联角色)';
+COMMENT ON TABLE menus IS '菜单元数据表(全局定义，菜单权限通过 role_permissions 表关联角色)';
 COMMENT ON COLUMN menus.menu_id IS '菜单ID(18位字符串)';
 COMMENT ON COLUMN menus.parent_id IS '父菜单ID(用于构建树形结构)';
 COMMENT ON COLUMN menus.name IS '菜单名称';
@@ -204,14 +204,13 @@ COMMENT ON COLUMN permissions.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- ========================================
--- 6. Casbin 策略表 (Casbin Rules)
--- 由 Casbin gorm-adapter 自动创建，用于 RBAC 模型持久化
+-- 6. Casbin 策略表 — 已移除，改用 user_roles + role_permissions 表
 -- 支持带租户的 RBAC 模型 (RBAC with Domains)
 -- ptype='p': 权限策略 p(sub, dom, obj, act)
 -- ptype='g': 用户角色关联 g(user, role, domain)
 -- ptype='g2': 角色继承 g2(child_role, parent_role) - 不需要 domain
 -- ========================================
--- 注：该表由 Casbin 自动创建，无需手动建表
+-- 注：已迁移到纯数据库 RBAC，不再使用 Casbin
 
 
 -- ========================================
@@ -251,7 +250,7 @@ COMMENT ON COLUMN departments.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 
 -- 7.2 岗位表 (Positions)
--- 岗位编码（如 DEPT_LEADER, EMPLOYEE）与 Casbin 角色对应
+-- 岗位编码（如 DEPT_LEADER, EMPLOYEE）与角色对应
 CREATE TABLE positions (
     position_id VARCHAR(20) PRIMARY KEY,
     tenant_id VARCHAR(20) NOT NULL,
@@ -266,10 +265,10 @@ CREATE TABLE positions (
     deleted_at BIGINT DEFAULT 0
 );
 
--- 租户内岗位编码唯一约束（标准岗位编码与 Casbin 角色对应）
+-- 租户内岗位编码唯一约束（标准岗位编码与角色对应）
 CREATE UNIQUE INDEX uk_positions_tenant_code ON positions(tenant_id, position_code) WHERE deleted_at = 0;
 
-COMMENT ON TABLE positions IS '岗位表(按职责定义，岗位编码与Casbin角色对应)';
+COMMENT ON TABLE positions IS '岗位表(按职责定义，岗位编码与角色对应)';
 COMMENT ON COLUMN positions.position_id IS '岗位ID(18位字符串)';
 COMMENT ON COLUMN positions.tenant_id IS '租户ID';
 COMMENT ON COLUMN positions.position_code IS '岗位编码(租户内唯一，如DEPT_LEADER, EMPLOYEE)';
@@ -454,34 +453,4 @@ COMMENT ON COLUMN dict_items.deleted_at IS '删除时间戳(毫秒,软删除)';
 
 -- -- ========================================
 -- -- (会自动建表，无需自己建)
--- -- 5. Casbin 策略表 (Casbin Rules)
--- -- 用于 Casbin RBAC 模型持久化
--- -- 支持带租户的 RBAC 模型 (RBAC with Domains)
--- -- ========================================
--- CREATE TABLE casbin_rule (
---     id SERIAL PRIMARY KEY,
---     ptype VARCHAR(255), -- 'p', 'g', 'g2'
---     v0 VARCHAR(255),    -- subject (user/role)
---     v1 VARCHAR(255),    -- domain/role/object
---     v2 VARCHAR(255),    -- object/role/action
---     v3 VARCHAR(255),    -- action (p类型) / 空 (g,g2类型)
---     v4 VARCHAR(255),    -- 通常为空，保留字段
---     v5 VARCHAR(255)     -- 通常为空，保留字段
--- );
--- -- 索引优化查询性能
--- CREATE UNIQUE INDEX idx_casbin_rule ON casbin_rule (ptype,v0,v1,v2,v3,v4,v5)
--- CREATE INDEX idx_casbin_ptype ON casbin_rules(ptype);
--- -- 针对 RBAC with Domain 模型的特定查询优化
--- CREATE INDEX idx_casbin_g_lookup ON casbin_rules(ptype, v0, v2) WHERE ptype = 'g';  -- g策略查询: g, user, domain -> 找角色
--- CREATE INDEX idx_casbin_p_match ON casbin_rules(ptype, v1, v2, v3) WHERE ptype = 'p';  -- p策略匹配: p, domain, resource, action -> 找策略
-
-
--- COMMENT ON TABLE casbin_rules IS 'Casbin权限策略表 (RBAC with Domains)';
--- COMMENT ON COLUMN casbin_rules.id IS '主键自增ID';
--- COMMENT ON COLUMN casbin_rules.ptype IS '策略类型(p:策略, g:角色关联, g2:角色继承)';
--- COMMENT ON COLUMN casbin_rules.v0 IS 'v0: Subject (用户ID/角色ID)';
--- COMMENT ON COLUMN casbin_rules.v1 IS 'v1: Domain (租户ID) / Role (角色ID)';
--- COMMENT ON COLUMN casbin_rules.v2 IS 'v2: Object (资源) / Domain (租户ID) / Role (角色ID)';
--- COMMENT ON COLUMN casbin_rules.v3 IS 'v3: Action (操作)';
--- COMMENT ON COLUMN casbin_rules.v4 IS '扩展字段';
--- COMMENT ON COLUMN casbin_rules.v5 IS '扩展字段';
+-- 5. Casbin 策略表 — 已移除（以下 SQL 不再需要）

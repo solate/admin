@@ -3,6 +3,7 @@ package repository
 import (
 	"admin/internal/dal/model"
 	"admin/internal/dal/query"
+	"admin/pkg/xcontext"
 	"context"
 
 	"gorm.io/gorm"
@@ -22,13 +23,23 @@ func NewLoginLogRepo(db *gorm.DB) *LoginLogRepo {
 
 // GetByID 根据ID获取登录日志
 func (r *LoginLogRepo) GetByID(ctx context.Context, logID string) (*model.LoginLog, error) {
-	return r.q.LoginLog.WithContext(ctx).Where(r.q.LoginLog.LogID.Eq(logID)).First()
+	tenantID := xcontext.GetTenantID(ctx)
+	return r.q.LoginLog.WithContext(ctx).
+		Where(r.q.LoginLog.TenantID.Eq(tenantID)).
+		Where(r.q.LoginLog.LogID.Eq(logID)).
+		First()
 }
 
 // ListWithFilters 根据筛选条件分页获取登录日志列表
-// 说明：租户过滤由 scope callback 自动处理（超管 SkipTenantCheck 时查询所有，普通用户只查当前租户）
 func (r *LoginLogRepo) ListWithFilters(ctx context.Context, tenantID string, offset, limit int, userID, userName, operationType, loginType, ipAddress string, status *int16, startDate, endDate *int64) ([]*model.LoginLog, int64, error) {
 	q := r.q.LoginLog.WithContext(ctx)
+
+	// 租户过滤：如果传入了 tenantID 参数则使用它（超管跨租户），否则用上下文中的租户
+	if tenantID != "" {
+		q = q.Where(r.q.LoginLog.TenantID.Eq(tenantID))
+	} else {
+		q = q.Where(r.q.LoginLog.TenantID.Eq(xcontext.GetTenantID(ctx)))
+	}
 
 	// 应用筛选条件
 	if userID != "" {
@@ -66,9 +77,3 @@ func (r *LoginLogRepo) ListWithFilters(ctx context.Context, tenantID string, off
 	logs, err := q.Order(r.q.LoginLog.CreatedAt.Desc()).Offset(offset).Limit(limit).Find()
 	return logs, total, err
 }
-
-// StatsByDate 按日期统计登录数据
-// TODO: 需要时实现此方法，需要先在 model 中定义 LoginLogStat
-// func (r *LoginLogRepo) StatsByDate(ctx context.Context, tenantID string, days int) ([]*model.LoginLogStat, error) {
-// 	return nil, nil
-// }

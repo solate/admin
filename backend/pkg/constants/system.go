@@ -2,7 +2,7 @@ package constants
 
 // 租户相关常量
 const (
-	// DefaultTenantCode 默认租户编码（超管租户，用于 Casbin domain）
+	// DefaultTenantCode 默认租户编码（系统租户）
 	DefaultTenantCode = "default"
 )
 

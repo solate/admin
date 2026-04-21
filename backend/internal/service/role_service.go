@@ -4,10 +4,9 @@ import (
 	"admin/internal/converter"
 	"admin/internal/dal/model"
 	"admin/internal/dto"
+	"admin/internal/rbac"
 	"admin/internal/repository"
 	"admin/pkg/audit"
-	"admin/pkg/cache"
-	"admin/pkg/casbin"
 	"admin/pkg/constants"
 	"admin/pkg/convert"
 	"admin/pkg/idgen"
@@ -15,43 +14,48 @@ import (
 	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 	"context"
-	"encoding/json"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
-// APIPath API 路径定义（用于解析菜单的 api_paths JSON 字段）
-type APIPath struct {
-	Path    string   `json:"path"`    // API 路径，如 /api/v1/users
-	Methods []string `json:"methods"` // HTTP 方法列表，如 ["GET", "POST"]
-}
-
 // RoleService 角色服务
 type RoleService struct {
 	roleRepo       *repository.RoleRepo
 	permissionRepo *repository.PermissionRepo
 	menuRepo       *repository.MenuRepo
-	enforcer       *casbin.Enforcer
-	tenantCache    *cache.TenantCache
+	rolePermRepo   *repository.RolePermissionRepo
+	userRoleRepo   *repository.UserRoleRepo
+	cache          *rbac.PermissionCache
+	tenantRepo     *repository.TenantRepo
 	recorder       *audit.Recorder
 }
 
 // NewRoleService 创建角色服务
-func NewRoleService(roleRepo *repository.RoleRepo, permissionRepo *repository.PermissionRepo, menuRepo *repository.MenuRepo, enforcer *casbin.Enforcer, tenantCache *cache.TenantCache, recorder *audit.Recorder) *RoleService {
+func NewRoleService(
+	roleRepo *repository.RoleRepo,
+	permissionRepo *repository.PermissionRepo,
+	menuRepo *repository.MenuRepo,
+	rolePermRepo *repository.RolePermissionRepo,
+	userRoleRepo *repository.UserRoleRepo,
+	cache *rbac.PermissionCache,
+	tenantRepo *repository.TenantRepo,
+	recorder *audit.Recorder,
+) *RoleService {
 	return &RoleService{
 		roleRepo:       roleRepo,
 		permissionRepo: permissionRepo,
 		menuRepo:       menuRepo,
-		enforcer:       enforcer,
-		tenantCache:    tenantCache,
+		rolePermRepo:   rolePermRepo,
+		userRoleRepo:   userRoleRepo,
+		cache:          cache,
+		tenantRepo:     tenantRepo,
 		recorder:       recorder,
 	}
 }
 
-// CreateRole 创建角色（支持继承 default 租户角色模板）
+// CreateRole 创建角色（支持继承父角色）
 func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest) (resp *dto.RoleInfo, err error) {
 	var role *model.Role
 
@@ -88,18 +92,23 @@ func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest
 	}
 
 	// 如果有父角色，验证父角色属于 default 租户的角色模板
-	var parentRole *model.Role
+	var parentRoleCode *string
 	if req.ParentRoleCode != nil {
-		defaultTenantID := s.tenantCache.GetDefaultTenantID()
-		parentRole, err = s.roleRepo.GetByCodeWithTenant(ctx, defaultTenantID, *req.ParentRoleCode)
+		// 父角色必须在 default 租户中查找
+		defaultTenantID, err := s.getDefaultTenantID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		parentRole, err := s.roleRepo.GetByCodeWithTenant(ctx, defaultTenantID, *req.ParentRoleCode)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
-				log.Warn().Str("parent_role_code", *req.ParentRoleCode).Str("default_tenant_id", defaultTenantID).Msg("父角色不存在或只能继承 default 租户的角色模板")
+				log.Warn().Str("parent_role_code", *req.ParentRoleCode).Msg("父角色不存在或只能继承 default 租户的角色模板")
 				return nil, xerr.New(xerr.ErrInvalidParams.Code, "父角色不存在或只能继承 default 租户的角色模板")
 			}
 			log.Error().Err(err).Str("parent_role_code", *req.ParentRoleCode).Msg("查询父角色失败")
 			return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询父角色失败", err)
 		}
+		parentRoleCode = &parentRole.RoleCode
 	}
 
 	// 生成角色ID
@@ -110,7 +119,7 @@ func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "生成角色ID失败", err)
 	}
 
-	// 构建角色模型
+	// 构建角色模型，设置 ParentRoleID
 	role = &model.Role{
 		RoleID:      roleID,
 		TenantID:    tenantID,
@@ -125,84 +134,38 @@ func (s *RoleService) CreateRole(ctx context.Context, req *dto.CreateRoleRequest
 		role.Status = int16(constants.StatusEnabled) // 默认启用状态
 	}
 
+	// 如果有父角色，设置 parent_role_id
+	if parentRoleCode != nil {
+		// 通过 parent_role_code 查找父角色的 RoleID
+		defaultTenantID, _ := s.getDefaultTenantID(ctx)
+		parentRole, err := s.roleRepo.GetByCodeWithTenant(ctx, defaultTenantID, *parentRoleCode)
+		if err == nil && parentRole != nil {
+			role.ParentRoleID = parentRole.RoleID
+		}
+	}
+
 	// 创建角色
 	if err := s.roleRepo.Create(ctx, role); err != nil {
 		log.Error().Err(err).Str("role_id", roleID).Str("tenant_id", tenantID).Str("role_code", req.RoleCode).Msg("创建角色失败")
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "创建角色失败", err)
 	}
 
-	// 获取租户代码
-	tenantCode := xcontext.GetTenantCode(ctx)
-
-	// 确定父角色代码（优先使用显式指定的父角色）
-	var parentRoleCode string
-	if req.ParentRoleCode != nil && parentRole != nil {
-		parentRoleCode = *req.ParentRoleCode
-	} else if tenantCode != constants.DefaultTenantCode {
-		// 如果不是 default 租户且没有显式指定父角色，自动继承 default 租户的同名角色
-		// 检查 default 租户是否存在同名角色
-		defaultTenantID := s.tenantCache.GetDefaultTenantID()
-		defaultRole, err := s.roleRepo.GetByCodeWithTenant(ctx, defaultTenantID, req.RoleCode)
-		if err == nil && defaultRole != nil {
-			// default 租户存在同名角色，自动建立继承关系
-			parentRoleCode = defaultRole.RoleCode
-			log.Info().
-				Str("role_code", role.RoleCode).
-				Str("tenant_code", tenantCode).
-				Str("parent_role_code", parentRoleCode).
-				Msg("自动建立角色继承关系")
-		}
-		// 如果 default 租户不存在同名角色，不建立继承关系
-	}
-
-	// 如果有父角色，建立 g2 继承关系（不复制权限，实时计算）
-	if parentRoleCode != "" {
-		// 创建 Casbin g2 策略（角色继承，不需要 domain）
-		// 注意：必须使用 AddNamedGroupingPolicy("g2", ...) 来添加 g2 策略
-		_, err = s.enforcer.AddNamedGroupingPolicy("g2", role.RoleCode, parentRoleCode)
-		if err != nil {
-			log.Error().Err(err).Str("role_code", role.RoleCode).Str("parent_role_code", parentRoleCode).Msg("创建角色继承关系失败")
-			return nil, xerr.Wrap(xerr.ErrInternal.Code, "创建角色继承关系失败", err)
-		}
-		log.Info().
-			Str("child_role", role.RoleCode).
-			Str("parent_role", parentRoleCode).
-			Str("tenant_code", tenantCode).
-			Msg("g2 角色继承关系创建成功")
-	}
-
-	return converter.ModelToRoleInfoWithParent(role, req.ParentRoleCode), nil
+	return converter.ModelToRoleInfoWithParent(role, parentRoleCode), nil
 }
 
-// copyParentMenuPermissions 复制父角色的菜单权限到子角色（已弃用）
-// Deprecated: 现在使用实时计算权限，不再需要物理复制。此方法保留用于固化权限功能。
-func (s *RoleService) copyParentMenuPermissions(parentRoleCode, childRoleCode, tenantCode string) error {
-	// 获取父角色在 default 租户的所有权限
-	defaultTenantCode := constants.DefaultTenantCode
-	parentPolicies, _ := s.enforcer.GetFilteredPolicy(0, parentRoleCode, defaultTenantCode)
-
-	// 过滤出菜单权限并复制到当前租户
-	for _, policy := range parentPolicies {
-		if len(policy) >= 4 {
-			resource := policy[2]
-			// 只复制菜单权限（menu:xxx）
-			if strings.HasPrefix(resource, "menu:") {
-				// 为子角色添加策略：p, child_role, current_tenant, menu:xxx, *
-				_, err := s.enforcer.AddPolicy(childRoleCode, tenantCode, resource, "*")
-				if err != nil {
-					return err
-				}
-			}
-		}
+// getDefaultTenantID 获取 default 租户ID
+func (s *RoleService) getDefaultTenantID(ctx context.Context) (string, error) {
+	tenant, err := s.tenantRepo.GetByCode(ctx, constants.DefaultTenantCode)
+	if err != nil {
+		return "", xerr.Wrap(xerr.ErrInternal.Code, "查询默认租户失败", err)
 	}
-
-	return nil
+	return tenant.TenantID, nil
 }
 
 // GetRoleByID 获取角色详情
 // 说明：
-// - 超管通过 SkipTenantCheck 可查询任意租户角色
-// - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能查询本租户角色
+// - 超管可查询任意租户角色
+// - 普通用户通过 RBAC 中间件鉴权 + 数据库自动租户过滤，只能查询本租户角色
 func (s *RoleService) GetRoleByID(ctx context.Context, roleID string) (*dto.RoleInfo, error) {
 	role, err := s.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
@@ -219,8 +182,8 @@ func (s *RoleService) GetRoleByID(ctx context.Context, roleID string) (*dto.Role
 
 // UpdateRole 更新角色
 // 说明：
-// - 超管通过 SkipTenantCheck 可更新任意租户角色
-// - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能更新本租户角色
+// - 超管可更新任意租户角色
+// - 普通用户通过 RBAC 中间件鉴权 + 数据库自动租户过滤，只能更新本租户角色
 func (s *RoleService) UpdateRole(ctx context.Context, roleID string, req *dto.UpdateRoleRequest) (resp *dto.RoleInfo, err error) {
 	var oldRole, newRole *model.Role
 
@@ -281,9 +244,9 @@ func (s *RoleService) UpdateRole(ctx context.Context, roleID string, req *dto.Up
 
 // DeleteRole 删除角色
 // 说明：
-// - 超管通过 SkipTenantCheck 可删除任意租户角色
-// - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能删除本租户角色
-// 级联删除：删除角色时会自动清理该角色的所有权限策略和继承关系
+// - 超管可删除任意租户角色
+// - 普通用户通过 RBAC 中间件鉴权 + 数据库自动租户过滤，只能删除本租户角色
+// 级联删除：删除角色时会自动清理该角色的所有权限关联和用户绑定关系
 func (s *RoleService) DeleteRole(ctx context.Context, roleID string) (err error) {
 	var role *model.Role
 
@@ -303,6 +266,8 @@ func (s *RoleService) DeleteRole(ctx context.Context, roleID string) (err error)
 		}
 	}()
 
+	tenantID := xcontext.GetTenantID(ctx)
+
 	// 检查角色是否存在
 	role, err = s.roleRepo.GetByID(ctx, roleID)
 	if err != nil {
@@ -320,23 +285,20 @@ func (s *RoleService) DeleteRole(ctx context.Context, roleID string) (err error)
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除角色失败", err)
 	}
 
-	// 清理该角色的所有权限策略
-	// 1. 清理权限策略 (p, role_code, tenant_code, resource, action)
-	// 由于需要按 subject (role_code) 过滤，使用 GetFilteredPolicy(0, role.RoleCode)
-	policies, _ := s.enforcer.GetFilteredPolicy(0, role.RoleCode)
-	for _, policy := range policies {
-		if len(policy) >= 4 {
-			s.enforcer.RemovePolicy(policy[0], policy[1], policy[2], policy[3])
-		}
+	// 清理该角色的所有权限关联（role_permissions 表）
+	if err := s.rolePermRepo.DeleteByRole(ctx, roleID, tenantID); err != nil {
+		log.Error().Err(err).Str("role_id", roleID).Msg("清理角色权限关联失败")
+		// 不返回错误，角色已删除，权限关联清理失败不影响主流程
 	}
 
-	// 2. 清理角色继承关系 (g2, child_role, parent_role)
-	// g2 策略只有两个参数，使用 RemoveFilteredGroupingPolicy
-	s.enforcer.RemoveFilteredGroupingPolicy(0, role.RoleCode)
+	// 清理用户-角色绑定关系（user_roles 表）
+	if err := s.userRoleRepo.DeleteRoles(ctx, []string{roleID}, tenantID); err != nil {
+		log.Error().Err(err).Str("role_id", roleID).Msg("清理用户角色绑定失败")
+		// 不返回错误，角色已删除，绑定关系清理失败不影响主流程
+	}
 
-	// 3. 清理用户-角色绑定关系 (g, username, role_code, tenant_code)
-	// 使用 RemoveFilteredGroupingPolicy 按 role_code 过滤
-	s.enforcer.RemoveFilteredGroupingPolicy(1, role.RoleCode)
+	// 通知权限缓存刷新
+	s.cache.NotifyRefresh()
 
 	return nil
 }
@@ -369,6 +331,8 @@ func (s *RoleService) BatchDeleteRoles(ctx context.Context, roleIDs []string) (e
 		}
 	}()
 
+	tenantID := xcontext.GetTenantID(ctx)
+
 	// 获取所有角色信息
 	roles, err := s.roleRepo.GetByIDs(ctx, roleIDs)
 	if err != nil {
@@ -395,22 +359,18 @@ func (s *RoleService) BatchDeleteRoles(ctx context.Context, roleIDs []string) (e
 		return xerr.Wrap(xerr.ErrInternal.Code, "批量删除角色失败", err)
 	}
 
-	// 清理所有角色的所有权限策略和绑定关系
-	for _, role := range roleMap {
-		// 1. 清理权限策略 (p, role_code, tenant_code, resource, action)
-		policies, _ := s.enforcer.GetFilteredPolicy(0, role.RoleCode)
-		for _, policy := range policies {
-			if len(policy) >= 4 {
-				s.enforcer.RemovePolicy(policy[0], policy[1], policy[2], policy[3])
-			}
-		}
-
-		// 2. 清理角色继承关系 (g2, child_role, parent_role)
-		s.enforcer.RemoveFilteredGroupingPolicy(0, role.RoleCode)
-
-		// 3. 清理用户-角色绑定关系 (g, username, role_code, tenant_code)
-		s.enforcer.RemoveFilteredGroupingPolicy(1, role.RoleCode)
+	// 批量清理所有角色的权限关联（role_permissions 表）
+	if err := s.rolePermRepo.DeleteByRoles(ctx, roleIDs, tenantID); err != nil {
+		log.Error().Err(err).Strs("role_ids", roleIDs).Msg("批量清理角色权限关联失败")
 	}
+
+	// 批量清理用户-角色绑定关系（user_roles 表）
+	if err := s.userRoleRepo.DeleteRoles(ctx, roleIDs, tenantID); err != nil {
+		log.Error().Err(err).Strs("role_ids", roleIDs).Msg("批量清理用户角色绑定失败")
+	}
+
+	// 通知权限缓存刷新
+	s.cache.NotifyRefresh()
 
 	return nil
 }
@@ -418,18 +378,17 @@ func (s *RoleService) BatchDeleteRoles(ctx context.Context, roleIDs []string) (e
 // ListRoles 获取角色列表
 // 说明：
 // - 通过 context 自动获取租户信息，Repository 层自动添加租户过滤
-// - 超管通过 SkipTenantCheck 可查询所有租户角色
+// - 超管可查询所有租户角色
 // - 租户管理员只能查询本租户角色
-// - 普通用户无权限访问此接口，由 Casbin 中间件拦截
+// - 普通用户无权限访问此接口，由 RBAC 中间件拦截
 func (s *RoleService) ListRoles(ctx context.Context, req *dto.ListRolesRequest) (*dto.ListRolesResponse, error) {
-	// 获取 default 租户ID
-	defaultTenantID := s.tenantCache.GetDefaultTenantID()
+	// 使用当前租户ID查询角色（Repository 层自动添加租户过滤）
+	tenantID := xcontext.GetTenantID(ctx)
 
-	// 查询 default 租户的角色
-	roles, total, err := s.roleRepo.ListByTenantWithFilters(ctx, defaultTenantID, req.GetOffset(), req.GetLimit(), req.RoleName, req.RoleCode, req.Status)
+	roles, total, err := s.roleRepo.ListByTenantWithFilters(ctx, tenantID, req.GetOffset(), req.GetLimit(), req.RoleName, req.RoleCode, req.Status)
 	if err != nil {
 		log.Error().Err(err).
-			Str("default_tenant_id", defaultTenantID).
+			Str("tenant_id", tenantID).
 			Str("role_name", req.RoleName).
 			Str("role_code", req.RoleCode).
 			Int("status", req.Status).
@@ -461,16 +420,15 @@ func (s *RoleService) ListRoles(ctx context.Context, req *dto.ListRolesRequest) 
 
 // GetAllRoles 获取所有角色（不分页）
 // 说明：
-// - 只返回 default 租户的角色模板，所有用户创建用户时都从这些角色中选择
+// - 返回当前租户的所有角色
 func (s *RoleService) GetAllRoles(ctx context.Context, req *dto.GetAllRolesRequest) (*dto.GetAllRolesResponse, error) {
-	// 获取 default 租户ID
-	defaultTenantID := s.tenantCache.GetDefaultTenantID()
+	// 使用当前租户ID查询角色
+	tenantID := xcontext.GetTenantID(ctx)
 
-	// 查询 default 租户的角色
-	roles, err := s.roleRepo.ListByTenant(ctx, defaultTenantID, req.RoleName, req.RoleCode, req.Status)
+	roles, err := s.roleRepo.ListByTenant(ctx, tenantID, req.RoleName, req.RoleCode, req.Status)
 	if err != nil {
 		log.Error().Err(err).
-			Str("default_tenant_id", defaultTenantID).
+			Str("tenant_id", tenantID).
 			Str("role_name", req.RoleName).
 			Str("role_code", req.RoleCode).
 			Int("status", req.Status).
@@ -488,8 +446,8 @@ func (s *RoleService) GetAllRoles(ctx context.Context, req *dto.GetAllRolesReque
 
 // UpdateRoleStatus 更新角色状态
 // 说明：
-// - 超管通过 SkipTenantCheck 可更新任意租户角色状态
-// - 普通用户通过 Casbin 中间件鉴权 + 数据库自动租户过滤，只能更新本租户角色状态
+// - 超管可更新任意租户角色状态
+// - 普通用户通过 RBAC 中间件鉴权 + 数据库自动租户过滤，只能更新本租户角色状态
 func (s *RoleService) UpdateRoleStatus(ctx context.Context, roleID string, status int) (err error) {
 	var oldRole, newRole *model.Role
 
@@ -540,7 +498,7 @@ func (s *RoleService) UpdateRoleStatus(ctx context.Context, roleID string, statu
 // Deprecated: 使用 AssignPermissions 代替
 func (s *RoleService) AssignMenus(ctx context.Context, roleID string, menuIDs []string) error {
 	req := &dto.AssignPermissionsRequest{
-		MenuIDs: menuIDs,
+		MenuPermIDs: menuIDs,
 	}
 	return s.AssignPermissions(ctx, roleID, req)
 }
@@ -552,12 +510,11 @@ func (s *RoleService) GetRoleMenus(ctx context.Context, roleID string) ([]string
 	if err != nil {
 		return nil, err
 	}
-	return permissions.MenuIDs, nil
+	return permissions.MenuPermIDs, nil
 }
 
 // AssignPermissions 为角色分配权限（菜单+按钮）
-// 根据设计文档：角色权限存储在 Casbin p 策略中
-// 策略格式: p, role_code, domain, resource, action
+// 权限存储在 role_permissions 表中，通过 PermissionCache 实时计算
 //
 // 重要变更：分配菜单权限时，会自动关联该菜单的 API 权限
 // 这解决了"菜单权限粒度"问题：前端隐藏菜单时，后端 API 也会被拦截
@@ -573,82 +530,47 @@ func (s *RoleService) AssignPermissions(ctx context.Context, roleID string, req 
 		return xerr.Wrap(xerr.ErrInternal.Code, "查询角色失败", err)
 	}
 
-	// 2. 获取租户代码
-	tenantCode := xcontext.GetTenantCode(ctx)
-	if tenantCode == "" {
-		return xerr.ErrUnauthorized
+	tenantID := xcontext.GetTenantID(ctx)
+
+	// 2. 清除角色的所有现有权限（role_permissions 表）
+	if err := s.rolePermRepo.DeleteByRole(ctx, roleID, tenantID); err != nil {
+		log.Error().Err(err).Str("role_id", roleID).Msg("清除旧权限失败")
+		return xerr.Wrap(xerr.ErrInternal.Code, "清除旧权限失败", err)
 	}
 
-	// 3. 清除角色的所有权限（菜单 + 按钮 + API）
-	_, err = s.enforcer.RemoveFilteredPolicy(0, role.RoleCode, tenantCode, "menu:", "*")
-	if err != nil {
-		log.Error().Err(err).Str("role_code", role.RoleCode).Str("tenant_code", tenantCode).Msg("清除旧菜单权限失败")
-		return xerr.Wrap(xerr.ErrInternal.Code, "清除旧菜单权限失败", err)
+	// 3. 收集所有需要添加的权限ID
+	var allPermIDs []string
+
+	// 3.1 添加菜单权限
+	for _, menuID := range req.MenuPermIDs {
+		// 菜单权限的 permission_id 可以是 "menu:<menuID>" 形式
+		// 或者直接使用 menuID 查找对应的权限记录
+		allPermIDs = append(allPermIDs, menuID)
 	}
 
-	_, err = s.enforcer.RemoveFilteredPolicy(0, role.RoleCode, tenantCode, "btn:", "*")
-	if err != nil {
-		log.Error().Err(err).Str("role_code", role.RoleCode).Str("tenant_code", tenantCode).Msg("清除旧按钮权限失败")
-		return xerr.Wrap(xerr.ErrInternal.Code, "清除旧按钮权限失败", err)
+	// 3.2 添加按钮权限
+	for _, buttonID := range req.ButtonPermIDs {
+		allPermIDs = append(allPermIDs, buttonID)
 	}
 
-	// 清除 API 权限（路径以 /api/v1/ 开头的）
-	_, err = s.enforcer.RemoveFilteredPolicy(0, role.RoleCode, tenantCode, "/api/v1/", "*")
-	if err != nil {
-		log.Error().Err(err).Str("role_code", role.RoleCode).Str("tenant_code", tenantCode).Msg("清除旧 API 权限失败")
-		return xerr.Wrap(xerr.ErrInternal.Code, "清除旧 API 权限失败", err)
-	}
-
-	// 4. 添加新的菜单权限，并自动关联 API 权限
-	for _, menuID := range req.MenuIDs {
-		// 4.1 添加菜单权限
-		// 策略格式: p, role_code, domain, menu:menu_id, *
-		_, err := s.enforcer.AddPolicy(role.RoleCode, tenantCode, "menu:"+menuID, "*")
-		if err != nil {
-			log.Error().Err(err).Str("role_code", role.RoleCode).Str("menu_id", menuID).Msg("添加菜单权限失败")
-			return xerr.Wrap(xerr.ErrInternal.Code, "添加菜单权限失败", err)
+	// 4. 批量添加权限到 role_permissions 表
+	if len(allPermIDs) > 0 {
+		items := make([]*model.RolePermission, 0, len(allPermIDs))
+		for _, permID := range allPermIDs {
+			items = append(items, &model.RolePermission{
+				RoleID:       role.RoleID,
+				PermissionID: permID,
+				TenantID:     tenantID,
+			})
 		}
-
-		// 4.2 查询菜单详情，获取关联的 API 路径
-		menu, err := s.menuRepo.GetByID(ctx, menuID)
-		if err != nil {
-			// 菜单不存在，跳过 API 关联
-			continue
-		}
-
-		// 4.3 解析 api_paths JSON 并添加 API 权限
-		if menu.APIPaths != "" {
-			var apiPaths []APIPath
-			if err := json.Unmarshal([]byte(menu.APIPaths), &apiPaths); err == nil {
-				for _, apiPath := range apiPaths {
-					// 为每个 HTTP 方法添加权限策略
-					for _, method := range apiPath.Methods {
-						// 策略格式: p, role_code, domain, /api/v1/xxx, GET|POST|PUT|DELETE
-						_, err = s.enforcer.AddPolicy(role.RoleCode, tenantCode, apiPath.Path, method)
-						if err != nil {
-							log.Error().Err(err).Str("role_code", role.RoleCode).Str("api_path", apiPath.Path).Str("method", method).Msg("添加 API 权限失败")
-							return xerr.Wrap(xerr.ErrInternal.Code, "添加 API 权限失败", err)
-						}
-					}
-				}
-			}
+		if err := s.rolePermRepo.AddPermissions(ctx, items); err != nil {
+			log.Error().Err(err).Str("role_id", roleID).Int("count", len(items)).Msg("添加权限失败")
+			return xerr.Wrap(xerr.ErrInternal.Code, "添加权限失败", err)
 		}
 	}
 
-	// 5. 添加新的按钮权限
-	for _, buttonID := range req.ButtonIDs {
-		// 根据 permission_id 查询 resource
-		perm, err := s.permissionRepo.GetByID(ctx, buttonID)
-		if err != nil {
-			continue // 跳过不存在的权限
-		}
-		// 策略格式: p, role_code, domain, btn:menuID:action, *
-		_, err = s.enforcer.AddPolicy(role.RoleCode, tenantCode, perm.Resource, "*")
-		if err != nil {
-			log.Error().Err(err).Str("role_code", role.RoleCode).Str("button_id", buttonID).Msg("添加按钮权限失败")
-			return xerr.Wrap(xerr.ErrInternal.Code, "添加按钮权限失败", err)
-		}
-	}
+	// 5. 通知权限缓存刷新
+	s.cache.NotifyRefresh()
 
 	return nil
 }
@@ -666,87 +588,40 @@ func (s *RoleService) GetRolePermissions(ctx context.Context, roleID string) (*d
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询角色失败", err)
 	}
 
-	// 2. 获取租户代码
-	tenantCode := xcontext.GetTenantCode(ctx)
-	if tenantCode == "" {
-		return nil, xerr.ErrUnauthorized
+	tenantID := xcontext.GetTenantID(ctx)
+
+	// 2. 从 role_permissions 表获取角色的所有权限ID
+	permIDs, err := s.rolePermRepo.GetPermissionIDsByRole(ctx, role.RoleID, tenantID)
+	if err != nil {
+		log.Error().Err(err).Str("role_id", roleID).Msg("查询角色权限失败")
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询角色权限失败", err)
 	}
 
-	// 3. 从 Casbin 获取角色的所有权限
-	policies, _ := s.enforcer.GetFilteredPolicy(0, role.RoleCode, tenantCode)
+	// 3. 根据权限ID查询权限详情，区分菜单和按钮
+	var menuPermIDs []string
+	var buttonPermIDs []string
 
-	var menuIDs []string
-	var buttonResources []string
+	if len(permIDs) > 0 {
+		perms, err := s.permissionRepo.GetByIDs(ctx, permIDs)
+		if err != nil {
+			log.Error().Err(err).Str("role_id", roleID).Msg("查询权限详情失败")
+			return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询权限详情失败", err)
+		}
 
-	for _, policy := range policies {
-		if len(policy) >= 4 {
-			resource := policy[2]
-			if strings.HasPrefix(resource, "menu:") {
-				menuID := strings.TrimPrefix(resource, "menu:")
-				menuIDs = append(menuIDs, menuID)
-			} else if strings.HasPrefix(resource, "btn:") {
-				buttonResources = append(buttonResources, resource)
+		for _, perm := range perms {
+			switch perm.Type {
+			case constants.TypeMenu:
+				menuPermIDs = append(menuPermIDs, perm.PermissionID)
+			case constants.TypeButton:
+				buttonPermIDs = append(buttonPermIDs, perm.PermissionID)
 			}
 		}
 	}
 
-	// 4. 根据按钮 resource 查询 permission_id
-	var buttonIDs []string
-	for _, resource := range buttonResources {
-		perm, err := s.permissionRepo.GetByResource(ctx, resource)
-		if err == nil {
-			buttonIDs = append(buttonIDs, perm.PermissionID)
-		}
-	}
-
 	return &dto.RolePermissionsResponse{
-		MenuIDs:   menuIDs,
-		ButtonIDs: buttonIDs,
+		MenuPermIDs:   menuPermIDs,
+		ButtonPermIDs: buttonPermIDs,
 	}, nil
-}
-
-// FreezeInheritedPermissions 固化继承的权限（断开继承关系，将权限复制到当前租户）
-// 说明：
-// - 用于将继承自 default 租户角色模板的权限"固化"到当前租户
-// - 固化后，角色将不再跟随模板更新，而是拥有自己独立的权限副本
-// - 此操作会删除 g2 继承关系
-func (s *RoleService) FreezeInheritedPermissions(ctx context.Context, roleID string) error {
-	// 1. 查询角色信息
-	role, err := s.roleRepo.GetByID(ctx, roleID)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			log.Warn().Str("role_id", roleID).Msg("角色不存在")
-			return xerr.ErrRoleNotFound
-		}
-		log.Error().Err(err).Str("role_id", roleID).Msg("查询角色失败")
-		return xerr.Wrap(xerr.ErrInternal.Code, "查询角色失败", err)
-	}
-
-	// 2. 获取租户代码
-	tenantCode := xcontext.GetTenantCode(ctx)
-	if tenantCode == "" {
-		return xerr.ErrUnauthorized
-	}
-
-	// 3. 获取角色的继承父角色
-	parents, _ := s.enforcer.GetRolesForUser(role.RoleCode)
-	if len(parents) == 0 {
-		log.Warn().Str("role_id", roleID).Str("role_code", role.RoleCode).Msg("该角色没有继承关系，无需固化")
-		return xerr.New(xerr.ErrInvalidParams.Code, "该角色没有继承关系，无需固化")
-	}
-
-	// 4. 复制父角色的权限到当前租户
-	for _, parentRoleCode := range parents {
-		if err := s.copyParentMenuPermissions(parentRoleCode, role.RoleCode, tenantCode); err != nil {
-			log.Error().Err(err).Str("role_code", role.RoleCode).Str("parent_role_code", parentRoleCode).Str("tenant_code", tenantCode).Msg("复制权限失败")
-			return xerr.Wrap(xerr.ErrInternal.Code, "复制权限失败", err)
-		}
-	}
-
-	// 5. 删除 g2 继承关系
-	s.enforcer.DeleteRole(role.RoleCode)
-
-	return nil
 }
 
 // filterSuperAdminRoles 过滤超级管理员角色（临时方案）

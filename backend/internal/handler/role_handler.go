@@ -325,5 +325,5 @@ func (h *RoleHandler) GetRoleMenus(c *gin.Context) {
 	}
 
 	// 旧接口只返回菜单ID
-	response.Success(c, &dto.RolePermissionsResponse{MenuIDs: permissions.MenuIDs})
+	response.Success(c, &dto.RolePermissionsResponse{MenuPermIDs: permissions.MenuPermIDs})
 }

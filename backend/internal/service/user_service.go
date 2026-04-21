@@ -6,7 +6,6 @@ import (
 	"admin/internal/dto"
 	"admin/internal/repository"
 	"admin/pkg/audit"
-	"admin/pkg/casbin"
 	"admin/pkg/constants"
 	"admin/pkg/idgen"
 	"admin/pkg/pagination"
@@ -25,22 +24,22 @@ import (
 // UserService 用户服务
 type UserService struct {
 	userRepo        *repository.UserRepo
+	userRoleRepo    *repository.UserRoleRepo
 	userRoleService *UserRoleService
 	roleRepo        *repository.RoleRepo
 	tenantRepo      *repository.TenantRepo
-	enforcer        *casbin.Enforcer
 	recorder        *audit.Recorder
-	rsaCipher       *rsapwd.RSACipher // RSA 密码解密器
+	rsaCipher       *rsapwd.RSACipher
 }
 
 // NewUserService 创建用户服务
-func NewUserService(userRepo *repository.UserRepo, userRoleService *UserRoleService, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, enforcer *casbin.Enforcer, recorder *audit.Recorder, rsaCipher *rsapwd.RSACipher) *UserService {
+func NewUserService(userRepo *repository.UserRepo, userRoleRepo *repository.UserRoleRepo, userRoleService *UserRoleService, roleRepo *repository.RoleRepo, tenantRepo *repository.TenantRepo, recorder *audit.Recorder, rsaCipher *rsapwd.RSACipher) *UserService {
 	return &UserService{
 		userRepo:        userRepo,
+		userRoleRepo:    userRoleRepo,
 		userRoleService: userRoleService,
 		roleRepo:        roleRepo,
 		tenantRepo:      tenantRepo,
-		enforcer:        enforcer,
 		recorder:        recorder,
 		rsaCipher:       rsaCipher,
 	}
@@ -148,7 +147,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 	if len(req.RoleCodes) > 0 {
 		// 使用 UserRoleService 验证并分配角色
 		var err error
-		roles, err = s.userRoleService.ValidateAndAssignRoles(ctx, user.UserName, req.RoleCodes, tenantID)
+		roles, err = s.userRoleService.ValidateAndAssignRoles(ctx, user.UserID, req.RoleCodes, tenantID)
 		if err != nil {
 			return nil, err
 		}
@@ -180,7 +179,7 @@ func (s *UserService) GetUserByID(ctx context.Context, userID string) (*dto.User
 	}
 
 	// 获取用户角色信息（使用用户自己的租户ID）
-	roles, err := s.userRoleService.GetUserRoleDetails(ctx, user.UserName, user.TenantID)
+	roles, err := s.userRoleService.GetUserRoleDetails(ctx, user.UserID, user.TenantID)
 	if err != nil {
 		log.Error().Err(err).Str("user_id", user.UserID).Str("username", user.UserName).Str("tenant_id", user.TenantID).Msg("查询用户角色失败")
 		// 即使查询角色失败，也继续处理，但不返回角色信息
@@ -362,7 +361,7 @@ func (s *UserService) UpdateUser(ctx context.Context, userID string, req *dto.Up
 	// 更新用户角色
 	// 使用新的租户ID（因为可能已经更新）
 	var roles []*model.Role
-	roles, err = s.userRoleService.ValidateAndAssignRoles(ctx, newUser.UserName, req.RoleCodes, newTenantID)
+	roles, err = s.userRoleService.ValidateAndAssignRoles(ctx, newUser.UserID, req.RoleCodes, newTenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -415,9 +414,7 @@ func (s *UserService) DeleteUser(ctx context.Context, userID string) (err error)
 	}
 
 	// 清理该用户的所有角色绑定关系
-	// g 策略格式: g, username, role_code, tenant_code
-	// 使用 RemoveFilteredGroupingPolicy 按 username 过滤
-	s.enforcer.RemoveFilteredGroupingPolicy(0, user.UserName)
+	_ = s.userRoleRepo.DeleteUserRoles(ctx, user.UserID, user.TenantID)
 
 	return nil
 }
@@ -471,9 +468,7 @@ func (s *UserService) BatchDeleteUsers(ctx context.Context, userIDs []string) (e
 
 	// 清理所有用户的所有角色绑定关系
 	for _, user := range users {
-		// g 策略格式: g, username, role_code, tenant_code
-		// 使用 RemoveFilteredGroupingPolicy 按 username 过滤
-		s.enforcer.RemoveFilteredGroupingPolicy(0, user.UserName)
+		_ = s.userRoleRepo.DeleteUserRoles(ctx, user.UserID, user.TenantID)
 	}
 
 	return nil
@@ -520,7 +515,7 @@ func (s *UserService) ListUsers(ctx context.Context, req *dto.ListUsersRequest) 
 	userInfos := make([]*dto.UserInfo, len(filteredUsers))
 	for i, user := range filteredUsers {
 		// 获取用户角色信息（使用用户自己的租户ID）
-		roles, err := s.userRoleService.GetUserRoleDetails(ctx, user.UserName, user.TenantID)
+		roles, err := s.userRoleService.GetUserRoleDetails(ctx, user.UserID, user.TenantID)
 		if err != nil {
 			log.Error().Err(err).Str("user_id", user.UserID).Str("username", user.UserName).Str("tenant_id", user.TenantID).Msg("查询用户角色失败")
 			// 即使查询角色失败，也继续处理，但不返回角色信息
@@ -691,7 +686,7 @@ func (s *UserService) ChangePassword(ctx context.Context, req *dto.ChangePasswor
 }
 
 // ResetPassword 超管重置用户密码（自动生成，密码只显示一次）
-// 权限检查由 CasbinMiddleware 处理
+// 权限检查由 RBACMiddleware 处理
 func (s *UserService) ResetPassword(ctx context.Context, targetUserID string, req *dto.ResetPasswordRequest) (resp *dto.ResetPasswordResponse, err error) {
 	var user *model.User
 

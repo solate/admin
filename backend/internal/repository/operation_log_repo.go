@@ -3,6 +3,7 @@ package repository
 import (
 	"admin/internal/dal/model"
 	"admin/internal/dal/query"
+	"admin/pkg/xcontext"
 	"context"
 
 	"gorm.io/gorm"
@@ -22,13 +23,23 @@ func NewOperationLogRepo(db *gorm.DB) *OperationLogRepo {
 
 // GetByID 根据ID获取操作日志
 func (r *OperationLogRepo) GetByID(ctx context.Context, logID string) (*model.OperationLog, error) {
-	return r.q.OperationLog.WithContext(ctx).Where(r.q.OperationLog.LogID.Eq(logID)).First()
+	tenantID := xcontext.GetTenantID(ctx)
+	return r.q.OperationLog.WithContext(ctx).
+		Where(r.q.OperationLog.TenantID.Eq(tenantID)).
+		Where(r.q.OperationLog.LogID.Eq(logID)).
+		First()
 }
 
 // ListWithFilters 根据筛选条件分页获取操作日志列表
-// 说明：租户过滤由 scope callback 自动处理（超管 SkipTenantCheck 时查询所有，普通用户只查当前租户）
 func (r *OperationLogRepo) ListWithFilters(ctx context.Context, tenantID string, offset, limit int, module, operationType, resourceType, userName string, status int, startDate, endDate int64) ([]*model.OperationLog, int64, error) {
 	q := r.q.OperationLog.WithContext(ctx)
+
+	// 租户过滤：如果传入了 tenantID 参数则使用它（超管跨租户），否则用上下文中的租户
+	if tenantID != "" {
+		q = q.Where(r.q.OperationLog.TenantID.Eq(tenantID))
+	} else {
+		q = q.Where(r.q.OperationLog.TenantID.Eq(xcontext.GetTenantID(ctx)))
+	}
 
 	// 应用筛选条件
 	if module != "" {

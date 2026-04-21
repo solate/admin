@@ -1,91 +1,113 @@
 package repository
 
 import (
-	"admin/pkg/casbin"
+	"admin/internal/dal/model"
+	"admin/internal/dal/query"
 	"context"
 
-	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
-// UserRoleRepo 用户角色仓储（基于 Casbin）
+// UserRoleRepo 用户角色仓储（基于 user_roles 表）
 type UserRoleRepo struct {
-	enforcer *casbin.Enforcer
+	db *gorm.DB
+	q  *query.Query
 }
 
 // NewUserRoleRepo 创建用户角色仓储
-func NewUserRoleRepo(enforcer *casbin.Enforcer) *UserRoleRepo {
+func NewUserRoleRepo(db *gorm.DB) *UserRoleRepo {
 	return &UserRoleRepo{
-		enforcer: enforcer,
+		db: db,
+		q:  query.Use(db),
 	}
 }
 
-// GetUserRoles 获取用户在指定租户下的角色列表
-// 返回角色编码列表 (如: ["super_admin", "sales"])
-func (r *UserRoleRepo) GetUserRoles(ctx context.Context, userName, tenantCode string) ([]string, error) {
-	// 从 Casbin 获取用户的角色
-	// g 策略: g, username, rolecode, tenantcode
-	roles := r.enforcer.GetRolesForUserInDomain(userName, tenantCode)
-	return roles, nil
+// GetUserRoleIDs 获取用户在指定租户下的角色ID列表
+func (r *UserRoleRepo) GetUserRoleIDs(ctx context.Context, userID, tenantID string) ([]string, error) {
+	userRoles, err := r.q.UserRole.WithContext(ctx).
+		Where(r.q.UserRole.UserID.Eq(userID)).
+		Where(r.q.UserRole.TenantID.Eq(tenantID)).
+		Find()
+	if err != nil {
+		return nil, err
+	}
+
+	roleIDs := make([]string, len(userRoles))
+	for i, ur := range userRoles {
+		roleIDs[i] = ur.RoleID
+	}
+	return roleIDs, nil
 }
 
-// AddUserRole 为用户添加角色（添加 g 策略）
-// g, username, rolecode, tenantcode
-func (r *UserRoleRepo) AddUserRole(ctx context.Context, userName, roleCode, tenantCode string) (bool, error) {
-	return r.enforcer.AddRoleForUserInDomain(userName, roleCode, tenantCode)
+// AddUserRole 为用户添加角色
+func (r *UserRoleRepo) AddUserRole(ctx context.Context, userID, roleID, tenantID string) error {
+	userRole := &model.UserRole{
+		UserID:   userID,
+		RoleID:   roleID,
+		TenantID: tenantID,
+	}
+	return r.q.UserRole.WithContext(ctx).Create(userRole)
 }
 
-// DeleteUserRole 删除用户的角色（删除 g 策略）
-func (r *UserRoleRepo) DeleteUserRole(ctx context.Context, userName, roleCode, tenantCode string) (bool, error) {
-	return r.enforcer.DeleteRoleForUserInDomain(userName, roleCode, tenantCode)
+// DeleteUserRole 删除用户的指定角色
+func (r *UserRoleRepo) DeleteUserRole(ctx context.Context, userID, roleID, tenantID string) error {
+	_, err := r.q.UserRole.WithContext(ctx).
+		Where(r.q.UserRole.UserID.Eq(userID)).
+		Where(r.q.UserRole.RoleID.Eq(roleID)).
+		Where(r.q.UserRole.TenantID.Eq(tenantID)).
+		Delete()
+	return err
 }
 
 // DeleteUserRoles 删除用户在指定租户下的所有角色
-func (r *UserRoleRepo) DeleteUserRoles(ctx context.Context, userName, tenantCode string) (bool, error) {
-	// 获取用户所有角色
-	roles, err := r.GetUserRoles(ctx, userName, tenantCode)
-	if err != nil {
-		return false, err
-	}
-
-	// 逐个删除
-	for _, role := range roles {
-		if _, err := r.enforcer.DeleteRoleForUserInDomain(userName, role, tenantCode); err != nil {
-			return false, err
-		}
-	}
-
-	return true, nil
+func (r *UserRoleRepo) DeleteUserRoles(ctx context.Context, userID, tenantID string) error {
+	_, err := r.q.UserRole.WithContext(ctx).
+		Where(r.q.UserRole.UserID.Eq(userID)).
+		Where(r.q.UserRole.TenantID.Eq(tenantID)).
+		Delete()
+	return err
 }
 
 // CheckUserRole 检查用户是否拥有指定角色
-func (r *UserRoleRepo) CheckUserRole(ctx context.Context, userName, roleCode, tenantCode string) bool {
-	// 直接查询用户的角色列表
-	roles := r.enforcer.GetRolesForUserInDomain(userName, tenantCode)
-	for _, role := range roles {
-		if role == roleCode {
-			return true
-		}
+func (r *UserRoleRepo) CheckUserRole(ctx context.Context, userID, roleID, tenantID string) (bool, error) {
+	count, err := r.q.UserRole.WithContext(ctx).
+		Where(r.q.UserRole.UserID.Eq(userID)).
+		Where(r.q.UserRole.RoleID.Eq(roleID)).
+		Where(r.q.UserRole.TenantID.Eq(tenantID)).
+		Count()
+	if err != nil {
+		return false, err
 	}
-	return false
+	return count > 0, nil
 }
 
-// GetRoleUsers 获取指定角色下的所有用户
-func (r *UserRoleRepo) GetRoleUsers(ctx context.Context, roleCode, tenantCode string) ([]string, error) {
-	users := r.enforcer.GetUsersForRoleInDomain(roleCode, tenantCode)
-	return users, nil
+// GetRoleUsers 获取指定角色下的所有用户ID
+func (r *UserRoleRepo) GetRoleUsers(ctx context.Context, roleID, tenantID string) ([]string, error) {
+	userRoles, err := r.q.UserRole.WithContext(ctx).
+		Where(r.q.UserRole.RoleID.Eq(roleID)).
+		Where(r.q.UserRole.TenantID.Eq(tenantID)).
+		Find()
+	if err != nil {
+		return nil, err
+	}
+
+	userIDs := make([]string, len(userRoles))
+	for i, ur := range userRoles {
+		userIDs[i] = ur.UserID
+	}
+	return userIDs, nil
 }
 
 // AssignRoles 为用户批量分配角色（覆盖式）
-// 先删除用户在租户下的所有角色，再添加新角色
-func (r *UserRoleRepo) AssignRoles(ctx context.Context, userName string, roleCodes []string, tenantCode string) error {
+func (r *UserRoleRepo) AssignRoles(ctx context.Context, userID string, roleIDs []string, tenantID string) error {
 	// 1. 删除用户在该租户下的所有现有角色
-	if _, err := r.DeleteUserRoles(ctx, userName, tenantCode); err != nil {
+	if err := r.DeleteUserRoles(ctx, userID, tenantID); err != nil {
 		return err
 	}
 
 	// 2. 添加新角色
-	for _, roleCode := range roleCodes {
-		if _, err := r.AddUserRole(ctx, userName, roleCode, tenantCode); err != nil {
+	for _, roleID := range roleIDs {
+		if err := r.AddUserRole(ctx, userID, roleID, tenantID); err != nil {
 			return err
 		}
 	}
@@ -94,19 +116,20 @@ func (r *UserRoleRepo) AssignRoles(ctx context.Context, userName string, roleCod
 }
 
 // AddRoles 为用户批量添加角色（增量式）
-// 不删除现有角色，只添加新角色
-func (r *UserRoleRepo) AddRoles(ctx context.Context, userName string, roleCodes []string, tenantCode string) error {
-	// 获取用户现有角色
-	existingRoles := r.enforcer.GetRolesForUserInDomain(userName, tenantCode)
-	existingRoleMap := make(map[string]bool)
-	for _, role := range existingRoles {
-		existingRoleMap[role] = true
+func (r *UserRoleRepo) AddRoles(ctx context.Context, userID string, roleIDs []string, tenantID string) error {
+	existingRoles, err := r.GetUserRoleIDs(ctx, userID, tenantID)
+	if err != nil {
+		return err
 	}
 
-	// 只添加不存在的角色
-	for _, roleCode := range roleCodes {
-		if !existingRoleMap[roleCode] {
-			if _, err := r.AddUserRole(ctx, userName, roleCode, tenantCode); err != nil {
+	existingMap := make(map[string]bool, len(existingRoles))
+	for _, id := range existingRoles {
+		existingMap[id] = true
+	}
+
+	for _, roleID := range roleIDs {
+		if !existingMap[roleID] {
+			if err := r.AddUserRole(ctx, userID, roleID, tenantID); err != nil {
 				return err
 			}
 		}
@@ -116,60 +139,28 @@ func (r *UserRoleRepo) AddRoles(ctx context.Context, userName string, roleCodes 
 }
 
 // RemoveRoles 为用户批量删除角色
-func (r *UserRoleRepo) RemoveRoles(ctx context.Context, userName string, roleCodes []string, tenantCode string) error {
-	for _, roleCode := range roleCodes {
-		if _, err := r.DeleteUserRole(ctx, userName, roleCode, tenantCode); err != nil {
+func (r *UserRoleRepo) RemoveRoles(ctx context.Context, userID string, roleIDs []string, tenantID string) error {
+	for _, roleID := range roleIDs {
+		if err := r.DeleteUserRole(ctx, userID, roleID, tenantID); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// EnsureRoleInheritance 确保角色继承自 default 租户的同名角色
-// 通过复制 default 租户的权限到当前租户来实现继承
-func (r *UserRoleRepo) EnsureRoleInheritance(ctx context.Context, roleCode, tenantCode string) error {
-	// 如果是 default 租户，不需要继承
-	if tenantCode == "default" {
-		return nil
-	}
+// GetUserRolesByRoleIDs 根据角色ID列表获取所有用户角色关联
+func (r *UserRoleRepo) GetUserRolesByRoleIDs(ctx context.Context, roleIDs []string, tenantID string) ([]*model.UserRole, error) {
+	return r.q.UserRole.WithContext(ctx).
+		Where(r.q.UserRole.RoleID.In(roleIDs...)).
+		Where(r.q.UserRole.TenantID.Eq(tenantID)).
+		Find()
+}
 
-	// 获取 default 租户中该角色的所有权限策略
-	defaultPolicies, _ := r.enforcer.GetFilteredPolicy(1, roleCode, "default")
-
-	// 如果 default 租户没有该角色的权限，跳过
-	if len(defaultPolicies) == 0 {
-		return nil
-	}
-
-	// 为当前租户添加相同的权限策略
-	addedCount := 0
-	for _, policy := range defaultPolicies {
-		// policy 格式: [roleCode, "default", resource, action]
-		if len(policy) < 4 {
-			continue
-		}
-		resource := policy[2]
-		action := policy[3]
-
-		// 检查当前租户是否已有该权限
-		hasPolicy, _ := r.enforcer.HasPolicy(roleCode, tenantCode, resource, action)
-		if hasPolicy {
-			continue
-		}
-
-		// 添加权限到当前租户
-		if _, err := r.enforcer.AddPolicy(roleCode, tenantCode, resource, action); err != nil {
-			log.Error().Err(err).Str("role_code", roleCode).Str("tenant_code", tenantCode).
-				Str("resource", resource).Str("action", action).Msg("添加角色权限失败")
-			continue
-		}
-		addedCount++
-	}
-
-	if addedCount > 0 {
-		log.Info().Str("role_code", roleCode).Str("tenant_code", tenantCode).
-			Int("count", addedCount).Msg("角色权限继承成功")
-	}
-
-	return nil
+// DeleteRoles 批量删除指定角色的所有关联
+func (r *UserRoleRepo) DeleteRoles(ctx context.Context, roleIDs []string, tenantID string) error {
+	_, err := r.q.UserRole.WithContext(ctx).
+		Where(r.q.UserRole.RoleID.In(roleIDs...)).
+		Where(r.q.UserRole.TenantID.Eq(tenantID)).
+		Delete()
+	return err
 }

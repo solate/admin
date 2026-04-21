@@ -6,7 +6,8 @@ import (
 
 const (
 	// 角色相关
-	RolesKey contextKey = "roles"
+	RolesKey   contextKey = "roles"
+	RoleIDsKey contextKey = "role_ids"
 )
 
 // SetRoles 设置角色列表到context
@@ -36,4 +37,22 @@ func HasRole(ctx context.Context, roleCode string) bool {
 		}
 	}
 	return false
+}
+
+// SetRoleIDs 设置角色ID列表到context
+func SetRoleIDs(ctx context.Context, roleIDs []string) context.Context {
+	return context.WithValue(ctx, RoleIDsKey, roleIDs)
+}
+
+// GetRoleIDs 从context获取角色ID列表
+func GetRoleIDs(ctx context.Context) []string {
+	value := ctx.Value(RoleIDsKey)
+	if value == nil {
+		return nil
+	}
+	roleIDs, ok := value.([]string)
+	if !ok {
+		return nil
+	}
+	return roleIDs
 }

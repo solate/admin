@@ -50,12 +50,11 @@ func Setup(r *gin.Engine, app *App) {
 			auth.POST("/refresh", app.Handlers.AuthHandler.Refresh)                      // 刷新令牌
 		}
 
-		// 需要认证 + Casbin 权限检查的路由
+		// 需要认证 + RBAC 权限检查的路由
 		authorized := v1.Group("")
 		authorized.Use(middleware.AuthMiddleware(app.JWT))
-		authorized.Use(middleware.CasbinMiddleware(app.Enforcer)) // 权限校验（超管跳过，其他走 Casbin）
-		authorized.Use(middleware.TenantSkipMiddleware())         // 租户检查跳过（超管和审核员可查看所有租户数据）
-		authorized.Use(audit.AuditMiddleware())                   // 审计日志中间件（提取请求信息）
+		authorized.Use(middleware.RBACMiddleware(app.RBAC)) // 权限校验（超管跳过，其他走 PermissionCache）
+		authorized.Use(audit.AuditMiddleware())             // 审计日志中间件（提取请求信息）
 		{
 			// 用户个人资料相关（当前登录用户操作自己的数据）
 			userSelf := authorized.Group("/user")
@@ -67,7 +66,7 @@ func Setup(r *gin.Engine, app *App) {
 				userSelf.GET("/buttons", app.Handlers.UserMenuHandler.GetUserButtons) // 获取菜单按钮权限
 			}
 
-			// 认证接口（无需 Casbin 权限检查）
+			// 认证接口（无需 RBAC 权限检查）
 			auth := authorized.Group("/auth")
 			{
 				auth.POST("/logout", app.Handlers.AuthHandler.Logout)                        // 用户登出

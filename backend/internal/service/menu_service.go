@@ -2,12 +2,12 @@ package service
 
 import (
 	"admin/internal/converter"
+	"admin/internal/rbac"
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
 	"admin/pkg/audit"
-	"admin/pkg/casbin"
-	"admin/pkg/constants"
+		"admin/pkg/constants"
 	"admin/pkg/idgen"
 	"admin/pkg/pagination"
 	"admin/pkg/xerr"
@@ -20,17 +20,19 @@ import (
 
 // MenuService 菜单服务
 type MenuService struct {
-	menuRepo *repository.MenuRepo
-	enforcer *casbin.Enforcer
-	recorder *audit.Recorder
+	menuRepo    *repository.MenuRepo
+	rolePermRepo *repository.RolePermissionRepo
+	cache       *rbac.PermissionCache
+	recorder    *audit.Recorder
 }
 
 // NewMenuService 创建菜单服务
-func NewMenuService(menuRepo *repository.MenuRepo, enforcer *casbin.Enforcer, recorder *audit.Recorder) *MenuService {
+func NewMenuService(menuRepo *repository.MenuRepo, rolePermRepo *repository.RolePermissionRepo, cache *rbac.PermissionCache, recorder *audit.Recorder) *MenuService {
 	return &MenuService{
-		menuRepo: menuRepo,
-		enforcer: enforcer,
-		recorder: recorder,
+		menuRepo:    menuRepo,
+		rolePermRepo: rolePermRepo,
+		cache:       cache,
+		recorder:    recorder,
 	}
 }
 
@@ -262,27 +264,8 @@ func (s *MenuService) DeleteMenu(ctx context.Context, menuID string) (err error)
 		return xerr.Wrap(xerr.ErrInternal.Code, "删除菜单失败", err)
 	}
 
-	// 清理该菜单在所有租户中的权限策略
-	// 1. 清理菜单权限 (menu:menu_id)
-	// RemoveFilteredPolicy 参数: (fieldIndex, fieldValues...)
-	// fieldIndex=0 表示按 v0 (subject) 过滤，我们传入通配符来匹配所有租户
-	// 需要逐个租户清理，或者使用 RemovePolicies 如果支持
-
-	// 获取所有租户并清理权限（这里使用更简单的方式：直接清理所有匹配的菜单权限）
-	// 由于 Casbin 策略格式是 p, role_code, tenant_code, menu:menu_id, *
-	// 我们可以通过 v2 (resource) 来过滤
-	policies, _ := s.enforcer.GetFilteredPolicy(2, "menu:"+menuID)
-	for _, policy := range policies {
-		if len(policy) >= 4 {
-			// 删除策略: p, role_code, tenant_code, menu:menu_id, *
-			s.enforcer.RemovePolicy(policy[0], policy[1], policy[2], policy[3])
-		}
-	}
-
-	// 2. 清理关联的 API 权限（路径匹配 /api/v1/*）
-	// 需要根据菜单的 api_paths 字段来清理
-	// 这里为了简化，我们清理所有可能受影响的 API 权限
-	// 实际生产环境中，可以考虑维护一个菜单-权限映射表
+		// 通知权限缓存刷新
+		s.cache.NotifyRefresh()
 
 	return nil
 }

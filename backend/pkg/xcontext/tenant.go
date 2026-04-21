@@ -7,9 +7,8 @@ type contextKey string
 
 const (
 	// 租户相关
-	TenantIDKey        contextKey = "tenant_id"
-	TenantCodeKey      contextKey = "tenant_code"
-	SkipTenantCheckKey contextKey = "skip_tenant_check"
+	TenantIDKey   contextKey = "tenant_id"
+	TenantCodeKey contextKey = "tenant_code"
 )
 
 // TenantContext 租户上下文信息
@@ -54,21 +53,6 @@ func GetTenantCode(ctx context.Context) string {
 	return tenantCode
 }
 
-// SkipTenantCheck 设置跳过租户检查标记到context
-func SkipTenantCheck(ctx context.Context) context.Context {
-	return context.WithValue(ctx, SkipTenantCheckKey, true)
-}
-
-// ShouldSkipTenantCheck 从context获取是否跳过租户检查
-func ShouldSkipTenantCheck(ctx context.Context) bool {
-	if ctx == nil {
-		return false
-	}
-	value := ctx.Value(SkipTenantCheckKey)
-	skip, ok := value.(bool)
-	return ok && skip
-}
-
 // CopyContext 将认证相关上下文信息拷贝到 background context
 // 用于异步场景：避免请求取消影响后台任务，同时保留租户、用户和角色信息
 func CopyContext(ctx context.Context) context.Context {
@@ -90,6 +74,9 @@ func CopyContext(ctx context.Context) context.Context {
 	}
 	if roles := GetRoles(ctx); roles != nil {
 		bg = SetRoles(bg, roles)
+	}
+	if roleIDs := GetRoleIDs(ctx); len(roleIDs) > 0 {
+		bg = SetRoleIDs(bg, roleIDs)
 	}
 	return bg
 }

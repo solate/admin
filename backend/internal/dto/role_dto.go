@@ -50,14 +50,14 @@ type RoleInfo struct {
 // AssignPermissionsRequest 分配权限请求（菜单+按钮）
 type AssignPermissionsRequest struct {
 	RoleID    string   `json:"role_id" form:"role_id" binding:"required" example:"123456789012345678"` // 角色ID
-	MenuIDs   []string `json:"menu_ids" binding:"required"`                                            // 菜单ID列表
-	ButtonIDs []string `json:"button_ids" binding:"omitempty"`                                         // 按钮权限ID列表
+	MenuPermIDs   []string `json:"menu_perm_ids" binding:"required"`                                            // 菜单ID列表
+	ButtonPermIDs []string `json:"button_perm_ids" binding:"omitempty"`                                         // 按钮权限ID列表
 }
 
 // RolePermissionsResponse 角色权限响应
 type RolePermissionsResponse struct {
-	MenuIDs   []string `json:"menu_ids"`   // 菜单ID列表
-	ButtonIDs []string `json:"button_ids"` // 按钮权限ID列表
+	MenuPermIDs   []string `json:"menu_perm_ids"`   // 菜单ID列表
+	ButtonPermIDs []string `json:"button_perm_ids"` // 按钮权限ID列表
 }
 
 // GetAllRolesRequest 获取所有角色请求

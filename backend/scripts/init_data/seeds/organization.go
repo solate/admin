@@ -72,7 +72,7 @@ func DefaultDepartmentDefinitions(departmentIDs []string) []DepartmentDefinition
 }
 
 // DefaultPositionDefinitions 返回默认岗位定义
-// 参考：典型企业岗位体系，岗位编码与 Casbin 角色对应
+// 参考：典型企业岗位体系
 func DefaultPositionDefinitions(positionIDs []string) []PositionDefinition {
 	return []PositionDefinition{
 		// 管理岗位
