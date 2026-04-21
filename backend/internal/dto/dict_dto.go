@@ -1,6 +1,6 @@
 package dto
 
-import "admin/pkg/pagination"
+import "admin/pkg/utils/pagination"
 
 // CreateSystemDictRequest 创建系统字典请求（超管专用）
 type CreateSystemDictRequest struct {

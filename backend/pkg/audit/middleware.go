@@ -1,7 +1,7 @@
 package audit
 
 import (
-	"admin/pkg/bodyreader"
+	"admin/pkg/utils/bodyreader"
 	"fmt"
 	"strings"
 

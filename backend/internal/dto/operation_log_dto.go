@@ -1,6 +1,6 @@
 package dto
 
-import "admin/pkg/pagination"
+import "admin/pkg/utils/pagination"
 
 // ListOperationLogsRequest 操作日志列表请求
 type ListOperationLogsRequest struct {

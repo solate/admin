@@ -8,206 +8,67 @@
 
 ## 开发命令
 
-### 快速开始
 ```bash
-# 首次设置
 make init                    # 安装依赖、迁移数据库、生成代码
-
-# 开发工作流
 make dev                     # 运行 migrate + gen-db + 启动服务器
 make run                     # 仅运行服务器（不执行迁移/生成）
-```
-
-### 数据库操作
-```bash
 make migrate-up              # 应用待执行的迁移
 make migrate-down            # 回滚一个迁移
-make migrate-reset           # 完全重置数据库（破坏性操作）
 make migrate-create NAME=xxx # 创建新的迁移文件
 make gen-db                  # 从数据库架构生成 GORM 模型
-```
-
-### 代码质量与测试
-```bash
-make test                    # 运行所有测试并生成覆盖率报告
-make lint                    # 运行 golangci-lint 代码检查
-make fmt                     # 格式化代码并整理 go.mod
+make test                    # 运行所有测试
+make lint                    # 运行 golangci-lint
 make swagger                 # 生成 Swagger 文档
 ```
 
-### 数据库配置
-设置以下环境变量可覆盖默认配置：
-```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_USER=postgres      # Makefile 中默认为 postgres
-export DB_PASSWORD=postgres  # Makefile 中默认为 postgres
-export DB_NAME=admin_db      # Makefile 中默认为 admin_db
-```
+数据库配置环境变量：`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
 
 ## 架构概览
 
-这是一个基于 Go 构建的**多租户管理系统**，采用**数据库优先**的开发方法。
+基于 Go 的多租户管理系统，采用数据库优先 + 域子包分层架构。
 
-### 核心架构模式
-- **清洁架构**：handler → service → repository 分层结构
-- **多租户**：通过租户上下文注入实现数据隔离
-- **数据库优先**：编写迁移 → 生成模型 → 实现业务逻辑
-- **代码生成**：使用 GORM Gen 生成类型安全的查询
-
-### 关键技术栈
-- **Web 框架**：Gin v1.11.0
-- **ORM**：GORM v1.31.1 配合 GORM Gen 进行代码生成
-- **数据库**：PostgreSQL，支持软删除
-- **身份认证**：JWT 配合 Redis 黑名单
-- **权限授权**：纯数据库 RBAC（user_roles + role_permissions + PermissionCache）
-- **缓存**：Redis 用于令牌管理
-- **日志**：Zerolog 结构化日志
-- **配置**：Viper 支持环境感知的配置管理
+### 核心技术栈
+Gin + GORM Gen + PostgreSQL + Redis + JWT + 纯数据库 RBAC（PermissionCache）
 
 ### 项目结构
 ```
-backend/
-├── cmd/server/              # 应用程序入口点
-├── internal/
-│   ├── constants/           # 系统常量（状态码等）
-│   ├── dal/                # 数据访问层
-│   │   ├── model/          # 生成的模型
-│   │   └── query/          # 生成的查询（gen.go）
-│   ├── dto/                # 数据传输对象
-│   ├── handler/            # HTTP 处理器/控制器
-│   ├── middleware/         # HTTP 中间件链
-│   ├── rbac/               # RBAC 权限缓存
-│   ├── repository/         # 数据仓储层
-│   ├── service/            # 业务逻辑层
-│   └── router/             # 路由定义
-├── pkg/                    # 可复用的包
-├── config/                 # 配置文件
-├── migrations/             # 数据库迁移文件
-├── scripts/                # 实用脚本
-└── docs/                   # API 文档
+internal/
+├── handler/{domain}/    # HTTP 处理器（12 个域子包）
+├── service/{domain}/    # 业务逻辑 + converter（12 个域子包）
+├── repository/          # 数据仓储层（集中式，GORM Gen）
+├── router/              # 路由定义 + App 初始化（Setup 签名解耦）
+├── dto/                 # 数据传输对象
+├── dal/model/           # 生成的模型（切勿手动编辑）
+├── dal/query/           # 生成的查询（切勿手动编辑）
+├── middleware/           # HTTP 中间件链
+└── rbac/                # RBAC 权限缓存
+
+pkg/
+├── utils/               # 通用工具（jwt, logger, idgen, captcha 等 14 个包）
+├── audit/               # 审计日志
+├── cache/               # 租户缓存
+├── config/              # 应用配置（Config 结构定义）
+├── constants/           # 业务常量
+├── database/            # 数据库连接
+├── response/            # HTTP 响应封装
+├── xcontext/            # 多租户认证上下文
+└── xerr/                # 业务错误码
 ```
 
-## 开发工作流
+### 依赖链
+```
+router → handler/{domain} → service/{domain} → repository
+```
 
-### 1. 数据库架构变更
-1. 创建迁移：`make migrate-create NAME=add_feature_table`
-2. 在 `migrations/xxx_add_feature_table.up.sql` 中编写 SQL
-3. 应用迁移：`make migrate-up`
-4. 生成代码：`make gen-db`
+每个 handler/service 的构造函数只接收自己实际需要的依赖参数（构造函数直接注入）。
 
-### 2. 使用生成的代码
-- 模型生成在 `internal/dal/model/`
-- 查询生成在 `internal/dal/query/gen.go`
-- 使用生成的查询进行类型安全的数据库操作
-- **切勿直接编辑生成的文件** - 它们会被覆盖
-
-### 3. 添加新功能
-1. 遵循分层架构：Handler → Service → Repository
-2. 使用 `main.go` 中的依赖注入模式
-3. 使用自定义错误类型实现适当的错误处理
-4. 按正确顺序将中间件添加到链中
-5. 更新 Swagger 文档
-
-### 4. 身份认证与授权
-- JWT 令牌：访问令牌（1小时）+ 刷新令牌（7天）
-- 中间件顺序：RequestID → Logger → Recovery → CORS → RateLimit → Auth → RBAC → Audit
-- RBAC 基于 PermissionCache（内存缓存），权限存储在 user_roles + role_permissions 表
-- JWT Claims 包含 `role_ids []string` 用于权限缓存查询
-- 租户上下文由中间件自动注入
-
-## 配置管理
-
-### 环境层次结构
-1. `config/config.yaml` - 基础配置
-2. `config/config.{env}.yaml` - 环境特定覆盖
-3. 环境变量 - 最高优先级
-
-### 环境检测
-- `APP_ENV` > `GIN_MODE` > 配置文件值 > "dev"
-- `GIN_MODE=release` 映射为 "prod" 环境
-
-### 主要配置部分
-- 数据库连接池
-- Redis 集群与单节点配置
-- JWT 密钥和过期时间
-- 日志级别和格式（json/console）
-- 限流配置
-
-## 重要实现细节
-
-### 多租户支持
-- **显式 TenantScope**：Repository 查询使用 `db.Scopes(database.TenantScope(tenantID))` 添加租户过滤
-- **创建时直接赋值**：`model.TenantID = xcontext.GetTenantID(ctx)`，不使用反射
-- 租户 ID 从 JWT 中提取并注入到上下文
-- 跨租户查询（登录、超管统计）直接不加 TenantScope
-- 不再使用 SkipTenantCheck 机制
-
-### 租户隔离表 vs 全局表
-- **租户隔离表**（需要 TenantScope）：users, roles, departments, positions, tenant_menus, dict_types, dict_items, login_logs, operation_logs, video_files, video_risks, video_signatures, video_risk_operations, devices, device_playlists, device_approvals, access_devices
-- **全局表**（不需要 TenantScope）：tenants, menus, permissions, user_positions, device_playlist_items
+### 添加新功能
+1. `internal/handler/{domain}/` 创建子包，`{domain}.go` 定义 Handler struct + `NewHandler(db, recorder, ...)`
+2. `internal/service/{domain}/` 创建子包，`{domain}.go` 定义 Service struct + `NewService(db, ...)`
+3. Converter 写在 `service/{domain}/converter.go`（同域 unexported，跨域 exported）
+4. `internal/router/app.go` 的 Handlers struct 添加新 handler，`initHandlers` 中传显式参数
+5. `internal/router/router.go` 注册路由
+6. Swagger 注解写在 handler 方法上，`make swagger` 生成
 
 ### 中间件链顺序
-对正常运行至关重要：
-1. RequestID（请求追踪）
-2. Logger（请求日志）
-3. Recovery（panic 处理）
-4. CORS（跨域）
-5. RateLimit（可选，根据配置启用）
-6. JWTAuth（身份认证）
-7. RBAC（权限授权，基于 PermissionCache）
-8. Audit（操作日志记录，仅认证路由）
-
-### 错误处理
-- 使用 `pkg/xerr/` 中的自定义错误类型
-- 通过 `pkg/response/` 实现一致的 JSON 响应格式
-- 适当的 HTTP 状态码和错误详情
-- 使用适当的上下文记录错误
-
-### 数据库模式
-- 全局启用软删除
-- 使用生成的查询确保类型安全
-- 按环境配置连接池
-- 迁移文件版本化和顺序化
-
-## 测试
-
-### 测试结构
-- 单元测试：源代码文件旁的 `*_test.go` 文件
-- 集成测试：测试数据库操作
-- 当前覆盖率：基础设施组件（JWT、配置、日志）
-
-### 运行测试
-```bash
-make test                    # 运行所有测试
-go test ./pkg/...           # 测试特定包
-go test -v ./internal/...   # 详细输出
-```
-
-## 代码生成
-
-### GORM Gen
-- 生成类型安全的数据库查询
-- 架构变更后运行：`make gen-db`
-- 默认排除 `schema_migrations` 表
-- 模型和查询都会重新生成
-
-### Swagger
-- 从注解生成 API 文档
-- 使用 `make swagger` 生成
-- 输出目录：`docs/`
-- 访问地址：`/swagger/index.html`
-
-## 必需的开发工具
-
-安装这些工具以获得完整的开发体验：
-```bash
-# 数据库迁移
-brew install golang-migrate
-
-# Swagger 文档
-go install github.com/swaggo/swag/cmd/swag@latest
-
-# 代码检查
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-```
+RequestID → Logger → Recovery → CORS → RateLimit（可选）→ JWTAuth → RBAC → Audit（仅认证路由）

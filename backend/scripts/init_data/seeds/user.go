@@ -2,8 +2,8 @@ package seeds
 
 import (
 	"admin/internal/dal/model"
-	"admin/pkg/passwordgen"
-	"admin/pkg/rsapwd"
+	"admin/pkg/utils/passwordgen"
+	"admin/pkg/utils/rsapwd"
 	"fmt"
 
 	"gorm.io/gorm"

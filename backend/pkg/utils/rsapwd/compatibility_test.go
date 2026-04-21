@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"admin/pkg/constants"
-	"admin/pkg/rsapwd"
+	"admin/pkg/utils/rsapwd"
 )
 
 // TestRSACompatibility 测试 RSA 前后端兼容性

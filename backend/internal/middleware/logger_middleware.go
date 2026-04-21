@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"admin/pkg/bodyreader"
+	"admin/pkg/utils/bodyreader"
 	"strings"
 	"time"
 

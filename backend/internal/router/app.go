@@ -1,22 +1,31 @@
 package router
 
 import (
-	"admin/internal/handler"
+	"admin/internal/handler/auth"
+	"admin/internal/handler/captcha"
+	"admin/internal/handler/department"
+	"admin/internal/handler/dict"
+	"admin/internal/handler/health"
+	"admin/internal/handler/loginlog"
+	"admin/internal/handler/menu"
+	"admin/internal/handler/operationlog"
+	"admin/internal/handler/position"
+	"admin/internal/handler/role"
+	"admin/internal/handler/tenant"
+	"admin/internal/handler/user"
 	"admin/internal/jobs"
-	"admin/internal/repository"
-	"admin/internal/service"
-	"admin/pkg/audit"
-	
+
 	"admin/internal/rbac"
+	"admin/pkg/audit"
 	"admin/pkg/cache"
 	"admin/pkg/config"
 	"admin/pkg/constants"
 	"admin/pkg/database"
-	"admin/pkg/jwt"
-	"admin/pkg/logger"
-	"admin/pkg/rsapwd"
-	"admin/pkg/xcron"
-	"admin/pkg/xredis"
+	"admin/pkg/utils/jwt"
+	"admin/pkg/utils/logger"
+	"admin/pkg/utils/rsapwd"
+	"admin/pkg/utils/xcron"
+	"admin/pkg/utils/xredis"
 	"fmt"
 	"time"
 
@@ -27,37 +36,36 @@ import (
 )
 
 type App struct {
-	Config    *config.Config        // 配置
-	Router    *gin.Engine           // 路由
-	DB        *gorm.DB              // 数据库连接
-	Redis     redis.UniversalClient // Redis连接
-	JWT       *jwt.Manager          // JWT管理器
-	RBAC      *rbac.PermissionCache  // 权限缓存
-	RSACipher *rsapwd.RSACipher     // RSA 密码解密器（全局单例）
-	Cron      *xcron.Manager        // 定时任务管理器
-	Handlers  *Handlers             // 处理器层容器
+	Config    *config.Config
+	Router    *gin.Engine
+	DB        *gorm.DB
+	Redis     redis.UniversalClient
+	JWT       *jwt.Manager
+	RBAC      *rbac.PermissionCache
+	RSACipher *rsapwd.RSACipher
+	Cron      *xcron.Manager
+	Handlers  *Handlers
+	Audit     *audit.Recorder
 }
 
-// Handlers 处理器层容器
 type Handlers struct {
-	HealthHandler       *handler.HealthHandler
-	CaptchaHandler      *handler.CaptchaHandler
-	AuthHandler         *handler.AuthHandler
-	UserHandler         *handler.UserHandler
-	TenantHandler       *handler.TenantHandler
-	RoleHandler         *handler.RoleHandler
-	MenuHandler         *handler.MenuHandler
-	UserMenuHandler     *handler.UserMenuHandler
-	LoginLogHandler     *handler.LoginLogHandler
-	OperationLogHandler *handler.OperationLogHandler
-	DepartmentHandler   *handler.DepartmentHandler
-	PositionHandler     *handler.PositionHandler
-	DictHandler         *handler.DictHandler
+	HealthHandler       *health.Handler
+	CaptchaHandler      *captcha.Handler
+	AuthHandler         *auth.Handler
+	UserHandler         *user.Handler
+	TenantHandler       *tenant.Handler
+	RoleHandler         *role.Handler
+	MenuHandler         *menu.Handler
+	LoginLogHandler     *loginlog.Handler
+	OperationLogHandler *operationlog.Handler
+	DepartmentHandler   *department.Handler
+	PositionHandler     *position.Handler
+	DictHandler         *dict.Handler
 }
 
 func NewApp() (*App, error) {
 	app := &App{}
-	// 1. 加载配置 (必须最先加载，其他组件依赖配置)
+	// 1. 加载配置
 	if err := app.initConfig(); err != nil {
 		return nil, fmt.Errorf("failed to init config: %w", err)
 	}
@@ -102,12 +110,12 @@ func NewApp() (*App, error) {
 		return nil, fmt.Errorf("failed to init cron: %w", err)
 	}
 
-	// 7. 初始化新的审计日志 Recorder
+	// 7. 创建审计 Recorder
 	auditDB := audit.NewDB(app.DB)
-	auditRecorder := audit.NewRecorder(auditDB)
+	app.Audit = audit.NewRecorder(auditDB)
 
 	// 8. 初始化处理器层
-	if err := app.initHandlers(auditRecorder); err != nil {
+	if err := app.initHandlers(); err != nil {
 		return nil, fmt.Errorf("failed to init handlers: %w", err)
 	}
 
@@ -127,29 +135,20 @@ func (s *App) initConfig() error {
 	}
 	s.Config = cfg
 
-	log.Info().
-		Str("app", s.Config.App.Name).
-		Str("env", s.Config.App.Env).
-		Int("port", s.Config.App.Port).
-		Msg("Starting Admin Backend")
+	log.Info().Str("app", s.Config.App.Name).Str("env", s.Config.App.Env).Int("port", s.Config.App.Port).Msg("Starting Admin Backend")
 	return nil
 }
 
-// initLogger 初始化日志系统（使用配置文件中的设置）
 func (s *App) initLogger(cfg *config.Config) error {
 	logger.Init(logger.Config{
 		Level:  cfg.Log.Level,
 		Format: cfg.Log.Format,
 	})
 
-	log.Info().
-		Str("level", cfg.Log.Level).
-		Str("format", cfg.Log.Format).
-		Msg("Logger initialized")
+	log.Info().Str("level", cfg.Log.Level).Str("format", cfg.Log.Format).Msg("Logger initialized")
 	return nil
 }
 
-// initDatabase 初始化数据库连接
 func (s *App) initDatabase(cfg *config.Config) error {
 	db, err := database.Connect(database.Config{
 		DSN:             cfg.Database.GetDSN(),
@@ -163,15 +162,10 @@ func (s *App) initDatabase(cfg *config.Config) error {
 	}
 	s.DB = db
 
-	log.Info().
-		Str("host", cfg.Database.Host).
-		Int("port", cfg.Database.Port).
-		Str("dbname", cfg.Database.DBName).
-		Msg("Database connected")
+	log.Info().Str("host", cfg.Database.Host).Int("port", cfg.Database.Port).Str("dbname", cfg.Database.DBName).Msg("Database connected")
 	return nil
 }
 
-// initRedis 初始化Redis连接
 func (a *App) initRedis(cfg *config.Config) error {
 	config := xredis.Config{
 		Host:         cfg.Redis.Host,
@@ -193,14 +187,10 @@ func (a *App) initRedis(cfg *config.Config) error {
 	}
 
 	a.Redis = redisClient
-	log.Info().
-		Str("addr", cfg.Redis.GetAddr()).
-		Int("db", cfg.Redis.DB).
-		Msg("Redis connected")
+	log.Info().Str("addr", cfg.Redis.GetAddr()).Int("db", cfg.Redis.DB).Msg("Redis connected")
 	return nil
 }
 
-// initJWT 初始化JWT管理器
 func (a *App) initJWT(cfg *config.Config) error {
 	config := &jwt.JWTConfig{
 		AccessSecret:  []byte(cfg.JWT.AccessSecret),
@@ -214,26 +204,19 @@ func (a *App) initJWT(cfg *config.Config) error {
 	return nil
 }
 
-// initRBAC 初始化权限缓存
 func (a *App) initRBAC() error {
 	a.RBAC = rbac.NewPermissionCache(a.DB, 30*time.Second)
 	return nil
 }
 
-// initRSACipher 初始化RSA密码解密器
 func (a *App) initRSACipher() error {
-	// 使用测试密钥创建 RSA 加密器
-	// 注意：生产环境应该从配置文件或环境变量中读取私钥
 	cipher := rsapwd.MustNew(constants.RSAKey)
 	a.RSACipher = cipher
-
 	log.Info().Msg("RSA cipher initialized")
 	return nil
 }
 
-// initCron 初始化定时任务
 func (a *App) initCron() error {
-	// 初始化 cron 管理器
 	cronMgr, err := xcron.Init(xcron.Config{
 		WithSeconds: true,
 	})
@@ -242,52 +225,57 @@ func (a *App) initCron() error {
 	}
 	a.Cron = cronMgr
 
-	// 注册所有定时任务
 	if err := jobs.Init(cronMgr, a.DB); err != nil {
 		return fmt.Errorf("failed to register jobs: %w", err)
 	}
 
-	// 启动定时任务
 	a.Cron.Start()
-
 	log.Info().Msg("Cron jobs initialized and started")
 	return nil
 }
 
-// initRouter 初始化路由
+func (s *App) initHandlers() error {
+	s.Handlers = &Handlers{
+		HealthHandler:       health.NewHandler(),
+		CaptchaHandler:      captcha.NewHandler(s.Redis),
+		AuthHandler:         auth.NewHandler(s.DB, s.JWT, s.Redis, s.Audit, s.RSACipher, s.Config),
+		UserHandler:         user.NewHandler(s.DB, s.Audit, s.RSACipher, s.RBAC),
+		TenantHandler:       tenant.NewHandler(s.DB, s.Audit),
+		RoleHandler:         role.NewHandler(s.DB, s.Audit, s.RBAC),
+		MenuHandler:         menu.NewHandler(s.DB, s.Audit, s.RBAC),
+		LoginLogHandler:     loginlog.NewHandler(s.DB),
+		OperationLogHandler: operationlog.NewHandler(s.DB),
+		DepartmentHandler:   department.NewHandler(s.DB, s.Audit),
+		PositionHandler:     position.NewHandler(s.DB, s.Audit),
+		DictHandler:         dict.NewHandler(s.DB, s.Audit),
+	}
+	return nil
+}
+
 func (s *App) initRouter() error {
 	gin.SetMode(s.Config.Server.Mode)
 
 	r := gin.New()
 
-	Setup(r, s)
+	Setup(r, s.Handlers, s.Config, s.JWT, s.RBAC)
 	s.Router = r
 
-	log.Info().
-		Str("mode", s.Config.Server.Mode).
-		Msg("Router initialized")
+	log.Info().Str("mode", s.Config.Server.Mode).Msg("Router initialized")
 	return nil
 }
 
-// Run 启动应用
 func (s *App) Run() error {
 	addr := fmt.Sprintf(":%d", s.Config.App.Port)
 
-	// 如果启用了 TLS，使用 HTTPS
 	if s.Config.Server.TLS.Enabled {
 		certFile := s.Config.Server.TLS.CertFile
 		keyFile := s.Config.Server.TLS.KeyFile
 
-		// 验证证书文件存在
 		if certFile == "" || keyFile == "" {
 			return fmt.Errorf("TLS enabled but cert_file or key_file not specified")
 		}
 
-		log.Info().
-			Str("addr", addr).
-			Str("cert", certFile).
-			Str("key", keyFile).
-			Msg("Starting HTTPS server")
+		log.Info().Str("addr", addr).Str("cert", certFile).Str("key", keyFile).Msg("Starting HTTPS server")
 		return s.Router.RunTLS(addr, certFile, keyFile)
 	}
 
@@ -295,14 +283,11 @@ func (s *App) Run() error {
 	return s.Router.Run(addr)
 }
 
-// Close 关闭资源
 func (s *App) Close() error {
-	// 停止权限缓存后台协程
 	if s.RBAC != nil {
 		s.RBAC.Stop()
 	}
 
-	// 停止定时任务
 	if s.Cron != nil {
 		s.Cron.Stop()
 	}
@@ -312,56 +297,6 @@ func (s *App) Close() error {
 	}
 	if err := xredis.Close(); err != nil {
 		return err
-	}
-	return nil
-}
-
-// initHandlers 初始化处理器层
-func (s *App) initHandlers(auditRecorder *audit.Recorder) error {
-	// 初始化仓库层
-	userRepo := repository.NewUserRepo(s.DB)
-	userRoleRepo := repository.NewUserRoleRepo(s.DB)
-	roleRepo := repository.NewRoleRepo(s.DB)
-	tenantRepo := repository.NewTenantRepo(s.DB)
-	menuRepo := repository.NewMenuRepo(s.DB)
-	permissionRepo := repository.NewPermissionRepo(s.DB)
-	loginLogRepo := repository.NewLoginLogRepo(s.DB)
-	operationLogRepo := repository.NewOperationLogRepo(s.DB)
-	departmentRepo := repository.NewDepartmentRepo(s.DB)
-	positionRepo := repository.NewPositionRepo(s.DB)
-	dictTypeRepo := repository.NewDictTypeRepo(s.DB)
-	dictItemRepo := repository.NewDictItemRepo(s.DB)
-	rolePermRepo := repository.NewRolePermissionRepo(s.DB)
-
-	// 初始化服务层
-	authService := service.NewAuthService(userRepo, userRoleRepo, roleRepo, tenantRepo, s.JWT, s.Redis, auditRecorder, s.Config, s.RSACipher) // 初始化认证服务
-	userRoleService := service.NewUserRoleService(userRepo, userRoleRepo, roleRepo, tenantRepo, auditRecorder)                                // 初始化用户角色服务
-	userService := service.NewUserService(userRepo, userRoleRepo, userRoleService, roleRepo, tenantRepo, auditRecorder, s.RSACipher)                        // 初始化用户服务
-	tenantService := service.NewTenantService(tenantRepo, userRepo, auditRecorder)                                                                        // 初始化租户服务
-	roleService := service.NewRoleService(roleRepo, permissionRepo, menuRepo, rolePermRepo, userRoleRepo, s.RBAC, tenantRepo, auditRecorder)                              // 初始化角色服务
-	menuService := service.NewMenuService(menuRepo, rolePermRepo, s.RBAC, auditRecorder)                                                                            // 初始化菜单服务
-	userMenuService := service.NewUserMenuService(menuRepo, permissionRepo, s.RBAC)                                                                   // 初始化用户菜单服务（根据设计文档：无需取交集）
-	loginLogService := service.NewLoginLogService(loginLogRepo)                                                                                           // 初始化登录日志服务
-	operationLogService := service.NewOperationLogService(operationLogRepo)                                                                               // 初始化操作日志服务
-	departmentService := service.NewDepartmentService(departmentRepo, userRepo, auditRecorder)                                                            // 初始化部门服务
-	positionService := service.NewPositionService(positionRepo, auditRecorder)                                                                            // 初始化岗位服务
-	dictService := service.NewDictService(dictTypeRepo, dictItemRepo, cache.Get().Tenant, auditRecorder)                                                  // 初始化字典服务
-	// 初始化接入设备服务
-
-	s.Handlers = &Handlers{
-		HealthHandler:       handler.NewHealthHandler(),
-		CaptchaHandler:      handler.NewCaptchaHandler(s.Redis),
-		AuthHandler:         handler.NewAuthHandler(authService),
-		UserHandler:         handler.NewUserHandler(userService, userRoleService),
-		TenantHandler:       handler.NewTenantHandler(tenantService),
-		RoleHandler:         handler.NewRoleHandler(roleService),
-		MenuHandler:         handler.NewMenuHandler(menuService),
-		UserMenuHandler:     handler.NewUserMenuHandler(userMenuService),
-		LoginLogHandler:     handler.NewLoginLogHandler(loginLogService),
-		OperationLogHandler: handler.NewOperationLogHandler(operationLogService),
-		DepartmentHandler:   handler.NewDepartmentHandler(departmentService),
-		PositionHandler:     handler.NewPositionHandler(positionService),
-		DictHandler:         handler.NewDictHandler(dictService),
 	}
 	return nil
 }

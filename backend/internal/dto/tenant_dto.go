@@ -1,6 +1,6 @@
 package dto
 
-import "admin/pkg/pagination"
+import "admin/pkg/utils/pagination"
 
 // TenantCreateRequest 创建租户请求
 type TenantCreateRequest struct {

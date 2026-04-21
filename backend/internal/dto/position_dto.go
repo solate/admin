@@ -1,6 +1,6 @@
 package dto
 
-import "admin/pkg/pagination"
+import "admin/pkg/utils/pagination"
 
 // CreatePositionRequest 创建岗位请求
 type CreatePositionRequest struct {

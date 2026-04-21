@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"admin/pkg/jwt"
+	"admin/pkg/utils/jwt"
 	"admin/pkg/response"
 	"admin/pkg/xcontext"
 	"admin/pkg/xerr"

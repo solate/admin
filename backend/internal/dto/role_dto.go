@@ -1,6 +1,6 @@
 package dto
 
-import "admin/pkg/pagination"
+import "admin/pkg/utils/pagination"
 
 // CreateRoleRequest 创建角色请求
 type CreateRoleRequest struct {

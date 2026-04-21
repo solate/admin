@@ -1,7 +1,7 @@
 package httpclient_test
 
 import (
-	"admin/pkg/httpclient"
+	"admin/pkg/utils/httpclient"
 	"context"
 	"fmt"
 	"testing"

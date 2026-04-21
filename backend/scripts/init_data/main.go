@@ -4,7 +4,7 @@ import (
 	"admin/internal/dal/model"
 	"admin/pkg/config"
 	"admin/pkg/database"
-	"admin/pkg/idgen"
+	"admin/pkg/utils/idgen"
 	"admin/scripts/init_data/seeds"
 	"context"
 	"fmt"

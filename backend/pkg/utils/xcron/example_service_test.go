@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	xcron "admin/pkg/xcron"
+	xcron "admin/pkg/utils/xcron"
 )
 
 // ============================================

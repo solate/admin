@@ -1,7 +1,7 @@
 package jobs
 
 import (
-	"admin/pkg/xcron"
+	"admin/pkg/utils/xcron"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"

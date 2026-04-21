@@ -3,7 +3,7 @@ package audit
 import (
 	"admin/internal/dal/model"
 	"admin/pkg/constants"
-	"admin/pkg/idgen"
+	"admin/pkg/utils/idgen"
 	"admin/pkg/xcontext"
 	"context"
 	"encoding/json"

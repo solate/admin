@@ -1,6 +1,6 @@
 package dto
 
-import "admin/pkg/pagination"
+import "admin/pkg/utils/pagination"
 
 // CreateDepartmentRequest 创建部门请求
 type CreateDepartmentRequest struct {

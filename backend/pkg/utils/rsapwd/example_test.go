@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"admin/pkg/constants"
-	"admin/pkg/rsapwd"
+	"admin/pkg/utils/rsapwd"
 )
 
 // Example_inHandler 展示了在 HTTP Handler 中使用 rsapwd 的完整示例

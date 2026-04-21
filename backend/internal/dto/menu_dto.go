@@ -1,6 +1,6 @@
 package dto
 
-import "admin/pkg/pagination"
+import "admin/pkg/utils/pagination"
 
 // CreateMenuRequest 创建菜单请求
 type CreateMenuRequest struct {
