@@ -60,7 +60,7 @@ export DB_NAME=admin_db      # Makefile 中默认为 admin_db
 - **ORM**：GORM v1.31.1 配合 GORM Gen 进行代码生成
 - **数据库**：PostgreSQL，支持软删除
 - **身份认证**：JWT 配合 Redis 黑名单
-- **权限授权**：Casbin RBAC，支持多租户（域）
+- **权限授权**：纯数据库 RBAC（user_roles + role_permissions + PermissionCache）
 - **缓存**：Redis 用于令牌管理
 - **日志**：Zerolog 结构化日志
 - **配置**：Viper 支持环境感知的配置管理
@@ -77,6 +77,7 @@ backend/
 │   ├── dto/                # 数据传输对象
 │   ├── handler/            # HTTP 处理器/控制器
 │   ├── middleware/         # HTTP 中间件链
+│   ├── rbac/               # RBAC 权限缓存
 │   ├── repository/         # 数据仓储层
 │   ├── service/            # 业务逻辑层
 │   └── router/             # 路由定义
@@ -110,8 +111,9 @@ backend/
 
 ### 4. 身份认证与授权
 - JWT 令牌：访问令牌（1小时）+ 刷新令牌（7天）
-- 中间件顺序：RequestID → Logger → Recovery → CORS → RateLimit → Auth → Casbin
-- Casbin 策略格式：`sub, dom, obj, act`（用户、租户、资源、操作）
+- 中间件顺序：RequestID → Logger → Recovery → CORS → RateLimit → Auth → RBAC → Audit
+- RBAC 基于 PermissionCache（内存缓存），权限存储在 user_roles + role_permissions 表
+- JWT Claims 包含 `role_ids []string` 用于权限缓存查询
 - 租户上下文由中间件自动注入
 
 ## 配置管理
@@ -135,10 +137,15 @@ backend/
 ## 重要实现细节
 
 ### 多租户支持
-- 所有数据库查询都应限定在租户范围内
+- **显式 TenantScope**：Repository 查询使用 `db.Scopes(database.TenantScope(tenantID))` 添加租户过滤
+- **创建时直接赋值**：`model.TenantID = xcontext.GetTenantID(ctx)`，不使用反射
 - 租户 ID 从 JWT 中提取并注入到上下文
-- 使用租户过滤的生成查询
-- Casbin 策略是租户隔离的
+- 跨租户查询（登录、超管统计）直接不加 TenantScope
+- 不再使用 SkipTenantCheck 机制
+
+### 租户隔离表 vs 全局表
+- **租户隔离表**（需要 TenantScope）：users, roles, departments, positions, tenant_menus, dict_types, dict_items, login_logs, operation_logs, video_files, video_risks, video_signatures, video_risk_operations, devices, device_playlists, device_approvals, access_devices
+- **全局表**（不需要 TenantScope）：tenants, menus, permissions, user_positions, device_playlist_items
 
 ### 中间件链顺序
 对正常运行至关重要：
@@ -148,8 +155,8 @@ backend/
 4. CORS（跨域）
 5. RateLimit（可选，根据配置启用）
 6. JWTAuth（身份认证）
-7. Casbin（权限授权）
-8. OperationLog（操作日志记录，仅认证路由）
+7. RBAC（权限授权，基于 PermissionCache）
+8. Audit（操作日志记录，仅认证路由）
 
 ### 错误处理
 - 使用 `pkg/xerr/` 中的自定义错误类型

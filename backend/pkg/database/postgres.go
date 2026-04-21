@@ -48,9 +48,7 @@ func Connect(cfg Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	if err := RegisterCallbacks(db); err != nil {
-		return nil, fmt.Errorf("failed to register tenant callbacks: %w", err)
-	}
+	// 不再使用 RegisterCallbacks，多租户过滤改为显式 TenantScope helper
 
 	globalDB = db
 	return db, nil

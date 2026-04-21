@@ -251,12 +251,12 @@ internal/ 可依赖 pkg/
 
 | 包 | 操作 | 理由 |
 |---|---|---|
-| `pkg/casbin/` | **删除** | 被 internal/rbac 替代 |
-| `pkg/database/scopes.go` | **删除** | GORM Callback 被 TenantScope helper 替代 |
-| `pkg/rsapwd/` | **删除** | 安全风险，密码传输改用 HTTPS |
-| `pkg/cache/` | **删除** | 租户缓存合并到 service 层 |
-| `pkg/constants/` | **移动** → `internal/constants/` | 与业务相关 |
-| `pkg/idgen/` | **删除** | 直接用 `github.com/google/uuid` |
+| `pkg/casbin/` | **已删除** | 被 internal/rbac 替代 |
+| `pkg/database/scopes.go` | **已删除** | GORM Callback 被 Gen 显式查询替代 |
+| `pkg/rsapwd/` | **保留** | 密码传输加密仍需要 |
+| `pkg/cache/` | **保留** | 租户缓存仍需要 |
+| `pkg/constants/` | **保留** | 系统常量仍在使用 |
+| `pkg/idgen/` | **保留** | UUID 生成仍需要 |
 | `pkg/convert/` | **移动** → `pkg/utils/convert/` | 业务无关 |
 | `pkg/csv/` | **移动** → `pkg/utils/csv/` | 业务无关 |
 | `pkg/httpclient/` | **移动** → `pkg/utils/httpclient/` | 业务无关 |
@@ -346,61 +346,26 @@ func Close() {
 }
 ```
 
-### 5.3 显式多租户 Helper（核心改进）
+### 5.3 显式多租户（核心改进）
+
+不使用 GORM Scope 或反射，Repository 直接通过 Gen 查询构建器和 `xcontext` 实现租户隔离：
 
 ```go
-// pkg/database/tenant.go
-package database
+// 查询：Gen 构建器显式加租户过滤
+tenantID := xcontext.GetTenantID(ctx)
+err := r.q.User.WithContext(ctx).
+    Where(r.q.User.TenantID.Eq(tenantID)).
+    Where(r.q.User.UserID.Eq(userID)).
+    First(&user).Error
 
-import (
-    "admin/pkg/xcontext"
-    "context"
-    "reflect"
+// 创建：直接赋值 tenant_id
+user.TenantID = xcontext.GetTenantID(ctx)
+return r.db.WithContext(ctx).Create(user).Error
 
-    "gorm.io/gorm"
-)
-
-// TenantScope 为查询添加租户过滤条件
-// 在 Repository 的每个查询方法中显式调用
-func TenantScope(ctx context.Context, db *gorm.DB) *gorm.DB {
-    tenantID := xcontext.GetTenantID(ctx)
-    if tenantID == "" {
-        return db
-    }
-    return db.Where("tenant_id = ?", tenantID)
-}
-
-// SetTenantID 为新建记录设置租户 ID
-// 在 Repository 的 Create 方法中显式调用
-func SetTenantID(ctx context.Context, model interface{}) {
-    tenantID := xcontext.GetTenantID(ctx)
-    if tenantID == "" {
-        return
-    }
-    v := reflect.ValueOf(model)
-    if v.Kind() == reflect.Ptr {
-        v = v.Elem()
-    }
-    field := v.FieldByName("TenantID")
-    if field.IsValid() && field.CanSet() && field.String() == "" {
-        field.SetString(tenantID)
-    }
-}
-```
-
-**使用方式**：
-
-```go
-// 查询：显式加租户过滤
-db := database.TenantScope(ctx, r.db.WithContext(ctx))
-db.Where("user_id = ?", userID).First(&user)
-
-// 创建：显式设置租户 ID
-database.SetTenantID(ctx, user)
-r.db.WithContext(ctx).Create(user)
-
-// 跨租户查询：不加 TenantScope
-r.db.WithContext(ctx).Where("email = ?", email).First(&user)
+// 跨租户查询：不加 TenantID 条件
+err := r.q.User.WithContext(ctx).
+    Where(r.q.User.Email.Eq(email)).
+    First(&user).Error
 ```
 
 ### 5.4 时间戳自动处理
@@ -682,7 +647,7 @@ CREATE INDEX idx_operation_logs_user ON operation_logs(user_id);
 
 ## 6. Repository 层设计
 
-### 6.1 标准模式
+### 6.1 标准模式（Gen 查询构建器）
 
 ```go
 // internal/repository/user_repo.go
@@ -691,7 +656,6 @@ package repository
 import (
     "admin/internal/dal/model"
     "admin/internal/dal/query"
-    "admin/pkg/database"
     "admin/pkg/xcontext"
     "context"
 
@@ -700,154 +664,60 @@ import (
 
 type UserRepo struct {
     db *gorm.DB
+    q  *query.Query
 }
 
 func NewUserRepo(db *gorm.DB) *UserRepo {
-    return &UserRepo{db: db}
+    return &UserRepo{db: db, q: query.Q}
 }
 
 // Create 创建用户 — 显式设置 tenant_id
 func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
-    database.SetTenantID(ctx, user)
-    return r.db.WithContext(ctx).Create(user).Error
+    user.TenantID = xcontext.GetTenantID(ctx)
+    return r.q.User.WithContext(ctx).Create(user)
 }
 
-// GetByID 根据ID获取 — 显式租户过滤
+// GetByID 根据ID获取 — 显式租户过滤（Gen 构建器）
 func (r *UserRepo) GetByID(ctx context.Context, userID string) (*model.User, error) {
-    var user model.User
-    err := database.TenantScope(ctx, r.db.WithContext(ctx)).
-        Where("user_id = ?", userID).
-        First(&user).Error
-    return &user, err
+    tenantID := xcontext.GetTenantID(ctx)
+    return r.q.User.WithContext(ctx).
+        Where(r.q.User.TenantID.Eq(tenantID)).
+        Where(r.q.User.UserID.Eq(userID)).
+        First()
 }
 
-// GetByEmail 根据邮箱获取 — 跨租户查询（登录场景），不加 TenantScope
+// GetByEmail 根据邮箱获取 — 跨租户查询（登录场景），不加租户过滤
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
-    var user model.User
-    err := r.db.WithContext(ctx).
-        Where("email = ?", email).
-        First(&user).Error
-    return &user, err
-}
-
-// GetByPhone 根据手机号获取 — 跨租户查询
-func (r *UserRepo) GetByPhone(ctx context.Context, phone string) (*model.User, error) {
-    var user model.User
-    err := r.db.WithContext(ctx).
-        Where("phone = ?", phone).
-        First(&user).Error
-    return &user, err
+    return r.q.User.WithContext(ctx).
+        Where(r.q.User.Email.Eq(email)).
+        First()
 }
 
 // Update 更新用户 — 显式租户过滤
 func (r *UserRepo) Update(ctx context.Context, userID string, updates map[string]interface{}) error {
-    return database.TenantScope(ctx, r.db.WithContext(ctx)).
-        Where("user_id = ?", userID).
-        Updates(updates).Error
+    tenantID := xcontext.GetTenantID(ctx)
+    _, err := r.q.User.WithContext(ctx).
+        Where(r.q.User.TenantID.Eq(tenantID)).
+        Where(r.q.User.UserID.Eq(userID)).
+        Updates(updates)
+    return err
 }
 
 // Delete 软删除 — 显式租户过滤
 func (r *UserRepo) Delete(ctx context.Context, userID string) error {
-    return database.TenantScope(ctx, r.db.WithContext(ctx)).
-        Where("user_id = ?", userID).
-        Delete(&model.User{}).Error
-}
-
-// BatchDelete 批量软删除
-func (r *UserRepo) BatchDelete(ctx context.Context, userIDs []string) error {
-    return database.TenantScope(ctx, r.db.WithContext(ctx)).
-        Where("user_id IN ?", userIDs).
-        Delete(&model.User{}).Error
-}
-
-// ListWithFilters 动态条件查询 — 显式租户过滤 + 动态 WHERE
-func (r *UserRepo) ListWithFilters(ctx context.Context, offset, limit int,
-    nicknameFilter string, statusFilter int) ([]*model.User, int64, error) {
-
-    q := database.TenantScope(ctx, r.db.WithContext(ctx).Model(&model.User{}))
-
-    // 动态 WHERE 条件（GORM 链式 API 优势）
-    if nicknameFilter != "" {
-        q = q.Where("nickname LIKE ?", "%"+nicknameFilter+"%")
-    }
-    if statusFilter != 0 {
-        q = q.Where("status = ?", statusFilter)
-    }
-
-    var total int64
-    if err := q.Count(&total).Error; err != nil {
-        return nil, 0, err
-    }
-
-    var users []*model.User
-    err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&users).Error
-    return users, total, err
-}
-
-// ListByIDsAndFilters 按用户ID列表 + 动态条件查询
-func (r *UserRepo) ListByIDsAndFilters(ctx context.Context, userIDs []string,
-    offset, limit int, keywordFilter string, statusFilter int) ([]*model.User, int64, error) {
-
-    q := database.TenantScope(ctx, r.db.WithContext(ctx).Model(&model.User{})).
-        Where("user_id IN ?", userIDs)
-
-    if keywordFilter != "" {
-        q = q.Where("user_name LIKE ? OR nickname LIKE ?",
-            "%"+keywordFilter+"%", "%"+keywordFilter+"%")
-    }
-    if statusFilter != 0 {
-        q = q.Where("status = ?", statusFilter)
-    }
-
-    var total int64
-    if err := q.Count(&total).Error; err != nil {
-        return nil, 0, err
-    }
-
-    var users []*model.User
-    err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&users).Error
-    return users, total, err
+    tenantID := xcontext.GetTenantID(ctx)
+    _, err := r.q.User.WithContext(ctx).
+        Where(r.q.User.TenantID.Eq(tenantID)).
+        Where(r.q.User.UserID.Eq(userID)).
+        Delete()
+    return err
 }
 
 // CountByTenantID 统计指定租户用户数 — 跨租户查询
 func (r *UserRepo) CountByTenantID(ctx context.Context, tenantID string) (int64, error) {
-    var count int64
-    err := r.db.WithContext(ctx).
-        Where("tenant_id = ?", tenantID).
-        Count(&count).Error
-    return count, err
-}
-
-// CountByTenantIDs 批量统计多租户用户数 — 跨租户查询
-func (r *UserRepo) CountByTenantIDs(ctx context.Context, tenantIDs []string) (map[string]int64, error) {
-    type result struct {
-        TenantID  string
-        UserCount int64
-    }
-    var results []result
-    err := r.db.WithContext(ctx).Model(&model.User{}).
-        Select("tenant_id, count(*) as user_count").
-        Where("tenant_id IN ?", tenantIDs).
-        Group("tenant_id").
-        Find(&results).Error
-    if err != nil {
-        return nil, err
-    }
-
-    countMap := make(map[string]int64, len(results))
-    for _, r := range results {
-        countMap[r.TenantID] = r.UserCount
-    }
-    return countMap, nil
-}
-
-// CheckExists 检查用户名是否已存在
-func (r *UserRepo) CheckExists(ctx context.Context, userName string) (bool, error) {
-    var count int64
-    err := database.TenantScope(ctx, r.db.WithContext(ctx).Model(&model.User{})).
-        Where("user_name = ?", userName).
-        Count(&count).Error
-    return count > 0, err
+    return r.q.User.WithContext(ctx).
+        Where(r.q.User.TenantID.Eq(tenantID)).
+        Count()
 }
 ```
 
@@ -855,11 +725,11 @@ func (r *UserRepo) CheckExists(ctx context.Context, userName string) (bool, erro
 
 | 操作 | 方式 | 说明 |
 |------|------|------|
-| 租户内查询 | `database.TenantScope(ctx, db)` | 显式添加 `WHERE tenant_id = ?` |
-| 跨租户查询 | 直接 `r.db.WithContext(ctx)` | 不加 TenantScope |
-| 创建记录 | `database.SetTenantID(ctx, model)` | 显式设置 tenant_id |
-| 更新/删除 | `database.TenantScope(ctx, db)` + Where 条件 | 确保只操作本租户数据 |
-| 动态筛选 | GORM 链式 API `if` 判断 | 无需为每个组合写不同 SQL |
+| 租户内查询 | `.Where(r.q.XXX.TenantID.Eq(xcontext.GetTenantID(ctx)))` | Gen 类型安全 |
+| 跨租户查询 | 不加 TenantID 条件 | 登录、超管统计等 |
+| 创建记录 | `model.TenantID = xcontext.GetTenantID(ctx)` | 直接赋值 |
+| 更新/删除 | 租户过滤 + 主键条件 | 确保只操作本租户数据 |
+| 动态筛选 | Gen 链式 API `if` 判断 | 无需为每个组合写不同 SQL |
 | 时间戳 | GORM tag 自动处理 | 无需手动设置 |
 | 软删除 | GORM tag 自动处理 | 查询自动过滤，删除自动设值 |
 
@@ -899,190 +769,60 @@ func InTransaction(ctx context.Context, db *gorm.DB, fn func(tx *gorm.DB) error)
   中间件 → PermissionCache(内存) → 检查 API 权限
 ```
 
-### 7.2 权限缓存
+### 7.2 权限缓存（PermissionCache）
 
-```go
-// internal/rbac/cache.go
-package rbac
+核心设计：
+- **三张 map**：`apiPerms`（API 权限）、`menuPerms`（菜单 ID）、`buttonPerms`（按钮权限 ID）
+- **递归 CTE**：`role_ancestors`（descendant→ancestor 映射，depth < 10 防循环）
+- **Channel 刷新**：`NotifyRefresh()` 非阻塞通知 + `watchRefresh` 协程 + TTL 定时器 + `Stop()` 优雅关闭
+- **读写锁**：`sync.RWMutex` 保护 map 读写
 
-import (
-    "admin/internal/dal/model"
-    "context"
-    "strings"
-    "sync"
-    "time"
+CTE 核心 SQL：
 
-    "github.com/rs/zerolog/log"
-    "gorm.io/gorm"
+```sql
+WITH RECURSIVE role_ancestors AS (
+    -- 基础：每个角色是自己的祖先
+    SELECT role_id, role_id AS ancestor_role_id, 0 AS depth
+    FROM roles WHERE deleted_at = 0
+    UNION
+    -- 递归：祖先的父角色也是祖先（depth < 10 防循环）
+    SELECT ra.role_id, r.parent_role_id, ra.depth + 1
+    FROM role_ancestors ra
+    JOIN roles r ON r.role_id = ra.ancestor_role_id
+    WHERE r.parent_role_id != '' AND r.deleted_at = 0 AND ra.depth < 10
 )
-
-type APIPermission struct {
-    Path   string
-    Method string
-}
-
-type PermissionCache struct {
-    mu        sync.RWMutex
-    apiPerms  map[string][]APIPermission  // roleID → API 权限列表
-    menuPerms map[string][]string         // roleID → menuID 列表
-    db        *gorm.DB
-    ttl       time.Duration
-    lastLoad  time.Time
-}
-
-func NewPermissionCache(db *gorm.DB, ttl time.Duration) *PermissionCache {
-    return &PermissionCache{
-        apiPerms:  make(map[string][]APIPermission),
-        menuPerms: make(map[string][]string),
-        db:        db,
-        ttl:       ttl,
-    }
-}
-
-// Refresh 刷新权限缓存（定时任务调用，如每 30 秒）
-func (c *PermissionCache) Refresh(ctx context.Context) error {
-    c.mu.Lock()
-    defer c.mu.Unlock()
-
-    newAPIPerms := make(map[string][]APIPermission)
-    newMenuPerms := make(map[string][]string)
-
-    // 查询所有角色的 API 权限（含继承角色的权限）
-    // 使用递归 CTE 获取角色及其所有祖先角色
-    var apiResults []struct {
-        RoleID   string
-        Resource string
-        Action   string
-    }
-    err := c.db.WithContext(ctx).Raw(`
-        WITH RECURSIVE role_tree AS (
-            -- 基础：所有角色
-            SELECT role_id, parent_role_id FROM roles WHERE deleted_at = 0
-            UNION
-            -- 递归：父角色
-            SELECT r.role_id, r.parent_role_id
-            FROM roles r
-            JOIN role_tree rt ON r.role_id = rt.parent_role_id
-            WHERE r.deleted_at = 0
-        )
-        SELECT DISTINCT rt.role_id, p.resource, p.action
-        FROM role_permissions rp
-        JOIN permissions p ON p.permission_id = rp.permission_id AND p.deleted_at = 0
-        JOIN role_tree rt ON rt.role_id = rp.role_id
-        WHERE p.type = 'API'
-    `).Scan(&apiResults).Error
-    if err != nil {
-        return err
-    }
-
-    for _, r := range apiResults {
-        newAPIPerms[r.RoleID] = append(newAPIPerms[r.RoleID], APIPermission{
-            Path:   r.Resource,
-            Method: r.Action,
-        })
-    }
-
-    // 查询所有角色的菜单权限
-    var menuResults []struct {
-        RoleID   string
-        Resource string
-    }
-    err = c.db.WithContext(ctx).Raw(`
-        WITH RECURSIVE role_tree AS (
-            SELECT role_id, parent_role_id FROM roles WHERE deleted_at = 0
-            UNION
-            SELECT r.role_id, r.parent_role_id
-            FROM roles r
-            JOIN role_tree rt ON r.role_id = rt.parent_role_id
-            WHERE r.deleted_at = 0
-        )
-        SELECT DISTINCT rt.role_id, p.resource
-        FROM role_permissions rp
-        JOIN permissions p ON p.permission_id = rp.permission_id AND p.deleted_at = 0
-        JOIN role_tree rt ON rt.role_id = rp.role_id
-        WHERE p.type = 'MENU'
-    `).Scan(&menuResults).Error
-    if err != nil {
-        return err
-    }
-
-    for _, r := range menuResults {
-        // resource 格式: "menu:xxx"
-        menuID := strings.TrimPrefix(r.Resource, "menu:")
-        newMenuPerms[r.RoleID] = append(newMenuPerms[r.RoleID], menuID)
-    }
-
-    c.apiPerms = newAPIPerms
-    c.menuPerms = newMenuPerms
-    c.lastLoad = time.Now()
-
-    log.Info().Int("api_rules", len(apiResults)).Int("menu_rules", len(menuResults)).
-        Msg("权限缓存刷新完成")
-
-    return nil
-}
-
-// CheckAPI 检查角色是否有指定 API 权限
-func (c *PermissionCache) CheckAPI(roleIDs []string, path, method string) bool {
-    c.mu.RLock()
-    defer c.mu.RUnlock()
-
-    for _, roleID := range roleIDs {
-        for _, perm := range c.apiPerms[roleID] {
-            if matchPath(perm.Path, path) && matchMethod(perm.Method, method) {
-                return true
-            }
-        }
-    }
-    return false
-}
-
-// GetMenuIDs 获取角色的菜单 ID 列表
-func (c *PermissionCache) GetMenuIDs(roleIDs []string) []string {
-    c.mu.RLock()
-    defer c.mu.RUnlock()
-
-    seen := make(map[string]bool)
-    var result []string
-    for _, roleID := range roleIDs {
-        for _, menuID := range c.menuPerms[roleID] {
-            if !seen[menuID] {
-                seen[menuID] = true
-                result = append(result, menuID)
-            }
-        }
-    }
-    return result
-}
-
-// matchPath 路径匹配（支持 /api/v1/users/:id 等）
-func matchPath(pattern, path string) bool {
-    if pattern == path {
-        return true
-    }
-    // 简单的通配符匹配
-    patternParts := strings.Split(pattern, "/")
-    pathParts := strings.Split(path, "/")
-    if len(patternParts) != len(pathParts) {
-        return false
-    }
-    for i := range patternParts {
-        if strings.HasPrefix(patternParts[i], ":") || strings.HasPrefix(patternParts[i], "*") {
-            continue
-        }
-        if patternParts[i] != pathParts[i] {
-            return false
-        }
-    }
-    return true
-}
-
-// matchMethod HTTP 方法匹配
-func matchMethod(pattern, method string) bool {
-    return pattern == "*" || pattern == method
-}
+SELECT DISTINCT ra.role_id, p.resource, p.action
+FROM role_ancestors ra
+JOIN role_permissions rp ON rp.role_id = ra.ancestor_role_id
+JOIN permissions p ON p.permission_id = rp.permission_id
+WHERE p.deleted_at = 0 AND p.status = 1 AND p.type = 'API'
 ```
 
+缓存刷新机制：
+
+```go
+// NotifyRefresh 非阻塞通知（角色/权限变更时调用）
+func (c *PermissionCache) NotifyRefresh() {
+    select {
+    case c.refreshCh <- struct{}{}:
+    default: // 已有待处理的刷新请求
+    }
+}
+
+// watchRefresh 后台协程：初始加载 + channel 通知 + TTL 定时器
+func (c *PermissionCache) watchRefresh() {
+    ticker := time.NewTicker(c.ttl)
+    defer ticker.Stop()
+    // 启动时立即加载
+    c.Refresh(context.Background())
+    for {
+        select {
+        case <-c.stopCh: return
+        case <-c.refreshCh: c.Refresh(context.Background())
+        case <-ticker.C: c.Refresh(context.Background())
+        }
+    }
+}
 ### 7.3 RBAC 中间件
 
 ```go
@@ -1318,6 +1058,8 @@ rbac-refresh: ## 手动刷新权限缓存
 
 **总计：~7 天**
 
+> **实施状态**：全部 6 个步骤已完成并通过编译验证（2026-04）。Casbin 依赖已完全移除，SkipTenantCheck 机制已清除，PermissionCache 支持 API + 菜单 + 按钮三种权限类型。
+
 ---
 
 ## 14. 完整代码示例
@@ -1372,17 +1114,17 @@ type App struct {
 }
 
 func (a *App) initRBAC() {
+    // NewPermissionCache 内部启动 watchRefresh 协程
+    // 自动处理：初始加载 + TTL 定时刷新 + NotifyRefresh 事件驱动
     a.RBAC = rbac.NewPermissionCache(a.DB, 30*time.Second)
-    // 启动时加载
-    if err := a.RBAC.Refresh(context.Background()); err != nil {
-        log.Warn().Err(err).Msg("权限缓存初始化失败")
+}
+
+func (a *App) Close() error {
+    // 停止权限缓存后台协程
+    if a.RBAC != nil {
+        a.RBAC.Stop()
     }
-    // 定时刷新
-    a.Cron.AddFunc("*/30 * * * * *", func() {
-        if err := a.RBAC.Refresh(context.Background()); err != nil {
-            log.Error().Err(err).Msg("权限缓存刷新失败")
-        }
-    })
+    // ... 其他资源清理
 }
 
 func (a *App) initMiddleware() {

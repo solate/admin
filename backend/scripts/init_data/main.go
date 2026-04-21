@@ -5,7 +5,6 @@ import (
 	"admin/pkg/config"
 	"admin/pkg/database"
 	"admin/pkg/idgen"
-	"admin/pkg/xcontext"
 	"admin/scripts/init_data/seeds"
 	"context"
 	"fmt"
@@ -58,7 +57,7 @@ func main() {
 		}
 	}()
 
-	ctx := xcontext.SkipTenantCheck(context.Background())
+	ctx := context.Background()
 	db = db.WithContext(ctx)
 
 	fmt.Println("🚀 开始初始化默认数据")
@@ -111,37 +110,10 @@ func SeedAllData(db *gorm.DB) (*SeedResult, error) {
 	result.Roles = roles
 	idIndex += 4
 
-	// 4. 初始化 Casbin 表（如果不存在）
-	if err := seeds.InitCasbinTable(db); err != nil {
-		return nil, fmt.Errorf("初始化 Casbin 表失败: %w", err)
-	}
-
-	// 5. 初始化用户-角色关系（通过 Casbin）
-	if err := seeds.SeedUserRoles(db, user.UserName, roles[0].RoleCode, tenant.TenantCode); err != nil {
-		return nil, fmt.Errorf("初始化用户角色关系失败: %w", err)
-	}
-
-	// 6. 初始化 Casbin 权限策略
-	if err := seeds.SeedPolicies(db, tenant.TenantCode); err != nil {
-		return nil, fmt.Errorf("初始化权限策略失败: %w", err)
-	}
-
 	// 7. 初始化系统菜单
 	menuDefs := seeds.DefaultMenuDefinitions(ids[idIndex : idIndex+29])
 	if err := seeds.SeedSystemMenus(db, menuDefs); err != nil {
 		return nil, fmt.Errorf("初始化系统菜单失败: %w", err)
-	}
-
-	// 7.1. 为角色分配菜单权限
-	// 提取所有菜单ID
-	menuIDs := ids[idIndex : idIndex+29]
-	// 为 super_admin 和 admin 角色分配所有菜单权限
-	roleMenus := map[string][]string{
-		"super_admin": menuIDs, // super_admin 角色拥有所有菜单权限
-		"admin":       menuIDs, // admin 角色拥有所有菜单权限
-	}
-	if err := seeds.SeedRoleMenus(db, roleMenus, tenant.TenantCode); err != nil {
-		return nil, fmt.Errorf("初始化角色菜单权限失败: %w", err)
 	}
 
 	idIndex += 29

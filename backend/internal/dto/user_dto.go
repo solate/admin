@@ -72,7 +72,7 @@ type ProfileResponse struct {
 // AssignRolesRequest 为用户分配角色请求
 type AssignRolesRequest struct {
 	UserID    string   `json:"user_id" form:"user_id" binding:"required" example:"123456789012345678"` // 用户ID
-	RoleCodes []string `json:"role_codes" binding:"required,min=1"`                                    // 角色编码列表
+	RoleCodes []string `json:"role_ids" binding:"required,min=1"`                                      // 角色ID列表
 }
 
 // UserRolesResponse 用户角色响应

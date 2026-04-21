@@ -5,8 +5,9 @@ import (
 	"admin/internal/dal/model"
 	"admin/internal/dto"
 	"admin/internal/repository"
-	"admin/pkg/casbin"
+	"admin/internal/rbac"
 	"admin/pkg/constants"
+	"admin/pkg/xcontext"
 	"admin/pkg/xerr"
 	"context"
 	"strings"
@@ -16,86 +17,79 @@ import (
 type UserMenuService struct {
 	menuRepo       *repository.MenuRepo
 	permissionRepo *repository.PermissionRepo
-	enforcer       *casbin.Enforcer
+	cache          *rbac.PermissionCache
 }
 
 // NewUserMenuService 创建用户菜单服务
-// 根据菜单系统设计文档：用户实际菜单 = 角色权限中的菜单（无需取交集）
-func NewUserMenuService(menuRepo *repository.MenuRepo, permissionRepo *repository.PermissionRepo, enforcer *casbin.Enforcer) *UserMenuService {
+func NewUserMenuService(menuRepo *repository.MenuRepo, permissionRepo *repository.PermissionRepo, cache *rbac.PermissionCache) *UserMenuService {
 	return &UserMenuService{
 		menuRepo:       menuRepo,
 		permissionRepo: permissionRepo,
-		enforcer:       enforcer,
+		cache:          cache,
 	}
 }
 
 // GetUserMenu 获取用户菜单树
-// 根据设计文档：用户实际菜单 = 角色权限中的菜单（无需取交集）
 func (s *UserMenuService) GetUserMenu(ctx context.Context, userName, tenantCode string) (*dto.UserMenuResponse, error) {
-	// 1. 超管特殊处理：返回所有菜单
-	if s.isSuperAdmin(userName, tenantCode) {
-		return s.getAllMenusForTenant(ctx)
+	// 超管特殊处理：返回所有菜单
+	if xcontext.HasRole(ctx, constants.SuperAdmin) {
+		return s.getAllMenus(ctx)
 	}
 
-	// 2. 获取用户在租户中的角色
-	roles := s.enforcer.GetRolesForUserInDomain(userName, tenantCode)
-	if len(roles) == 0 {
+	roleIDs := xcontext.GetRoleIDs(ctx)
+	if len(roleIDs) == 0 {
 		return &dto.UserMenuResponse{List: []*dto.MenuTreeNode{}}, nil
 	}
 
-	// 3. 递归获取所有角色（通过 g2 处理继承）
-	allRoleCodes, inheritedRoles := s.getAllRoleCodes(roles)
-
-	// 4. 从 Casbin 获取角色的菜单权限
-	menuIDs := s.getMenuPermissionsForRoles(ctx, allRoleCodes, inheritedRoles, tenantCode)
-
+	// 从 PermissionCache 获取菜单ID列表
+	menuIDs := s.cache.GetMenuIDs(roleIDs)
 	if len(menuIDs) == 0 {
 		return &dto.UserMenuResponse{List: []*dto.MenuTreeNode{}}, nil
 	}
 
-	// 5. 查询菜单详情
+	// 查询菜单详情
 	menus, err := s.menuRepo.GetByIDs(ctx, menuIDs)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单详情失败", err)
 	}
 
-	// 6. 过滤状态=1(启用)的菜单
 	visibleMenus := s.filterVisibleMenus(menus)
-
-	// 7. 构建树结构
 	tree := s.buildMenuTree(visibleMenus)
 
 	return &dto.UserMenuResponse{List: tree}, nil
 }
 
 // GetUserButtons 获取指定菜单的按钮权限
-func (s *UserMenuService) GetUserButtons(ctx context.Context, userName, tenantCode, menuID string) (*dto.UserButtonsResponse, error) {
-	// 1. 超管特殊处理：返回所有按钮
-	if s.isSuperAdmin(userName, tenantCode) {
+func (s *UserMenuService) GetUserButtons(ctx context.Context, menuID string) (*dto.UserButtonsResponse, error) {
+	// 超管特殊处理：返回所有按钮
+	if xcontext.HasRole(ctx, constants.SuperAdmin) {
 		return s.getAllButtonsForMenu(ctx, menuID)
 	}
 
-	// 2. 获取用户在租户中的角色
-	roles := s.enforcer.GetRolesForUserInDomain(userName, tenantCode)
-	if len(roles) == 0 {
+	roleIDs := xcontext.GetRoleIDs(ctx)
+	if len(roleIDs) == 0 {
 		return &dto.UserButtonsResponse{Buttons: []*dto.ButtonInfo{}}, nil
 	}
 
-	// 3. 递归获取所有角色（通过 g2 处理继承）
-	allRoleCodes, inheritedRoles := s.getAllRoleCodes(roles)
-
-	// 4. 获取角色的所有 BUTTON 类型权限
-	buttonPerms, err := s.getButtonPermissionsForRoles(ctx, allRoleCodes, inheritedRoles, tenantCode)
-	if err != nil {
-		return nil, xerr.Wrap(xerr.ErrInternal.Code, "获取按钮权限失败", err)
+	// 从缓存获取用户角色拥有的按钮权限 ID
+	userButtonPermIDs := s.cache.GetButtonPermissionIDs(roleIDs)
+	if len(userButtonPermIDs) == 0 {
+		return &dto.UserButtonsResponse{Buttons: []*dto.ButtonInfo{}}, nil
+	}
+	userPermSet := make(map[string]bool, len(userButtonPermIDs))
+	for _, id := range userButtonPermIDs {
+		userPermSet[id] = true
 	}
 
-	// 5. 过滤出属于指定菜单的按钮（通过 resource 字段判断）
+	// 查询该菜单的所有按钮，只返回用户有权限的
+	buttons, err := s.permissionRepo.ListByType(ctx, "BUTTON")
+	if err != nil {
+		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询按钮失败", err)
+	}
+
 	var menuButtons []*dto.ButtonInfo
-	for _, btn := range buttonPerms {
-		// 检查 resource 是否以 "btn:" 开头且属于指定菜单
-		// resource 格式: btn:menuID:action
-		if strings.HasPrefix(btn.Resource, "btn:"+menuID+":") {
+	for _, btn := range buttons {
+		if strings.HasPrefix(btn.Resource, "btn:"+menuID+":") && userPermSet[btn.PermissionID] {
 			menuButtons = append(menuButtons, &dto.ButtonInfo{
 				PermissionID: btn.PermissionID,
 				Name:         btn.Name,
@@ -108,33 +102,14 @@ func (s *UserMenuService) GetUserButtons(ctx context.Context, userName, tenantCo
 	return &dto.UserButtonsResponse{Buttons: menuButtons}, nil
 }
 
-// isSuperAdmin 判断是否为超管（role_code=super_admin 且在 default 租户）
-func (s *UserMenuService) isSuperAdmin(userName, tenantCode string) bool {
-	defaultTenantCode := constants.DefaultTenantCode
-	if tenantCode != defaultTenantCode {
-		return false
-	}
-	roles := s.enforcer.GetRolesForUserInDomain(userName, tenantCode)
-	for _, role := range roles {
-		if role == constants.SuperAdmin {
-			return true
-		}
-	}
-	return false
-}
-
-// getAllMenusForTenant 获取租户的所有菜单（超管使用）
-func (s *UserMenuService) getAllMenusForTenant(ctx context.Context) (*dto.UserMenuResponse, error) {
-	// 获取所有菜单
+// getAllMenus 获取所有菜单（超管使用）
+func (s *UserMenuService) getAllMenus(ctx context.Context) (*dto.UserMenuResponse, error) {
 	menus, err := s.menuRepo.List(ctx)
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询菜单失败", err)
 	}
 
-	// 过滤启用状态的菜单
 	visibleMenus := s.filterVisibleMenus(menus)
-
-	// 构建树结构
 	tree := s.buildMenuTree(visibleMenus)
 
 	return &dto.UserMenuResponse{List: tree}, nil
@@ -142,7 +117,6 @@ func (s *UserMenuService) getAllMenusForTenant(ctx context.Context) (*dto.UserMe
 
 // getAllButtonsForMenu 获取菜单的所有按钮（超管使用）
 func (s *UserMenuService) getAllButtonsForMenu(ctx context.Context, menuID string) (*dto.UserButtonsResponse, error) {
-	// 获取所有 BUTTON 类型的权限
 	buttons, err := s.permissionRepo.ListByType(ctx, "BUTTON")
 	if err != nil {
 		return nil, xerr.Wrap(xerr.ErrInternal.Code, "查询按钮失败", err)
@@ -150,7 +124,6 @@ func (s *UserMenuService) getAllButtonsForMenu(ctx context.Context, menuID strin
 
 	var buttonInfos []*dto.ButtonInfo
 	for _, btn := range buttons {
-		// 检查 resource 是否以 "btn:" 开头且属于指定菜单
 		if strings.HasPrefix(btn.Resource, "btn:"+menuID+":") {
 			buttonInfos = append(buttonInfos, &dto.ButtonInfo{
 				PermissionID: btn.PermissionID,
@@ -162,141 +135,6 @@ func (s *UserMenuService) getAllButtonsForMenu(ctx context.Context, menuID strin
 	}
 
 	return &dto.UserButtonsResponse{Buttons: buttonInfos}, nil
-}
-
-// getAllRoleCodes 递归获取所有角色（通过 g2 处理继承）
-// 返回值: (所有角色编码, 继承角色集合)
-func (s *UserMenuService) getAllRoleCodes(roleCodes []string) ([]string, map[string]bool) {
-	var allCodes []string
-	visited := make(map[string]bool)
-	inheritedRoles := make(map[string]bool)
-
-	var dfs func(roleCode string, isInherited bool)
-	dfs = func(roleCode string, isInherited bool) {
-		if visited[roleCode] {
-			return
-		}
-		visited[roleCode] = true
-		allCodes = append(allCodes, roleCode)
-
-		// 如果是继承角色，标记为继承
-		if isInherited {
-			inheritedRoles[roleCode] = true
-		}
-
-		// 通过 g2 获取继承的父角色
-		// GetRolesForUser 在 g2 中返回 (child -> parent)
-		parents, _ := s.enforcer.GetRolesForUser(roleCode)
-		for _, parentCode := range parents {
-			dfs(parentCode, true) // 父角色都是继承角色
-		}
-	}
-
-	for _, code := range roleCodes {
-		dfs(code, false)
-	}
-
-	return allCodes, inheritedRoles
-}
-
-// getMenuPermissionsForRoles 获取角色的 MENU 类型权限ID列表
-// 支持角色继承：对于继承角色，同时查询 default domain 的权限
-//
-// 性能优化 TODO:
-// 当前实现对每个角色都进行一次 Casbin 查询，当用户有多个角色时会产生 N 次数据库查询
-// 优化方案：
-// 1. 使用批量查询：GetFilteredPolicy(1, []tenantCodes) 一次性获取所有租户的策略
-// 2. 添加 Redis 缓存：缓存用户菜单树，key 格式 "user:menus:{userID}:{tenantCode}"
-// 3. 缓存失效：角色权限变更时清除相关用户的缓存
-func (s *UserMenuService) getMenuPermissionsForRoles(ctx context.Context, roles []string, inheritedRoles map[string]bool, tenantCode string) []string {
-	menuIDSet := make(map[string]bool)
-
-	for _, role := range roles {
-		// 确定要查询的 domain 列表
-		domains := []string{tenantCode}
-		if inheritedRoles[role] {
-			// 继承角色：同时查询 default domain
-			domains = append(domains, constants.DefaultTenantCode)
-		}
-
-		// 从所有相关 domain 查询权限
-		for _, domain := range domains {
-			// 使用 Casbin 获取角色的策略
-			// 策略格式: p, role, domain, resource, action
-			policies, _ := s.enforcer.GetFilteredPolicy(0, role, domain)
-
-			for _, policy := range policies {
-				if len(policy) >= 4 {
-					resource := policy[2]
-					action := policy[3]
-
-					// 对于 MENU 类型，resource 格式为 "menu:menuID"，action 是 "*"
-					if (action == "*" || action == "") && strings.HasPrefix(resource, "menu:") {
-						menuID := strings.TrimPrefix(resource, "menu:")
-						menuIDSet[menuID] = true
-					}
-				}
-			}
-		}
-	}
-
-	// 转换为切片
-	menuIDs := make([]string, 0, len(menuIDSet))
-	for menuID := range menuIDSet {
-		menuIDs = append(menuIDs, menuID)
-	}
-
-	return menuIDs
-}
-
-// getButtonPermissionsForRoles 获取角色的 BUTTON 类型权限
-// 支持角色继承：对于继承角色，同时查询 default domain 的权限
-//
-// 性能优化 TODO: 同 getMenuPermissionsForRoles
-func (s *UserMenuService) getButtonPermissionsForRoles(ctx context.Context, roles []string, inheritedRoles map[string]bool, tenantCode string) ([]*model.Permission, error) {
-	buttonResources := make(map[string]bool)
-
-	for _, role := range roles {
-		// 确定要查询的 domain 列表
-		domains := []string{tenantCode}
-		if inheritedRoles[role] {
-			// 继承角色：同时查询 default domain
-			domains = append(domains, constants.DefaultTenantCode)
-		}
-
-		// 从所有相关 domain 查询权限
-		for _, domain := range domains {
-			// 使用 Casbin 获取角色的策略
-			policies, _ := s.enforcer.GetFilteredPolicy(0, role, domain)
-
-			for _, policy := range policies {
-				if len(policy) >= 4 {
-					resource := policy[2]
-					action := policy[3]
-
-					// 对于 BUTTON 类型，resource 格式为 "btn:menuID:action"，action 是 "*"
-					if (action == "*" || action == "") && strings.HasPrefix(resource, "btn:") {
-						buttonResources[resource] = true
-					}
-				}
-			}
-		}
-	}
-
-	if len(buttonResources) == 0 {
-		return []*model.Permission{}, nil
-	}
-
-	// 根据 resource 查询权限详情
-	var permissions []*model.Permission
-	for resource := range buttonResources {
-		perm, err := s.permissionRepo.GetByResource(ctx, resource)
-		if err == nil {
-			permissions = append(permissions, perm)
-		}
-	}
-
-	return permissions, nil
 }
 
 // filterVisibleMenus 过滤启用状态的菜单
@@ -312,7 +150,6 @@ func (s *UserMenuService) filterVisibleMenus(menus []*model.Menu) []*model.Menu 
 
 // buildMenuTree 构建菜单树
 func (s *UserMenuService) buildMenuTree(menus []*model.Menu) []*dto.MenuTreeNode {
-	// 构建菜单映射
 	menuMap := make(map[string]*dto.MenuTreeNode)
 	for _, menu := range menus {
 		menuMap[menu.MenuID] = &dto.MenuTreeNode{
@@ -321,15 +158,12 @@ func (s *UserMenuService) buildMenuTree(menus []*model.Menu) []*dto.MenuTreeNode
 		}
 	}
 
-	// 构建树结构
 	var roots []*dto.MenuTreeNode
 	for _, menu := range menus {
 		node := menuMap[menu.MenuID]
 		if menu.ParentID == "" || menu.ParentID == "0" {
-			// 根节点
 			roots = append(roots, node)
 		} else if parent, exists := menuMap[menu.ParentID]; exists {
-			// 添加到父节点的子节点
 			parent.Children = append(parent.Children, node)
 		}
 	}

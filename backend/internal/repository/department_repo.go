@@ -3,7 +3,7 @@ package repository
 import (
 	"admin/internal/dal/model"
 	"admin/internal/dal/query"
-
+	"admin/pkg/xcontext"
 	"context"
 
 	"gorm.io/gorm"
@@ -23,49 +23,72 @@ func NewDepartmentRepo(db *gorm.DB) *DepartmentRepo {
 
 // Create 创建部门
 func (r *DepartmentRepo) Create(ctx context.Context, department *model.Department) error {
+	department.TenantID = xcontext.GetTenantID(ctx)
 	return r.q.Department.WithContext(ctx).Create(department)
 }
 
 // GetByID 根据ID获取部门
 func (r *DepartmentRepo) GetByID(ctx context.Context, departmentID string) (*model.Department, error) {
-	return r.q.Department.WithContext(ctx).Where(r.q.Department.DepartmentID.Eq(departmentID)).First()
+	tenantID := xcontext.GetTenantID(ctx)
+	return r.q.Department.WithContext(ctx).
+		Where(r.q.Department.TenantID.Eq(tenantID)).
+		Where(r.q.Department.DepartmentID.Eq(departmentID)).
+		First()
 }
 
 // Update 更新部门
 func (r *DepartmentRepo) Update(ctx context.Context, departmentID string, updates map[string]interface{}) error {
-	_, err := r.q.Department.WithContext(ctx).Where(r.q.Department.DepartmentID.Eq(departmentID)).Updates(updates)
+	tenantID := xcontext.GetTenantID(ctx)
+	_, err := r.q.Department.WithContext(ctx).
+		Where(r.q.Department.TenantID.Eq(tenantID)).
+		Where(r.q.Department.DepartmentID.Eq(departmentID)).
+		Updates(updates)
 	return err
 }
 
 // Delete 删除部门(软删除)
 func (r *DepartmentRepo) Delete(ctx context.Context, departmentID string) error {
-	_, err := r.q.Department.WithContext(ctx).Where(r.q.Department.DepartmentID.Eq(departmentID)).Delete()
+	tenantID := xcontext.GetTenantID(ctx)
+	_, err := r.q.Department.WithContext(ctx).
+		Where(r.q.Department.TenantID.Eq(tenantID)).
+		Where(r.q.Department.DepartmentID.Eq(departmentID)).
+		Delete()
 	return err
 }
 
 // BatchDelete 批量删除部门
 func (r *DepartmentRepo) BatchDelete(ctx context.Context, departmentIDs []string) error {
-	_, err := r.q.Department.WithContext(ctx).Where(r.q.Department.DepartmentID.In(departmentIDs...)).Delete()
+	tenantID := xcontext.GetTenantID(ctx)
+	_, err := r.q.Department.WithContext(ctx).
+		Where(r.q.Department.TenantID.Eq(tenantID)).
+		Where(r.q.Department.DepartmentID.In(departmentIDs...)).
+		Delete()
 	return err
 }
 
 // GetByIDs 根据部门ID列表获取部门信息
 func (r *DepartmentRepo) GetByIDs(ctx context.Context, departmentIDs []string) ([]*model.Department, error) {
-	return r.q.Department.WithContext(ctx).Where(r.q.Department.DepartmentID.In(departmentIDs...)).Find()
+	tenantID := xcontext.GetTenantID(ctx)
+	return r.q.Department.WithContext(ctx).
+		Where(r.q.Department.TenantID.Eq(tenantID)).
+		Where(r.q.Department.DepartmentID.In(departmentIDs...)).
+		Find()
 }
 
 // List 获取租户的所有部门（按排序权重升序）
 func (r *DepartmentRepo) List(ctx context.Context) ([]*model.Department, error) {
+	tenantID := xcontext.GetTenantID(ctx)
 	return r.q.Department.WithContext(ctx).
+		Where(r.q.Department.TenantID.Eq(tenantID)).
 		Order(r.q.Department.Sort.Asc()).
 		Find()
 }
 
 // ListWithFilters 根据筛选条件分页获取部门列表
 func (r *DepartmentRepo) ListWithFilters(ctx context.Context, offset, limit int, departmentName string, statusFilter int, parentIDFilter string) ([]*model.Department, int64, error) {
-	q := r.q.Department.WithContext(ctx)
+	tenantID := xcontext.GetTenantID(ctx)
+	q := r.q.Department.WithContext(ctx).Where(r.q.Department.TenantID.Eq(tenantID))
 
-	// 应用筛选条件
 	if departmentName != "" {
 		q = q.Where(r.q.Department.DepartmentName.Like("%" + departmentName + "%"))
 	}
@@ -76,20 +99,20 @@ func (r *DepartmentRepo) ListWithFilters(ctx context.Context, offset, limit int,
 		q = q.Where(r.q.Department.ParentID.Eq(parentIDFilter))
 	}
 
-	// 获取总数
 	total, err := q.Count()
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// 分页查询
 	depts, err := q.Order(r.q.Department.Sort.Asc()).Offset(offset).Limit(limit).Find()
 	return depts, total, err
 }
 
 // GetChildren 获取子部门
 func (r *DepartmentRepo) GetChildren(ctx context.Context, parentID string) ([]*model.Department, error) {
+	tenantID := xcontext.GetTenantID(ctx)
 	return r.q.Department.WithContext(ctx).
+		Where(r.q.Department.TenantID.Eq(tenantID)).
 		Where(r.q.Department.ParentID.Eq(parentID)).
 		Order(r.q.Department.Sort.Asc()).
 		Find()
@@ -118,7 +141,11 @@ func (r *DepartmentRepo) GetDescendantIDs(ctx context.Context, departmentID stri
 
 // UpdateStatus 更新部门状态
 func (r *DepartmentRepo) UpdateStatus(ctx context.Context, departmentID string, status int) error {
-	_, err := r.q.Department.WithContext(ctx).Where(r.q.Department.DepartmentID.Eq(departmentID)).Update(r.q.Department.Status, int16(status))
+	tenantID := xcontext.GetTenantID(ctx)
+	_, err := r.q.Department.WithContext(ctx).
+		Where(r.q.Department.TenantID.Eq(tenantID)).
+		Where(r.q.Department.DepartmentID.Eq(departmentID)).
+		Update(r.q.Department.Status, int16(status))
 	return err
 }
 
@@ -129,7 +156,9 @@ func (r *DepartmentRepo) CountByDepartmentID(ctx context.Context, userRepo *User
 
 // HasChildren 检查是否有子部门
 func (r *DepartmentRepo) HasChildren(ctx context.Context, departmentID string) (bool, error) {
+	tenantID := xcontext.GetTenantID(ctx)
 	count, err := r.q.Department.WithContext(ctx).
+		Where(r.q.Department.TenantID.Eq(tenantID)).
 		Where(r.q.Department.ParentID.Eq(departmentID)).
 		Count()
 	if err != nil {
