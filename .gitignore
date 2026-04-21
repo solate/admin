@@ -1,0 +1,16 @@
+# Environment & secrets
+.env
+.env.*
+*.secret
+*.key
+*.pem
+
+# Claude Code local settings (contains personal permissions/credentials)
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
