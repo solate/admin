@@ -18,6 +18,7 @@
 | 8 | **ID 全部 string** | `idgen.GenerateUUID()`，不用 int64 自增 |
 | 9 | **错误码集中管理** | `xerr` 包统一定义，Service 层用 `xerr.Wrap` 包装 |
 | 10 | **一行日志** | zerolog 链式调用写在一行，禁止多行 |
+| 11 | **Config 分层** | struct 在 `internal/config/`，各 pkg 自定义 Config，main.go 做映射 |
 
 ---
 
@@ -25,8 +26,9 @@
 
 ```
 backend/
-├── cmd/server/main.go              # 入口
+├── cmd/server/main.go              # 入口（组合根，组装所有依赖）
 ├── internal/
+│   ├── config/                     # Config struct + Viper 加载（应用专属，非 pkg）
 │   ├── handler/{domain}/           # HTTP 处理器（域子包）
 │   ├── service/{domain}/           # 业务逻辑（域子包）
 │   ├── repository/                 # 数据仓储（集中式，GORM Gen）
@@ -37,17 +39,20 @@ backend/
 │   ├── dal/query/                  # GORM Gen 生成（勿手动编辑）
 │   └── rbac/                       # RBAC 权限缓存
 ├── pkg/
-│   ├── config/                     # 配置加载
-│   ├── database/                   # 数据库连接
-│   ├── jwt/                        # JWT 工具
+│   ├── database/                   # 数据库连接（自有 database.Config）
+│   ├── jwt/                        # JWT 工具（自有 jwt.Config）
+│   ├── logger/                     # 日志工具（自有 logger.Config）
 │   ├── xcontext/                   # 多租户认证上下文
 │   ├── xerr/                       # 业务错误码
 │   ├── response/                   # HTTP 响应封装
 │   ├── idgen/                      # ID 生成器
-│   ├── password/                   # 密码工具
-│   └── logger/                     # 日志工具
+│   └── password/                   # 密码工具
+├── config/                         # YAML 配置文件
+│   ├── config.yaml                 # 基础配置
+│   ├── config.dev.yaml             # 开发环境覆盖
+│   └── config.prod.yaml            # 生产环境覆盖
 ├── migrations/                     # SQL 迁移文件（根目录）
-├── scripts/                       # 种子数据、生成脚本
+├── scripts/                        # 种子数据、生成脚本
 ├── docs/                           # 文档
 ├── Makefile
 └── go.mod

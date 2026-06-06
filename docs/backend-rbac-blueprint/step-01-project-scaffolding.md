@@ -14,8 +14,9 @@
 ```
 backend/
 ├── cmd/server/main.go          # 入口，最小化：只启动 HTTP server
-├── internal/                   # 空目录，后续步骤填充
-│   ├── handler/
+├── internal/
+│   ├── config/                 # 项目配置结构体 + Viper 加载（应用专属）
+│   ├── handler/                # 后续步骤填充
 │   ├── service/
 │   ├── repository/
 │   ├── router/
@@ -23,7 +24,19 @@ backend/
 │   ├── dto/
 │   ├── dal/
 │   └── rbac/
-├── pkg/                        # 空目录，后续步骤填充
+├── pkg/                        # 通用工具包，各包定义自己的 Config struct
+│   ├── database/
+│   ├── jwt/
+│   ├── logger/
+│   ├── xcontext/
+│   ├── xerr/
+│   ├── response/
+│   ├── idgen/
+│   └── password/
+├── config/                     # YAML 配置文件
+│   ├── config.yaml             # 基础配置
+│   ├── config.dev.yaml         # 开发环境覆盖
+│   └── config.prod.yaml        # 生产环境覆盖
 ├── migrations/                 # SQL 迁移文件（根目录）
 ├── scripts/                    # 种子数据、生成脚本
 ├── docs/
@@ -31,6 +44,23 @@ backend/
 ├── Makefile
 └── go.mod
 ```
+
+### Config 架构说明
+
+> 参考 Google 官方 pkgsite 项目的 B+C 混合模式
+
+| 位置 | 职责 | 性质 |
+|------|------|------|
+| `config/config.yaml` | 配置值（YAML） | 数据源 |
+| `internal/config/config.go` | Config 结构体 + 子结构体 | 项目专属，不可复用 |
+| `internal/config/load.go` | Viper 加载逻辑 `Load() (*Config, error)` | 无全局状态 |
+| `pkg/database/` 等 | 各包定义自己的 Config struct | 通用，可复用 |
+| `cmd/server/main.go` | 组装根，映射 internal/config → 各包 Config | 接线层 |
+
+**关键原则**：
+- **没有 `pkg/config/`**，config struct 在 `internal/config/`
+- 各 pkg 不知道 YAML 的存在，只接收自己的 Config struct
+- 禁止 `config.Get()` 全局单例，显式传参
 
 ## 实现细节
 
