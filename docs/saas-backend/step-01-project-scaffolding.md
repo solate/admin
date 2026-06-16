@@ -4,28 +4,31 @@
 
 创建 `backend/` 项目的完整目录结构、Go Module、Makefile，确保 `go build` 通过。
 
-**这一步不引入任何第三方依赖**，只使用标准库。
+**这一步只引入一个第三方依赖**：`gopkg.in/yaml.v3`（读取配置文件）。
 
 ## 前置条件
 
 - Go 1.22+ 已安装（`go version`）
 - 工作目录：`/path/to/admin/`
 
-## 文件清单
+## 目录结构
 
 ```
 backend/
-├── cmd/server/main.go
+├── cmd/
+│   └── server/
+│       └── main.go
 ├── internal/
 │   ├── config/
-│   ├── server/
-│   ├── router/
+│   ├── server/       ← Server struct：lifecycle + HTTP 全在此
+│   ├── router/       ← 仅路由注册
 │   ├── middleware/
 │   ├── handler/
 │   ├── service/
 │   ├── repository/
-│   ├── model/
-│   ├── query/
+│   ├── model/        ← gorm-gen 输出，禁止手写
+│   ├── query/        ← gorm-gen 输出，禁止手写
+│   ├── dto/
 │   └── rbac/
 ├── pkg/
 │   ├── database/
@@ -42,201 +45,268 @@ backend/
 ├── migrations/
 ├── scripts/
 ├── .gitignore
-├── .air.toml
 ├── Makefile
 └── go.mod
 ```
 
-## 实现规范
+## 架构选型：为什么只有 `internal/server/`
+
+### Gin 社区单层方案（本项目采用）
+
+主流 Gin boilerplate（vsouza、Massad 等）的标准结构：`internal/server/` 既封装 Gin engine，也管理 HTTP server lifecycle（Start/Stop），同时持有 db/redis/logger 等基础设施依赖。
+
+```
+main.go → server.New(cfg) → server.Start() / server.Stop()
+```
+
+`internal/server/` 就是 App，没有额外的编排层。
+
+### go-kratos 两层方案（本项目未采用）
+
+go-kratos 为了同时支持 HTTP + gRPC 两个传输层，拆出了独立的编排层：
+
+```
+internal/app/    ← kratos.New()，编排多个 server 组件
+internal/server/ ← HTTP 组件 / gRPC 组件
+```
+
+对纯 Gin 项目（单 HTTP 传输），这一层是多余的。
+
+### 两层职责对应表
+
+| 包 | 职责 |
+|---|---|
+| `internal/server/` | 创建 Gin engine；注册中间件；调用 router.Setup()；包装 `*http.Server`；Start/Stop lifecycle；持有 db/redis/logger（Step 02 起） |
+| `internal/router/` | `Setup(r *gin.Engine, ...)` 注册全部路由，无 lifecycle |
+
+## 实现
 
 ### 1. Go Module
 
 ```bash
 mkdir backend && cd backend
 go mod init admin
+go get gopkg.in/yaml.v3
 ```
 
-模块名 `admin`，与旧项目一致，方便后续 import 路径简短。
+模块名 `admin`，与旧项目一致，import 路径简短。
 
-### 2. main.go — 最小可运行
+### 2. cmd/server/main.go
 
 ```go
 package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"admin/internal/config"
+	"admin/internal/server"
 )
 
 func main() {
-	// 最小 HTTP 服务器，验证项目骨架
+	cfg, err := config.Load("config/config.yaml")
+	if err != nil {
+		log.Fatalf("load config: %v", err)
+	}
+
+	srv, err := server.New(cfg)
+	if err != nil {
+		log.Fatalf("init server: %v", err)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		if err := srv.Start(); err != nil {
+			log.Fatalf("start server: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	stop()
+	log.Println("shutdown signal received")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	srv.Stop(shutdownCtx)
+	log.Println("server exited")
+}
+```
+
+**设计要点**：
+- `signal.NotifyContext`（Go 1.16+）：比手写 channel 更简洁
+- 30 秒优雅退出超时（生产级标准，Step 01 就定好，后续不再改）
+- main.go 是**最终结构**——后续步骤只填充 `server.New()` 内部，main.go 不再变动
+
+### 3. internal/server/server.go（Step 01 骨架）
+
+```go
+package server
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"time"
+
+	"admin/internal/config"
+)
+
+type Server struct {
+	httpSrv *http.Server
+	// Step 02 起追加：db *gorm.DB, rdb *redis.Client, logger zerolog.Logger
+	// Step 05 起追加：cronRunner *cron.Runner
+}
+
+func New(cfg *config.Config) (*Server, error) {
+	// Step 02 起：初始化 db、redis、logger，传入 Server
+	// Step 03 起替换为：engine := gin.New(); router.Setup(engine, ...)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"status":"ok"}`)
 	})
 
-	srv := &http.Server{
-		Addr:         ":8080",
+	httpSrv := &http.Server{
+		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
+	return &Server{httpSrv: httpSrv}, nil
+}
 
-	// 优雅退出（从第一天就养成习惯）
-	go func() {
-		log.Printf("server starting on %s", srv.Addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %v", err)
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Println("shutting down server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("server shutdown: %v", err)
+func (s *Server) Start() error {
+	// Step 05 起追加：go s.cronRunner.Start(ctx)
+	log.Printf("server starting on %s", s.httpSrv.Addr)
+	if err := s.httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
 	}
-	log.Println("server exited")
+	return nil
+}
+
+func (s *Server) Stop(ctx context.Context) {
+	// Step 05 起逆序追加：s.cronRunner.Stop()
+	if err := s.httpSrv.Shutdown(ctx); err != nil {
+		log.Printf("server shutdown error: %v", err)
+	}
 }
 ```
 
 **设计要点**：
-- 从第一天就使用优雅退出模式，后续只需替换 handler 不需改结构
-- `ReadTimeout` / `WriteTimeout` 防止慢连接占用资源
-- 不使用 `http.ListenAndServe(":8080", nil)`（全局默认 mux 是反模式）
+- Step 01 先用标准库 `http.NewServeMux()`，Step 03 替换为 `gin.New()`，接口不变
+- 注释标注了各 Step 会追加的字段和逻辑，避免未来忘记位置
+- cron 加入后（Step 05），在 `Start()`/`Stop()` 内追加，main.go 无感知
 
-### 3. Makefile
+### 4. internal/config/config.go（Step 01 极简版）
+
+```go
+package config
+
+import (
+	"fmt"
+	"os"
+
+	"gopkg.in/yaml.v3"
+)
+
+type Config struct {
+	Server ServerConfig `yaml:"server"`
+	// Step 02 起追加：Database, Redis, JWT, Log
+}
+
+type ServerConfig struct {
+	Port int    `yaml:"port"`
+	Mode string `yaml:"mode"`
+}
+
+func Load(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config: %w", err)
+	}
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+	if cfg.Server.Port == 0 {
+		cfg.Server.Port = 8080
+	}
+	return &cfg, nil
+}
+```
+
+### 5. Makefile
 
 ```makefile
-.PHONY: build run dev clean test lint
+.PHONY: build run dev clean test lint fmt
 
-# 构建
 build:
 	go build -o bin/server ./cmd/server
 
-# 运行
 run:
 	go run ./cmd/server
 
-# 热重载开发（需安装 air）
 dev:
-	air
+	go run ./cmd/server
 
-# 清理
 clean:
 	rm -rf bin/ tmp/
 
-# 测试
 test:
 	go test ./... -v -count=1
 
-# 代码检查
 lint:
 	golangci-lint run ./...
 
-# 格式化
 fmt:
 	gofmt -w .
 ```
 
-### 4. .air.toml（热重载）
+**注意**：不使用 air 热重载，`dev` 目标直接 `go run`。
 
-```toml
-root = "."
-tmp_dir = "tmp"
-
-[build]
-cmd = "go build -o ./tmp/server ./cmd/server"
-bin = "./tmp/server"
-include_ext = ["go", "yaml"]
-exclude_dir = ["tmp", "bin", "vendor", "node_modules"]
-delay = 1000
-
-[log]
-time = false
-
-[misc]
-clean_on_exit = true
-```
-
-### 5. .gitignore
-
-```
-# 构建产物
-bin/
-tmp/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-
-# 环境
-.env
-.env.local
-
-# OS
-.DS_Store
-Thumbs.db
-
-# 依赖（如果 vendor 模式）
-# vendor/
-```
-
-### 6. config/config.yaml（占位）
+### 6. config/config.yaml
 
 ```yaml
-# 服务器配置
 server:
   port: 8080
   mode: debug  # debug / release
 
-# 后续步骤填充
+# Step 02 起填充：
 # database:
 # redis:
 # jwt:
 # log:
 ```
 
-### 7. 空目录占位文件
+### 7. 包文档占位（doc.go）
 
-每个空目录放一个 `.gitkeep` 文件，确保 Git 能跟踪。
-
-或者：每个包目录放一个 `doc.go`：
+每个空包目录放 `doc.go`，让 Git 跟踪目录，同时作为包文档：
 
 ```go
-// Package database provides PostgreSQL connection management.
-package database
+// Package server manages HTTP server lifecycle and Gin engine setup.
+package server
 ```
-
-**推荐用 doc.go**：既能让 Git 跟踪目录，又能作为包文档。
 
 ## 验收标准
 
 ```bash
-# 1. Go Module 初始化
-cd backend && cat go.mod | grep "module admin"
-# 期望：module admin
+# 1. 模块名正确
+cat go.mod | grep "module admin"
 
-# 2. 编译通过
-go build ./cmd/server
-# 期望：无错误，生成 bin/server
+# 2. 全包编译通过
+go build ./...
 
 # 3. Makefile 工作
 make build
 ls bin/server
-# 期望：文件存在
 
 # 4. 启动并响应
 make run &
@@ -244,25 +314,6 @@ sleep 1
 curl -s http://localhost:8080/health
 # 期望：{"status":"ok"}
 kill %1
-
-# 5. 目录结构完整
-find . -type d | sort
-# 期望：包含所有预定义目录
-```
-
-## AI 协作提示
-
-```
-请按 step-01-project-scaffolding.md 在 admin/backend/ 下创建项目骨架。
-
-要求：
-1. go mod init admin
-2. main.go 使用标准库 net/http + 优雅退出模式
-3. 不引入任何第三方依赖
-4. 每个空包目录放 doc.go（包注释）
-5. Makefile 包含 build/run/dev/clean/test/lint/fmt 目标
-6. .air.toml 热重载配置
-7. .gitignore 排除 bin/tmp/.env
 ```
 
 ---

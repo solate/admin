@@ -1,0 +1,32 @@
+server:
+  port: 8080
+  mode: debug
+  read_timeout: 10s
+  write_timeout: 10s
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  dbname: admin_dev
+  sslmode: disable
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
+
+redis:
+  addr: localhost:6379
+  password: ""
+  db: 0
+
+jwt:
+  access_secret: "your-access-secret-change-in-production"
+  refresh_secret: "your-refresh-secret-change-in-production"
+  access_ttl: 30
+  refresh_ttl: 10080
+  issuer: "admin"
+
+log:
+  level: debug
+  format: console
