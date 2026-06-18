@@ -30,6 +30,7 @@ type Options struct {
 
 func New(opts Options) (*Server, error) {
 	// Step 03 起替换为：engine := gin.New(); router.Setup(engine, ...)
+	// gin.SetMode(opts.Config.Server.Mode) // Step 03 接入:把 Server.Mode 喂给 gin
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

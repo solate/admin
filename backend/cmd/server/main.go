@@ -5,7 +5,6 @@ import (
 	"flag"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"admin/internal/config"
 	"admin/internal/server"
@@ -84,7 +83,7 @@ func main() {
 	stop()
 	log.Info().Msg("shutdown signal received")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.GracefulTimeout)
 	defer cancel()
 	srv.Stop(shutdownCtx)
 	log.Info().Msg("server exited")
