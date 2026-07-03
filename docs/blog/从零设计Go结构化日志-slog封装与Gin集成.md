@@ -312,7 +312,7 @@ import (
 
 func main() {
 	// 1. 配置
-	cfg, err := config.Load("config/config.yaml")
+	cfg, err := config.InitConfig()
 	if err != nil {
 		log.Fatal("load config: " + err.Error()) // 此时 logger 还没建，用 stdlib log
 	}

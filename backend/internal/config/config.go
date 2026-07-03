@@ -66,9 +66,11 @@ type LogConfig struct {
 	AddSource bool   `mapstructure:"add_source"` // 记录调用位置 file:line
 }
 
-// Load 从 basePath 读取配置并返回校验过的 *Config。
-func Load(basePath string) (*Config, error) {
-	cfg, err := xviper.Load[Config](xviper.WithPath[Config](basePath), xviper.WithValidate(validate))
+// InitConfig 按 xviper 约定加载配置并返回校验过的 *Config。
+// 路径固定为 config/config.yaml(xviper 内建约定):docker/k3s 靠挂载覆盖该路径的内容,
+// 环境切换靠 APP_ENV 走 overlay,均无需改路径或传参。
+func InitConfig() (*Config, error) {
+	cfg, err := xviper.Load[Config](xviper.WithValidate(validate))
 	if err != nil {
 		return nil, err
 	}

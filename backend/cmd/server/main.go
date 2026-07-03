@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log/slog"
 	"os/signal"
 	"syscall"
@@ -16,11 +15,8 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "config/config.yaml", "配置文件路径")
-	flag.Parse()
-
-	// 1. 加载配置
-	cfg, err := config.Load(*configPath)
+	// 1. 加载配置(路径约定 config/config.yaml,靠挂载覆盖内容,APP_ENV 切环境)
+	cfg, err := config.InitConfig()
 	if err != nil {
 		panic("load config: " + err.Error())
 	}

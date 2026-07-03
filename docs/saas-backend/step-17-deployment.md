@@ -8,6 +8,8 @@
 
 - 所有功能开发完成
 
+> 配置路径约定、flag 去留决策、k3s ConfigMap + Secret 挂载的深入设计见 [research/config-loading/05-配置部署路径与ConfigMap挂载设计](research/config-loading/05-配置部署路径与ConfigMap挂载设计.md)。本步的 Dockerfile / docker-compose 是其落地实例。
+
 ## 文件清单
 
 ```
@@ -57,8 +59,9 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/v1/health || exit 1
 
 ENTRYPOINT ["./server"]
-CMD ["-config", "config/config.prod.yaml"]
 ```
+
+> 无 `-config` flag：路径固定为约定的 `config/config.yaml`（WORKDIR 下相对路径，由 `pkg/xviper` 内置约定），环境切换靠 `APP_ENV`、覆盖配置靠 volume/ConfigMap 挂载或 `APP_*` 环境变量。详见 [research/config-loading/05](research/config-loading/05-配置部署路径与ConfigMap挂载设计.md)。
 
 **构建优化**：
 - 多阶段构建：最终镜像 ~20MB（Alpine + 静态二进制）

@@ -537,7 +537,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"os/signal"
 	"syscall"
 
@@ -549,11 +548,8 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "config/config.yaml", "配置文件路径")
-	flag.Parse()
-
-	// 1. 加载配置
-	cfg, err := config.Load(*configPath)
+	// 1. 加载配置(路径约定 config/config.yaml,由 xviper 内置,无需传参)
+	cfg, err := config.InitConfig()
 	if err != nil {
 		panic("load config: " + err.Error())
 	}
@@ -627,7 +623,7 @@ func main() {
 ```
 
 **关键设计**：
-- `internal/config.Load` 返回 `*config.Config`,main 直接用;`config.Config` → 各 `pkg.Config` 的映射在 main 中完成
+- `internal/config.InitConfig` 返回 `*config.Config`,main 直接用;`config.Config` → 各 `pkg.Config` 的映射在 main 中完成
 - 各 pkg 不知道 YAML 的存在，只接收自己的 Config struct —— 换项目只需换 YAML 和 main 的映射
 - 配置加载失败用 `panic`（此时 logger 尚未初始化）；其余基础设施失败用 `log.Fatal`
 - `signal.NotifyContext` + `cfg.Server.GracefulTimeout` 优雅退出超时（取自配置，不再硬编码）
@@ -770,7 +766,7 @@ go run ./cmd/server 2>&1 | head -3
 6. pkg/logger/ 有自己的 Config struct,New() 返回 zerolog.Logger
 7. pkg/database/ 有自己的 Config struct,New() 返回 *gorm.DB,含 zerolog 适配的 GORM logger
 8. pkg/rdb/ 有自己的 Config struct,New() 返回 *redis.Client
-9. cmd/server/main.go 调 config.Load,做 config.Config → 各 pkg.Config 映射;关闭超时用 cfg.Server.GracefulTimeout
+9. cmd/server/main.go 调 config.InitConfig(),做 config.Config → 各 pkg.Config 映射;关闭超时用 cfg.Server.GracefulTimeout
 10. 不要用全局变量,所有依赖通过参数传递;绝不用 viper.AutomaticEnv
 11. GORM Logger 适配 zerolog(实现 gormlogger.Interface)
 12. config/config.yaml 写完整默认配置(含 graceful_timeout + cors)

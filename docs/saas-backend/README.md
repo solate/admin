@@ -200,6 +200,8 @@ internal/query       ← GORM Gen
 | 16 | [Swagger 文档](step-16-swagger.md) | swaggo 生成 API 文档 | 在线文档 |
 | 17 | [部署与运维](step-17-deployment.md) | Dockerfile / docker-compose / 健康检查 | 容器化部署 |
 
+> 配置路径约定、flag 去留、docker-compose 与 k3s ConfigMap 挂载的深入设计见 [research/config-loading/05-配置部署路径与ConfigMap挂载设计](research/config-loading/05-配置部署路径与ConfigMap挂载设计.md)
+
 **里程碑 5**：生产就绪
 
 ---
