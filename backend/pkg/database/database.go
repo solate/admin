@@ -3,15 +3,15 @@ package database
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
-	"github.com/rs/zerolog"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 )
 
-func New(cfg Config, log zerolog.Logger) (*gorm.DB, error) {
+func New(cfg Config, log *slog.Logger) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, cfg.SSLMode,
@@ -44,44 +44,47 @@ func Close(db *gorm.DB) error {
 	return sqlDB.Close()
 }
 
-// gormZerologger 将 GORM SQL 日志桥接到 zerolog
-type gormZerologger struct {
-	log      zerolog.Logger
+// gormSlogger 将 GORM SQL 日志桥接到 slog。
+// 全程用 *Context 变体，让 SQL 日志也能带 request_id（靠 logger.ContextHandler）。
+type gormSlogger struct {
+	log      *slog.Logger
 	logLevel gormlogger.LogLevel
 }
 
-func newGormLogger(log zerolog.Logger) gormlogger.Interface {
-	return &gormZerologger{
-		log:      log,
-		logLevel: gormlogger.Info,
-	}
+func newGormLogger(log *slog.Logger) gormlogger.Interface {
+	return &gormSlogger{log: log, logLevel: gormlogger.Info}
 }
 
-func (l *gormZerologger) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
-	return &gormZerologger{log: l.log, logLevel: level}
+func (l *gormSlogger) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
+	return &gormSlogger{log: l.log, logLevel: level}
 }
 
-func (l *gormZerologger) Info(ctx context.Context, msg string, args ...interface{}) {
-	l.log.Info().Msgf(msg, args...)
+func (l *gormSlogger) Info(ctx context.Context, msg string, args ...interface{}) {
+	l.log.InfoContext(ctx, fmt.Sprintf(msg, args...))
 }
 
-func (l *gormZerologger) Warn(ctx context.Context, msg string, args ...interface{}) {
-	l.log.Warn().Msgf(msg, args...)
+func (l *gormSlogger) Warn(ctx context.Context, msg string, args ...interface{}) {
+	l.log.WarnContext(ctx, fmt.Sprintf(msg, args...))
 }
 
-func (l *gormZerologger) Error(ctx context.Context, msg string, args ...interface{}) {
-	l.log.Error().Msgf(msg, args...)
+func (l *gormSlogger) Error(ctx context.Context, msg string, args ...interface{}) {
+	l.log.ErrorContext(ctx, fmt.Sprintf(msg, args...))
 }
 
-func (l *gormZerologger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
+func (l *gormSlogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
 	if l.logLevel <= gormlogger.Silent {
 		return
 	}
 	elapsed := time.Since(begin)
 	sql, rows := fc()
-	ev := l.log.Debug().Dur("elapsed", elapsed).Int64("rows", rows).Str("sql", sql)
-	if err != nil {
-		ev = l.log.Error().Err(err).Dur("elapsed", elapsed).Int64("rows", rows).Str("sql", sql)
+	attrs := []slog.Attr{
+		slog.String("sql", sql),
+		slog.Int64("rows", rows),
+		slog.Duration("elapsed", elapsed),
 	}
-	ev.Msg("sql")
+	if err != nil {
+		l.log.LogAttrs(ctx, slog.LevelError, "sql error", append(attrs, slog.Any("err", err))...)
+		return
+	}
+	l.log.LogAttrs(ctx, slog.LevelDebug, "sql", attrs...)
 }

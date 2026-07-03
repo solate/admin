@@ -3,11 +3,11 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 
 	"admin/internal/config"
@@ -17,7 +17,7 @@ type Server struct {
 	httpSrv *http.Server
 	db      *gorm.DB
 	rdb     *redis.Client
-	log     zerolog.Logger
+	log     *slog.Logger
 	// Step 05 起追加：cronRunner *cron.Runner
 }
 
@@ -25,7 +25,7 @@ type Options struct {
 	Config *config.Config
 	DB     *gorm.DB
 	RDB    *redis.Client
-	Log    zerolog.Logger
+	Log    *slog.Logger
 }
 
 func New(opts Options) (*Server, error) {
@@ -54,7 +54,7 @@ func New(opts Options) (*Server, error) {
 
 func (s *Server) Start() error {
 	// Step 05 起追加：go s.cronRunner.Start(ctx)
-	s.log.Info().Str("addr", s.httpSrv.Addr).Msg("server starting")
+	s.log.Info("server starting", slog.String("addr", s.httpSrv.Addr))
 	if err := s.httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
 	}
@@ -64,6 +64,6 @@ func (s *Server) Start() error {
 func (s *Server) Stop(ctx context.Context) {
 	// Step 05 起逆序追加：s.cronRunner.Stop()
 	if err := s.httpSrv.Shutdown(ctx); err != nil {
-		s.log.Error().Err(err).Msg("server shutdown error")
+		s.log.Error("server shutdown error", slog.Any("err", err))
 	}
 }

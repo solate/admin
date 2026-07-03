@@ -13,14 +13,9 @@
 ## 文件清单
 
 ```
-pkg/xconfig/                      # 可复用加载库(整目录逐字复用到任意项目)
-├── xconfig.go                    # Loader 结构体:New(opts) + (l).Load(target) + Override
-├── options.go                    # functional options(WithFile/WithSearchPaths/WithFileName/WithFileType/WithDefaults)
-└── xconfig_test.go               # Loader / Override 自包含测试
-
-internal/config/                  # 项目专属配置层(新项目只改这里)
-├── config.go                     # 类型化 Config + Load + validate
-└── config_test.go                # 项目配置集成测试
+internal/config/                  # 自包含配置层(内联 viper 加载;新微服务复制整目录、只改 struct)
+├── config.go                     # 类型化 Config + Load + 私有 loadFromYAML/override + validate
+└── config_test.go                # 加载器行为 + 项目集成测试
 
 internal/server/
 └── server.go                     # Server 接收 Options，持有 db/rdb/log
@@ -38,81 +33,124 @@ pkg/rdb/
 └── rdb.go                        # New(cfg Config) (*redis.Client, error)
 
 config/
-└── config.yaml                   # 完整默认配置
+├── config.yaml                   # base：完整默认配置（即 dev 默认值）
+└── config.prod.yaml              # 生产 overlay：只写与 base 不同的字段（APP_ENV=prod 触发）
 
 cmd/server/main.go                # 组合根：配置 → 日志 → DB → Redis → server
 ```
 
-> 敏感字段（密码、密钥）通过环境变量覆盖，不需要单独的 `config.dev.yaml`。
+> **多环境（base + overlay）**：base `config.yaml` 承载共享默认值（即 dev 配置）；每个环境的差异放进 `config.{env}.yaml` overlay，由 `APP_ENV` 触发合并（见 §7.1）。**敏感字段（密码、密钥）始终走环境变量覆盖**，不进任何配置文件——overlay 只放非密钥的环境差异（mode / log 级别与格式 / 域名 / 库名等）。
 
 ## 实现规范
 
-### 1. Config 架构（可复用 Loader + 项目专属 Config）
+### 1. Config 架构（自包含单包：内联 viper 加载 + 项目专属 Config）
 
-**核心思想**：配置分两层。
-- `pkg/xconfig` = **可复用加载库**：`Loader` 结构体用 viper 读文件并反序列化到调用方提供的类型化结构。这是"读取机制"，跨项目通用，**整目录逐字复用**。我们写的代码**零反射**（反序列化交给 viper/mapstructure）。
-- `internal/config` = **项目专属**：本项目的类型化 `Config` 结构 + 显式环境变量覆盖 + 显式校验。**新项目只改这一层**。
+**核心思想**：配置全部在一个自包含包 `internal/config` 里。
+- **内联的 viper 加载机制**（私有，不随项目变）：`loadFromYAML(target, paths...)` 用 viper 读 base（+ overlay 依次合并）并解码到类型化结构（走 yaml tag）；`override(dst, key)` 显式 env 覆盖。我们写的代码**零反射**（反序列化交给 viper）。
+- **项目专属**（新微服务只改这里）：类型化 `Config` 结构 + `Load`（拼路径 + 调 `loadFromYAML` + `override` 4 个密钥）+ `validate`。
 
-为什么这样拆：`pkg/xconfig` 要做成整套后台框架的地基（跨项目复用、不重写读取逻辑），但用户又坚持**不用反射**（配置结构已知，反射是过度设计）。二者张力靠分层解决——"读取机制"通用、可复用、不反射；"Config 字段/env 名/校验"因项目而异、显式写在项目里。详见 `research/config-loading/03-封装设计.md`。
+为什么是单包：用户坚持**不用反射**（配置结构已知，反射是过度设计），所以 env 覆盖/校验是显式类型化代码、因项目而异；而"读取机制"（viper 读文件 + 反序列化）跨项目通用。早期版本（v4/v5）把通用机制抽成独立可复用库 `pkg/xconfig`，但落地发现复用模式是"**复制**"不是"import"（各微服务独立 module），独立库收益=0，于是 v6 合并回单包——加载机制收为私有函数。详见 `research/config-loading/03-封装设计.md`（v6 演进）。
 
 ```go
-// pkg/xconfig/xconfig.go (可复用,零反射)
-package xconfig
+// internal/config/config.go (自包含:内联 viper 加载 + 项目专属 Config)
+package config
 
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 )
 
-// Loader 持有加载选项,可重复 Load;未来 Reload/Watch/Get 挂在 *Loader 上。
-type Loader struct {
-	file        string
-	searchPaths []string
-	fileName    string
-	fileType    string
-	defaults    map[string]any
+// Config 应用总配置结构(项目专属)。仅 yaml tag(loadFromYAML 让 viper 读 yaml tag)。
+type Config struct {
+	Server   ServerConfig   `yaml:"server"`
+	Database DatabaseConfig `yaml:"database"`
+	Redis    RedisConfig    `yaml:"redis"`
+	JWT      JWTConfig      `yaml:"jwt"`
+	Log      LogConfig      `yaml:"log"`
 }
 
-func New(opts ...Option) *Loader {
-	l := &Loader{fileName: "config", fileType: "yaml"}
-	for _, opt := range opts {
-		opt(l)
+type ServerConfig struct {
+	Port            int           `yaml:"port"`
+	Mode            string        `yaml:"mode"` // debug/release/test → Step 03 喂 gin.SetMode
+	ReadTimeout     time.Duration `yaml:"read_timeout"`
+	WriteTimeout    time.Duration `yaml:"write_timeout"`
+	GracefulTimeout time.Duration `yaml:"graceful_timeout"` // 优雅关闭超时
+	Cors            CorsConfig    `yaml:"cors"`
+}
+
+type CorsConfig struct {
+	AllowedOrigins   []string `yaml:"allowed_origins"`
+	AllowedMethods   []string `yaml:"allowed_methods"`
+	AllowedHeaders   []string `yaml:"allowed_headers"`
+	AllowCredentials bool     `yaml:"allow_credentials"`
+}
+
+type DatabaseConfig struct {
+	Host            string `yaml:"host"`
+	Port            int    `yaml:"port"`
+	User            string `yaml:"user"`
+	Password        string `yaml:"password"`
+	DBName          string `yaml:"dbname"`
+	SSLMode         string `yaml:"sslmode"`
+	MaxIdleConns    int    `yaml:"max_idle_conns"`
+	MaxOpenConns    int    `yaml:"max_open_conns"`
+	ConnMaxLifetime int    `yaml:"conn_max_lifetime"` // 秒
+}
+
+type RedisConfig struct {
+	Addr     string `yaml:"addr"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+
+type JWTConfig struct {
+	AccessSecret  string `yaml:"access_secret"`
+	RefreshSecret string `yaml:"refresh_secret"`
+	AccessTTL     int    `yaml:"access_ttl"`  // 分钟
+	RefreshTTL    int    `yaml:"refresh_ttl"` // 分钟
+	Issuer        string `yaml:"issuer"`
+}
+
+type LogConfig struct {
+	Level  string `yaml:"level"`  // debug/info/warn/error
+	Format string `yaml:"format"` // json/console
+}
+
+// loadFromYAML 把 paths[0] 作为 base 读入,paths[1:] 作为 overlay 依次 MergeInConfig 合并,
+// 最后解码到 target(yaml tag + duration)。私有,不随项目变。
+// gotcha(测试钉死):不用 AutomaticEnv;嵌套 map 深合并;标量与 slice 由 overlay 整体替换(slice 不追加)。
+func loadFromYAML(target any, paths ...string) error {
+	if len(paths) == 0 {
+		return fmt.Errorf("at least one config path required")
 	}
-	return l
-}
-
-// Load 读配置文件并 viper 反序列化到 target(类型化结构指针)。
-func (l *Loader) Load(target any) error {
 	if target == nil {
 		return fmt.Errorf("target must be a non-nil pointer")
 	}
 	v := viper.New()
-	if l.file != "" {
-		v.SetConfigFile(l.file)
-	} else {
-		for _, p := range l.searchPaths {
-			v.AddConfigPath(p)
-		}
-		v.SetConfigName(l.fileName)
-		v.SetConfigType(l.fileType)
-	}
-	for k, val := range l.defaults {
-		v.SetDefault(k, val)
-	}
+	v.SetConfigFile(paths[0])
 	if err := v.ReadInConfig(); err != nil {
-		return fmt.Errorf("read config: %w", err)
+		return fmt.Errorf("read config %s: %w", paths[0], err)
 	}
-	if err := v.Unmarshal(target); err != nil {
+	for _, p := range paths[1:] {
+		v.SetConfigFile(p)
+		if err := v.MergeInConfig(); err != nil {
+			return fmt.Errorf("merge config %s: %w", p, err)
+		}
+	}
+	// TagName="yaml" → 让 viper 读 yaml tag(而非默认 mapstructure tag);不影响 decode hook,duration 解码保留。
+	if err := v.Unmarshal(target, func(d *mapstructure.DecoderConfig) { d.TagName = "yaml" }); err != nil {
 		return fmt.Errorf("unmarshal config: %w", err)
 	}
 	return nil
 }
 
-// Override 用环境变量覆盖 *dst(类型化、无反射)。
-// key 存在(即使空串)则覆盖;不存在则保持。仅 string。
-func Override(dst *string, key string) {
+// override 用环境变量覆盖 *dst(类型化、无反射)。key 存在(即使空串)则覆盖;不存在则保持。仅 string。
+func override(dst *string, key string) {
 	if dst == nil {
 		return
 	}
@@ -120,109 +158,22 @@ func Override(dst *string, key string) {
 		*dst = v
 	}
 }
-```
 
-```go
-// pkg/xconfig/options.go
-package xconfig
-
-type Option func(*Loader)
-
-func WithFile(path string) Option        { return func(l *Loader) { l.file = path } }
-func WithSearchPaths(p ...string) Option { return func(l *Loader) { l.searchPaths = append(l.searchPaths, p...) } }
-func WithFileName(name string) Option    { return func(l *Loader) { l.fileName = name } }
-func WithFileType(ft string) Option      { return func(l *Loader) { l.fileType = ft } }
-func WithDefaults(d map[string]any) Option {
-	return func(l *Loader) {
-		if l.defaults == nil {
-			l.defaults = make(map[string]any)
-		}
-		for k, v := range d {
-			l.defaults[k] = v
-		}
+// Load 从 basePath 加载配置:loadFromYAML 读 base(+可选 APP_ENV overlay)→ 显式环境变量覆盖敏感字段 → validate 校验。
+func Load(basePath string) (*Config, error) {
+	paths := []string{basePath}
+	if env := os.Getenv("APP_ENV"); env != "" {
+		paths = append(paths, filepath.Join(filepath.Dir(basePath), "config."+env+".yaml"))
 	}
-}
-```
-
-```go
-// internal/config/config.go (项目专属)
-package config
-
-import (
-	"fmt"
-	"time"
-
-	"admin/pkg/xconfig"
-)
-
-// Config 应用总配置结构(项目专属)。仅 mapstructure tag(viper 用)。
-type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Log      LogConfig      `mapstructure:"log"`
-}
-
-type ServerConfig struct {
-	Port            int           `mapstructure:"port"`
-	Mode            string        `mapstructure:"mode"` // debug/release/test → Step 03 喂 gin.SetMode
-	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout    time.Duration `mapstructure:"write_timeout"`
-	GracefulTimeout time.Duration `mapstructure:"graceful_timeout"` // 优雅关闭超时
-	Cors            CorsConfig    `mapstructure:"cors"`
-}
-
-type CorsConfig struct {
-	AllowedOrigins   []string `mapstructure:"allowed_origins"`
-	AllowedMethods   []string `mapstructure:"allowed_methods"`
-	AllowedHeaders   []string `mapstructure:"allowed_headers"`
-	AllowCredentials bool     `mapstructure:"allow_credentials"`
-}
-
-type DatabaseConfig struct {
-	Host            string `mapstructure:"host"`
-	Port            int    `mapstructure:"port"`
-	User            string `mapstructure:"user"`
-	Password        string `mapstructure:"password"`
-	DBName          string `mapstructure:"dbname"`
-	SSLMode         string `mapstructure:"sslmode"`
-	MaxIdleConns    int    `mapstructure:"max_idle_conns"`
-	MaxOpenConns    int    `mapstructure:"max_open_conns"`
-	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"` // 秒
-}
-
-type RedisConfig struct {
-	Addr     string `mapstructure:"addr"`
-	Password string `mapstructure:"password"`
-	DB       int    `mapstructure:"db"`
-}
-
-type JWTConfig struct {
-	AccessSecret  string `mapstructure:"access_secret"`
-	RefreshSecret string `mapstructure:"refresh_secret"`
-	AccessTTL     int    `mapstructure:"access_ttl"`  // 分钟
-	RefreshTTL    int    `mapstructure:"refresh_ttl"` // 分钟
-	Issuer        string `mapstructure:"issuer"`
-}
-
-type LogConfig struct {
-	Level  string `mapstructure:"level"`  // debug/info/warn/error
-	Format string `mapstructure:"format"` // json/console
-}
-
-// Load 从 path 加载配置:xconfig 读文件 → 显式环境变量覆盖敏感字段 → validate 校验。
-func Load(path string) (*Config, error) {
 	var cfg Config
-	loader := xconfig.New(xconfig.WithFile(path))
-	if err := loader.Load(&cfg); err != nil {
+	if err := loadFromYAML(&cfg, paths...); err != nil {
 		return nil, err
 	}
 	// 显式环境变量覆盖(类型化、无反射、集中在项目层)
-	xconfig.Override(&cfg.Database.Password, "DB_PASSWORD")
-	xconfig.Override(&cfg.Redis.Password, "REDIS_PASSWORD")
-	xconfig.Override(&cfg.JWT.AccessSecret, "JWT_ACCESS_SECRET")
-	xconfig.Override(&cfg.JWT.RefreshSecret, "JWT_REFRESH_SECRET")
+	override(&cfg.Database.Password, "DB_PASSWORD")
+	override(&cfg.Redis.Password, "REDIS_PASSWORD")
+	override(&cfg.JWT.AccessSecret, "JWT_ACCESS_SECRET")
+	override(&cfg.JWT.RefreshSecret, "JWT_REFRESH_SECRET")
 	if err := validate(&cfg); err != nil {
 		return nil, fmt.Errorf("validate config: %w", err)
 	}
@@ -281,12 +232,12 @@ func validate(c *Config) error {
 ```
 
 **设计决策**：
-- **可复用加载库 `pkg/xconfig`**（package `xconfig`，x 前缀）：`Loader` 结构体 + functional options，整目录逐字复用到任意项目。我们写的代码零反射（`viper.Unmarshal` 内部用 mapstructure 是 viper 库的事，本包不 import `reflect`）。
-- **环境变量覆盖用显式类型化 `xconfig.Override`**（底层 `os.LookupEnv`），不用反射 / env tag / `viper.AutomaticEnv`。**不用 `AutomaticEnv`** 的原因：它与 `Unmarshal` 不兼容（走 `AllSettings()`，不查 `AutomaticEnv`），嵌套 key 覆盖会静默失效（详见 `research/config-loading/`）。`LookupEnv` 区分"未设置"与"设为空"——设为空串也算覆盖（可显式清空密钥）。
+- **自包含单包 `internal/config`**：viper 加载机制内联为私有 `loadFromYAML(target, paths...)` + `override(dst, key)`，与项目专属 `Config`/`Load`/`validate` 同在一个包。我们写的代码零反射（`viper.Unmarshal` 内部用 mapstructure 是 viper 库的事，本包不 import `reflect`）。
+- **环境变量覆盖用显式类型化 `override`**（底层 `os.LookupEnv`），不用反射 / env tag / `viper.AutomaticEnv`。**不用 `AutomaticEnv`** 的原因：它与 `Unmarshal` 不兼容（走 `AllSettings()`，不查 `AutomaticEnv`），嵌套 key 覆盖会静默失效（详见 `research/config-loading/`）。`LookupEnv` 区分"未设置"与"设为空"——设为空串也算覆盖（可显式清空密钥）。
 - **校验手写在项目层**（`internal/config.validate`），全覆盖；不用 `go-playground/validator`（那是反射），保持零反射依赖。
-- `Config` 结构用 `mapstructure:` tag（viper.Unmarshal 用），值与 YAML key 一致。
+- `Config` 结构用 `yaml:` tag（`loadFromYAML` 经 `DecoderConfigOption{TagName="yaml"}` 让 viper 读 yaml tag），值与 YAML key 一致。
 - 不用全局单例：`Load` 返回 `*Config` 通过参数传递。
-- **复用模型**：`pkg/xconfig/` 整目录逐字复用；新项目只改 `internal/config/`（Config 字段 + `Override` 的 env 名 + `validate` 规则）。`pkg/xconfig` 适用 `.claude/rules/reusable-package.md`（它是真可复用库），但仍是"轻量类型化 Loader"，不套用该规则的"泛型/反射驱动"模板。
+- **复用模型**：新微服务**复制整个 `internal/config/` 目录**，只改 `Config` 字段 + `override` 的 env 名 + `validate` 规则；`loadFromYAML`/`override` 是不随项目变的 viper 样板，原样保留。复用模式是"复制"而非"import"（各微服务独立 module）——这正是 v6 把加载机制从独立 `pkg/xconfig` 合并回 `internal/config` 的原因（详见 `03-封装设计.md` v6 演进）。
 
 ### 2. Logger — zerolog
 
@@ -724,6 +675,38 @@ log:
   format: console
 ```
 
+### 7.1 多环境：base + overlay 合并
+
+`config.yaml` 是 **base**（共享默认值，内容即 dev 配置）。每个环境的差异放进同目录的 `config.{env}.yaml`，由环境变量 **`APP_ENV`** 触发叠加：
+
+- 未设 `APP_ENV` → 仅 base（即 dev，零意外）。
+- `APP_ENV=prod` → base + `config/config.prod.yaml` 合并（overlay 只写差异行）。
+- `APP_ENV` 设了但 overlay 文件缺失 → **fail-fast**（merge 报错，启动前暴露）。
+
+**合并语义**（viper `MergeInConfig`）：嵌套 map **深合并**；标量与 slice 用 overlay 值**整体替换** base（slice 不追加）。故 overlay 里凡要改的 list（如 `cors.allowed_origins`）必须写全。密钥仍走环境变量，不写进 overlay。
+
+`config/config.prod.yaml`（示例，密钥留 env）：
+
+```yaml
+server:
+  mode: release
+  cors:
+    allowed_origins: ["https://admin.example.com"]   # slice 整体替换，写全
+database:
+  dbname: admin_prod
+log:
+  level: info
+  format: json
+  add_source: true
+```
+
+运行：
+
+```bash
+go run ./cmd/server -config config/config.yaml                          # dev（仅 base）
+APP_ENV=prod DB_PASSWORD=... go run ./cmd/server -config config/config.yaml   # prod（base + overlay）
+```
+
 ## 依赖引入
 
 ```bash
@@ -744,12 +727,12 @@ go build ./...
 # 期望：无错误
 
 # 2. 各 pkg 独立可编译
-go build ./pkg/xconfig && go build ./pkg/database && go build ./pkg/logger && go build ./pkg/rdb
+go build ./pkg/database && go build ./pkg/logger && go build ./pkg/rdb && go build ./internal/config
 # 期望：各自独立编译无错误
 
 # 3. 配置层单测全绿（无反射、无外部服务）
-go test ./pkg/xconfig/ ./internal/config/ -v
-# 期望：Loader / Override / 项目 Load(validate、env 覆盖) 全部 PASS
+go test ./internal/config/ -v
+# 期望：loadFromYAML(加载器行为) / override / 项目 Load(validate、env 覆盖、overlay 合并) 全部 PASS
 
 # 4. 配置加载 + 基础设施初始化（需 PG / Redis 在跑）
 go run ./cmd/server -config config/config.yaml &
@@ -764,6 +747,13 @@ kill %1
 DB_PASSWORD=wrong go run ./cmd/server 2>&1 | grep "connect database"
 # 期望：连接失败（密码被覆盖）
 
+# 5.5 多环境 overlay（base + APP_ENV）
+APP_ENV=prod DB_PASSWORD=postgres JWT_ACCESS_SECRET=a JWT_REFRESH_SECRET=b \
+  go run ./cmd/server -config config/config.yaml 2>&1 | head -1
+# 期望：JSON 日志 + 连 admin_prod 库（prod overlay 的 json 格式与 dbname 合并生效）
+APP_ENV=staging go run ./cmd/server -config config/config.yaml 2>&1 | head -1
+# 期望：panic "merge config config/config.staging.yaml: ..."（overlay 缺失 fail-fast）
+
 # 6. 日志格式（debug + console 模式）
 go run ./cmd/server 2>&1 | head -3
 # 期望：带颜色和 RFC3339 时间的 console 格式输出
@@ -775,11 +765,8 @@ go run ./cmd/server 2>&1 | head -3
 请按 step-02-config-logger-db.md 实现基础设施层。
 
 要点：
-1. pkg/xconfig/xconfig.go 可复用 Loader 结构体:New(opts) + (l).Load(target any) + Override(dst,key);零反射(不 import reflect)
-2. pkg/xconfig/options.go functional options:WithFile/WithSearchPaths/WithFileName/WithFileType/WithDefaults
-3. pkg/xconfig/xconfig_test.go Loader/Override 自包含测试(t.TempDir/t.Setenv)
-4. internal/config/config.go 项目专属:类型化 Config(mapstructure tag)+ Load(调 xconfig + Override + validate)+ 手写 validate 全覆盖
-5. internal/config/config_test.go 项目集成测试(env 覆盖、validate 失败)
+1. internal/config/config.go 自包含单文件:类型化 Config(yaml tag)+ 私有 loadFromYAML(target,paths...)(viper 读 base+overlay 合并,零反射)+ 私有 override(dst,key)(os.LookupEnv)+ Load(调 loadFromYAML + override + validate)+ 手写 validate 全覆盖
+2. internal/config/config_test.go 自包含测试(t.TempDir/t.Setenv):loadFromYAML 加载器行为(含 overlay 合并 gotcha)+ override(set-to-empty)+ 项目 Load(validate、env 覆盖)
 6. pkg/logger/ 有自己的 Config struct,New() 返回 zerolog.Logger
 7. pkg/database/ 有自己的 Config struct,New() 返回 *gorm.DB,含 zerolog 适配的 GORM logger
 8. pkg/rdb/ 有自己的 Config struct,New() 返回 *redis.Client

@@ -1,0 +1,11 @@
+# 开发环境 overlay：默认情况下此文件为空，因为 config.yaml 已包含 dev 默认值。
+#
+# APP_ENV 未设或显式设为 dev 时，此文件会与 base(config.yaml)合并。
+# 如果 dev 环境需要覆盖 base 的某些字段（如临时调试配置），在此处添加。
+#
+# 合并语义：嵌套 map 深合并；标量与 slice 用此处值整体替换 base（slice 不追加）。
+# 密钥不写在这里，走环境变量覆盖（APP_DATABASE_PASSWORD / APP_REDIS_PASSWORD / APP_JWT_*_SECRET）。
+
+# 示例：如果要临时改 dev 的数据库名（不改 base）
+# database:
+#   dbname: admin_dev_test

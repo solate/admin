@@ -55,7 +55,8 @@
       "Bash(sudo:*)",
       "Bash(du:*)",
       "WebSearch",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(gofmt -w pkg/logger/*.go)"
     ]
   }
 }

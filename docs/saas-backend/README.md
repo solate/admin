@@ -8,7 +8,7 @@
 
 | 旧项目问题 | 新方案改进 |
 |------------|-----------|
-| pkg/config 全局单例 | `pkg/xconfig` 可复用 Loader(零反射) + `internal/config` 项目专属 Config，组合根映射 |
+| pkg/config 全局单例 | `internal/config` 自包含单包(内联 viper 加载 + 显式 env 覆盖 + validate，零反射)，组合根映射 |
 | 缺少优雅退出 | signal.NotifyContext + http.Server.Shutdown |
 | Repository 和 Service 文件过大 | 域子包 + 方法单文件（create.go, update.go...） |
 | 依赖关系隐式 | 构造函数显式注入，无 DI 框架 |
@@ -42,9 +42,9 @@ backend/
 │   └── server/
 │       └── main.go              # 组合根：加载配置 → 创建依赖 → 启动服务 → 优雅退出
 ├── internal/
-│   ├── config/                  # 项目专属配置层(新项目只改这里)
-│   │   ├── config.go            # 类型化 Config + Load(xconfig 加载 + Override + validate)
-│   │   └── config_test.go       # 项目配置集成测试
+│   ├── config/                  # 自包含配置层(内联 viper 加载;新微服务复制整目录、只改 struct)
+│   │   ├── config.go            # 类型化 Config + Load + 私有 loadFromYAML/override + validate
+│   │   └── config_test.go       # 加载器行为 + 项目集成测试
 │   ├── server/
 │   │   └── server.go            # HTTP Server 封装（启动 + shutdown）
 │   ├── router/
@@ -81,9 +81,6 @@ backend/
 │   └── rbac/
 │       └── cache.go             # PermissionCache 内存缓存
 ├── pkg/                         # 可复用工具包（各包自有 Config struct）
-│   ├── xconfig/                 # 可复用配置加载库:Loader 结构体(整目录逐字复用,我们代码零反射)
-│   │   ├── xconfig.go           # Loader:New(opts) + Load(target) + Override
-│   │   └── options.go           # functional options(WithFile/WithSearchPaths/…)
 │   ├── database/
 │   │   ├── config.go            # database.Config struct
 │   │   └── database.go          # New(cfg Config) → *gorm.DB
@@ -232,7 +229,7 @@ internal/query       ← GORM Gen
 
 | 领域 | 选择 | 原因 | 备选方案（不选） |
 |------|------|------|----------------|
-| 配置加载 | Viper(经 `pkg/xconfig` 可复用 `Loader` 封装)+ 显式 env 覆盖 + 手写校验 | 与兄弟项目一致、文件加载/反序列化成熟;我们代码零反射 | yaml.v3(不可复用)、`viper.AutomaticEnv`(与 `Unmarshal` 不兼容,见 `research/config-loading/`) |
+| 配置加载 | Viper(内联在 `internal/config` 的私有 `loadFromYAML`/`override`)+ 显式 env 覆盖 + 手写校验 | 文件加载/反序列化成熟、自包含单包;我们代码零反射 | yaml.v3(功能弱)、`viper.AutomaticEnv`(与 `Unmarshal` 不兼容,见 `research/config-loading/`) |
 | 日志 | zerolog | 零分配、JSON 格式、性能好 | zap（API 更复杂） |
 | ORM | GORM + Gen | 类型安全查询、代码生成 | sqlx（手写 SQL 太多） |
 | 路由 | Gin | 性能好、生态成熟、中间件丰富 | Echo（社区稍小） |

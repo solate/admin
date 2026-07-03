@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"log/slog"
 	"os/signal"
 	"syscall"
 
@@ -25,8 +26,9 @@ func main() {
 
 	// 2. 初始化日志
 	log := logger.New(logger.Config{
-		Level:  cfg.Log.Level,
-		Format: cfg.Log.Format,
+		Level:     cfg.Log.Level,
+		Format:    cfg.Log.Format,
+		AddSource: cfg.Log.AddSource,
 	})
 
 	// 3. 连接数据库
@@ -42,7 +44,7 @@ func main() {
 		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
 	}, log)
 	if err != nil {
-		log.Fatal().Err(err).Msg("connect database failed")
+		logger.Fatal(log, "connect database failed", slog.Any("err", err))
 	}
 	defer database.Close(db)
 
@@ -53,11 +55,11 @@ func main() {
 		DB:       cfg.Redis.DB,
 	})
 	if err != nil {
-		log.Fatal().Err(err).Msg("connect redis failed")
+		logger.Fatal(log, "connect redis failed", slog.Any("err", err))
 	}
 	defer rdbClient.Close()
 
-	log.Info().Int("port", cfg.Server.Port).Msg("all infrastructure initialized")
+	log.Info("all infrastructure initialized", slog.Int("port", cfg.Server.Port))
 
 	// 5. 启动 HTTP 服务器
 	srv, err := server.New(server.Options{
@@ -67,7 +69,7 @@ func main() {
 		Log:    log,
 	})
 	if err != nil {
-		log.Fatal().Err(err).Msg("init server failed")
+		logger.Fatal(log, "init server failed", slog.Any("err", err))
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -75,16 +77,16 @@ func main() {
 
 	go func() {
 		if err := srv.Start(); err != nil {
-			log.Fatal().Err(err).Msg("start server failed")
+			logger.Fatal(log, "start server failed", slog.Any("err", err))
 		}
 	}()
 
 	<-ctx.Done()
 	stop()
-	log.Info().Msg("shutdown signal received")
+	log.Info("shutdown signal received")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.GracefulTimeout)
 	defer cancel()
 	srv.Stop(shutdownCtx)
-	log.Info().Msg("server exited")
+	log.Info("server exited")
 }

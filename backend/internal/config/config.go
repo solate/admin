@@ -1,17 +1,22 @@
-// Package config 是项目专属的配置层:定义本项目的类型化 Config 结构、
-// 显式环境变量覆盖、显式校验。加载机制复用 admin/pkg/xconfig。
+// Package config 是项目专属配置层,包含类型化 Config 结构体与校验逻辑。
 //
-// 新项目复用框架时,只需改本包:Config 字段、Override 的环境变量名、validate 规则。
+// 配置加载委托给 pkg/xviper(通用可复用库),本包只定义业务结构与校验规则。
+//
+// 环境变量覆盖由 xviper 的 AutomaticEnv + ExperimentalBindStruct 自动完成:
+// 配置 key server.port 对应环境变量 APP_SERVER_PORT(APP_ 前缀 + 点转下划线大写)。
+// 密钥字段用 APP_DATABASE_PASSWORD / APP_REDIS_PASSWORD / APP_JWT_ACCESS_SECRET / APP_JWT_REFRESH_SECRET 注入。
+//
+// 多环境用 APP_ENV 环境变量:未设=dev(合并 config.dev.yaml),设为 prod=合并 config.prod.yaml(overlay 只写差异,DRY)。
 package config
 
 import (
 	"fmt"
 	"time"
 
-	"admin/pkg/xconfig"
+	"admin/pkg/xviper"
 )
 
-// Config 是应用总配置结构。仅 mapstructure tag(给 viper 用)。
+// Config 是应用总配置结构。使用 mapstructure tag(xviper 约定,兼容 viper)。
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
@@ -69,27 +74,26 @@ type JWTConfig struct {
 
 // LogConfig 是日志配置。
 type LogConfig struct {
-	Level  string `mapstructure:"level"`
-	Format string `mapstructure:"format"`
+	Level     string `mapstructure:"level"`
+	Format    string `mapstructure:"format"`     // json(生产) / text / console
+	AddSource bool   `mapstructure:"add_source"` // 记录调用位置 file:line
 }
 
-// Load 从 path 读取配置并返回校验过的 *Config。
-// 流程:xconfig 加载文件 → 显式环境变量覆盖敏感字段 → validate 校验。
-func Load(path string) (*Config, error) {
-	var cfg Config
-	loader := xconfig.New(xconfig.WithFile(path))
-	if err := loader.Load(&cfg); err != nil {
+// Load 从 basePath 读取配置并返回校验过的 *Config。
+//
+// 加载流程:xviper.Load 读 base(+APP_ENV overlay,环境变量自动覆盖)→ validate 校验。
+//
+// APP_ENV 决定 overlay:未设=dev(合并 config.dev.yaml),设为 prod=合并 config.prod.yaml(只写环境差异)。
+// overlay 文件必须存在(缺失由 xviper MergeInConfig fail-fast),故已补建空的 config.dev.yaml。
+//
+// 环境变量覆盖:xviper 的 AutomaticEnv(APP_ 前缀)自动完成,key server.port → APP_SERVER_PORT。
+// 密钥字段用 APP_DATABASE_PASSWORD / APP_REDIS_PASSWORD / APP_JWT_ACCESS_SECRET / APP_JWT_REFRESH_SECRET 注入。
+func Load(basePath string) (*Config, error) {
+	cfg, err := xviper.Load[Config](xviper.WithPath[Config](basePath), xviper.WithValidate(validate))
+	if err != nil {
 		return nil, err
 	}
-	// 显式环境变量覆盖:类型化、无反射、集中在项目层。
-	xconfig.Override(&cfg.Database.Password, "DB_PASSWORD")
-	xconfig.Override(&cfg.Redis.Password, "REDIS_PASSWORD")
-	xconfig.Override(&cfg.JWT.AccessSecret, "JWT_ACCESS_SECRET")
-	xconfig.Override(&cfg.JWT.RefreshSecret, "JWT_REFRESH_SECRET")
-	if err := validate(&cfg); err != nil {
-		return nil, fmt.Errorf("validate config: %w", err)
-	}
-	return &cfg, nil
+	return cfg, nil
 }
 
 // validate 显式校验关键字段(无反射、无第三方校验库)。
@@ -118,13 +122,13 @@ func validate(c *Config) error {
 		return fmt.Errorf("database.port must be in [1,65535]")
 	}
 	if c.Database.Password == "" {
-		return fmt.Errorf("database.password required (set DB_PASSWORD or config)")
+		return fmt.Errorf("database.password required (set APP_DATABASE_PASSWORD or config)")
 	}
 	if c.Redis.Addr == "" {
 		return fmt.Errorf("redis.addr required")
 	}
 	if c.JWT.AccessSecret == "" || c.JWT.RefreshSecret == "" {
-		return fmt.Errorf("jwt secrets required (set JWT_ACCESS_SECRET/JWT_REFRESH_SECRET)")
+		return fmt.Errorf("jwt secrets required (set APP_JWT_ACCESS_SECRET/APP_JWT_REFRESH_SECRET)")
 	}
 	if c.JWT.AccessTTL < 1 || c.JWT.RefreshTTL < 1 {
 		return fmt.Errorf("jwt ttl must be positive (minutes)")
@@ -135,7 +139,7 @@ func validate(c *Config) error {
 		return fmt.Errorf("log.level invalid: %q", c.Log.Level)
 	}
 	switch c.Log.Format {
-	case "json", "console":
+	case "", "json", "text", "console":
 	default:
 		return fmt.Errorf("log.format invalid: %q", c.Log.Format)
 	}
