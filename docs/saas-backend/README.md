@@ -42,9 +42,9 @@ backend/
 │   └── server/
 │       └── main.go              # 组合根：加载配置 → 创建依赖 → 启动服务 → 优雅退出
 ├── internal/
-│   ├── config/                  # 自包含配置层(内联 viper 加载;新微服务复制整目录、只改 struct)
-│   │   ├── config.go            # 类型化 Config + Load + 私有 loadFromYAML/override + validate
-│   │   └── config_test.go       # 加载器行为 + 项目集成测试
+│   ├── config/                  # 项目配置层(类型化 Config;加载委托 pkg/xviper)
+│   │   ├── config.go            # 类型化 Config 结构 + Load(调 xviper.Load)
+│   │   └── validate.go          # 手写 validate,按业务块拆分子校验函数
 │   ├── server/
 │   │   └── server.go            # HTTP Server 封装（启动 + shutdown）
 │   ├── router/
@@ -229,7 +229,7 @@ internal/query       ← GORM Gen
 
 | 领域 | 选择 | 原因 | 备选方案（不选） |
 |------|------|------|----------------|
-| 配置加载 | Viper(内联在 `internal/config` 的私有 `loadFromYAML`/`override`)+ 显式 env 覆盖 + 手写校验 | 文件加载/反序列化成熟、自包含单包;我们代码零反射 | yaml.v3(功能弱)、`viper.AutomaticEnv`(与 `Unmarshal` 不兼容,见 `research/config-loading/`) |
+| 配置加载 | 泛型封装 `pkg/xviper`(viper + `ExperimentalBindStruct`)+ 项目层 `internal/config`(类型化 Config + 手写校验) | base+overlay 多环境、`APP_` 前缀环境变量覆盖嵌套字段、约定式极简 API | yaml.v3(功能弱)、纯 `AutomaticEnv`(与 `Unmarshal` 不兼容,靠 `ExperimentalBindStruct` 解决) |
 | 日志 | zerolog | 零分配、JSON 格式、性能好 | zap（API 更复杂） |
 | ORM | GORM + Gen | 类型安全查询、代码生成 | sqlx（手写 SQL 太多） |
 | 路由 | Gin | 性能好、生态成熟、中间件丰富 | Echo（社区稍小） |

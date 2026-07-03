@@ -1,11 +1,7 @@
 // Package config 定义项目配置结构与校验规则。加载机制(overlay/环境变量)见 pkg/xviper。
 package config
 
-import (
-	"time"
-
-	"admin/pkg/xviper"
-)
+import "admin/pkg/xviper"
 
 // Config 是应用总配置结构。使用 mapstructure tag(xviper 约定,兼容 viper)。
 type Config struct {
@@ -18,12 +14,12 @@ type Config struct {
 
 // ServerConfig 是 HTTP 服务配置。
 type ServerConfig struct {
-	Port            int           `mapstructure:"port"`             // 监听端口
-	Mode            string        `mapstructure:"mode"`             // debug/release/test → Step 03 喂 gin.SetMode
-	ReadTimeout     time.Duration `mapstructure:"read_timeout"`     // 读超时
-	WriteTimeout    time.Duration `mapstructure:"write_timeout"`    // 写超时
-	GracefulTimeout time.Duration `mapstructure:"graceful_timeout"` // 优雅关闭超时
-	Cors            CorsConfig    `mapstructure:"cors"`             // 跨域
+	Port            int        `mapstructure:"port"`             // 监听端口
+	Mode            string     `mapstructure:"mode"`             // debug/release/test → Step 03 喂 gin.SetMode
+	ReadTimeout     int        `mapstructure:"read_timeout"`     // 读超时(秒)
+	WriteTimeout    int        `mapstructure:"write_timeout"`    // 写超时(秒)
+	GracefulTimeout int        `mapstructure:"graceful_timeout"` // 优雅关闭超时(秒)
+	Cors            CorsConfig `mapstructure:"cors"`             // 跨域
 }
 
 // CorsConfig 是跨域配置(Step 03 中间件使用)。

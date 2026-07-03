@@ -7,9 +7,9 @@ app:
 server:
   port: 8080
   mode: debug
-  read_timeout: 10s
-  write_timeout: 10s
-  graceful_timeout: 30s
+  read_timeout: 10        # 读超时(秒)
+  write_timeout: 10       # 写超时(秒)
+  graceful_timeout: 30    # 优雅关闭超时(秒)
   cors:
     allowed_origins: ["http://localhost:5173"]
     allowed_methods: [GET, POST, PUT, DELETE, OPTIONS]

@@ -5,7 +5,7 @@
 >
 > **不适用**:项目专属、结构静态的部分,如**配置结构体本身** —— 每个项目字段不同,是"复制后改字段"的项目模板,放在项目的 `internal/config`,不套用本规范。
 >
-> 注意:`pkg/xconfig` 曾是本规范的旗舰例子,但已于 2026-06-24(v6)**合并进 `internal/config`** 成私有函数 `loadFromYAML`/`override`,目录删除。原因:各微服务是独立 Go module、config 实际是"复制"而非"共享 import",独立可复用库前提不成立、收益=0。本规范仍适用于 **xredis / xkafka** 这类真正跨项目共享的第三方库封装;配置加载不单列可复用库,跟随项目 `internal/config` 复制即可。详见 `docs/saas-backend/research/config-loading/03-封装设计.md` v6 演进。
+> 配置加载的封装划分:通用加载机制(读 base + overlay 合并 + 环境变量覆盖)抽成 `pkg/xviper`(泛型 `Load[T]`,套用本规范);项目专属的 `Config` 结构体与校验规则放 `internal/config`(不套用本规范,复制后改字段)。详见 `docs/blog/从零设计Go配置加载-viper封装与约定式设计.md`。
 
 ## 规则 1：x 前缀命名,避免 import 别名
 
@@ -42,4 +42,4 @@ cfgload.New(cfgload.Options{...})
 
 ---
 
-**最后更新**:2026-06-24(`pkg/xconfig` 已于 v6 合并进 `internal/config` 成私有 `loadFromYAML`/`override`、目录删除——复用模式实为"复制"非"共享 import",不满足可复用包前提;见 `docs/saas-backend/research/config-loading/03-封装设计.md` v6。本规范仍适用于 xredis 等真正跨项目共享的第三方库封装)
+**最后更新**:2026-07-03(配置加载重构为 `pkg/xviper` 泛型封装 `Load[T]`——通用加载机制套用本规范、项目专属 `Config` 与校验放 `internal/config`;见 `docs/blog/从零设计Go配置加载-viper封装与约定式设计.md`。本规范同样适用于 xredis 等跨项目共享的第三方库封装)

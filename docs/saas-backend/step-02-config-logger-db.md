@@ -49,7 +49,7 @@ cmd/server/main.go                # 组合根：配置 → 日志 → DB → Red
 - **内联的 viper 加载机制**（私有，不随项目变）：`loadFromYAML(target, paths...)` 用 viper 读 base（+ overlay 依次合并）并解码到类型化结构（走 yaml tag）；`override(dst, key)` 显式 env 覆盖。我们写的代码**零反射**（反序列化交给 viper）。
 - **项目专属**（新微服务只改这里）：类型化 `Config` 结构 + `Load`（拼路径 + 调 `loadFromYAML` + `override` 4 个密钥）+ `validate`。
 
-为什么是单包：用户坚持**不用反射**（配置结构已知，反射是过度设计），所以 env 覆盖/校验是显式类型化代码、因项目而异；而"读取机制"（viper 读文件 + 反序列化）跨项目通用。早期版本（v4/v5）把通用机制抽成独立可复用库 `pkg/xconfig`，但落地发现复用模式是"**复制**"不是"import"（各微服务独立 module），独立库收益=0，于是 v6 合并回单包——加载机制收为私有函数。详见 `research/config-loading/03-封装设计.md`（v6 演进）。
+为什么拆两层：通用加载机制（viper 读 base+overlay 合并 + 环境变量覆盖）与项目专属 Config 是不同关注点，前者抽成 `pkg/xviper` 泛型包可复用，后者放 `internal/config` 因项目而异。详见 `../../blog/从零设计Go配置加载-viper封装与约定式设计.md`。
 
 ```go
 // internal/config/config.go (自包含:内联 viper 加载 + 项目专属 Config)
@@ -237,7 +237,7 @@ func validate(c *Config) error {
 - **校验手写在项目层**（`internal/config.validate`），全覆盖；不用 `go-playground/validator`（那是反射），保持零反射依赖。
 - `Config` 结构用 `yaml:` tag（`loadFromYAML` 经 `DecoderConfigOption{TagName="yaml"}` 让 viper 读 yaml tag），值与 YAML key 一致。
 - 不用全局单例：`Load` 返回 `*Config` 通过参数传递。
-- **复用模型**：新微服务**复制整个 `internal/config/` 目录**，只改 `Config` 字段 + `override` 的 env 名 + `validate` 规则；`loadFromYAML`/`override` 是不随项目变的 viper 样板，原样保留。复用模式是"复制"而非"import"（各微服务独立 module）——这正是 v6 把加载机制从独立 `pkg/xconfig` 合并回 `internal/config` 的原因（详见 `03-封装设计.md` v6 演进）。
+- **复用模型**：新微服务**复制整个 `internal/config/` 目录**，只改 `Config` 字段 + `override` 的 env 名 + `validate` 规则；`loadFromYAML`/`override` 是不随项目变的 viper 样板，原样保留。复用模式是"复制"而非"import"（各微服务独立 module）。详见 `../../blog/从零设计Go配置加载-viper封装与约定式设计.md`。
 
 ### 2. Logger — zerolog
 

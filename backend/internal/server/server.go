@@ -40,8 +40,8 @@ func New(opts Options) (*Server, error) {
 	httpSrv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", opts.Config.Server.Port),
 		Handler:      mux,
-		ReadTimeout:  opts.Config.Server.ReadTimeout,
-		WriteTimeout: opts.Config.Server.WriteTimeout,
+		ReadTimeout:  time.Duration(opts.Config.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(opts.Config.Server.WriteTimeout) * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 	return &Server{

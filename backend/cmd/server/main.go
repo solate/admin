@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"admin/internal/config"
 	"admin/internal/server"
@@ -85,7 +86,7 @@ func main() {
 	stop()
 	log.Info("shutdown signal received")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.GracefulTimeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Server.GracefulTimeout)*time.Second)
 	defer cancel()
 	srv.Stop(shutdownCtx)
 	log.Info("server exited")

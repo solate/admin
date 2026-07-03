@@ -1,8 +1,8 @@
-# 从零设计 Go 配置加载：viper 封装 + 约定式设计实战（2026）
+# 从零设计 Go 配置加载：xviper 封装与约定式设计（2026）
 
-> 本文是一篇完整学习文档。读完你能独立完成：从 0 设计一套配置加载方案 → 想清楚"哪些该配、哪些该约定" → 封装成可复用泛型包 → 支持多环境（base + overlay）→ 支持环境变量覆盖嵌套字段 → 用约定大于配置把调用点收敛到一行。
+> 本文是一篇完整实战文档。读完你能独立完成：从 0 封装一套配置加载方案 → 想清楚"哪些该配、哪些该约定" → 封装成可复用泛型包 → 支持多环境（base + overlay）→ 支持环境变量覆盖嵌套字段 → 用约定大于配置把调用点收敛到一行。
 >
-> 选型理由见 [配置加载调研](../saas-backend/research/config-loading/)——结论是 2026 年 Go 服务端配置用 [spf13/viper](https://github.com/spf13/viper) v1.21+，配合泛型 `Load[T]` 封装。本文是那篇调研的"教学续作"：调研告诉你**为什么**，本文教你**怎么做**。
+> 技术栈：Go 1.26 + [spf13/viper](https://github.com/spf13/viper) v1.21 + 泛型 `Load[T]`。基于真实 SaaS 后端项目 `backend/pkg/xviper` + `backend/internal/config` 的生产实现。
 
 ---
 
@@ -22,7 +22,9 @@
 cfg, err := xviper.Load[Config]()
 ```
 
-所有代码基于真实的 SaaS 后端结构（`pkg/xviper` + `pkg/config` + `cmd/server/main.go`）。
+所有代码基于真实的 SaaS 后端结构（`pkg/xviper` + `internal/config` + `cmd/server/main.go`）。
+
+**为什么选 viper**：2026 年 Go 配置加载的主流方案仍是 viper（生态最广、功能最全、团队熟悉度高），虽然 koanf 是更轻量的现代替代，但在已有 viper 项目的基础上，统一技术栈比追求"最优"更重要。纯 `yaml.v3` 对静态配置够用，但缺少多环境合并、热重载等能力，适合小型项目。
 
 ---
 
@@ -50,8 +52,6 @@ cfg, err := xviper.Load[Config]()
 
 **为什么是这个顺序**：越"靠近部署现场"的来源优先级越高。文件是编译期/镜像里就固定的，环境变量是容器启动那一刻才注入的——后者更贴近真实运行环境，理应能推翻前者。这也是 [12-factor](https://12factor.net/config) 的核心主张：配置随环境走，靠环境变量注入。
 
-> 注意这里**没有**代码里的 `SetDefault` 默认值层。早期版本我加过一个 `WithDefaults(map[string]any)`，后来砍了——因为在一个"约定用 YAML"的加载器里，**base `config.yaml` 本身就是默认值层**。再在代码里开一个 map 写一遍默认值，是重复。默认值就该待在 yaml 文件里，这既是约定，也少一个 API。
-
 对应到代码，`Load` 的主流程就是严格按这三层顺序叠加的：
 
 ```go
@@ -61,7 +61,7 @@ v := viper.NewWithOptions(viper.ExperimentalBindStruct())
 v.SetConfigFile(basePath)
 v.ReadInConfig()
 
-// 第 2 层:环境文件(缺失静默跳过)
+// 第 2 层:环境文件(缺失则报错,fail-fast)
 v.SetConfigFile(overlay)   // config.{env}.yaml
 v.MergeInConfig()
 
@@ -73,7 +73,7 @@ v.AutomaticEnv()
 v.Unmarshal(&cfg)
 ```
 
-后面几章逐个拆开：第 2 章讲第一层为什么用 `SetConfigFile` 而不是 `AddConfigPath`，第 3 章讲第二层的 overlay 合并语义，第 4 章讲第三层环境变量覆盖嵌套字段的坑。
+后面几章逐个拆开：第 2 章讲第一层为什么用 `SetConfigFile` 而不是 `AddConfigPath`，第 3 章讲第二层的 overlay 合并语义与 fail-fast 行为，第 4 章讲第三层环境变量覆盖嵌套字段的坑与解。
 
 ## 2. SetConfigFile vs AddConfigPath：服务端为什么选前者
 
@@ -111,8 +111,8 @@ v.ReadInConfig()
 
 ```go
 // 用 SetConfigFile 显式指定完整路径,而非 AddConfigPath+SetConfigName 多路径搜索:
-// - AddConfigPath+SetConfigName: 适合应用自动搜索配置的场景(CLI工具/桌面应用)
-// - SetConfigFile: 适合配置路径确定的场景(服务端应用/容器部署)
+// - AddConfigPath+SetConfigName: 适合 CLI 工具自动搜索配置
+// - SetConfigFile: 适合配置路径确定的服务端应用/容器部署
 basePath := s.path
 v.SetConfigFile(basePath)
 if err := v.ReadInConfig(); err != nil {
@@ -120,13 +120,22 @@ if err := v.ReadInConfig(); err != nil {
 }
 ```
 
-> 记住这条选型注释，下次别再无脑复制 `AddConfigPath`——它不是"更全面"，只是"另一个场景"。
+> 记住这条选型规则，下次别再无脑复制 `AddConfigPath`——它不是"更全面"，只是"另一个场景"。
 
-### 2.3 一个副作用：格式自动推断
+### 2.3 格式推断与显式设定
 
-`SetConfigFile` 传的是带扩展名的完整路径（`config.yaml`），viper 会**从扩展名自动推断格式**。所以理论上不需要再调 `SetConfigType("yaml")`——路径里的 `.yaml` 已经告诉 viper 了。
+`SetConfigFile` 传的是带扩展名的完整路径（`config.yaml`），viper 会**从扩展名自动推断格式**。但 `xviper` 仍显式调用 `v.SetConfigType("yaml")`——这是防御性编程，防止未来某个路径不带扩展名的极端情况。加一行 `SetConfigType` 既是约定声明（这个包只处理 YAML），也是兜底保险。
 
-这也是为什么 `xviper` 里 `SetConfigType` 可有可无：我们的约定路径永远是 `.yaml` 结尾，扩展名一定存在，viper 一定推断得出。留着当兜底也行，删掉行为不变——取决于你想不想防"哪天路径不带扩展名"这种极端情况。
+### 2.4 加载反馈日志
+
+`xviper` 在成功加载后用 `fmt.Printf` 输出日志：
+
+```go
+fmt.Printf("xviper: 已加载基础配置 %s\n", v.ConfigFileUsed())
+```
+
+这不是错误处理（错误会返回 error），而是**加载反馈**——让开发者在启动日志里看到"配置从哪来"，方便排查路径问题。生产环境如需结构化日志，可改为传入 logger 接口。
+
 
 ## 3. 多环境：base + overlay 合并
 
@@ -143,93 +152,119 @@ viper 的 `ReadInConfig` 是"清空后读"，`MergeInConfig` 是"叠加覆盖"�
 
 ```go
 // 第 1 层：base 文件(必须存在)
-v.SetConfigFile("config/config.yaml")
+v.SetConfigFile(basePath)
 v.ReadInConfig()  // 读入 base,viper 现在有全量默认值
 
-// 第 2 层：环境文件(缺失静默跳过)
-env := envDefault  // "dev"
-if fromEnv := os.Getenv("APP_ENV"); fromEnv != "" {
-    env = fromEnv  // 运行时 APP_ENV=prod 覆盖默认
-}
-if env != "" {
-    overlay := "config/config." + env + ".yaml"  // config.dev.yaml
-    v.SetConfigFile(overlay)
-    if err := v.MergeInConfig(); err != nil {
-        if !errors.Is(err, fs.ErrNotExist) {
-            return nil, fmt.Errorf("合并环境配置 %q 失败: %w", overlay, err)
-        }
-        // 文件不存在 → 静默跳过,继续用 base
-    }
+// 第 2 层：环境文件
+overlay := buildOverlayPath(basePath, getEnvironment(v))  // config.{env}.yaml
+v.SetConfigFile(overlay)
+if err := v.MergeInConfig(); err != nil {
+    return nil, fmt.Errorf("xviper: 合并环境配置 %q 失败: %w", overlay, err)
 }
 ```
 
-关键在两个细节：
+关键在合并语义的三个细节：
 
-1. **`MergeInConfig` 是深度合并**：如果 base 里 `server.port: 8080, server.mode: debug`，overlay 里只写 `server.mode: release`，最终结果是 `{port: 8080, mode: release}`——不是把整个 `server` 块替换，而是字段级覆盖。
+1. **嵌套 map 深合并**：如果 base 里 `server.port: 8080, server.mode: debug`，overlay 里只写 `server.mode: release`，最终结果是 `{port: 8080, mode: release}`——不是把整个 `server` 块替换，而是字段级覆盖。
 
-2. **overlay 缺失静默跳过**：`errors.Is(err, fs.ErrNotExist)` 时不报错。这让"本地开发不需要 overlay"成为可能——你只准备一个 `config.yaml`，不创建 `config.dev.yaml`，程序照样跑，用的就是 base 默认值。
+2. **标量与 slice 整体替换**：对标量（int/string/bool）和 slice，overlay 的值**整体替换** base，slice **不追加**。所以 overlay 里凡是要改的 list 必须写全。比如 base 的 `cors.allowed_origins: [a, b]`，overlay 想加一个 c，必须写 `[a, b, c]`，不能只写 `[c]`（那会变成只剩 c）。
 
-### 3.2 overlay 路径拼接
+3. **overlay 缺失是 fail-fast**：这是本实现与很多教程不同的地方——overlay 文件不存在时**直接报错**，不静默跳过。下一节详解为什么。
+
+### 3.2 为什么 overlay 缺失是 fail-fast（而非静默跳过）
+
+很多 viper 封装（包括本项目早期版本）在 overlay 缺失时选择**静默跳过**：`errors.Is(err, fs.ErrNotExist)` 就当没事发生，继续用 base。听起来很宽容，实际是个隐患：
+
+- **静默跳过掩盖部署错误**：如果生产部署时 `config.prod.yaml` 因为打包遗漏没进镜像，静默跳过会让服务用着 dev 的 base 默认值照常启动——数据库连到 localhost、密钥是占位符，问题要到运行时才暴露，甚至可能连错生产库。
+- **fail-fast 让错误在启动瞬间暴露**：overlay 应该存在却不存在，就是配置错误，就该启动失败。启动崩比"带着错误配置跑"安全得多。
+
+所以 `xviper` 选 fail-fast：`MergeInConfig` 任何错误（包括文件不存在）都返回。
+
+**代价与对策**：默认环境是 dev（见 3.3），所以 `config.dev.yaml` **必须存在**，否则本地 `go run` 直接报错。对策是在项目里**放一个空的 `config.dev.yaml`**（只有注释）：
+
+```yaml
+# 开发环境 overlay：默认情况下此文件为空，因为 config.yaml 已包含 dev 默认值。
+# APP_ENV 未设或显式设为 dev 时，此文件会与 base(config.yaml)合并。
+# 密钥不写这里，走环境变量覆盖（APP_DATABASE_PASSWORD 等）。
+
+# 示例：临时改 dev 的数据库名（不改 base）
+# database:
+#   dbname: admin_dev_test
+```
+
+空 overlay 合并进去不改变任何值（3.1 的语义：没有字段就没有覆盖），但它的存在满足了 fail-fast 的"overlay 必须在"约定。这一个空文件换来的是"部署时 overlay 遗漏立刻报错"的安全性。
+
+### 3.3 环境推导：三级优先级
+
+overlay 选哪个环境（`config.{env}.yaml` 的 `{env}`），由 `getEnvironment` 按三级优先级决定：
+
+```go
+// 优先级: APP_ENV 环境变量 > 配置文件 app.env 字段 > 默认值 dev
+func getEnvironment(v *viper.Viper) string {
+    if env := os.Getenv("APP_ENV"); env != "" {
+        return env  // 1. 运行时环境变量最高
+    }
+    if configEnv := v.GetString("app.env"); configEnv != "" {
+        return configEnv  // 2. 配置文件里的 app.env
+    }
+    return "dev"  // 3. 兜底默认
+}
+```
+
+三级的意义：
+
+- **`APP_ENV` 环境变量（最高）**：容器部署时注入 `APP_ENV=prod`，程序启动就自动叠加 `config.prod.yaml`。同一个二进制跑遍所有环境，不需要重新编译——这是 12-factor "配置随环境走"的体现。
+- **配置文件 `app.env` 字段（中）**：base 的 `config.yaml` 里写 `app.env: dev`，作为项目自己的默认环境声明。没有环境变量时用它。
+- **默认 `dev`（兜底）**：连 `app.env` 都没写时的最后防线。
+
+这样本地开发什么都不用设，默认走 dev；生产只需注入一个 `APP_ENV=prod`。
+
+### 3.4 overlay 路径拼接
 
 从 base 路径推导 overlay 路径，要保留原路径的目录结构和扩展名：
 
 ```go
-basePath := "config/config.yaml"
-env := "prod"
-
-ext := filepath.Ext(basePath)           // ".yaml"
-stem := strings.TrimSuffix(basePath, ext)  // "config/config"
-overlay := stem + "." + env + ext          // "config/config.prod.yaml"
-```
-
-这样 `config/config.yaml` → `config/config.prod.yaml`，`custom/app.yml` → `custom/app.prod.yml`，通用。
-
-### 3.3 运行时切换：APP_ENV 环境变量优先
-
-env 的默认值是 `"dev"`（约定），但**运行时环境变量 `APP_ENV` 优先级更高**：
-
-```go
-env := envDefault  // "dev"
-if fromEnv := os.Getenv(envVarName); fromEnv != "" {
-    env = fromEnv  // APP_ENV=prod 覆盖默认
+// config.yaml + dev → config.dev.yaml
+func buildOverlayPath(basePath, env string) string {
+    ext := filepath.Ext(basePath)              // ".yaml"
+    return strings.TrimSuffix(basePath, ext) + "." + env + ext
 }
 ```
 
-这是最关键的一环：**同一个二进制在 dev / prod 环境切换，不需要重新编译**。容器部署时在 deployment.yaml 里注入 `APP_ENV=prod`，程序启动就自动叠加 `config.prod.yaml`，没有编译期魔法、没有条件编译 tag。
+这样 `config/config.yaml` → `config/config.dev.yaml`，`custom/app.yml` → `custom/app.prod.yml`，通用。
 
-这就是 12-factor "配置随环境走"的体现：环境名通过环境变量注入，而不是编译进二进制。
-
-### 3.4 真实文件示例
+### 3.5 真实文件示例
 
 ```yaml
 # config/config.yaml (base,全量默认值)
+app:
+  name: "Admin"
+  env: "dev"
 server:
   port: 8080
   mode: debug
-  timeout: 30s
-
+  read_timeout: 10s
 database:
   host: localhost
-  port: 5432
-  dbname: myapp_dev
+  dbname: admin_dev
+  password: postgres      # 占位,生产用 APP_DATABASE_PASSWORD 覆盖
 ```
 
 ```yaml
 # config/config.prod.yaml (overlay,只写差异)
 server:
   mode: release
-  timeout: 60s
-
 database:
   host: prod-db.internal
-  dbname: myapp_prod
+  dbname: admin_prod
 ```
 
-本地开发 `go run main.go` → env 默认 dev，没有 `config.dev.yaml` → 静默跳过 → 用 base 默认值 `{port: 8080, mode: debug, dbname: myapp_dev}`。
+本地开发 `go run ./cmd/server` → env 默认 dev → 合并空的 `config.dev.yaml` → 用 base 默认值。
 
-生产容器 `APP_ENV=prod ./main` → 读 base → 叠加 `config.prod.yaml` → 最终 `{port: 8080, mode: release, timeout: 60s, host: prod-db.internal, dbname: myapp_prod}`。`port` 没变（prod overlay 没写），`mode` 被覆盖，`timeout` 被覆盖，`host` 被覆盖——深度合并，只写差异。
+生产容器 `APP_ENV=prod ./server` → 读 base → 叠加 `config.prod.yaml` → `mode` / `host` / `dbname` 被覆盖，其余保留 base。密码等密钥再由环境变量 `APP_DATABASE_PASSWORD` 覆盖（第 4 章）。
 
 这就是 overlay 的核心价值：**不重复，只差异**。
+
 
 ## 4. 环境变量覆盖嵌套字段：ExperimentalBindStruct 的坑与解
 
@@ -263,7 +298,7 @@ v.AutomaticEnv()
 
 结果就是：`database.password` 在 yaml 里是空串或压根没这行 → viper 的 key 集合里没有它 → `Unmarshal` 不会去查 `APP_DATABASE_PASSWORD` → 密钥静默丢失。
 
-**老规避方案**（本项目 `pkg/config/viper.go` 至今仍在用）：遍历 `v.AllKeys()` 给每个 key 手动 `BindEnv` 注册一遍——
+**老规避方案**：遍历 `v.AllKeys()` 给每个 key 手动 `BindEnv` 注册一遍——
 
 ```go
 for _, key := range v.AllKeys() {
@@ -297,37 +332,22 @@ v := viper.NewWithOptions(viper.ExperimentalBindStruct())
 
 `xviper` 用新方案，所以密钥字段可以完全不出现在 yaml 里，`Config` struct 定义了就能被 env 覆盖。
 
-### 4.4 验证：一个测试锁死这个行为
+### 4.4 mapstructure tag 是 viper 约定
 
-`ExperimentalBindStruct` 是"实验性"API，正因为它可能被 viper 改动，**必须用测试把行为钉死**——哪天升级 viper 后它悄悄失效，测试立刻红：
+viper 底层用 mapstructure 反序列化，默认读 `mapstructure` tag。`xviper` 保持这个约定：
 
 ```go
-// TestLoad_EnvVarOverride 环境变量覆盖嵌套字段(验证 ExperimentalBindStruct 生效)。
-func TestLoad_EnvVarOverride(t *testing.T) {
-    dir := t.TempDir()
-    base := writeFile(t, dir, "config.yaml", baseYAML) // baseYAML 里 password: ""
-
-    t.Setenv("APP_DATABASE_PASSWORD", "secret123")
-    t.Setenv("APP_SERVER_PORT", "7070")
-
-    cfg, err := Load(WithPath[testConfig](base))
-    if err != nil {
-        t.Fatalf("Load 失败: %v", err)
-    }
-    if cfg.Database.Password != "secret123" {
-        t.Errorf("Database.Password = %q, want secret123 (env 覆盖)", cfg.Database.Password)
-    }
-    if cfg.Server.Port != 7070 {
-        t.Errorf("Server.Port = %d, want 7070 (env 覆盖)", cfg.Server.Port)
-    }
+type Config struct {
+    Server   ServerConfig   `mapstructure:"server"`
+    Database DatabaseConfig `mapstructure:"database"`
 }
 ```
 
-`t.Setenv` 会在测试结束自动还原环境变量，`t.TempDir` 自动清理临时文件——完全自包含。这个测试同时验证了两件事：嵌套的 `database.password` 能被覆盖、`server.port` 的类型转换（字符串 `"7070"` → int）正确。
+下面 4.5、4.6 是本章的两个**反向决策**——都是"社区常见做法，但我们故意不做"。记录它们的原因很实际：**不写下来，后来人（包括 AI）看到"标配"又会加回来**。
 
-### 4.5 一个反向决策：为什么最后没加 DecodeHook
+### 4.5 反向决策一：为什么没有显式挂 DecodeHook
 
-封装 `Unmarshal` 时，社区有个几乎是"标配"的动作——挂两个 mapstructure DecodeHook：
+封装 `Unmarshal` 时，社区有个几乎是"标配"的动作——显式挂两个 mapstructure DecodeHook：
 
 ```go
 v.Unmarshal(&cfg, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
@@ -336,65 +356,70 @@ v.Unmarshal(&cfg, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
 )))
 ```
 
-`xviper` 开发过程中我一度加了这两个 hook，还配了 3 个测试，全绿。但最终**又全删了**。删除的过程恰好是"约定大于配置"最好的例子——不是所有"通用能力"都值得进封装，得看你的**配置约定**是否用得上。
+`xviper` **两个都没显式加**，因为本项目的两个约定让它们都变得多余。
 
-逐个拆：
+**① 时长字段：约定用 `int` 秒 + 代码里显式乘 `time.Second`，不用 `time.Duration`**
 
-**① `StringToTimeDurationHookFunc`（`"30s"` → `time.Duration`）—— 冗余 + 踩坑**
+本项目的超时字段（`ServerConfig.ReadTimeout` / `WriteTimeout` / `GracefulTimeout`）**类型是 `int`，语义是"秒"**，yaml 里就写裸数字：
 
-- 查 viper v1.21.0 源码 [viper.go:979](https://github.com/spf13/viper) 发现，这个 hook **viper 默认就已包含**。我们显式再写一遍是纯重复声明。
-- 更重要的是，本项目**时间字段一律用 `int`**（毫秒 / 秒的裸数字），根本没有 `time.Duration` 类型的字段。
-- 用 `int` 还顺手避开了一个语义坑：`time.Duration` 底层是 `int64` 纳秒，yaml 里写裸数字 `timeout: 30` 会被解析成 **30 纳秒**而不是 30 秒——必须写成带单位的字符串 `"30s"` 才对。约定用 `int` + 明确单位（`timeout_ms: 30000`），从根上绕开这个歧义。
-
-**② `StringToSliceHookFunc(",")`（`"a,b,c"` → `[]string`）—— 场景不匹配**
-
-- 这个 hook viper 官方**故意没放进默认**（mapstructure v2 下它会检查目标类型，有副作用，[viper.go:981](https://github.com/spf13/viper) 注释说明了原因）。
-- 它唯一的用武之地是"**从环境变量传逗号分隔字符串**"——比如 `APP_HOSTS=a,b,c` 想变成 `[]string{"a","b","c"}`。
-- 但本项目的 slice **直接在 YAML 里写原生数组**（`hosts: [a, b, c]`），YAML 解析器天然就能转成 `[]string`，压根不经过这个 hook。
-
-一句话总结这个决策：
-
-| hook | 通用场景下"该加"的理由 | 本项目为什么删 |
-|---|---|---|
-| `StringToTimeDurationHookFunc` | 支持 `"30s"` 这种带单位时长 | 时间字段用 `int`，且 viper 默认已含，重复 |
-| `StringToSliceHookFunc` | 支持 env 逗号串转 slice | slice 用 YAML 原生数组，不走 env |
-
-> 这才是"约定大于配置"的精髓：**先定死约定（时间用 int、slice 用 YAML 数组），约定定死后，一整类"灵活能力"就变成了多余**。留着这两个 hook 是在"解决自己不存在的问题"，代价是多一个 `mapstructure/v2` 的直接依赖和读代码时的认知负担。删掉，封装反而更干净。
->
-> 反过来说，如果你的项目**确实**要用 `time.Duration` 字段、或要从环境变量注入 slice，那这两个 hook 就该加回来——它们本身没错，只是不匹配本项目的约定。**封装的取舍永远跟着约定走，没有放之四海皆准的"标配"。**
-
-### 4.6 另一个不改的决策：保持 mapstructure 默认 tag
-
-封装 viper 时，可能会想到 viper 默认读 `mapstructure` tag，而我们的配置来自 YAML 文件，为什么不改成让它直接读 `yaml` tag？
-
-确实可以这么改：
-
-```go
-v.Unmarshal(&cfg, func(d *mapstructure.DecoderConfig) { 
-    d.TagName = "yaml"  // 让 viper 读 yaml tag 而非 mapstructure
-})
+```yaml
+server:
+  read_timeout: 10       # 秒
+  graceful_timeout: 30   # 秒
 ```
 
-改完后，`Config` 结构体每个字段只写一个 `yaml` tag 即可，不需要同时写 `mapstructure` tag。看起来能省点重复。
+```go
+type ServerConfig struct {
+    ReadTimeout     int `mapstructure:"read_timeout"`     // 读超时(秒)
+    WriteTimeout    int `mapstructure:"write_timeout"`    // 写超时(秒)
+    GracefulTimeout int `mapstructure:"graceful_timeout"` // 优雅关闭超时(秒)
+}
 
-**但 `xviper` 最终选择不改，保持 viper 的默认行为**（读 `mapstructure` tag），理由是：
+// 用的时候在代码里显式转成 time.Duration
+srv.ReadTimeout = time.Duration(cfg.Server.ReadTimeout) * time.Second
+```
 
-1. **收益不大**  
-   现代 Go 项目，配置结构体几乎都同时写 `yaml` 和 `json` tag（`json` 用于 API 响应、日志序列化等），实际常见的是：
-   ```go
-   Port int `yaml:"port" json:"port" mapstructure:"port"`
-   ```
-   这三个 tag 的值通常完全一致。省掉 `mapstructure` 只少写一个单词，代价是要记得"这个包覆盖了 TagName"——认知成本 > 节省的字符。
+这么定的理由是**全项目时间字段类型统一**：`ConnMaxLifetime`（连接存活秒数）、`AccessTTL`（token 分钟数）本来就是 `int`+单位注释，超时字段跟着用 `int` 秒，读配置的人一眼知道单位，不用记"哪个字段是 duration、哪个是裸数字"。既然没有 `time.Duration` 字段，`StringToTimeDurationHookFunc` 自然无处可用。
 
-2. **违背 viper 约定**  
-   viper 的社区约定就是用 `mapstructure` tag。改成 `yaml` 虽然能跑，但会让熟悉 viper 的人疑惑"为什么这个包的 Config 不写 mapstructure tag"。作为一个可复用封装包，**保持上游约定比省几个字符更重要**。
+> 顺带记一个**如果**用 `time.Duration` 才会踩的坑：viper 的 `Unmarshal` 默认 DecodeHook 里**已经**包含 `StringToTimeDurationHookFunc`（见源码 `defaultDecoderConfig`），所以 `"10s"` 能自动解析——显式再挂一遍是重复。但 `time.Duration` 底层是纳秒 `int64`，yaml 里写**裸数字** `30` 会变成 **30 纳秒**而非 30 秒，必须写带单位的 `"30s"`。本项目用 `int` 秒 + 代码乘 `time.Second`，从根上绕开了这个"裸数字含义反直觉"的坑。
 
-3. **潜在的灵活性损失**  
-   如果未来某个使用方需要从非 YAML 来源读配置（例如从 etcd、Consul 读 JSON 并 Unmarshal 到同一个 `Config` 结构体），强制 `TagName="yaml"` 就会成为障碍。保持默认行为，调用方有更多控制空间。
+**② slice 字段：约定用 YAML 原生数组，不从 env 传逗号串**
 
-> 这是「约定大于配置」的另一面：**不是所有"能省"的地方都该省**。DecodeHook 删掉是因为它解决的问题（`time.Duration`、逗号分隔 slice）本项目不存在；但 mapstructure tag 是 viper 的上游约定，删掉它需要的是"改变上游约定"——这不是"消除重复"，而是"制造私有方言"。
+`StringToSliceHookFunc(",")` 唯一的用武之地是"**从环境变量传逗号分隔字符串**"——比如 `APP_CORS_ALLOWED_ORIGINS=a.com,b.com` 想变成 `[]string`。但本项目的 slice（如 `cors.allowed_origins`）**直接在 YAML 里写原生数组**：
+
+```yaml
+cors:
+  allowed_origins: ["http://localhost:5173"]
+```
+
+YAML 解析器天然转成 `[]string`，压根不经过这个 hook。而且这个 hook viper 官方**故意没放进默认**（mapstructure v2 下它会检查目标类型、有副作用），加它就得多一个 `mapstructure/v2` 的直接 import。
+
+| hook | 通用场景下"该加"的理由 | 本项目为什么不加 |
+|---|---|---|
+| `StringToTimeDurationHookFunc` | 支持 `"30s"` 带单位时长 | 时长字段用 `int` 秒，没有 `time.Duration` |
+| `StringToSliceHookFunc` | 支持 env 逗号串转 slice | slice 用 YAML 原生数组，不走 env 逗号串 |
+
+> 这才是"约定大于配置"的另一面：**先定死约定（时长用 int 秒、slice 用原生数组），约定定死后，一整类"灵活能力"就变成了多余**。加 hook 是在"解决自己不存在的问题"。
 >
-> 封装的取舍准则：**消除本项目内的冗余，保持上游库的约定**。前者让代码干净，后者让代码好懂。
+> 反过来说，如果哪天**确实**要从环境变量注入 slice（例如 `APP_CORS_ALLOWED_ORIGINS=a.com,b.com`），那 `StringToSliceHookFunc` 就该加回来——它本身没错，只是不匹配当前约定。**封装的取舍永远跟着约定走，没有放之四海皆准的"标配"。**
+
+### 4.6 反向决策二：为什么不把 tag 改成 yaml
+
+第二个"社区常见但我们不做"的动作：既然配置文件是 YAML，为什么不把 mapstructure 的 `TagName` 改成 `yaml`，省得每个字段多写一个 tag？
+
+```go
+// 技术上完全可行：让 viper 读 yaml tag
+v.Unmarshal(&cfg, func(dc *mapstructure.DecoderConfig) { dc.TagName = "yaml" })
+```
+
+`xviper` **不改，保持默认的 `mapstructure` tag**，理由有三：
+
+- **违背 viper 社区约定**：熟悉 viper 的人默认就找 `mapstructure` tag，看到项目改成 `yaml` tag 会先愣一下——"这是标准 viper 用法吗？"。可复用封装包尤其要遵守上游约定，**省几个字符不值得制造认知摩擦**。
+- **多写一个 tag 几乎零成本**：实际项目里 `json`（API 序列化）/ `yaml`（文件序列化）/ `mapstructure`（viper 反序列化）三个 tag 本来就常常并存，再多一个 `mapstructure:"server"` 没什么负担。
+- **改 TagName 要动 `Unmarshal` 的 `DecoderConfig`**：又多一处需要维护、又多一个偏离默认的行为。为省 tag 去改解码器配置，是把简单问题复杂化。
+
+> 和 4.5 一样，这也是"跟着约定走"：**保持上游默认（mapstructure tag）** 比"迎合本项目用 YAML"更重要——封装包的用户是"熟悉 viper 的人"，不是"只熟悉本项目的人"。
+
 
 ## 5. 约定大于配置：砍掉不该存在的 option
 
@@ -402,42 +427,34 @@ v.Unmarshal(&cfg, func(d *mapstructure.DecoderConfig) {
 
 ### 5.1 第一版：把一切做成 option
 
-封装的第一直觉往往是"灵活一点，多开几个参数"。`xviper` 第一版就是这样，有 5 个 option：
+第一版设计时，思路是"尽量灵活"——凡是可能变的，都开成 option 让调用方传。于是列出了 5 个：
 
 ```go
-type Options[T any] struct {
-    Path      string
-    Env       string
-    EnvPrefix string
-    Defaults  map[string]any
-    Validate  func(*T) error
-}
-```
-
-看起来很完整——路径、环境、前缀、默认值、校验，能想到的都有了。但是用起来：
-
-```go
+// 第一版设想：能配的全给配
 cfg, err := xviper.Load[Config](
-    xviper.WithPath[Config]("config/config.yaml"),
-    xviper.WithEnv[Config]("dev"),
-    xviper.WithEnvPrefix[Config]("APP"),
-    xviper.WithValidate[Config](validate),
+    xviper.WithPath("config/config.yaml"),   // 配置文件路径
+    xviper.WithEnv("prod"),                  // 指定环境
+    xviper.WithEnvPrefix("APP"),             // 环境变量前缀
+    xviper.WithDefaults(map[string]any{...}),// 代码里塞默认值
+    xviper.WithValidate(validate),           // 校验函数
 )
 ```
 
-每次调用都要把这些"理所当然"的值手动传一遍。问题出在：**所有项目的这个包几乎都传一样的值**。
+看着很"完备"，但写完就觉得不对劲：**大部分 option 在真实调用里永远传同一个值，甚至根本不该由调用方决定**。比如 `WithEnvPrefix("APP")`——整个项目就一个前缀，每次都传 `"APP"`，那它凭什么是参数？再比如 `WithEnv("prod")`——环境应该由部署时的 `APP_ENV` 环境变量决定，硬编码在代码里反而是错的。
+
+于是退回来问一个更本质的问题：**一个参数到底凭什么值得成为 option？**
 
 ### 5.2 辨别：哪些该约定，哪些该配
 
-一个参数值得成为 option 的条件是：**它在不同调用场景下会变，且无法被一个合理的单一默认值替代**。对着这个标准逐个审查：
+一个参数值得成为 option 的条件是：**它在不同调用场景下会变，且无法被一个合理的单一默认值替代**。拿这把尺子量第一版的 5 个 option：
 
-| Option | 会跨场景变吗？ | 结论 |
+| Option 候选 | 会跨场景变吗？ | 结论 |
 |--------|------------|------|
-| `Path` | 会（同 module 下不同服务，路径不同） | 保留 |
+| `Path` | 会（同 module 下不同服务，路径不同） | **保留** |
 | `Env` | **不会**——运行时 `APP_ENV` 覆盖已经解决了这个需求 | 删 |
-| `EnvPrefix` | **几乎不会**——整个项目约定一个前缀 `APP` | 删 |
+| `EnvPrefix` | **几乎不会**——整个项目约定一个前缀 `APP` | 删，锁死为 `APP` |
 | `Defaults` | **应该待在 yaml 文件里**，代码里重复一遍是多余 | 删 |
-| `Validate` | **必须**——校验逻辑依赖你的具体 `Config` 类型，包无法替你写 | 保留 |
+| `Validate` | **必须**——校验逻辑依赖你的具体 `Config` 类型，包无法替你写 | **保留** |
 
 删完只剩 `WithPath` 和 `WithValidate`。这不是"懒得实现"，而是**option 越少，约定越强，用起来越省心**。
 
@@ -460,12 +477,12 @@ cfg, err := xviper.Load[Config](
 // 零 option——读 config/config.yaml,APP_ENV 环境变量切环境,APP_ 前缀注入密钥
 cfg, err := xviper.Load[Config]()
 
-// 加校验
+// 加校验（常见）
 cfg, err := xviper.Load[Config](
     xviper.WithValidate[Config](validate),
 )
 
-// 自定义路径(少见,偶有用)
+// 自定义路径（少见）
 cfg, err := xviper.Load[Config](
     xviper.WithPath[Config]("services/order/config.yaml"),
 )
@@ -551,7 +568,7 @@ cfg, err := xviper.Load[Config](
 
 ### 6.4 完整的 Load 主流程
 
-把前几章拼起来,`Load` 的完整骨架:
+把前几章拼起来，`Load` 的完整骨架：
 
 ```go
 const (
@@ -567,28 +584,22 @@ func Load[T any](opts ...Option[T]) (*T, error) {
     }
 
     v := viper.NewWithOptions(viper.ExperimentalBindStruct())
+    v.SetConfigType("yaml")
 
     // 1. 基础配置文件(必须存在)
     v.SetConfigFile(s.path)
     if err := v.ReadInConfig(); err != nil {
         return nil, fmt.Errorf("xviper: 读取配置文件 %q 失败: %w", s.path, err)
     }
+    fmt.Printf("xviper: 已加载基础配置 %s\n", v.ConfigFileUsed())
 
-    // 2. 环境覆盖文件 config.{env}.yaml,缺失静默跳过
-    env := envDefault
-    if fromEnv := os.Getenv(envVarName); fromEnv != "" {
-        env = fromEnv
+    // 2. 环境覆盖文件 config.{env}.yaml,缺失则报错(fail-fast)
+    overlay := buildOverlayPath(s.path, getEnvironment(v))
+    v.SetConfigFile(overlay)
+    if err := v.MergeInConfig(); err != nil {
+        return nil, fmt.Errorf("xviper: 合并环境配置 %q 失败: %w", overlay, err)
     }
-    if env != "" {
-        ext := filepath.Ext(s.path)
-        overlay := strings.TrimSuffix(s.path, ext) + "." + env + ext
-        v.SetConfigFile(overlay)
-        if err := v.MergeInConfig(); err != nil {
-            if !errors.Is(err, fs.ErrNotExist) {
-                return nil, fmt.Errorf("xviper: 合并环境配置 %q 失败: %w", overlay, err)
-            }
-        }
-    }
+    fmt.Printf("xviper: 已合并环境配置 %s\n", overlay)
 
     // 3. 环境变量覆盖(最高优先级)
     v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
@@ -610,6 +621,7 @@ func Load[T any](opts ...Option[T]) (*T, error) {
 
 主流程读起来就是前面四章的顺序：读 base → 合 overlay → 环境变量覆盖 → 反序列化 → 校验。约定藏在常量和 `defaultSettings` 里，`Load` 本身没有一处魔法数字。
 
+
 ## 7. 单元测试：自包含、不依赖外部状态
 
 一个"可整目录复制到其他项目"的封装包，测试必须自包含——不连数据库、不读真实配置文件、不依赖运行环境。Go 的 `t.TempDir()` 和 `t.Setenv()` 正好满足。
@@ -619,26 +631,17 @@ func Load[T any](opts ...Option[T]) (*T, error) {
 - **`t.TempDir()`**——返回一个测试专属临时目录，测试结束自动清理。用它写临时 yaml，不污染项目。
 - **`t.Setenv(k, v)`**——设置环境变量，测试结束自动还原。用它验证环境变量覆盖，且不影响其他测试（Go 会保证用了 `t.Setenv` 的测试不并行跑）。
 
-先写个辅助函数和公共 yaml：
+一个要特别注意的坑：**xviper 默认环境是 dev，未设 `APP_ENV` 时会强制合并 `config.dev.yaml`（fail-fast）**。所以除了专门测 overlay 缺失的用例，其他用例都得先备好一个空 overlay：
 
 ```go
-func writeFile(t *testing.T, dir, name, content string) string {
+// writeDevOverlay 在 dir 下写一个空的 config.dev.yaml,满足 fail-fast 要求
+func writeDevOverlay(t *testing.T, dir string) {
     t.Helper()
-    p := filepath.Join(dir, name)
-    if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
-        t.Fatalf("写临时文件 %q 失败: %v", p, err)
+    p := filepath.Join(dir, "config.dev.yaml")
+    if err := os.WriteFile(p, []byte("# empty dev overlay\n"), 0644); err != nil {
+        t.Fatalf("write dev overlay: %v", err)
     }
-    return p
 }
-
-const baseYAML = `
-server:
-  port: 8080
-  mode: debug
-database:
-  host: localhost
-  password: ""
-`
 ```
 
 ### 7.2 覆盖清单
@@ -647,86 +650,84 @@ database:
 
 | 用例 | 验证点 |
 |------|--------|
-| 零 option 读默认路径 | 约定默认路径生效 |
+| 基础文件加载 | mapstructure tag 正确解析 |
 | `WithPath` 自定义路径 | option 覆盖约定 |
-| env overlay 覆盖 base | `config.dev.yaml` 合并生效 |
-| `APP_ENV` 运行时切环境 | 环境变量选择 overlay |
-| overlay 文件缺失 | 静默跳过不报错 |
+| env overlay 合并 base | `APP_ENV=prod` 深合并生效，未覆盖字段保留 base |
+| overlay 文件缺失 | **fail-fast 报错**（第 3 章的 fail-fast 行为）|
 | 环境变量覆盖嵌套字段 | `ExperimentalBindStruct` 生效（第 4 章的坑）|
-| `WithValidate` 校验失败 | 返回 error |
-| base 文件缺失 | 返回 error |
+| base < overlay < env 优先级 | 三层覆盖顺序 |
+| `WithValidate` 成功 / 失败 | 校验钩子集成 |
+| base 文件缺失 / 无效 YAML | 返回 error |
+| `getEnvironment` / `buildOverlayPath` | 环境推导、路径拼接 |
+| 空 overlay | 不改变 base |
+| duration 解析 | `"30s"` → `time.Duration` |
 
-### 7.3 两个最有价值的用例
+### 7.3 三个最有价值的用例
 
-**环境变量覆盖嵌套字段**——这是第 4 章那个坑的回归测试，最不能少：
+**① 环境变量覆盖嵌套字段**——这是第 4 章那个坑的回归测试，最不能少：
 
 ```go
-func TestLoad_EnvVarOverride(t *testing.T) {
+func TestLoad_EnvOverride(t *testing.T) {
     dir := t.TempDir()
-    base := writeFile(t, dir, "config.yaml", baseYAML)
+    configPath := filepath.Join(dir, "config.yaml")
+    // ... 写 base(password 留空占位)
+    writeDevOverlay(t, dir)
 
-    t.Setenv("APP_DATABASE_PASSWORD", "secret123")
-    t.Setenv("APP_SERVER_PORT", "7070")
+    t.Setenv("APP_SERVER_PORT", "9000")
+    t.Setenv("APP_DATABASE_PASSWORD", "env_password")
 
-    cfg, err := Load(WithPath[testConfig](base))
+    cfg, err := Load[TestConfig](WithPath[TestConfig](configPath))
     if err != nil {
-        t.Fatalf("Load 失败: %v", err)
+        t.Fatalf("Load failed: %v", err)
     }
-    // 验证嵌套字段被环境变量覆盖——base 里 password 是空串,port 是 8080
-    if cfg.Database.Password != "secret123" {
-        t.Errorf("Database.Password = %q, want secret123", cfg.Database.Password)
+    if cfg.Server.Port != 9000 {
+        t.Errorf("server.port = %d, want 9000 (env override)", cfg.Server.Port)
     }
-    if cfg.Server.Port != 7070 {
-        t.Errorf("Server.Port = %d, want 7070", cfg.Server.Port)
+    if cfg.Database.Password != "env_password" {
+        t.Errorf("database.password = %q, want env_password", cfg.Database.Password)
     }
 }
 ```
 
 这个用例是护城河：哪天有人手贱把 `ExperimentalBindStruct()` 删了，或 viper 升级改了行为，它立刻红给你看。
 
-**`APP_ENV` 运行时切环境**——验证第 3 章的运行时切换：
+**② overlay 缺失必须报错（fail-fast）**——验证第 3 章的 fail-fast 决策：
 
 ```go
-func TestLoad_EnvSwitchByEnvVar(t *testing.T) {
+func TestLoad_OverlayMissing_FailFast(t *testing.T) {
     dir := t.TempDir()
-    base := writeFile(t, dir, "config.yaml", baseYAML)
-    writeFile(t, dir, "config.prod.yaml", "server:\n  port: 443\n")
+    // ... 写 base
+    t.Setenv("APP_ENV", "staging")  // 但不创建 config.staging.yaml
 
-    t.Setenv("APP_ENV", "prod")  // 运行时指定 prod
-
-    cfg, err := Load(WithPath[testConfig](base))
-    if err != nil {
-        t.Fatalf("Load 失败: %v", err)
-    }
-    if cfg.Server.Port != 443 {
-        t.Errorf("Server.Port = %d, want 443 (APP_ENV=prod 选中 overlay)", cfg.Server.Port)
+    _, err := Load[TestConfig](WithPath[TestConfig](basePath))
+    if err == nil {
+        t.Fatal("Load should fail when overlay file is missing")
     }
 }
 ```
 
-### 7.4 overlay 缺失必须静默跳过
+注意这个用例的语义和很多教程里的"overlay 缺失静默跳过"是**相反**的——xviper 选 fail-fast，缺失即报错（原因见第 3.2 节）。
 
-一个容易漏的边界：`APP_ENV` 指向的 overlay 文件不存在时，应该**静默跳过**而非报错——不是每个环境都有差异文件。
+**③ 三层优先级**——base < overlay < env：
 
 ```go
-func TestLoad_OverlayMissing(t *testing.T) {
+func TestLoad_MergePriority(t *testing.T) {
     dir := t.TempDir()
-    base := writeFile(t, dir, "config.yaml", baseYAML)
-    // 故意不写 config.dev.yaml,默认 env=dev 会去找它
+    // base: port=8080, host=base-host
+    // overlay(prod): port=80, host=overlay-host
+    t.Setenv("APP_ENV", "prod")
+    t.Setenv("APP_SERVER_PORT", "443")
 
-    cfg, err := Load(WithPath[testConfig](base))
-    if err != nil {
-        t.Fatalf("overlay 缺失应静默跳过,却报错: %v", err)
-    }
-    if cfg.Server.Port != 8080 {
-        t.Errorf("Server.Port = %d, want 8080", cfg.Server.Port)
-    }
+    cfg, err := Load[TestConfig](WithPath[TestConfig](basePath))
+    // ...
+    // port 被环境变量覆盖（最高优先级）
+    if cfg.Server.Port != 443 { /* ... */ }
+    // host 用 overlay 值（环境变量未设）
+    if cfg.Server.Host != "overlay-host" { /* ... */ }
 }
 ```
 
-对应第 4 章主流程里那段 `errors.Is(err, fs.ErrNotExist)` 判断——只有"非文件不存在"的错误才返回，缺 overlay 是正常情况。
-
-### 7.5 跑起来
+### 7.4 跑起来
 
 ```bash
 cd backend
@@ -737,13 +738,53 @@ go test ./pkg/xviper/ -v
 
 全绿即完成。因为测试全自包含（临时目录 + 临时环境变量），CI 里、别人机器上、离线环境都能跑，这才是"可复制封装包"该有的样子。
 
----
+## 8. 项目专属层：internal/config
+
+`xviper` 是通用加载器，它不知道你的业务。项目专属的部分——**Config 结构定义 + 校验规则**——放在 `internal/config`，通过一行 `xviper.Load` 把两者接起来：
+
+```go
+// internal/config/config.go —— 只放 struct 与 Load
+type Config struct {
+    Server   ServerConfig   `mapstructure:"server"`
+    Database DatabaseConfig `mapstructure:"database"`
+    Redis    RedisConfig    `mapstructure:"redis"`
+    JWT      JWTConfig      `mapstructure:"jwt"`
+    Log      LogConfig      `mapstructure:"log"`
+}
+
+func Load(basePath string) (*Config, error) {
+    return xviper.Load[Config](
+        xviper.WithPath[Config](basePath),
+        xviper.WithValidate(validate),
+    )
+}
+```
+
+校验按业务块拆分到 `validate.go`，总入口分派到各子函数：
+
+```go
+// internal/config/validate.go
+func validate(c *Config) error {
+    if err := validateServer(&c.Server); err != nil {
+        return err
+    }
+    if err := validateDatabase(&c.Database); err != nil {
+        return err
+    }
+    // ... redis / jwt / log
+    return validateLog(&c.Log)
+}
+```
+
+这样分工清晰：**`pkg/xviper` 是不随项目变的加载机制，`internal/config` 是随项目变的结构与规则**。新微服务复制 `internal/config` 目录，改 Config 字段和 validate 规则即可，`xviper` 原样引用。
+
+> 关于校验为什么手写、不用 `go-playground/validator` 这类 tag 驱动反射库：项目 Config 结构是**已知且静态**的，手写校验零反射依赖、所有规则一处可见、IDE 可跳转可调试。反射校验是为"结构未知"准备的，用在已知结构上是过度设计。
 
 ## 结语
 
 回头看开篇那五个问题，现在都有了答案：
 
-1. **多来源优先级**——四层覆盖模型：默认值 < base < overlay < 环境变量。
+1. **多来源优先级**——三层覆盖模型：base < overlay < 环境变量。默认值就待在 base yaml 里，不在代码里再开一层。
 2. **多环境**——base + overlay 合并，`APP_ENV` 运行时切换，同一二进制跑遍所有环境。
 3. **密钥不入库**——环境变量注入 + `ExperimentalBindStruct` 覆盖嵌套字段。
 4. **嵌套字段覆盖**——`ExperimentalBindStruct()` 是解，配一个回归测试锁死它。
@@ -752,7 +793,9 @@ go test ./pkg/xviper/ -v
 最终调用点收敛成一行：
 
 ```go
-cfg, err := xviper.Load[Config]()
+cfg, err := xviper.Load[Config](xviper.WithValidate(validate))
 ```
 
 约定大于配置的精髓不是"什么都不让配"，而是**把"几乎不变的"锁进约定、把"真正因项目而异的"留成 option**。想清楚这条线画在哪，比堆多少功能都重要。
+
+> 配置加载只解决了"静态基础设施配置"（L1）。业务运行时可改的动态配置（L2）、多租户差异化配置（L3）是另一套体系——见 [三层架构与动态多租户配置蓝图](../saas-backend/research/config-loading/04-三层架构与动态多租户配置蓝图.md)。
