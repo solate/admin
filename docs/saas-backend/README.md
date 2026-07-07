@@ -8,7 +8,7 @@
 
 | 旧项目问题 | 新方案改进 |
 |------------|-----------|
-| pkg/config 全局单例 | `internal/config` 自包含单包(内联 viper 加载 + 显式 env 覆盖 + validate，零反射)，组合根映射 |
+| pkg/config 全局单例 | `internal/config` 自包含单包(内联 viper 加载 + 显式 env 覆盖 + 手写 validate)，组合根映射 |
 | 缺少优雅退出 | signal.NotifyContext + http.Server.Shutdown |
 | Repository 和 Service 文件过大 | 域子包 + 方法单文件（create.go, update.go...） |
 | 依赖关系隐式 | 构造函数显式注入，无 DI 框架 |

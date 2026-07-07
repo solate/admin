@@ -41,5 +41,5 @@ jwt:
 
 log:
   level: debug
-  format: console
+  format: text
   add_source: true

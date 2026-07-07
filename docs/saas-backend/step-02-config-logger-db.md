@@ -17,7 +17,7 @@
 ```
 internal/config/                  # 自包含配置层(项目专属 Config + 校验)
 ├── config.go                     # 类型化 Config + InitConfig(调 xviper.Load)
-├── validate.go                   # 白名单校验(零反射,拆分独立文件)
+├── validate.go                   # 手写白名单校验(拆分独立文件)
 └── config_test.go                # 加载器行为 + 项目集成测试
 
 pkg/xviper/                       # 通用配置加载机制(泛型 Load[T],可复制复用)
@@ -59,16 +59,16 @@ cmd/server/main.go                # 组合根：配置 → 日志 → DB → Red
 **拆两层**：通用加载机制（读 base + overlay 合并 + 环境变量覆盖）抽成泛型包 `pkg/xviper`（`Load[T]`，可复制到其他项目）；项目专属的 `Config` 结构与校验规则放 `internal/config`（复制后改字段）。
 
 - **通用机制**（不随项目变）：[pkg/xviper/xviper.go](../../backend/pkg/xviper/xviper.go) — `Load[T any](opts...) (*T, error)`，约定 `config/config.yaml` base + `config.{APP_ENV}.yaml` overlay，`APP_*` 环境变量覆盖嵌套字段。选项见 [options.go](../../backend/pkg/xviper/options.go)。
-- **项目专属**（新微服务只改这里）：[internal/config/config.go](../../backend/internal/config/config.go) 定义类型化 `Config` + `InitConfig()`（调 `xviper.Load[Config]`）；[internal/config/validate.go](../../backend/internal/config/validate.go) 手写白名单校验（零反射、不引第三方校验库）。
+- **项目专属**（新微服务只改这里）：[internal/config/config.go](../../backend/internal/config/config.go) 定义类型化 `Config` + `InitConfig()`（调 `xviper.Load[Config]`）；[internal/config/validate.go](../../backend/internal/config/validate.go) 手写白名单校验。
 
-设计细节（为何 xviper 泛型、为何零反射、overlay 合并语义、为何不用 `AutomaticEnv`）见配置设计文档：
+设计细节（为何 xviper 泛型、overlay 合并语义、为何不用 `AutomaticEnv`）见配置设计文档：
 - 设计蓝图：[research/config-loading/04-三层架构与动态多租户配置蓝图.md](research/config-loading/04-三层架构与动态多租户配置蓝图.md)
 - 部署路径：[research/config-loading/05-配置部署路径与ConfigMap挂载设计.md](research/config-loading/05-配置部署路径与ConfigMap挂载设计.md)
 - 通俗讲解：[../blog/从零设计Go配置加载-viper封装与约定式设计.md](../blog/从零设计Go配置加载-viper封装与约定式设计.md)
 
 **关键设计决策**：
 - **通用加载与项目 Config 分层**：`xviper`（机制）复制即用、`internal/config`（结构）复制后改字段，关注点分离。
-- **零反射**：本项目代码不 import `reflect`；反序列化交给 viper，校验手写全覆盖。
+- **校验手写全覆盖**：反序列化交给 viper，字段校验在 `validate.go` 手写，规则集中一处、可跳转可调试。
 - **不用全局单例**：`InitConfig` 返回 `*Config`，通过参数向下传递。
 - **敏感字段走 env**：密码/密钥不进任何 yaml，只经环境变量覆盖。
 
@@ -165,7 +165,7 @@ go build ./...
 go build ./pkg/database && go build ./pkg/xslog && go build ./pkg/rdb && go build ./pkg/xviper && go build ./internal/config
 # 期望：各自独立编译无错误
 
-# 3. 配置层 + 日志层单测全绿（无反射、无外部服务）
+# 3. 配置层 + 日志层单测全绿（无外部服务依赖）
 go test ./internal/config/ ./pkg/xviper/ ./pkg/xslog/ -v
 # 期望：加载器行为 / env 覆盖 / overlay 合并 / 日志级别过滤 / JSON / source 裁剪 / ctx 注入 / 脱敏 / slogtest 合规 全部 PASS
 
@@ -194,7 +194,7 @@ go run ./cmd/server 2>&1 | head -3
 
 要点：
 1. pkg/xviper 泛型 Load[T]：读 base + config.{APP_ENV}.yaml overlay 合并 + APP_* 环境变量覆盖；WithPath/WithValidate 选项；绝不用 viper.AutomaticEnv
-2. internal/config：类型化 Config(mapstructure tag) + InitConfig(调 xviper.Load[Config]) + validate.go 白名单校验(零反射)
+2. internal/config：类型化 Config(mapstructure tag) + InitConfig(调 xviper.Load[Config]) + validate.go 手写白名单校验
 3. 自包含单测(t.TempDir/t.Setenv)：xviper 加载器行为 + internal/config 校验/env 覆盖
 4. pkg/xslog：Config{Level,Format,AddSource,Output,ContextExtractors,ReplaceAttr}，New() 返回 *slog.Logger；parseLevel 用 slog.Level.UnmarshalText(大小写不敏感)；shortenSource 裁 dir/file:line；自定义 contextHandler 从 ctx 注入 request_id/tenant_id；不提供 Fatal(启动失败走 run() error + os.Exit)；日志用标准库 slog，无第三方依赖
 5. pkg/database：New() 返回 *gorm.DB，含 slog 适配的 GORM logger(gormSlogger 实现 gormlogger.Interface，用 *Context 变体携带 request_id)

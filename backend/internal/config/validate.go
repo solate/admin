@@ -94,7 +94,7 @@ func validateLog(l *LogConfig) error {
 		return fmt.Errorf("log.level invalid: %q", l.Level)
 	}
 	switch l.Format {
-	case "", "json", "text", "console":
+	case "", "json", "text":
 	default:
 		return fmt.Errorf("log.format invalid: %q", l.Format)
 	}

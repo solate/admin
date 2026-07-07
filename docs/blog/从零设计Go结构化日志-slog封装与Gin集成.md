@@ -138,7 +138,7 @@ log:
   add_source: true
 ```
 
-校验用白名单（不引第三方校验库，对齐项目"零反射"哲学）：
+配置里的 `level`/`format` 用白名单校验，非法值直接报错：
 
 ```go
 func validate(c *Config) error {

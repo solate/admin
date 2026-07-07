@@ -69,8 +69,8 @@ type JWTConfig struct {
 // LogConfig 是日志配置。
 type LogConfig struct {
 	Level     string `mapstructure:"level"`      // 级别 debug/info/warn/error
-	Format    string `mapstructure:"format"`     // json(生产) / text / console
-	AddSource bool   `mapstructure:"add_source"` // 记录调用位置 file:line
+	Format    string `mapstructure:"format"`     // json(生产) / text(开发)
+	AddSource bool   `mapstructure:"add_source"` // 记录调用位置 dir/file:line
 }
 
 // InitConfig 按 xviper 约定加载配置并返回校验过的 *Config。
