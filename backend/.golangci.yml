@@ -1,0 +1,20 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - sloglint  # ← 强制 slog 最佳实践
+  settings:
+    sloglint:
+      # 禁止 key-value 调用（奇数参数静默出错），强制强类型 Attr
+      no-mixed-args: true
+      # 要求用 context 变体（InfoContext 等），为 OTel 做准备
+      context-only: true
+
+formatters:
+  enable:
+    - gofmt

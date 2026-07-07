@@ -1,4 +1,4 @@
-package xlog
+package xslog
 
 import (
 	"context"
@@ -26,7 +26,7 @@ type Config struct {
 	Level  string    // 级别 debug/info/warn/error，空或未知值 → info
 	Format Format    // 输出格式 json(默认) / text
 	Output io.Writer // 输出目标，默认 os.Stdout（测试可注入 bytes.Buffer）
-	// AddSource 为 true 时在日志中记录调用位置（裁成 file:line）。
+	// AddSource 为 true 时在日志中记录调用位置（裁成 dir/file:line）。
 	AddSource bool
 	// ContextExtractors 是自定义的 context 字段提取器。
 	// 内置的 contextFieldsExtractor（处理 WithField/WithFields）

@@ -4,11 +4,11 @@
 >
 > 更重要的是，本文记录了**封装过程中真实踩过的坑**和**每个设计决策背后的取舍**——不是"应该怎么写"的教条，而是"为什么最后写成这样"的推演。
 >
-> 选型理由见 [日志库选型调研](../saas-backend/research/logging/01-日志库选型调研.md)——结论是 2026 年新项目用标准库 [`log/slog`](https://pkg.go.dev/log/slog)。对应源码：[`backend/pkg/xlog/`](../../backend/pkg/xlog)。
+> 选型理由见 [日志库选型调研](../saas-backend/research/logging/01-日志库选型调研.md)——结论是 2026 年新项目用标准库 [`log/slog`](https://pkg.go.dev/log/slog)。对应源码：[`backend/pkg/xslog/`](../../backend/pkg/xslog)。
 
 ---
 
-## 0. 开篇：为什么是 slog
+## 0. 开篇：为什么是 slog（而不是 zerolog / zap）
 
 Go 1.21（2023-08）把结构化日志收进了标准库——`log/slog`。到 2026 年，生态已经收敛：新项目的应用代码默认写 `*slog.Logger`。
 
@@ -18,7 +18,21 @@ slog 不是最快的（zerolog 在跑分上快约 4×，但 25ns 和 101ns 对 W
 2. **`slog.Handler` 解耦**——你的调用代码和编码引擎分开，未来想换 OTel / 更快后端，只改初始化那一行，调用点一行不动。
 3. **生态对齐**——`otelslog`、`sloglint`、charm/log、各观测平台都以 slog 为前端标准。
 
-本文目标：把 slog 封装成一个**生产可用、可跨项目复制**的日志包 `pkg/xlog`，核心能力是**请求级字段自动注入**，并交代清楚每个决策的来龙去脉。
+那更快的 zerolog、更能组合的 zap 呢？对一个 Web 后端，它们都不是更好的选择：
+
+- **性能不是决策点**：zerolog / phuslu 原生 ~25ns、slog ~101ns，看着差 4×，但 Web 后端的瓶颈是 DB / Redis / 网络（毫秒级），日志编码的纳秒差距对总延迟毫无意义。
+- **zap**：`zapcore` 可组合性最强（采样、多路由），但要多扛一个依赖、API 更冗长，对管理后台属过度设计。
+- **zerolog**：流式 `.Str().Msg()` 很顺手，但**一旦用了它的原生 API 就锁死后端**——想换观测后端得重写调用点。更关键的是 **OTel 时代它没有官方 OTLP bridge**（slog 桥接还慢 46×），这在可观测性统一化的趋势下是硬伤。
+
+一句话：极致性能对 Web 后端是伪需求，而 slog 的"标准库 + 后端可换 + OTel 官方支持"才是长期正确的下注。完整的 benchmark 与成熟项目横评见 [日志库选型调研](../saas-backend/research/logging/01-日志库选型调研.md)。
+
+选定 slog，下一个问题是：为什么不直接 `slog.New(slog.NewJSONHandler(os.Stdout, nil))` 裸用，非要封一层 `pkg/xslog`？因为裸 slog 缺三样生产必需的能力：
+
+1. **请求级字段自动注入**（核心）：request_id / tenant_id 要每条日志手写，繁琐且易漏——漏一条，排障时链路就断了。这是 xslog 真正不可替代的价值（§7）。
+2. **工程细节**：source 裁成 `dir/file:line`、敏感字段脱敏、级别字符串解析——每个都是生产必选，裸用得每个项目重写一遍。
+3. **可复制**：封装一次（约 150 行），跨项目直接 copy。zerolog 的"简单"是把这些复杂度藏进了库里，代价是换不了后端；xslog 把复杂度收在自己手里（约 150 行），换来完全的控制权和可移植性。
+
+本文目标：把 slog 封装成一个**生产可用、可跨项目复制**的日志包 `pkg/xslog`，核心能力是**请求级字段自动注入**，并交代清楚每个决策的来龙去脉。
 
 ---
 
@@ -83,7 +97,7 @@ slog.LevelError = +8
 设计从"该暴露哪些参数"开始。原则：**只暴露你真的会在不同环境（开发/测试/生产）调的参数，其余写死或用零值兜底。**
 
 ```go
-// pkg/xlog/config.go
+// pkg/xslog/config.go
 
 // Format 指定日志输出格式。
 type Format = string
@@ -149,7 +163,7 @@ func validate(c *Config) error {
 封装的目标：**调用方一次 `New(cfg)` 拿到配好的 `*slog.Logger`，不碰 Handler 细节。**
 
 ```go
-// pkg/xlog/logger.go
+// pkg/xslog/logger.go
 func New(cfg Config) *slog.Logger {
 	// 填充默认值
 	if cfg.Output == nil {
@@ -334,7 +348,7 @@ func RedactReplaceAttr(sensitiveKeys ...string) func(groups []string, a slog.Att
 slog 没有 `Fatal`（zerolog 有 `.Fatal()`）。启动阶段"连库失败就退出"很常见，于是封装了一个：
 
 ```go
-// 曾经的 xlog.Fatal——记一条 Error 再 os.Exit(1)
+// 曾经的 xslog.Fatal——记一条 Error 再 os.Exit(1)
 func Fatal(log *slog.Logger, msg string, args ...any) {
     var pcs [1]uintptr
     runtime.Callers(2, pcs[:]) // 让 source 指向调用方而非 Fatal 自己
@@ -345,7 +359,7 @@ func Fatal(log *slog.Logger, msg string, args ...any) {
 }
 ```
 
-用起来很顺：`if err != nil { xlog.Fatal(log, "connect db failed", xlog.Err(err)) }`。
+用起来很顺：`if err != nil { xslog.Fatal(log, "connect db failed", xslog.Err(err)) }`。
 
 ### 为什么又删了
 
@@ -353,7 +367,7 @@ func Fatal(log *slog.Logger, msg string, args ...any) {
 
 1. **日志库的职责是"记录"，不是"控制流程"**。什么算"致命"是业务决策（启动失败要退，但请求失败只记 error），不该藏在日志调用里。`log.Fatal` 让代码看起来只是记日志，实际会中断流程——隐式副作用，读代码的人容易漏。
 
-2. **`os.Exit` 跳过所有 `defer`**。这是最实际的坑。项目里 `main` 已经 `defer database.Close(db)`，但如果在 goroutine 里调 `xlog.Fatal`，`os.Exit` 会让**所有 defer 全部不执行**——数据库连接、临时文件、分布式锁统统不清理。
+2. **`os.Exit` 跳过所有 `defer`**。这是最实际的坑。项目里 `main` 已经 `defer database.Close(db)`，但如果在 goroutine 里调 `xslog.Fatal`，`os.Exit` 会让**所有 defer 全部不执行**——数据库连接、临时文件、分布式锁统统不清理。
 
 3. **测试不友好**。库自己调 `os.Exit`，单测根本没法跑（进程直接退）。要测得起子进程捕获退出码，复杂度爆炸。
 
@@ -377,7 +391,7 @@ func run() error {
     if err != nil {
         return fmt.Errorf("load config: %w", err)
     }
-    log := xlog.New(xlog.Config{
+    log := xslog.New(xslog.Config{
         Level: cfg.Log.Level, Format: cfg.Log.Format, AddSource: cfg.Log.AddSource,
     }).With("service", cfg.App.Name, "env", cfg.App.Env) // 静态字段由调用方加
 
@@ -413,7 +427,7 @@ func run() error {
 
 ## 7. 核心：让请求级字段自动注入（本文的重头戏）
 
-**这是 slog 相对 zerolog 最值得学的一招，也是整个 xlog 封装真正的价值所在。**
+**这是 slog 相对 zerolog 最值得学的一招，也是整个 xslog 封装真正的价值所在。**
 
 前面 §2-6 那些（级别解析、source 裁剪、脱敏）其实裸用 slog 也能写，只是每个项目重复一遍。**真正让这个包不可替代的，是 context 字段自动注入**——中间件解析出 request_id/tenant_id 后，业务代码每条日志都要手写 `slog.String("request_id", xcontext.GetRequestID(ctx))`，繁琐且易漏。漏一条，排障时链路就断了。
 
@@ -424,7 +438,7 @@ slog 的 Handler 模型能彻底解决：**写一个自定义 Handler，在每�
 自定义 Handler 是 slog **官方唯一推荐的扩展方式**。它是官方博客《A Guide to Writing slog Handlers》里说的 **wrapping handler**：内部持有另一个 Handler，做完自己的事再委托下去。
 
 ```go
-// pkg/xlog/handler.go
+// pkg/xslog/handler.go
 type contextHandler struct {
     inner      slog.Handler
     extractors []ContextExtractor
@@ -496,7 +510,7 @@ type ContextExtractor func(ctx context.Context) []slog.Attr
 **来源一：WithField / WithFields（内置）**——临时字段，存进 ctx 的私有 key：
 
 ```go
-// pkg/xlog/context.go
+// pkg/xslog/context.go
 type ctxKey struct{}
 var fieldsKey = ctxKey{}
 
@@ -539,8 +553,8 @@ func LogExtractor(ctx context.Context) []slog.Attr {
 
 ```go
 // main：组装层做胶水
-log := xlog.New(xlog.Config{
-    ContextExtractors: []xlog.ContextExtractor{
+log := xslog.New(xslog.Config{
+    ContextExtractors: []xslog.ContextExtractor{
         xcontext.LogExtractor, // request_id/tenant_id
         // otelExtractor,      // 将来接 OTel：再注册一个读 trace_id/span_id 的，日志包不改一行
     },
@@ -558,7 +572,7 @@ log := xlog.New(xlog.Config{
 func (s *UserService) Get(ctx context.Context, id string) (*User, error) {
     user, err := s.repo.Get(ctx, id)
     if err != nil {
-        s.log.ErrorContext(ctx, "get user failed", slog.String("user_id", id), xlog.Err(err))
+        s.log.ErrorContext(ctx, "get user failed", slog.String("user_id", id), xslog.Err(err))
         return nil, err
     }
     return user, nil
@@ -652,7 +666,7 @@ func Recovery(log *slog.Logger) gin.HandlerFunc {
 ```go
 func newTestLogger(level string) (*slog.Logger, *bytes.Buffer) {
     var buf bytes.Buffer
-    l := xlog.New(xlog.Config{Level: level, Format: "json", AddSource: true, Output: &buf})
+    l := xslog.New(xslog.Config{Level: level, Format: "json", AddSource: true, Output: &buf})
     return l, &buf
 }
 ```
@@ -662,7 +676,7 @@ func newTestLogger(level string) (*slog.Logger, *bytes.Buffer) {
 ```go
 func TestHandlerCompliance(t *testing.T) {
     var buf bytes.Buffer
-    logger := xlog.New(xlog.Config{Format: "json", Output: &buf})
+    logger := xslog.New(xslog.Config{Format: "json", Output: &buf})
     results := func() []map[string]any { /* 解析 buf 每行 JSON */ }
     if err := slogtest.TestHandler(logger.Handler(), results); err != nil {
         t.Fatal(err)
@@ -670,14 +684,88 @@ func TestHandlerCompliance(t *testing.T) {
 }
 ```
 
+### 9.1 用 sloglint 把「最佳实践」变成 CI 卡点
+
+`slogtest` 保证 handler *实现* 合规，但挡不住 *调用方* 写错——§1.2 那个 `slog.Info("x", "k")`（漏了 value）能编译通过、运行时才静默出脏日志。这类问题要靠**静态检查**在提交前拦下。工具是 [`sloglint`](https://github.com/go-simpler/sloglint)，通过 [`golangci-lint`](https://golangci-lint.run) 跑起来：
+
+```yaml
+# backend/.golangci.yml
+version: "2"          # golangci-lint v2 必须显式声明版本（v1 无此字段）
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - sloglint        # ← 强制 slog 最佳实践
+  settings:
+    sloglint:
+      no-mixed-args: true   # 禁止 key-value 混用，强制强类型 Attr
+      context-only: true    # 强制用 InfoContext 等 context 变体
+```
+
+两条规则正好对应本文两个核心约定：
+
+- **`no-mixed-args`** 兜住 §1.2 的坑：`log.Info("msg", "k")`（奇数参数）直接报错，逼你写 `slog.String("k", v)`。
+- **`context-only`** 兑现 §7 的前提：不带 ctx 的 `log.Info(...)` 报错，逼你全程用 `InfoContext`——只有 ctx 传进来，request_id 才注入得进去，将来接 OTel 的 trace_id 也走同一条路（§10）。这条让「养成用 context 变体的习惯」从口头建议变成合并前的硬门槛。
+
+**这里要分清哪些是官方的、哪些不是**，否则容易误以为「Go 要求你这么做」：
+
+| 工具 | 出身 | 性质 |
+|---|---|---|
+| `testing/slogtest` | **Go 标准库**（官方） | 官方合规测试，写自定义 handler 必跑 |
+| `golangci-lint` | 社区项目（非 Go 官方） | Go 生态**事实标准**的 lint 聚合器：一次运行几十个 linter |
+| `sloglint` | 第三方（go-simpler） | 挂在 golangci-lint 下的一个 slog 专用 linter |
+
+换句话说：**`slogtest` 是官方要求的合规底线；`golangci-lint` + `sloglint` 是社区工具，不是 Go 强制的**。但 golangci-lint 已是 Go 项目近乎默认的 CI 环节，`sloglint` 也是目前落地 slog 规范最省事的方案，所以本项目采用——它约束的是「团队怎么调用 slog」，不是「slog 本身要不要这样」。
+
+> 注意 golangci-lint **v2 与 v1 配置不兼容**：v2 必须写 `version: "2"`，且 `gofmt` 这类改成了 formatter（放独立的 `formatters` 段，不再列在 `linters` 里）。踩过一次「unsupported version」和「gofmt is a formatter」的报错，记一笔。Makefile 里 `lint: golangci-lint run ./...` 直接跑这份配置。
+
 ---
 
-## 10. 一句话前瞻：接 OpenTelemetry
+## 10. 接入 OpenTelemetry：何时接、怎么接
 
-等你要做分布式追踪，有两条路，都因为前面的设计而零改动：
+（选型理由——为什么 slog、为什么不 zerolog/zap、为什么封装——见开篇 §0。本节只谈 OTel：何时该接、真到那步三个库各是什么处境、以及链路追踪的真正难点。）
 
-1. **换底层 Handler**：`slog.New(otelslog.NewLogger())` 让日志成为 OTel 信号，自动带 trace_id/span_id。
-2. **加个 extractor**：注册一个读 `trace_id/span_id` 的 `ContextExtractor`，日志包一行不改（§7.5）。
+### 什么阶段不需要 / 什么阶段该接 OTel
+
+| 阶段 | 判断 | 做什么 | YAGNI 原则 |
+|---|---|---|---|
+| **单体 + 单实例 + 未上线/用户少** | 当前项目 | xslog 留 ContextExtractor 口子 | ❌ OTel 是纯负担（collector、instrument）|
+| **单体 + 生产，有真实用户** | "某接口偶尔慢" | Prometheus metrics（QPS/延迟/错误率大盘）| trace 暂缓，性价比：metrics >> trace |
+| **拆了微服务 / 复杂异步调用** | 跨服务/进程链路 | Trace（TraceExtractor + otelgin + 跨服务传播） | 这时没 trace 真的抓瞎 |
+
+**核心洞察**：单体里请求链路在一个进程，`ERROR` 日志 + 堆栈 + request_id 已够定位；trace 的价值在**跨服务/进程**时才爆发。
+
+### 到了微服务这步：三个库的 OTel 适配现实
+
+真到了接 OTel 这步，三个库的现实约束分两层：
+
+**Level 1：日志-trace 关联（把 trace_id 打进日志）**
+- zerolog：手动 hook 从 span 取 trace_id，每加信号回中间件改。能做，但不如 ContextExtractor 干净。
+- zap：`otelzap` 桥接能自动带，比 zerolog 好。
+- slog xslog：`ContextExtractor` 注册一行搞定，信号可扩展（request_id / trace_id / span_id 全走同一机制）。
+
+这层差异不大，都是"能做，工作量有别"。
+
+**Level 2：日志作为 OTel 信号走 OTLP 管道 — 这层是分水岭**
+- **zerolog：没有官方 OTLP log bridge**。要么自己写 hook 发 collector（维护序列化 + 批量 + 重试），要么就是那个慢 46× 的 slog 桥接陷阱。这是 zerolog 在 OTel 时代最大的短板。
+- zap：`otelzap` 主要解决"日志带 trace_id"，OTLP log 直发靠社区桥，不如 slog 官方。
+- **slog：`otelslog` 是 OTel 官方维护的 bridge**，一等公民。换 inner handler 就接上，调用点不动。
+
+**结论**：微服务 + 统一可观测性平台时，slog 的官方桥是三者里最顺的。zerolog 的流式 API 和极致性能为"单机极速打印"优化，不为"标准化信号管道"设计。
+
+### 链路追踪的真正难点
+
+加 span 本身很简单（`tracer.Start` + `defer span.End()`）。难点在：
+
+1. **Context 传播**：trace 断链头号原因。ctx 必须全程透传，一处 `context.Background()` 就断（常见于异步 goroutine、消息队列消费）。
+2. **跨服务边界传递**：HTTP header（`traceparent` W3C 标准）、消息队列 message header 手动注入。
+3. **采样策略**：全量采集成本爆炸，1% 采样怕漏错误请求，需要 tail-based sampling（配置复杂）。
+
+**核心难点是 1 和 2**（做不好就没意义），3 是成本控制。完整集成路径（TraceExtractor 实现、otelgin 中间件、多路分发、微服务传播、采样策略）见 [OpenTelemetry 集成路径](../saas-backend/research/logging/06-OpenTelemetry集成路径.md)。
 
 **前提**：全程用 `*Context` 变体（`InfoContext` 等），且 ctx 里有活跃 span。这也是本文反复强调"用 context 变体"的原因——现在养成习惯，将来接 OTel 零成本。
 

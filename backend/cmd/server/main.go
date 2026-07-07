@@ -13,7 +13,7 @@ import (
 	"admin/internal/server"
 	"admin/pkg/database"
 	"admin/pkg/rdb"
-	"admin/pkg/xlog"
+	"admin/pkg/xslog"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 
 // run 承载全部启动逻辑，所有资源用 defer 逆序清理。
 // 任何一步失败都 return error，由 main 统一打日志 + os.Exit(1)，
-// 从而避免在日志调用里隐藏 os.Exit（slog 刻意不提供 Fatal，见 pkg/xlog）。
+// 从而避免在日志调用里隐藏 os.Exit（slog 刻意不提供 Fatal，见 pkg/xslog）。
 func run() error {
 	// 1. 加载配置(路径约定 config/config.yaml,靠挂载覆盖内容,APP_ENV 切环境)
 	cfg, err := config.InitConfig()
@@ -36,7 +36,7 @@ func run() error {
 	}
 
 	// 2. 初始化日志
-	log := xlog.New(xlog.Config{
+	log := xslog.New(xslog.Config{
 		Level:     cfg.Log.Level,
 		Format:    cfg.Log.Format,
 		AddSource: cfg.Log.AddSource,

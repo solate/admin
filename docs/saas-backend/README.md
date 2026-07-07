@@ -24,7 +24,7 @@
 | 1 | 组合根在 main | `cmd/server/main.go` 是唯一了解所有依赖的地方 |
 | 2 | 显式优于隐式 | 构造函数接收依赖，不用全局变量、不用 DI 框架 |
 | 3 | 域子包 + 单方法文件 | `service/user/create.go` 一个方法一个文件，AI 友好 |
-| 4 | 各 pkg 自有 Config | `database.Config`、`xlog.Config`，pkg 不知道 YAML |
+| 4 | 各 pkg 自有 Config | `database.Config`、`xslog.Config`，pkg 不知道 YAML |
 | 5 | 多租户三层隔离 | JWT Claims → xcontext → Repository WHERE |
 | 6 | 错误码集中管理 | xerr 定义错误 → Service 层 Wrap → middleware 统一响应 |
 | 7 | 双排序字段 | 所有列表 `ORDER BY created_at DESC, pk DESC` |
@@ -87,8 +87,8 @@ backend/
 │   ├── rdb/
 │   │   ├── config.go            # rdb.Config struct
 │   │   └── rdb.go               # New(cfg Config) → *redis.Client
-│   ├── xlog/
-│   │   ├── config.go            # xlog.Config struct
+│   ├── xslog/
+│   │   ├── config.go            # xslog.Config struct
 │   │   └── logger.go            # New(cfg Config) → *slog.Logger（标准库结构化日志）
 │   ├── jwt/
 │   │   ├── config.go            # jwt.Config struct
@@ -127,7 +127,7 @@ backend/
 ```
 cmd/server/main.go
     ↓ 创建
-pkg/* (database, rdb, xlog, jwt, idgen, password)
+pkg/* (database, rdb, xslog, jwt, idgen, password)
     ↓ 注入
 internal/config      ← 加载 YAML
 internal/server      ← 包装 http.Server
@@ -204,6 +204,7 @@ internal/query       ← GORM Gen
 >
 > **日志系列文档与博客**：
 > - [01 日志库选型调研](research/logging/01-日志库选型调研.md) — 为何 2026 选 slog（选型 ADR）
+> - [06 OpenTelemetry 集成路径](research/logging/06-OpenTelemetry集成路径.md) — 演进指南：从单体日志到微服务全链路追踪
 > - [博客：从零设计 Go 结构化日志](../blog/从零设计Go结构化日志-slog封装与Gin集成.md) — 完整封装设计、契约、踩坑清单（唯一权威实现文档）
 
 **里程碑 5**：生产就绪
@@ -236,7 +237,7 @@ internal/query       ← GORM Gen
 | 领域 | 选择 | 原因 | 备选方案（不选） |
 |------|------|------|----------------|
 | 配置加载 | 泛型封装 `pkg/xviper`(viper + `ExperimentalBindStruct`)+ 项目层 `internal/config`(类型化 Config + 手写校验) | base+overlay 多环境、`APP_` 前缀环境变量覆盖嵌套字段、约定式极简 API | yaml.v3(功能弱)、纯 `AutomaticEnv`(与 `Unmarshal` 不兼容,靠 `ExperimentalBindStruct` 解决) |
-| 日志 | slog（标准库）+ pkg/xlog 封装 | 零依赖、结构化、Handler 可换后端、otelslog 直通 OTel | zerolog（多一个依赖，slog 桥接慢 46×） |
+| 日志 | slog（标准库）+ pkg/xslog 封装 | 零依赖、结构化、Handler 可换后端、otelslog 直通 OTel | zerolog（多一个依赖，slog 桥接慢 46×） |
 | ORM | GORM + Gen | 类型安全查询、代码生成 | sqlx（手写 SQL 太多） |
 | 路由 | Gin | 性能好、生态成熟、中间件丰富 | Echo（社区稍小） |
 | ID 生成 | 雪花算法（sony/sonyflake） | 有序、紧凑、全局唯一 | UUID（太长、无序） |

@@ -25,8 +25,8 @@ pkg/xviper/                       # 通用配置加载机制(泛型 Load[T],可�
 ├── options.go                    # WithPath / WithValidate 选项
 └── xviper_test.go                # 自包含单测(t.TempDir/t.Setenv)
 
-pkg/xlog/                         # 结构化日志封装(slog,可复制复用,含 ctx 字段自动注入)
-├── config.go                     # xlog.Config{Level, Format, Output, AddSource, ...}
+pkg/xslog/                         # 结构化日志封装(slog,可复制复用,含 ctx 字段自动注入)
+├── config.go                     # xslog.Config{Level, Format, Output, AddSource, ...}
 ├── logger.go                     # New(cfg) *slog.Logger + parseLevel + shortenSource
 ├── handler.go / context.go       # contextHandler:从 ctx 自动注入 request_id/tenant_id
 ├── attrs.go                      # Err / RedactReplaceAttr 辅助
@@ -72,13 +72,13 @@ cmd/server/main.go                # 组合根：配置 → 日志 → DB → Red
 - **不用全局单例**：`InitConfig` 返回 `*Config`，通过参数向下传递。
 - **敏感字段走 env**：密码/密钥不进任何 yaml，只经环境变量覆盖。
 
-### 2. Logger — slog + pkg/xlog
+### 2. Logger — slog + pkg/xslog
 
-日志用 Go 标准库 `log/slog`，封装在 [pkg/xlog/](../../backend/pkg/xlog/)，通过自定义 `slog.Handler` 实现请求级字段（`request_id`/`tenant_id`）自动注入。选型理由（为何 2026 新项目用 slog 而非 zerolog）见 [research/logging/01-日志库选型调研.md](research/logging/01-日志库选型调研.md)；完整的封装设计、逐行原理、踩坑与决策推演见博客 [从零设计Go结构化日志-slog封装与context注入实战](../blog/从零设计Go结构化日志-slog封装与Gin集成.md)（唯一权威实现文档）。
+日志用 Go 标准库 `log/slog`，封装在 [pkg/xslog/](../../backend/pkg/xslog/)，通过自定义 `slog.Handler` 实现请求级字段（`request_id`/`tenant_id`）自动注入。选型理由（为何 2026 新项目用 slog 而非 zerolog）见 [research/logging/01-日志库选型调研.md](research/logging/01-日志库选型调研.md)；完整的封装设计、逐行原理、踩坑与决策推演见博客 [从零设计Go结构化日志-slog封装与context注入实战](../blog/从零设计Go结构化日志-slog封装与Gin集成.md)（唯一权威实现文档）。
 
 源码：
-- [pkg/xlog/logger.go](../../backend/pkg/xlog/logger.go) — `New(cfg) *slog.Logger`；`parseLevel`（复用 `slog.Level.UnmarshalText`，大小写不敏感）；`shortenSource` 把调用位置裁成 `dir/file:line`。
-- [pkg/xlog/handler.go](../../backend/pkg/xlog/handler.go)、[context.go](../../backend/pkg/xlog/context.go) — `contextHandler` 从 ctx 自动注入字段；`WithField`/`WithFields`/`ContextExtractor` 扩展点。
+- [pkg/xslog/logger.go](../../backend/pkg/xslog/logger.go) — `New(cfg) *slog.Logger`；`parseLevel`（复用 `slog.Level.UnmarshalText`，大小写不敏感）；`shortenSource` 把调用位置裁成 `dir/file:line`。
+- [pkg/xslog/handler.go](../../backend/pkg/xslog/handler.go)、[context.go](../../backend/pkg/xslog/context.go) — `contextHandler` 从 ctx 自动注入字段；`WithField`/`WithFields`/`ContextExtractor` 扩展点。
 
 **关键设计决策**：
 - **ctx 字段自动注入**：自定义 `contextHandler` 包裹底层 handler，在每条日志写入前从 ctx 提取 `request_id`/`tenant_id` 注入，业务代码零负担（用 `*Context` 变体即可）。这是本包的核心价值。
@@ -86,7 +86,7 @@ cmd/server/main.go                # 组合根：配置 → 日志 → DB → Red
 - **不提供 Fatal**：对齐 slog 官方哲学（日志只记录、不控制流程）；启动失败用 `run() error` 模式，`main` 统一 `os.Exit`，保证 defer 执行。
 - **依赖注入，不设全局**：`New` 返回 `*slog.Logger` 经参数传递（第三方库需要时才 `slog.SetDefault`）。
 - **格式**：`json`（生产，也是空值默认）走 `JSONHandler`，`text`（开发）走 `TextHandler`；输出默认 stdout（`Output` 可注入 buffer 供测试），容器/systemd 负责轮转。
-- **命名 `xlog`**：可复用封装包用 `x` 前缀，避免与标准库 `log`/`slog` 及项目内包冲突（对齐 `xviper`/`xcontext`/`xerr`）。
+- **命名 `xslog`**：可复用封装包用 `x` 前缀，避免与标准库 `log`/`slog` 及项目内包冲突（对齐 `xviper`/`xcontext`/`xerr`）。
 
 ### 3. Database — PostgreSQL + GORM
 
@@ -120,11 +120,11 @@ cmd/server/main.go                # 组合根：配置 → 日志 → DB → Red
 
 源码：[cmd/server/main.go](../../backend/cmd/server/main.go)。
 
-顺序：`config.InitConfig()` → `xlog.New()` → `database.New()` → `rdb.New()` → `server.New()` → 启动 + `signal.NotifyContext` 优雅关闭。
+顺序：`config.InitConfig()` → `xslog.New()` → `database.New()` → `rdb.New()` → `server.New()` → 启动 + `signal.NotifyContext` 优雅关闭。
 
 **关键设计**：
 - `config.Config` → 各 `pkg.Config` 的映射在 main 中完成；各 pkg 不知道 YAML 的存在，只接收自己的 Config struct —— 换项目只需换 YAML 和 main 的映射。
-- `main` 采用 `run() error` 模式：所有资源用 `defer` 清理，任何一步失败 `return fmt.Errorf`，由 `main` 统一打日志 + `os.Exit(1)`。不用 `xlog.Fatal`（`os.Exit` 会跳过 defer），日志包只记录不控制流程。
+- `main` 采用 `run() error` 模式：所有资源用 `defer` 清理，任何一步失败 `return fmt.Errorf`，由 `main` 统一打日志 + `os.Exit(1)`。不用 `xslog.Fatal`（`os.Exit` 会跳过 defer），日志包只记录不控制流程。
 - 优雅退出超时取自 `cfg.Server.GracefulTimeout`（不硬编码）。
 
 ### 7. config/config.yaml
@@ -162,11 +162,11 @@ go build ./...
 # 期望：无错误
 
 # 2. 各 pkg 独立可编译
-go build ./pkg/database && go build ./pkg/xlog && go build ./pkg/rdb && go build ./pkg/xviper && go build ./internal/config
+go build ./pkg/database && go build ./pkg/xslog && go build ./pkg/rdb && go build ./pkg/xviper && go build ./internal/config
 # 期望：各自独立编译无错误
 
 # 3. 配置层 + 日志层单测全绿（无反射、无外部服务）
-go test ./internal/config/ ./pkg/xviper/ ./pkg/xlog/ -v
+go test ./internal/config/ ./pkg/xviper/ ./pkg/xslog/ -v
 # 期望：加载器行为 / env 覆盖 / overlay 合并 / 日志级别过滤 / JSON / source 裁剪 / ctx 注入 / 脱敏 / slogtest 合规 全部 PASS
 
 # 4. 配置加载 + 基础设施初始化（需 PG / Redis 在跑）
@@ -196,7 +196,7 @@ go run ./cmd/server 2>&1 | head -3
 1. pkg/xviper 泛型 Load[T]：读 base + config.{APP_ENV}.yaml overlay 合并 + APP_* 环境变量覆盖；WithPath/WithValidate 选项；绝不用 viper.AutomaticEnv
 2. internal/config：类型化 Config(mapstructure tag) + InitConfig(调 xviper.Load[Config]) + validate.go 白名单校验(零反射)
 3. 自包含单测(t.TempDir/t.Setenv)：xviper 加载器行为 + internal/config 校验/env 覆盖
-4. pkg/xlog：Config{Level,Format,AddSource,Output,ContextExtractors,ReplaceAttr}，New() 返回 *slog.Logger；parseLevel 用 slog.Level.UnmarshalText(大小写不敏感)；shortenSource 裁 dir/file:line；自定义 contextHandler 从 ctx 注入 request_id/tenant_id；不提供 Fatal(启动失败走 run() error + os.Exit)；日志用标准库 slog，无第三方依赖
+4. pkg/xslog：Config{Level,Format,AddSource,Output,ContextExtractors,ReplaceAttr}，New() 返回 *slog.Logger；parseLevel 用 slog.Level.UnmarshalText(大小写不敏感)；shortenSource 裁 dir/file:line；自定义 contextHandler 从 ctx 注入 request_id/tenant_id；不提供 Fatal(启动失败走 run() error + os.Exit)；日志用标准库 slog，无第三方依赖
 5. pkg/database：New() 返回 *gorm.DB，含 slog 适配的 GORM logger(gormSlogger 实现 gormlogger.Interface，用 *Context 变体携带 request_id)
 6. pkg/rdb：New() 返回 *redis.Client，启动 Ping 探活
 7. cmd/server/main.go 用 run() error 模式：config.InitConfig()，做 config.Config → 各 pkg.Config 映射；关闭超时用 cfg.Server.GracefulTimeout；任何一步失败 return error，由 main 统一打日志 + os.Exit(1)

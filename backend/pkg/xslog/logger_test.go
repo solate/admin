@@ -1,4 +1,4 @@
-package xlog_test
+package xslog_test
 
 import (
 	"bytes"
@@ -10,13 +10,13 @@ import (
 	"testing"
 	"testing/slogtest"
 
-	"admin/pkg/xlog"
+	"admin/pkg/xslog"
 )
 
 // newTestLogger 构造一个写入 buf 的 JSON logger,默认开启 AddSource。
 func newTestLogger(level string) (*slog.Logger, *bytes.Buffer) {
 	var buf bytes.Buffer
-	l := xlog.New(xlog.Config{Level: level, Format: "json", AddSource: true, Output: &buf})
+	l := xslog.New(xslog.Config{Level: level, Format: "json", AddSource: true, Output: &buf})
 	return l, &buf
 }
 
@@ -38,7 +38,7 @@ func TestLevelFilter(t *testing.T) {
 // TestDefaultLevelInfo 验证空级别默认 info:debug 丢弃、info 保留。
 func TestDefaultLevelInfo(t *testing.T) {
 	var buf bytes.Buffer
-	log := xlog.New(xlog.Config{Format: "json", Output: &buf}) // Level 空
+	log := xslog.New(xslog.Config{Format: "json", Output: &buf}) // Level 空
 	log.Debug("debug dropped")
 	if buf.Len() > 0 {
 		t.Fatalf("debug should be dropped at default info level: %s", buf.String())
@@ -69,7 +69,7 @@ func TestJSONFormat(t *testing.T) {
 // TestTextFormat 验证 Text 格式输出 key=value。
 func TestTextFormat(t *testing.T) {
 	var buf bytes.Buffer
-	log := xlog.New(xlog.Config{Format: "text", Output: &buf})
+	log := xslog.New(xslog.Config{Format: "text", Output: &buf})
 	log.Info("text format test", "key", "value")
 
 	out := buf.String()
@@ -81,7 +81,7 @@ func TestTextFormat(t *testing.T) {
 	}
 }
 
-// TestShortenSource 验证 source 被裁成 file:line(无路径分隔符)。
+// TestShortenSource 验证 source 被裁成 dir/file:line(保留一级目录,恰好一个 /)。
 func TestShortenSource(t *testing.T) {
 	log, buf := newTestLogger("info")
 	log.Info("x") // 触发 source 记录
@@ -94,7 +94,7 @@ func TestShortenSource(t *testing.T) {
 	if !ok {
 		t.Fatalf("source not a string (got %T): %v", m["source"], m["source"])
 	}
-	if !strings.Contains(src, "xlog/logger_test.go:") {
+	if !strings.Contains(src, "xslog/logger_test.go:") {
 		t.Fatalf("source not shortened to dir/file:line: %q", src)
 	}
 	if strings.Count(src, "/") != 1 {
@@ -106,12 +106,12 @@ func TestShortenSource(t *testing.T) {
 // 内置 source 裁剪与用户传入的 RedactReplaceAttr 必须同时生效。
 func TestShortenSourceWithRedact(t *testing.T) {
 	var buf bytes.Buffer
-	log := xlog.New(xlog.Config{
+	log := xslog.New(xslog.Config{
 		Level:       "info",
 		Format:      "json",
 		AddSource:   true,
 		Output:      &buf,
-		ReplaceAttr: xlog.RedactReplaceAttr("password"),
+		ReplaceAttr: xslog.RedactReplaceAttr("password"),
 	})
 	log.Info("login", "user", "alice", "password", "secret123")
 
@@ -136,9 +136,9 @@ func TestShortenSourceWithRedact(t *testing.T) {
 // TestContextInjection 验证 WithFields 写入的字段自动注入日志。
 func TestContextInjection(t *testing.T) {
 	var buf bytes.Buffer
-	log := xlog.New(xlog.Config{Format: "json", Output: &buf, Level: "info"})
+	log := xslog.New(xslog.Config{Format: "json", Output: &buf, Level: "info"})
 
-	ctx := xlog.WithFields(context.Background(),
+	ctx := xslog.WithFields(context.Background(),
 		slog.String("request_id", "req-123"),
 		slog.String("tenant_id", "tenant-abc"),
 	)
@@ -162,7 +162,7 @@ func TestContextInjection(t *testing.T) {
 // TestContextInjectionEmpty 验证无 context 字段时不出现注入字段。
 func TestContextInjectionEmpty(t *testing.T) {
 	var buf bytes.Buffer
-	log := xlog.New(xlog.Config{Format: "json", Output: &buf})
+	log := xslog.New(xslog.Config{Format: "json", Output: &buf})
 	log.InfoContext(context.Background(), "no fields")
 
 	var m map[string]any
@@ -177,10 +177,10 @@ func TestContextInjectionEmpty(t *testing.T) {
 // TestWithFieldAccumulate 验证 WithField 多次调用累积,且不污染父 ctx。
 func TestWithFieldAccumulate(t *testing.T) {
 	var buf bytes.Buffer
-	log := xlog.New(xlog.Config{Format: "json", Output: &buf})
+	log := xslog.New(xslog.Config{Format: "json", Output: &buf})
 
-	parent := xlog.WithField(context.Background(), "a", "1")
-	child := xlog.WithField(parent, "b", "2")
+	parent := xslog.WithField(context.Background(), "a", "1")
+	child := xslog.WithField(parent, "b", "2")
 
 	log.InfoContext(child, "both")
 	var m map[string]any
@@ -207,10 +207,10 @@ func TestWithFieldAccumulate(t *testing.T) {
 func TestContextExtractor(t *testing.T) {
 	type customKey struct{}
 	var buf bytes.Buffer
-	log := xlog.New(xlog.Config{
+	log := xslog.New(xslog.Config{
 		Format: "json",
 		Output: &buf,
-		ContextExtractors: []xlog.ContextExtractor{
+		ContextExtractors: []xslog.ContextExtractor{
 			func(ctx context.Context) []slog.Attr {
 				if v, ok := ctx.Value(customKey{}).(string); ok {
 					return []slog.Attr{slog.String("custom_field", v)}
@@ -234,10 +234,10 @@ func TestContextExtractor(t *testing.T) {
 // TestRedactReplaceAttr 验证敏感字段脱敏。
 func TestRedactReplaceAttr(t *testing.T) {
 	var buf bytes.Buffer
-	log := xlog.New(xlog.Config{
+	log := xslog.New(xslog.Config{
 		Format:      "json",
 		Output:      &buf,
-		ReplaceAttr: xlog.RedactReplaceAttr("password", "token"),
+		ReplaceAttr: xslog.RedactReplaceAttr("password", "token"),
 	})
 	log.InfoContext(context.Background(), "login",
 		"user", "alice",
@@ -262,8 +262,8 @@ func TestRedactReplaceAttr(t *testing.T) {
 // TestErrAttr 验证 Err 快捷构造统一 error 字段。
 func TestErrAttr(t *testing.T) {
 	var buf bytes.Buffer
-	log := xlog.New(xlog.Config{Format: "json", Output: &buf})
-	log.InfoContext(context.Background(), "operation failed", xlog.Err(errors.New("something went wrong")))
+	log := xslog.New(xslog.Config{Format: "json", Output: &buf})
+	log.InfoContext(context.Background(), "operation failed", xslog.Err(errors.New("something went wrong")))
 
 	var m map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &m); err != nil {
@@ -277,8 +277,8 @@ func TestErrAttr(t *testing.T) {
 // TestErrAttrNil 验证 Err(nil) 返回空 Attr,不出现在日志中。
 func TestErrAttrNil(t *testing.T) {
 	var buf bytes.Buffer
-	log := xlog.New(xlog.Config{Format: "json", Output: &buf})
-	log.InfoContext(context.Background(), "no error", xlog.Err(nil))
+	log := xslog.New(xslog.Config{Format: "json", Output: &buf})
+	log.InfoContext(context.Background(), "no error", xslog.Err(nil))
 
 	var m map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &m); err != nil {
@@ -292,7 +292,7 @@ func TestErrAttrNil(t *testing.T) {
 // TestHandlerCompliance 用官方 slogtest 验证 contextHandler 符合 slog.Handler 规范。
 func TestHandlerCompliance(t *testing.T) {
 	var buf bytes.Buffer
-	logger := xlog.New(xlog.Config{Format: "json", Output: &buf})
+	logger := xslog.New(xslog.Config{Format: "json", Output: &buf})
 
 	results := func() []map[string]any {
 		var ms []map[string]any

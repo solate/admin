@@ -94,7 +94,7 @@ func main() {
     }
 
     // 2. 初始化日志
-    log := xlog.New(xlog.Config{...})
+    log := xslog.New(xslog.Config{...})
     ...
 }
 ```

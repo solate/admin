@@ -7,7 +7,7 @@
 //
 // 设计上不包装 slog 类型：对外直接暴露 *slog.Logger 供 DI，扩展全部落在自定义
 // slog.Handler 上。输出固定交给 Config.Output（默认 os.Stdout），轮转交给容器/systemd。
-package xlog
+package xslog
 
 import (
 	"fmt"
