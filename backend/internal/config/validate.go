@@ -5,6 +5,9 @@ import "fmt"
 // validate 是配置校验总入口，按业务块分派到各子校验函数。
 // 无反射、无第三方校验库；如需跨块校验（字段间关系），在此函数内追加。
 func validate(c *Config) error {
+	if err := validateApp(&c.App); err != nil {
+		return err
+	}
 	if err := validateServer(&c.Server); err != nil {
 		return err
 	}
@@ -18,6 +21,14 @@ func validate(c *Config) error {
 		return err
 	}
 	return validateLog(&c.Log)
+}
+
+// validateApp 校验应用元信息配置。Name 用作日志 service 字段，必填；Env 可空。
+func validateApp(a *AppConfig) error {
+	if a.Name == "" {
+		return fmt.Errorf("app.name required")
+	}
+	return nil
 }
 
 // validateServer 校验 HTTP 服务配置。

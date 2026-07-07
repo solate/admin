@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -10,23 +12,35 @@ import (
 	"admin/internal/config"
 	"admin/internal/server"
 	"admin/pkg/database"
-	"admin/pkg/logger"
 	"admin/pkg/rdb"
+	"admin/pkg/xlog"
 )
 
 func main() {
+	// main 只负责退出码：run 返回 error 说明启动/运行失败，打日志后以非零码退出，
+	// 让容器/systemd 感知崩溃并重启。真正的逻辑与资源清理都在 run 里（defer 保证执行）。
+	if err := run(); err != nil {
+		slog.Error("server exited with error", slog.Any("err", err))
+		os.Exit(1)
+	}
+}
+
+// run 承载全部启动逻辑，所有资源用 defer 逆序清理。
+// 任何一步失败都 return error，由 main 统一打日志 + os.Exit(1)，
+// 从而避免在日志调用里隐藏 os.Exit（slog 刻意不提供 Fatal，见 pkg/xlog）。
+func run() error {
 	// 1. 加载配置(路径约定 config/config.yaml,靠挂载覆盖内容,APP_ENV 切环境)
 	cfg, err := config.InitConfig()
 	if err != nil {
-		panic("load config: " + err.Error())
+		return fmt.Errorf("load config: %w", err)
 	}
 
 	// 2. 初始化日志
-	log := logger.New(logger.Config{
+	log := xlog.New(xlog.Config{
 		Level:     cfg.Log.Level,
 		Format:    cfg.Log.Format,
 		AddSource: cfg.Log.AddSource,
-	})
+	}).With("service", cfg.App.Name, "env", cfg.App.Env)
 
 	// 3. 连接数据库
 	db, err := database.New(database.Config{
@@ -41,7 +55,7 @@ func main() {
 		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
 	}, log)
 	if err != nil {
-		logger.Fatal(log, "connect database failed", slog.Any("err", err))
+		return fmt.Errorf("connect database: %w", err)
 	}
 	defer database.Close(db)
 
@@ -52,7 +66,7 @@ func main() {
 		DB:       cfg.Redis.DB,
 	})
 	if err != nil {
-		logger.Fatal(log, "connect redis failed", slog.Any("err", err))
+		return fmt.Errorf("connect redis: %w", err)
 	}
 	defer rdbClient.Close()
 
@@ -66,24 +80,33 @@ func main() {
 		Log:    log,
 	})
 	if err != nil {
-		logger.Fatal(log, "init server failed", slog.Any("err", err))
+		return fmt.Errorf("init server: %w", err)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// srvErr 缓冲 1，避免 Start 失败时 goroutine 因无人接收而泄漏。
+	// 启动失败不再直接 os.Exit（那会跳过上面的 defer），而是把 error 送回主流程走统一 shutdown。
+	srvErr := make(chan error, 1)
 	go func() {
 		if err := srv.Start(); err != nil {
-			logger.Fatal(log, "start server failed", slog.Any("err", err))
+			srvErr <- err
 		}
 	}()
 
-	<-ctx.Done()
-	stop()
-	log.Info("shutdown signal received")
+	// 等待：要么收到信号优雅退出，要么 server 启动/运行出错。
+	select {
+	case err := <-srvErr:
+		return fmt.Errorf("start server: %w", err)
+	case <-ctx.Done():
+		stop()
+		log.Info("shutdown signal received")
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Server.GracefulTimeout)*time.Second)
 	defer cancel()
 	srv.Stop(shutdownCtx)
 	log.Info("server exited")
+	return nil
 }

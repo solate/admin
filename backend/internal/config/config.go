@@ -5,11 +5,18 @@ import "admin/pkg/xviper"
 
 // Config 是应用总配置结构。使用 mapstructure tag(xviper 约定,兼容 viper)。
 type Config struct {
+	App      AppConfig      `mapstructure:"app"`      // 应用元信息
 	Server   ServerConfig   `mapstructure:"server"`   // HTTP 服务
 	Database DatabaseConfig `mapstructure:"database"` // PostgreSQL 连接
 	Redis    RedisConfig    `mapstructure:"redis"`    // Redis 连接
 	JWT      JWTConfig      `mapstructure:"jwt"`      // JWT 签发
 	Log      LogConfig      `mapstructure:"log"`      // 日志
+}
+
+// AppConfig 是应用元信息。
+type AppConfig struct {
+	Name string `mapstructure:"name"` // 服务名 → 日志 service 字段
+	Env  string `mapstructure:"env"`  // 环境名 → 日志 env 字段
 }
 
 // ServerConfig 是 HTTP 服务配置。

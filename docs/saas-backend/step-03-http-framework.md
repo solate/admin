@@ -26,7 +26,7 @@ internal/
 │   └── handlers.go            # Handlers 聚合结构体
 ├── middleware/
 │   ├── request_id.go          # X-Request-ID 生成
-│   ├── logger.go              # 请求日志（zerolog）
+│   ├── logger.go              # 请求日志（slog）
 │   ├── recovery.go            # panic 恢复
 │   └── cors.go                # CORS 跨域
 ├── handler/health/
@@ -218,7 +218,7 @@ func Fail(c *gin.Context, err error) {
 ```go
 // internal/middleware/logger.go
 // 记录请求日志：method, path, status, latency, request_id, client_ip
-// 使用 zerolog，一行写完
+// 使用 slog（*Context 变体 + slog.Attr 强类型字段），一行写完
 // 跳过 /health 路径（避免刷屏）
 ```
 
@@ -250,16 +250,16 @@ package server
 import (
     "context"
     "fmt"
+    "log/slog"
     "net/http"
     "time"
 
     "github.com/gin-gonic/gin"
-    "github.com/rs/zerolog"
 )
 
 type Server struct {
     httpServer *http.Server
-    log        zerolog.Logger
+    log        *slog.Logger
 }
 
 type Config struct {
@@ -269,7 +269,7 @@ type Config struct {
     WriteTimeout time.Duration
 }
 
-func New(cfg Config, engine *gin.Engine, log zerolog.Logger) *Server {
+func New(cfg Config, engine *gin.Engine, log *slog.Logger) *Server {
     if cfg.Mode == "release" {
         gin.SetMode(gin.ReleaseMode)
     }
@@ -285,12 +285,12 @@ func New(cfg Config, engine *gin.Engine, log zerolog.Logger) *Server {
 }
 
 func (s *Server) Start() error {
-    s.log.Info().Str("addr", s.httpServer.Addr).Msg("http server starting")
+    s.log.Info("http server starting", slog.String("addr", s.httpServer.Addr))
     return s.httpServer.ListenAndServe()
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-    s.log.Info().Msg("http server shutting down")
+    s.log.Info("http server shutting down")
     return s.httpServer.Shutdown(ctx)
 }
 ```
@@ -306,10 +306,10 @@ import (
     "admin/pkg/response"
     "admin/pkg/xerr"
     "github.com/gin-gonic/gin"
-    "github.com/rs/zerolog"
+    "log/slog"
 )
 
-func Setup(engine *gin.Engine, handlers *Handlers, log zerolog.Logger) {
+func Setup(engine *gin.Engine, handlers *Handlers, log *slog.Logger) {
     // 全局中间件
     engine.Use(
         middleware.RequestID(),
@@ -444,21 +444,29 @@ func main() {
     }, engine, log)
 
     // 启动
+    // srvErr 缓冲 1，避免 Start 失败时 goroutine 因无人接收而泄漏。
+    // 启动失败不直接 os.Exit（那会跳过下方 defer），而是把 error 送回主流程统一处理。
+    srvErr := make(chan error, 1)
     go func() {
         if err := srv.Start(); err != nil && err != http.ErrServerClosed {
-            log.Fatal().Err(err).Msg("server start failed")
+            srvErr <- err
         }
     }()
 
-    // 优雅退出
+    // 优雅退出：要么收到信号，要么 server 启动/运行出错
     quit := make(chan os.Signal, 1)
     signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-    <-quit
+    select {
+    case err := <-srvErr:
+        log.Error("server start failed", slog.Any("err", err))
+        os.Exit(1)
+    case <-quit:
+    }
 
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
     if err := srv.Stop(ctx); err != nil {
-        log.Error().Err(err).Msg("server shutdown error")
+        log.Error("server shutdown error", slog.Any("err", err))
     }
 }
 ```

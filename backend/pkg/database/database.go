@@ -45,7 +45,8 @@ func Close(db *gorm.DB) error {
 }
 
 // gormSlogger 将 GORM SQL 日志桥接到 slog。
-// 全程用 *Context 变体，让 SQL 日志也能带 request_id（靠 logger.ContextHandler）。
+// 全程用 *Context 变体，把 ctx 透传给 slog；请求级字段（request_id 等）
+// 由后续 xcontext/中间件阶段注入，本适配器不关心具体字段。
 type gormSlogger struct {
 	log      *slog.Logger
 	logLevel gormlogger.LogLevel
