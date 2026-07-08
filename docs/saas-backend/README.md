@@ -202,6 +202,13 @@ internal/query       ← GORM Gen
 
 > 配置路径约定、flag 去留、docker-compose 与 k3s ConfigMap 挂载的深入设计见 [research/config-loading/05-配置部署路径与ConfigMap挂载设计](research/config-loading/05-配置部署路径与ConfigMap挂载设计.md)
 >
+> **数据库系列文档**（选型 → 迁移 → 演进 → 落地）：
+> - [02 数据库访问层选型调研](research/database/02-数据库访问层选型调研.md) — GORM+gen 方向、7 约束、sqlc 动态查询硬伤
+> - [03 迁移工具与数据初始化方案](research/database/03-迁移工具与数据初始化方案.md) — golang-migrate vs Atlas、seed 三层分类
+> - [04 schema优先与数据库优先](research/database/04-schema优先与数据库优先.md) — 两种真相源方向对比
+> - [05 数据库演进与迁移规范](research/database/05-数据库演进与迁移规范.md) — expand-contract、schema/data 分离、安全 DDL
+> - [06 GORM与golang-migrate最佳实践](research/database/06-GORM与golang-migrate最佳实践.md) — 避坑约定、单一 migrations/ 目录、data migration 落地（可执行铁律见 [`.claude/rules/migration-data-convention.md`](../../.claude/rules/migration-data-convention.md)）
+>
 > **日志系列文档与博客**：
 > - [01 日志库选型调研](research/logging/01-日志库选型调研.md) — 为何 2026 选 slog（选型 ADR）
 > - [06 OpenTelemetry 集成路径](research/logging/06-OpenTelemetry集成路径.md) — 演进指南：从单体日志到微服务全链路追踪
