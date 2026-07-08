@@ -12,7 +12,7 @@ import (
 	"admin/internal/config"
 	"admin/internal/server"
 	"admin/pkg/database"
-	"admin/pkg/rdb"
+	"admin/pkg/xredis"
 	"admin/pkg/xslog"
 )
 
@@ -60,10 +60,16 @@ func run() error {
 	defer database.Close(db)
 
 	// 4. 连接 Redis
-	rdbClient, err := rdb.New(rdb.Config{
-		Addr:     cfg.Redis.Addr,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
+	rdbClient, err := xredis.New(xredis.Config{
+		Addr:         cfg.Redis.Addr,
+		Password:     cfg.Redis.Password,
+		DB:           cfg.Redis.DB,
+		PoolSize:     cfg.Redis.PoolSize,
+		MinIdleConns: cfg.Redis.MinIdleConns,
+		MaxRetries:   cfg.Redis.MaxRetries,
+		DialTimeout:  cfg.Redis.DialTimeout,
+		ReadTimeout:  cfg.Redis.ReadTimeout,
+		WriteTimeout: cfg.Redis.WriteTimeout,
 	})
 	if err != nil {
 		return fmt.Errorf("connect redis: %w", err)

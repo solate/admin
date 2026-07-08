@@ -52,9 +52,15 @@ type DatabaseConfig struct {
 
 // RedisConfig 是 Redis 连接配置。
 type RedisConfig struct {
-	Addr     string `mapstructure:"addr"`     // 地址(host:port)
-	Password string `mapstructure:"password"` // 密码(建议用 APP_REDIS_PASSWORD 注入)
-	DB       int    `mapstructure:"db"`       // 库编号
+	Addr         string `mapstructure:"addr"`           // 地址(host:port)
+	Password     string `mapstructure:"password"`       // 密码(建议用 APP_REDIS_PASSWORD 注入)
+	DB           int    `mapstructure:"db"`             // 库编号
+	PoolSize     int    `mapstructure:"pool_size"`      // 连接池大小,0 用 go-redis 默认
+	MinIdleConns int    `mapstructure:"min_idle_conns"` // 最小空闲连接,0 用默认
+	MaxRetries   int    `mapstructure:"max_retries"`    // 命令重试次数,0 用默认
+	DialTimeout  int    `mapstructure:"dial_timeout"`   // 建连超时(秒),0 用默认
+	ReadTimeout  int    `mapstructure:"read_timeout"`   // 读超时(秒),0 用默认
+	WriteTimeout int    `mapstructure:"write_timeout"`  // 写超时(秒),0 用默认
 }
 
 // JWTConfig 是 JWT 签发配置。

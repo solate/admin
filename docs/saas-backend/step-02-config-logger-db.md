@@ -36,9 +36,9 @@ pkg/database/
 ├── config.go                     # database.Config
 └── database.go                   # New(cfg, log) (*gorm.DB, error) + slog GORM 适配器
 
-pkg/rdb/
-├── config.go                     # rdb.Config
-└── rdb.go                        # New(cfg Config) (*redis.Client, error)
+pkg/xredis/
+├── config.go                     # xredis.Config
+└── xredis.go                     # New(cfg Config) (*redis.Client, error)
 
 internal/server/
 └── server.go                     # Server 接收 Options，持有 db/rdb/log(*slog.Logger)
@@ -97,9 +97,15 @@ cmd/server/main.go                # 组合根：配置 → 日志 → DB → Red
 
 ### 4. Redis
 
-源码：[pkg/rdb/rdb.go](../../backend/pkg/rdb/rdb.go)、[config.go](../../backend/pkg/rdb/config.go)。
+源码：[pkg/xredis/xredis.go](../../backend/pkg/xredis/xredis.go)、[config.go](../../backend/pkg/xredis/config.go)。
 
-- `New(cfg Config) (*redis.Client, error)`：`redis.NewClient` + 启动时 `Ping` 探活，失败即返回错误（fail-fast）。
+- `New(cfg Config) (*redis.Client, error)`：`redis.NewClient` + 启动时 `Ping` 探活，失败即 `Close` 并返回错误（fail-fast）。
+- 连接池/超时参数（PoolSize/MinIdleConns/MaxRetries/Dial·Read·WriteTimeout）**仅在 >0 时覆盖**，为 0 保留 go-redis 默认值——yaml 不填即用官方默认，无需背默认数字。
+
+**关键设计决策**（选型调研见 [research/redis/01-redis-客户端封装选型调研.md](research/redis/01-redis-客户端封装选型调研.md)）：
+- **返回具体 `*redis.Client`，不套接口、不做单例**：与 `pkg/database` 返回原生 `*gorm.DB` 风格一致。参照的原项目 `content-center-backend` 单节点却返回 `redis.UniversalClient` 接口 + `sync.Once` 全局单例，接口没隐藏底层库（消费方仍要 import go-redis 用 `redis.Nil`）、单例又挡住并行测试与多实例——这是被刻意否掉的两点。
+- **单节点优先，集群是后话**：admin 后台 95% 是单 key 操作。后期若上集群，只需把 `New` 内部 `redis.NewClient` 换成 `redis.NewUniversalClient` 并调整返回类型，改动收敛在这一处封装（业务调用点因命令 API 相同而基本不动）。
+- **命名 `xredis`**：可复用封装包用 `x` 前缀（对齐 `xviper`/`xslog`）。
 
 ### 5. Server 接入基础设施
 
@@ -120,7 +126,7 @@ cmd/server/main.go                # 组合根：配置 → 日志 → DB → Red
 
 源码：[cmd/server/main.go](../../backend/cmd/server/main.go)。
 
-顺序：`config.InitConfig()` → `xslog.New()` → `database.New()` → `rdb.New()` → `server.New()` → 启动 + `signal.NotifyContext` 优雅关闭。
+顺序：`config.InitConfig()` → `xslog.New()` → `database.New()` → `xredis.New()` → `server.New()` → 启动 + `signal.NotifyContext` 优雅关闭。
 
 **关键设计**：
 - `config.Config` → 各 `pkg.Config` 的映射在 main 中完成；各 pkg 不知道 YAML 的存在，只接收自己的 Config struct —— 换项目只需换 YAML 和 main 的映射。
@@ -148,7 +154,7 @@ log:
 go get github.com/spf13/viper        # v1.21.0（YAML 解析由其间接依赖 go.yaml.in/yaml/v3 提供）
 go get gorm.io/gorm                  # v1.31.1
 go get gorm.io/driver/postgres       # v1.6.0
-go get github.com/redis/go-redis/v9  # v9.18.0
+go get github.com/redis/go-redis/v9  # v9.21.0（当前最新，drop-in、无 breaking change）
 # 日志用标准库 log/slog，无需第三方依赖
 ```
 
@@ -162,7 +168,7 @@ go build ./...
 # 期望：无错误
 
 # 2. 各 pkg 独立可编译
-go build ./pkg/database && go build ./pkg/xslog && go build ./pkg/rdb && go build ./pkg/xviper && go build ./internal/config
+go build ./pkg/database && go build ./pkg/xslog && go build ./pkg/xredis && go build ./pkg/xviper && go build ./internal/config
 # 期望：各自独立编译无错误
 
 # 3. 配置层 + 日志层单测全绿（无外部服务依赖）
@@ -198,7 +204,7 @@ go run ./cmd/server 2>&1 | head -3
 3. 自包含单测(t.TempDir/t.Setenv)：xviper 加载器行为 + internal/config 校验/env 覆盖
 4. pkg/xslog：Config{Level,Format,AddSource,Output,ContextExtractors,ReplaceAttr}，New() 返回 *slog.Logger；parseLevel 用 slog.Level.UnmarshalText(大小写不敏感)；shortenSource 裁 dir/file:line；自定义 contextHandler 从 ctx 注入 request_id/tenant_id；不提供 Fatal(启动失败走 run() error + os.Exit)；日志用标准库 slog，无第三方依赖
 5. pkg/database：New() 返回 *gorm.DB，含 slog 适配的 GORM logger(gormSlogger 实现 gormlogger.Interface，用 *Context 变体携带 request_id)
-6. pkg/rdb：New() 返回 *redis.Client，启动 Ping 探活
+6. pkg/xredis：New() 返回具体 *redis.Client（不套接口、不做单例），启动 Ping 探活；连接池/超时参数仅在 >0 时覆盖，否则用 go-redis 默认
 7. cmd/server/main.go 用 run() error 模式：config.InitConfig()，做 config.Config → 各 pkg.Config 映射；关闭超时用 cfg.Server.GracefulTimeout；任何一步失败 return error，由 main 统一打日志 + os.Exit(1)
 8. 不要用全局变量，所有依赖通过参数传递
 9. server 通过 Options 接收 db/rdb/log(*slog.Logger)，main.go 启动 server

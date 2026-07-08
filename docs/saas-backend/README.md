@@ -84,9 +84,9 @@ backend/
 │   ├── database/
 │   │   ├── config.go            # database.Config struct
 │   │   └── database.go          # New(cfg Config) → *gorm.DB
-│   ├── rdb/
-│   │   ├── config.go            # rdb.Config struct
-│   │   └── rdb.go               # New(cfg Config) → *redis.Client
+│   ├── xredis/
+│   │   ├── config.go            # xredis.Config struct
+│   │   └── xredis.go            # New(cfg Config) → *redis.Client
 │   ├── xslog/
 │   │   ├── config.go            # xslog.Config struct
 │   │   └── logger.go            # New(cfg Config) → *slog.Logger（标准库结构化日志）
@@ -127,7 +127,7 @@ backend/
 ```
 cmd/server/main.go
     ↓ 创建
-pkg/* (database, rdb, xslog, jwt, idgen, password)
+pkg/* (database, xredis, xslog, jwt, idgen, password)
     ↓ 注入
 internal/config      ← 加载 YAML
 internal/server      ← 包装 http.Server
@@ -155,7 +155,7 @@ internal/query       ← GORM Gen
 | 步骤 | 文档 | 内容 | 产出 |
 |------|------|------|------|
 | 01 | [项目骨架](step-01-project-scaffolding.md) | go mod、目录、Makefile、main.go | 能 `go build` |
-| 02 | [基础设施](step-02-config-logger-db.md) | Config / Logger / Database / Redis | 能连接数据库 |
+| 02 | [基础设施](step-02-config-logger-db.md) | Config / Logger / Database / Redis | 能连接数据库与 Redis |
 | 03 | [HTTP 框架](step-03-http-framework.md) | Gin 封装、中间件、response、xerr | curl health 返回 JSON |
 
 **里程碑 1**：`make run` 启动，`curl /health` 返回 `{"code":0}`
@@ -213,6 +213,9 @@ internal/query       ← GORM Gen
 > - [01 日志库选型调研](research/logging/01-日志库选型调研.md) — 为何 2026 选 slog（选型 ADR）
 > - [06 OpenTelemetry 集成路径](research/logging/06-OpenTelemetry集成路径.md) — 演进指南：从单体日志到微服务全链路追踪
 > - [博客：从零设计 Go 结构化日志](../blog/从零设计Go结构化日志-slog封装与Gin集成.md) — 完整封装设计、契约、踩坑清单（唯一权威实现文档）
+>
+> **Redis 系列文档**：
+> - [01 Redis 客户端封装选型调研](research/redis/01-redis-客户端封装选型调研.md) — 为何 2026 选 go-redis/v9 + 具体 `*redis.Client`（不套接口、不做单例）、UniversalClient/rueidis 对比、集群迁移边界
 
 **里程碑 5**：生产就绪
 
@@ -250,6 +253,7 @@ internal/query       ← GORM Gen
 | ID 生成 | 雪花算法（sony/sonyflake） | 有序、紧凑、全局唯一 | UUID（太长、无序） |
 | 密码 | bcrypt | 工业标准、自带盐 | argon2（overkill） |
 | 缓存 | Redis + 内存 map | 热数据内存、持久化 Redis | 纯 Redis（延迟高） |
+| Redis 客户端 | go-redis/v9 + pkg/xredis 封装（返回具体 `*redis.Client`） | 官方维护、最成熟、单节点直用不套接口不做单例 | UniversalClient 接口/单例（单节点用不上，见 [研究](research/redis/01-redis-客户端封装选型调研.md)）、rueidis（新依赖、API 陌生） |
 | DI | 手动构造函数注入 | 显式、可追踪、无魔法 | Wire/dig（学习成本） |
 
 ---
