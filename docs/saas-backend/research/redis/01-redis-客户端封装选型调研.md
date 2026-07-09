@@ -1,15 +1,15 @@
 # Redis 客户端封装选型调研
 
-> 本轮（2026-07）为 Redis 客户端封装层选型所做的调研。新 `backend/` 当前有一个极简 `pkg/rdb`（裸 `redis.NewClient` + 一次 Ping，只有 Addr/Password/DB 三字段）。原项目 `content-center-backend`（admin 同级目录）的 `pkg/xredis` 一开始就用了 `redis.UniversalClient` 接口 + 全局单例，后续使用并不方便。本轮回答：站在 2026、以单节点为主、要 AI 生成友好，Redis 客户端封装该怎么选、怎么封。
+> 本轮（2026-07）为 Redis 客户端封装层选型所做的调研。新 `backend/` 当前有一个极简 `pkg/rdb`（裸 `redis.NewClient` + 一次 Ping，只有 Addr/Password/DB 三字段）。老项目 B（admin 同级目录）的 `pkg/xredis` 一开始就用了 `redis.UniversalClient` 接口 + 全局单例，后续使用并不方便。本轮回答：站在 2026、以单节点为主、要 AI 生成友好，Redis 客户端封装该怎么选、怎么封。
 
 ## 背景与约束
 
-原项目 `content-center-backend/pkg/xredis` 的封装（`redis.UniversalClient` 全局单例 + `Connect/GetRedis/Close/HealthCheck`）跑通了业务，但用起来别扭。新项目想借选型窗口重新评估「单节点场景到底该不该套接口」。
+原项目 `legacy-cms/pkg/xredis` 的封装（`redis.UniversalClient` 全局单例 + `Connect/GetRedis/Close/HealthCheck`）跑通了业务，但用起来别扭。新项目想借选型窗口重新评估「单节点场景到底该不该套接口」。
 
 硬约束（用户明确提出，逐条对齐）：
 
 1. **绝大多数情况是单节点** —— 集群是「业务大了才换」的后话，不为不确定的将来预付复杂度。
-2. **不重蹈原项目覆辙** —— `content-center-backend` 一开始就套 `UniversalClient` 接口 + 单例，导致后续使用不便，这正是要否掉的反面教材。
+2. **不重蹈原项目覆辙** —— 老项目 B 一开始就套 `UniversalClient` 接口 + 单例，导致后续使用不便，这正是要否掉的反面教材。
 3. **AI 生成友好** —— API 规律性强、类型可发现、与既有 `pkg/database` 风格一致，AI 补全/生成不易错。
 4. **对齐既有封装风格** —— `pkg/database` 返回原生 `*gorm.DB`（具体类型、非接口、非单例、构造即探活），Redis 封装应同构。
 
@@ -26,10 +26,10 @@
 
 ## 痛点核心：单节点却套了 `UniversalClient` 接口 + 全局单例
 
-原项目 `content-center-backend/pkg/xredis`（约 110 行）暴露的问题，逐条查证：
+原项目 `legacy-cms/pkg/xredis`（约 110 行）暴露的问题，逐条查证：
 
 ```go
-// content-center-backend/pkg/xredis/redis.go（节选）
+// legacy-cms/pkg/xredis/redis.go（节选）
 var (
     client redis.UniversalClient // 全局单例
     once   sync.Once

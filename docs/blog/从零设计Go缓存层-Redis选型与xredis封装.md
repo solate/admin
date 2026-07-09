@@ -135,7 +135,7 @@ BFF 会多副本，理由和任何在线服务一样：高可用（一个 pod �
 
 ## 3. 客户端选型：go-redis + 具体类型 + 无单例
 
-确定了「要用 Redis」，接下来是「用哪个库、封装返回什么」。这一层的坑我们在老项目 `content-center-backend` 上实打实踩过。
+确定了「要用 Redis」，接下来是「用哪个库、封装返回什么」。这一层的坑我们在老项目 B 上实打实踩过。
 
 ### 3.1 2026 Go Redis 客户端全景
 
@@ -149,7 +149,7 @@ BFF 会多副本，理由和任何在线服务一样：高可用（一个 pod �
 
 ### 3.2 反面镜鉴：老项目的 UniversalClient 单例三宗罪
 
-老项目 `content-center-backend/pkg/xredis` 一开始就返回 `redis.UniversalClient` 接口 + 全局 `sync.Once` 单例，跑通了业务但用起来别扭：
+老项目 `legacy-cms/pkg/xredis` 一开始就返回 `redis.UniversalClient` 接口 + 全局 `sync.Once` 单例，跑通了业务但用起来别扭：
 
 ```go
 // 反面教材（节选）

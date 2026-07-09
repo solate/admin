@@ -1,28 +1,28 @@
 # GORM 与 golang-migrate 最佳实践
 
-> 本轮（2026-07）承接 [02-数据库访问层选型调研.md](./02-数据库访问层选型调研.md)、[03-迁移工具与数据初始化方案.md](./03-迁移工具与数据初始化方案.md)、[04-schema优先与数据库优先.md](./04-schema优先与数据库优先.md)、[05-数据库演进与迁移规范.md](./05-数据库演进与迁移规范.md)。前五份是「选型/真相源/演进规范」，本轮回答一个实际问题——**如果用 gorm + golang-migrate，怎么避免老项目（backend-rbac / content-center-backend）的混乱？**
+> 本轮（2026-07）承接 [02-数据库访问层选型调研.md](./02-数据库访问层选型调研.md)、[03-迁移工具与数据初始化方案.md](./03-迁移工具与数据初始化方案.md)、[04-schema优先与数据库优先.md](./04-schema优先与数据库优先.md)、[05-数据库演进与迁移规范.md](./05-数据库演进与迁移规范.md)。前五份是「选型/真相源/演进规范」，本轮回答一个实际问题——**如果用 gorm + golang-migrate，怎么避免老项目（老项目 A / 老项目 B）的混乱？**
 
 ## 一、背景与本轮问题
 
 前五份文档帮你理清了「用什么工具、schema 真相源在哪、演进规范是什么」，但还有一个更现实的问题悬着：
 
-> **"如果还是准备用 gorm 来迁移 golang-migrate 这种模式，我应该怎么来优化原来的问题？现在 content-center-backend 就碰到很多问题，怎么来避免？数据库表和数据变更在现在这种调研了这么多的情况下，怎么避免和演进，让整个项目简单，不用操心框架的东西，可以关注业务开发？"**
+> **"如果还是准备用 gorm 来迁移 golang-migrate 这种模式，我应该怎么来优化原来的问题？现在 老项目 B 就碰到很多问题，怎么来避免？数据库表和数据变更在现在这种调研了这么多的情况下，怎么避免和演进，让整个项目简单，不用操心框架的东西，可以关注业务开发？"**
 
-我探索了你的两个老项目（backend-rbac、content-center-backend），发现它们的混乱**不是 gorm 或 golang-migrate 本身的问题**，而是**缺少明确约定**，导致：
+我探索了你的两个老项目（老项目 A、老项目 B），发现它们的混乱**不是 gorm 或 golang-migrate 本身的问题**，而是**缺少明确约定**，导致：
 
-### backend-rbac 的 3/12/57 schema drift
+### 老项目 A 的 3/12/57 schema drift
 
 | 源 | 位置 | 表数量 | 说明 |
 |---|---|---|---|
 | migrations | `migrations/*.up.sql` | **3 个 CREATE TABLE** | 仅 users / user_roles / role_permissions |
 | dev schema | `scripts/dev_schema.sql` | **12 个表** | tenants / users / roles / menus / permissions / depts / positions / ... |
-| generated models | `internal/dal/model/*.gen.go` | **57 个模型** | 包含 face/device/video/casbin_rule/api_resources 等，反映真实库 |
+| generated models | `internal/dal/model/*.gen.go` | **57 个模型** | 包含 resource/asset/content/casbin_rule/api_resources 等，反映真实库 |
 
 **三套路径互不一致**：`migrate up` 建 3 表、`dev-reset.sh` 加载 dev_schema 建 12 表、gen-db 生成 57 model 反映线上真实库。哪个是真相源？没人说得清。
 
 **种子数据冲突**：Go seeder (`scripts/init_data/`) 不在 Makefile、手动触发、未文档化，且与 `migrations/000001` 的 `INSERT users` 硬编码（admin/auditor/uploader）冲突——两套 user seed，一个在迁移、一个在 seeder。
 
-### content-center-backend 的五大痛点（62 个 migration）
+### 老项目 B 的五大痛点（62 个 migration）
 
 1. **api_resource 三源维护**：Go seeder (`scripts/init_data/seeds/api_resource.go`, 629 行) + migration INSERT（`000046`/`000056`/`000062`）+ 独立 SQL 脚本（44KB `insert_api_resources_data.sql`）——同一份数据三处维护，必然 drift。
 2. **UUID 手工计数**：seeder `main.go` 注释「6 + 29 menu + 19 dept + 37 position + 52 dict + 105 API = 248」，`idgen.GenerateUUIDs(248)` 后手动推进 `idIndex` 切片——数量一变静默错位，典型维护陷阱。
@@ -32,9 +32,9 @@
 
 ### 关键洞察
 
-**这些痛全是「流程/约定」问题，不是「工具」问题。** 换 sqlc 一个都解决不了——因为它们发生在迁移和种子数据层，与查询层用什么无关。而且你的新 admin 项目已经架构性消掉一部分痛（Casbin 完全移除，见 `.claude/rules/rbac-multi-tenant.md`），所以 content-center 的「Casbin/api_resource 双源」在新项目根本不存在。
+**这些痛全是「流程/约定」问题，不是「工具」问题。** 换 sqlc 一个都解决不了——因为它们发生在迁移和种子数据层，与查询层用什么无关。而且你的新 admin 项目已经架构性消掉一部分痛（Casbin 完全移除，见 `.claude/rules/rbac-multi-tenant.md`），所以 老项目 B 的「Casbin/api_resource 双源」在新项目根本不存在。
 
-**正解**：不换工具，定一套明确约定，把 content-center 的每个坑逐条堵死。
+**正解**：不换工具，定一套明确约定，把 老项目 B 的每个坑逐条堵死。
 
 ## 二、为什么不选 sqlc（快速否定）
 
@@ -46,7 +46,7 @@
 
 gorm/gen 的链式 `Where().Where()` 或 `Apply(func(dao) dao)` 轻松搞定。这是**查询层的体验差距**。
 
-### content-center 的痛在迁移/seed 层
+### 老项目 B 的痛在迁移/seed 层
 
 回看第一节的五大痛点——api_resource 三源、UUID 手工数、版本补丁式迁移、双源同步、快照与 migration 并存——**全都在迁移/种子数据层，与查询层工具零关联**。换成 sqlc 后这些问题一个都不会自动消失，反而查询体验降级。
 
@@ -78,15 +78,15 @@ gorm/gen 的链式 `Where().Where()` 或 `Apply(func(dao) dao)` 轻松搞定。�
 
 ### 结论
 
-**不换工具，改约定。** 保持 gorm + golang-migrate，用一套清晰的目录规划、Makefile、data migration 模式，把 content-center 的混乱彻底避开。
+**不换工具，改约定。** 保持 gorm + golang-migrate，用一套清晰的目录规划、Makefile、data migration 模式，把 老项目 B 的混乱彻底避开。
 
 ## 三、核心约定（避坑原则）
 
-每条约定对应 content-center 的一个具体坑：
+每条约定对应 老项目 B 的一个具体坑：
 
 ### 约定 1：单一真相源（禁止 migration / dev_schema / snapshot 三套路径）
 
-**坑**：backend-rbac 有 3 表 migration、12 表 dev_schema、57 model；content-center 有 62 个 migration 但 dev-reset 走快照。
+**坑**：老项目 A 有 3 表 migration、12 表 dev_schema、57 model；老项目 B 有 62 个 migration 但 dev-reset 走快照。
 
 **约定**：**只有一个 canonical schema 定义**，取决于你选的真相源方向（04 文档）：
 - **数据库优先**（本文默认）：`migrations/*.up.sql` 唯一真相源，删掉 `dev_schema.sql` / 任何 schema 快照。
@@ -98,7 +98,7 @@ gorm/gen 的链式 `Where().Where()` 或 `Apply(func(dao) dao)` 轻松搞定。�
 
 ### 约定 2：Schema 与 Data 分文件、同序列（05 文档落地）
 
-**坑**：content-center 把 DDL 与 INSERT 混在同一个 migration（000044/046/056/062），改结构和改数据搅在一起，回滚和 review 都难。
+**坑**：老项目 B 把 DDL 与 INSERT 混在同一个 migration（000044/046/056/062），改结构和改数据搅在一起，回滚和 review 都难。
 
 **约定**（关键：分**文件**，不分**目录**）：
 - **Schema migration**（`000001_ddl_init_schema.up.sql`）：只写 DDL（`CREATE TABLE` / `ALTER TABLE` / `CREATE INDEX`）。
@@ -107,7 +107,7 @@ gorm/gen 的链式 `Where().Where()` 或 `Apply(func(dao) dao)` 轻松搞定。�
 
 **命名前缀规范**（人和 AI 都靠它识别）：
 - `ddl_` — 结构变更（init / create / alter / drop / add_column 等）
-- `data_` — 配置数据（base_config / video_menus / roles 等）
+- `data_` — 配置数据（base_config / content_menus / roles 等）
 - `fix_` — 错误修复（不论 DDL 还是 data，统一前缀）
 
 **示例**：
@@ -115,7 +115,7 @@ gorm/gen 的链式 `Where().Where()` 或 `Apply(func(dao) dao)` 轻松搞定。�
 000001_ddl_init_schema.up.sql      ← DDL
 000002_data_base_config.up.sql     ← 初始数据
 000003_ddl_add_icon_col.up.sql     ← DDL 加列
-000004_data_video_menus.up.sql     ← 数据（依赖 000003）
+000004_data_content_menus.up.sql     ← 数据（依赖 000003）
 000005_fix_menu_name.up.sql        ← 修复
 ```
 
@@ -128,7 +128,7 @@ gorm/gen 的链式 `Where().Where()` 或 `Apply(func(dao) dao)` 轻松搞定。�
 
 ### 约定 3：Data migration 幂等 + 内联 ID（禁止手工数 UUID、count-then-insert）
 
-**坑**：content-center 手工数 248 个 UUID（"6+29+19+37+52+105"），数错就错位；backend-rbac 的 menu seeder 用 `Count() > 0` 跳过整个 seed（非幂等）。
+**坑**：老项目 B 手工数 248 个 UUID（"6+29+19+37+52+105"），数错就错位；老项目 A 的 menu seeder 用 `Count() > 0` 跳过整个 seed（非幂等）。
 
 **约定**：
 - **`INSERT ... ON CONFLICT (unique_key) DO UPDATE`**：以业务自然键（如 `menu_code`）为冲突目标，重跑收敛到声明状态，幂等。
@@ -142,7 +142,7 @@ gorm/gen 的链式 `Where().Where()` 或 `Apply(func(dao) dao)` 轻松搞定。�
 
 ### 约定 4：api_resource 从路由同步（方案 A，03 已定）
 
-**坑**：content-center 的 api_resource 在 Go seeder、migration INSERT、独立 SQL 脚本三处维护。
+**坑**：老项目 B 的 api_resource 在 Go seeder、migration INSERT、独立 SQL 脚本三处维护。
 
 **约定**：**路由注册是唯一真相源**（03 seed 三层分类的方案 A）。启动时遍历 Gin `Engine.Routes()`，自动 upsert 到 `api_resources` 表。
 
@@ -152,7 +152,7 @@ gorm/gen 的链式 `Where().Where()` 或 `Apply(func(dao) dao)` 轻松搞定。�
 
 ### 约定 5：Makefile 标准化（DB 操作不散落）
 
-**坑**：backend-rbac 的 seeder 不在 Makefile、手动触发、未文档化；content-center 的 `dev-reset.sh` 绕过 migration。
+**坑**：老项目 A 的 seeder 不在 Makefile、手动触发、未文档化；老项目 B 的 `dev-reset.sh` 绕过 migration。
 
 **约定**：**Makefile 暴露全部 DB 操作**，禁止隐藏在 shell 脚本里：
 - `migrate-up` / `migrate-down` / `migrate-reset` / `migrate-create`
@@ -163,11 +163,11 @@ gorm/gen 的链式 `Where().Where()` 或 `Apply(func(dao) dao)` 轻松搞定。�
 
 **禁止**：`scripts/dev-reset.sh` 等绕过 Makefile 的自定义脚本。
 
-**落地**：第五节给可 copy 的 Makefile 模板（对齐 `backend-rbac/Makefile` 现有 target）。
+**落地**：第五节给可 copy 的 Makefile 模板（对齐 `老项目 A/Makefile` 现有 target）。
 
 ### 约定 6：本地环境一致性（reset 从零重建）
 
-**坑**：content-center 的 `dev-reset.sh` 加载 50KB 快照，渐渐与 migration 链 drift。
+**坑**：老项目 B 的 `dev-reset.sh` 加载 50KB 快照，渐渐与 migration 链 drift。
 
 **约定**：**`make reset` 必须走 migration from scratch**，不走快照。这保证本地环境与生产的 migration 历史完全一致。
 
@@ -178,16 +178,16 @@ gorm/gen 的链式 `Where().Where()` 或 `Apply(func(dao) dao)` 轻松搞定。�
 一套把上述 6 条约定物化的目录布局：
 
 ```
-backend-rbac/                      # 项目实际结构
+老项目 A/                      # 项目实际结构
 ├── migrations/                    # golang-migrate 唯一源（schema + data 都在此）
 │   ├── 000001_ddl_init_schema.up.sql        # DDL - 建表
 │   ├── 000001_ddl_init_schema.down.sql
 │   ├── 000002_data_base_config.up.sql       # 数据 - 初始菜单/字典/角色（幂等 INSERT ON CONFLICT）
 │   ├── 000002_data_base_config.down.sql     # DELETE FROM menus WHERE menu_code IN (...);
-│   ├── 000003_ddl_add_video_tables.up.sql   # DDL - 加视频相关表
-│   ├── 000003_ddl_add_video_tables.down.sql
-│   ├── 000004_data_video_menus.up.sql       # 数据 - 新增视频菜单（依赖 000003 的表）
-│   ├── 000004_data_video_menus.down.sql
+│   ├── 000003_ddl_add_content_tables.up.sql   # DDL - 加视频相关表
+│   ├── 000003_ddl_add_content_tables.down.sql
+│   ├── 000004_data_content_menus.up.sql       # 数据 - 新增视频菜单（依赖 000003 的表）
+│   ├── 000004_data_content_menus.down.sql
 │   ├── 000005_fix_menu_icon.up.sql          # 修复 - 改错的菜单图标
 │   ├── 000005_fix_menu_icon.down.sql
 │   └── ...                              # DDL/data/fix 靠前缀分类，序号保证交错依赖顺序（约定 2）
@@ -299,22 +299,22 @@ DELETE FROM menus WHERE menu_code IN ('system', 'system_user', 'system_role');
 加视频功能时的菜单，是一个**新** migration，不改 `000002`：
 
 ```sql
--- 000004_data_video_menus.up.sql
+-- 000004_data_content_menus.up.sql
 INSERT INTO menus (menu_id, menu_code, name, icon, sort, parent_code, created_at, updated_at) VALUES
-  ('160123456789012345', 'video',      '视频管理', 'video', 10, '',      EXTRACT(EPOCH FROM NOW())::BIGINT * 1000, EXTRACT(EPOCH FROM NOW())::BIGINT * 1000),
-  ('160123456789012346', 'video_list', '视频列表', 'list',  1,  'video', EXTRACT(EPOCH FROM NOW())::BIGINT * 1000, EXTRACT(EPOCH FROM NOW())::BIGINT * 1000)
+  ('160123456789012345', 'content',      '视频管理', 'content', 10, '',      EXTRACT(EPOCH FROM NOW())::BIGINT * 1000, EXTRACT(EPOCH FROM NOW())::BIGINT * 1000),
+  ('160123456789012346', 'content_list', '视频列表', 'list',  1,  'content', EXTRACT(EPOCH FROM NOW())::BIGINT * 1000, EXTRACT(EPOCH FROM NOW())::BIGINT * 1000)
 ON CONFLICT (menu_code) DO UPDATE SET
   name = EXCLUDED.name, icon = EXCLUDED.icon, sort = EXCLUDED.sort, updated_at = EXCLUDED.updated_at;
 ```
 
 ```sql
--- 000004_data_video_menus.down.sql —— 只删本次加的，对应"回退视频功能"
-DELETE FROM menus WHERE menu_code IN ('video', 'video_list');
+-- 000004_data_content_menus.down.sql —— 只删本次加的，对应"回退视频功能"
+DELETE FROM menus WHERE menu_code IN ('content', 'content_list');
 ```
 
 **菜单从 5 个涨到 500 个 = 往序列后面 append 几十个 `data_xxx` migration**，每个各自带 down、删各自加的那几条。老 migration 一旦提交不再碰（不可变黄金规则）。
 
-**对比 content-center 的做法**：
+**对比 老项目 B 的做法**：
 - ❌ 老：`GenerateUUIDs(248)` 手工数 + count-then-insert 跳过 + `_for_v1_1_0_full` 全量重刷
 - ✅ 新：ID 内联、`ON CONFLICT` 幂等、每次只 append 新 migration 加 genuinely-new 行
 
@@ -376,7 +376,7 @@ if err := router.SyncAPIResources(ctx, db, r); err != nil {
 }
 ```
 
-**收益**：新增一个接口 → 重启 → api_resource 自动登记，永远和真实路由一致。彻底消灭 content-center 的「三处维护 + 手写 INSERT + 版本补丁」。
+**收益**：新增一个接口 → 重启 → api_resource 自动登记，永远和真实路由一致。彻底消灭 老项目 B 的「三处维护 + 手写 INSERT + 版本补丁」。
 
 > **进阶**：若要软失效（删接口保留历史绑定），可加一步——先把全表标记 `deleted_at`，再对本次路由 upsert 清空 `deleted_at`。本文从简，按需扩展。
 
@@ -412,7 +412,7 @@ for _, t := range tables {
 g.Execute() // 注意：只调一次（老项目有重复调用的 code smell）
 ```
 
-**避坑**（老项目实证）：backend-rbac / content-center 的 `gen_from_db.go` 都有**重复的 `ApplyBasic`/`Execute` 块**（生成跑两遍，无害但脏）。新项目保证 `Execute()` 只调一次。
+**避坑**（老项目实证）：老项目 A / 老项目 B 的 `gen_from_db.go` 都有**重复的 `ApplyBasic`/`Execute` 块**（生成跑两遍，无害但脏）。新项目保证 `Execute()` 只调一次。
 
 ### 何时重跑 gen-db
 
@@ -429,14 +429,14 @@ g.Execute() // 注意：只调一次（老项目有重复调用的 code smell）
 | **02** | GORM+gen（database-first）满足 7 约束 | 延续 gorm/gen，`gen_from_db.go` 反射活库（第八节） |
 | **03** | seed 三层分类 + 方案 A（路由同步）+ 方案 D（YAML seed） | 方案 A → 第七节 sync_api_resource；方案 D **经 2026-07 讨论改为 data migration**（SQL 在 migrations/ 序列里，第六节），不再使用独立 seed 机制 |
 | **04** | database-first / schema-first 两种真相源都合法 | 约定 1 明确「单一真相源」，两方向都适用 |
-| **05** | expand-contract、schema/data 分离、backfill 分批 | 约定 2 落地为 `migrations/`（DDL 与 data 分文件同序列，`ddl_` / `data_` 前缀区分），backfill 同样是 migration（如 `000058_data_backfill_device_type.up.sql`） |
+| **05** | expand-contract、schema/data 分离、backfill 分批 | 约定 2 落地为 `migrations/`（DDL 与 data 分文件同序列，`ddl_` / `data_` 前缀区分），backfill 同样是 migration（如 `000058_data_backfill_asset_type.up.sql`） |
 
 **一句话**：02-05 讲「为什么这么选、规范是什么」，本文讲「目录怎么摆、Makefile 怎么写、data migration 怎么写才不踩老项目的坑」。
 
 ## 十、承认的 tradeoff（不回避）
 
 - **database-first 需要手动 `make gen-db`**：改表后多一步生成。Atlas 的 struct-first auto-diff 能省这步，但 03 已因「约束 6 之外的概念负担」权衡后选了 golang-migrate。接受这一步换取工具简单、与老项目一致。
-- **data migration append-only**：配置数据频繁改会有较多小 migration 文件（`data_video_menus` / `data_xxx_menus` / `fix_yyy`）。但本项目菜单/字典改动低频，可控。换来的是每个变更可独立回滚、序列清晰可追溯——比 content-center 的 `_full` 重刷干净。
+- **data migration append-only**：配置数据频繁改会有较多小 migration 文件（`data_content_menus` / `data_xxx_menus` / `fix_yyy`）。但本项目菜单/字典改动低频，可控。换来的是每个变更可独立回滚、序列清晰可追溯——比 老项目 B 的 `_full` 重刷干净。
 - **down 回滚的局限**：数据被后续 migration 改过后，down 可能丢失那些修改。真实场景**生产以 fix-forward 为主**（错了写新 migration 改回来），down 主要服务本地 `make reset`。
 - **路由同步依赖注册规范**：api_resource 的 `name`/`module`/`description` 要好看，得在路由注册时带元数据（03 已提）。不带则只有 path/method，前端展示朴素。
 - **golang-migrate 的 dirty state**：迁移失败会留 dirty version 需手动 `force` 修（03 第二节详述）。这是 golang-migrate 的固有代价，用它就要接受——好在开发期 `make reset` 一键重建规避了多数场景。

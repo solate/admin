@@ -59,6 +59,24 @@ func main() {
 	}
 	genCfg.WithImportPkgPath("gorm.io/plugin/soft_delete")
 
+	// 全局字段配置:所有表统一套用,新增表自动继承,无需逐表重复传 opts。
+	// 时间戳统一 bigint 毫秒,软删 deleted_at→soft_delete.DeletedAt(milli)。
+	genCfg.WithOpts(
+		gen.FieldGORMTag("created_at", func(tag field.GormTag) field.GormTag {
+			tag.Set("autoCreateTime", "milli")
+			return tag
+		}),
+		gen.FieldGORMTag("updated_at", func(tag field.GormTag) field.GormTag {
+			tag.Set("autoUpdateTime", "milli")
+			return tag
+		}),
+		gen.FieldType("deleted_at", "soft_delete.DeletedAt"),
+		gen.FieldGORMTag("deleted_at", func(tag field.GormTag) field.GormTag {
+			tag.Set("softDelete", "milli")
+			return tag
+		}),
+	)
+
 	g := gen.NewGenerator(genCfg)
 	g.UseDB(db)
 
@@ -77,22 +95,8 @@ func main() {
 		if excludeTables[strings.ToLower(table)] {
 			continue
 		}
-		opts := []gen.ModelOpt{
-			gen.FieldGORMTag("created_at", func(tag field.GormTag) field.GormTag {
-				tag.Set("autoCreateTime", "milli")
-				return tag
-			}),
-			gen.FieldGORMTag("updated_at", func(tag field.GormTag) field.GormTag {
-				tag.Set("autoUpdateTime", "milli")
-				return tag
-			}),
-			gen.FieldType("deleted_at", "soft_delete.DeletedAt"),
-			gen.FieldGORMTag("deleted_at", func(tag field.GormTag) field.GormTag {
-				tag.Set("softDelete", "milli")
-				return tag
-			}),
-		}
-		models = append(models, g.GenerateModel(table, opts...))
+		// 字段配置已提到 genCfg.WithOpts 全局套用,此处逐表无需再传 opts。
+		models = append(models, g.GenerateModel(table))
 	}
 
 	if len(models) == 0 {

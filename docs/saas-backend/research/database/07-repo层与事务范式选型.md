@@ -8,7 +8,7 @@
 
 本项目采用**重建派**：repo 结构体构造吃 `*gorm.DB`、内部 `query.Use(db)`，
 跨 repo 事务在 service 层 `s.db.Transaction` + 闭包内 `NewXxxRepo(tx)` 重建。
-理由是与 content-center-backend 生产验证过的写法一致，团队心智统一、零迁移成本。
+理由是与 老项目 B 生产验证过的写法一致，团队心智统一、零迁移成本。
 
 ## 一、为什么事务里必须「重建」repo
 
@@ -35,7 +35,7 @@ Ent 里 `tx.Client()` 一次调用，返回的 client 上**所有实体**自动�
 自己的 repo 结构体**。是「自套 repo 结构体 + 把 q 存进去」制造了重建需求，不是 GORM 的锅。
 
 GORM Gen 的 `*query.Query` **就等于 Ent 的 client**——`tx *query.Query` 身上
-`tx.CustomFacePerson`、`tx.CustomFaceImage` 全自动绑好事务连接。所以如果直接用
+`tx.CustomResourcePerson`、`tx.CustomResourceImage` 全自动绑好事务连接。所以如果直接用
 `query.Query`（不套 repo），也能得到 Ent 式「零重建」体验（rule 规则 4 单 repo 场景就是这个原理）。
 
 **本项目仍选择套 repo 层**，理由只有一个：**收敛重复的 CRUD 查询**（很多 service
@@ -46,7 +46,7 @@ ORM 套皮（Gen 已经够）。既然套了 repo 且把 q 存进结构体，就
 
 Go 生态这件事是分裂的，三派都有大量真实项目，没有权威共识：
 
-- **套 repo 结构体持 db**：Clean Architecture / DDD 模板的默认（content-center、
+- **套 repo 结构体持 db**：Clean Architecture / DDD 模板的默认（老项目 B、
   各种 go-clean-arch 脚手架）
 - **不写 repo，service 直接用 ORM**：小到中型项目常见，r/golang 上「GORM 本身
   就是 repository」呼声很高
@@ -135,8 +135,8 @@ WithTx 并没有实现 Unit of Work——真正的 UoW 要追踪脏对象、协�
 
 ### 反向成本（WithTx 实打实的代价）
 
-- **破坏与 content-center-backend 一致性**：选重建派的**原始理由**（第零节）就是
-  「与老项目一致、团队心智统一、零迁移成本」，content-center 用的是 `NewXxxRepo(tx)`。
+- **破坏与 老项目 B 一致性**：选重建派的**原始理由**（第零节）就是
+  「与老项目一致、团队心智统一、零迁移成本」，老项目 B 用的是 `NewXxxRepo(tx)`。
   改用 WithTx 恰恰破坏这条一致性理由。
 - **字段名 `query` 遮蔽包名**：提案里 `type UserRepo struct { query *query.Query }`
   字段叫 `query`、包也叫 `query`，方法内想引用 `query.Xxx` 包会被字段遮蔽。现状用
@@ -151,7 +151,7 @@ WithTx 并没有实现 Unit of Work——真正的 UoW 要追踪脏对象、协�
 | 性能 | 相同（缓存 q，方法零 Use） | 相同 |
 | 避免重建 | 做不到（本质绕不开） | **也做不到**（内部就是重建） |
 | 构造细节收拢 | 分散在调用点 | 收进 repo（约定下用不上） |
-| 与 content-center 一致 | ✅ | ❌ 破坏 |
+| 与 老项目 B 一致 | ✅ | ❌ 破坏 |
 | 样板代码 | 复用已有构造函数 | 每个 repo 多一个方法 |
 | 字段命名 | `q`（躲开包名） | `query`（遮蔽包名，需小心） |
 

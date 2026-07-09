@@ -5,24 +5,24 @@
 
 ## 结论：重建派
 
-- repo 是结构体，构造吃 `*gorm.DB`，内部 `query.Use(db)` 得到 `q`（与 content-center 一致）
+- repo 是结构体，构造吃 `*gorm.DB`，内部 `query.Use(db)` 得到 `q`（与 老项目 B 一致）
 - 不定义 interface（不 mock，靠集成测试）
 - 所有事务：service 层 `s.db.Transaction(func(tx *gorm.DB))` + 闭包内 `NewXxxRepo(tx)` 重建，调 repo 封装好的方法。repo 内部不开事务
 
 ## 规则 1：repo 构造吃 db，方法签名不带 q
 
 ```go
-type CustomFacePersonRepo struct {
+type CustomResourcePersonRepo struct {
     db *gorm.DB
     q  *query.Query
 }
 
-func NewCustomFacePersonRepo(db *gorm.DB) *CustomFacePersonRepo {
-    return &CustomFacePersonRepo{db: db, q: query.Use(db)}
+func NewCustomResourcePersonRepo(db *gorm.DB) *CustomResourcePersonRepo {
+    return &CustomResourcePersonRepo{db: db, q: query.Use(db)}
 }
 
-func (r *CustomFacePersonRepo) BatchDeleteByIDs(ctx context.Context, ids []string) error {
-    _, err := r.q.CustomFacePerson.WithContext(ctx).Where(r.q.CustomFacePerson.ID.In(ids...)).Delete()
+func (r *CustomResourcePersonRepo) BatchDeleteByIDs(ctx context.Context, ids []string) error {
+    _, err := r.q.CustomResourcePerson.WithContext(ctx).Where(r.q.CustomResourcePerson.ID.In(ids...)).Delete()
     return err
 }
 ```
@@ -30,17 +30,17 @@ func (r *CustomFacePersonRepo) BatchDeleteByIDs(ctx context.Context, ids []strin
 ## 规则 2：service 持 db + 一组 base repo
 
 ```go
-type CustomFaceService struct {
+type CustomResourceService struct {
     db         *gorm.DB
-    personRepo *repository.CustomFacePersonRepo
-    imageRepo  *repository.CustomFaceImageRepo
+    personRepo *repository.CustomResourcePersonRepo
+    imageRepo  *repository.CustomResourceImageRepo
 }
 
-func NewCustomFaceService(db *gorm.DB) *CustomFaceService {
-    return &CustomFaceService{
+func NewCustomResourceService(db *gorm.DB) *CustomResourceService {
+    return &CustomResourceService{
         db:         db,
-        personRepo: repository.NewCustomFacePersonRepo(db),
-        imageRepo:  repository.NewCustomFaceImageRepo(db),
+        personRepo: repository.NewCustomResourcePersonRepo(db),
+        imageRepo:  repository.NewCustomResourceImageRepo(db),
     }
 }
 ```
@@ -60,9 +60,9 @@ return s.personRepo.ListByCategory(ctx, categoryID)
 单 repo 多步也走同一套（先删后插）：
 
 ```go
-func (s *CustomFaceService) ReplacePersons(ctx context.Context, categoryID string, persons []*model.CustomFacePerson) error {
+func (s *CustomResourceService) ReplacePersons(ctx context.Context, categoryID string, persons []*model.CustomResourcePerson) error {
     return s.db.Transaction(func(tx *gorm.DB) error {
-        txPersonRepo := repository.NewCustomFacePersonRepo(tx)
+        txPersonRepo := repository.NewCustomResourcePersonRepo(tx)
         if err := txPersonRepo.DeleteByCategory(ctx, categoryID); err != nil {
             return err
         }
@@ -74,10 +74,10 @@ func (s *CustomFaceService) ReplacePersons(ctx context.Context, categoryID strin
 ## 规则 5：跨多 repo 事务同样在 service 层重建 repo（核心）
 
 ```go
-func (s *CustomFaceService) DeleteCategory(ctx context.Context, categoryID string, personIDs []string) error {
+func (s *CustomResourceService) DeleteCategory(ctx context.Context, categoryID string, personIDs []string) error {
     return s.db.Transaction(func(tx *gorm.DB) error {
-        txPersonRepo := repository.NewCustomFacePersonRepo(tx)
-        txImageRepo := repository.NewCustomFaceImageRepo(tx)
+        txPersonRepo := repository.NewCustomResourcePersonRepo(tx)
+        txImageRepo := repository.NewCustomResourceImageRepo(tx)
         if len(personIDs) > 0 {
             if err := txImageRepo.BatchDeleteByPersonIDs(ctx, personIDs); err != nil {
                 return xerr.Wrap(xerr.ErrInternal.Code, "删除照片失败", err)

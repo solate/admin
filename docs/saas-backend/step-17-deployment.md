@@ -80,7 +80,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: admin_dev
+      POSTGRES_DB: app_dev
     ports:
       - "5432:5432"
     volumes:

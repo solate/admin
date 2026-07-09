@@ -263,7 +263,7 @@ internal/query       ← GORM Gen
 ```
 admin/
 ├── backend/              ← 新后端（本文档指导从零实现）
-├── backend-rbac/         ← 旧后端（保留参考，不复制代码）
+├── 老项目 A/         ← 旧后端（保留参考，不复制代码）
 ├── frontend-uiux/        ← 前端（共用，新后端保持 API 兼容）
 └── docs/
     └── saas-backend/     ← 本文档系列

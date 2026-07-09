@@ -278,9 +278,9 @@ CLI 是 model-first（从 Go struct 生成），本项目是 **DB-first**（`scr
 
 - 重写 `scripts/gen-from-db/main.go` 生成器 + 重搭生成流程（`go generate` vs 现有 `make gen-db`）
 - **真相源方向可能被迫从 DB-first 翻转到 model-first**（撞 [[04-schema优先与数据库优先]] 已定的方向）
-- 重写现有 repo 的查询 API（backend-rbac 13 个 repo，backend 待建）
+- 重写现有 repo 的查询 API（老项目 A 13 个 repo，backend 待建）
 - `gorm.io/cli` 生态年轻、坑未知（见第五节）
-- 与 content-center-backend / backend-rbac 不一致（老项目都是 gen）
+- 与 老项目 B / 老项目 A 不一致（老项目都是 gen）
 - **AI 生成正确率短期内可能下降**（第三节：语料少）
 
 **网上现状：没有「大家都转过去了」。** CLI 是 2024+ 新物，社区仍以 gen 为绝对主流，属

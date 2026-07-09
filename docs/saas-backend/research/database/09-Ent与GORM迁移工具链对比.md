@@ -99,7 +99,7 @@ Ent 的工具链概念更统一，一个 `go generate` 打通 model/查询/迁�
 
 1. 也就「少拼一个工具」这么大的收益——不是数量级差距。
 2. 本项目的三件套**已经建好**：`gorm/gen` 配好、`golang-migrate` 进了 Makefile
-   （`migrate-up`/`migrate-down`/`gen-db`/`reset`）、与 content-center-backend 完全一致。
+   （`migrate-up`/`migrate-down`/`gen-db`/`reset`）、与 老项目 B 完全一致。
    工具链统一性的收益是「一次性搭建成本」，本项目这笔成本**已经付过且摊销完了**。
 3. 对一个已经跑起来的项目，「工具链更统一」换不回「重写全部 + 学图 DSL + 弃按域分包」的代价。
 

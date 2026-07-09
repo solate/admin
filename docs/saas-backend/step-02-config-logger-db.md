@@ -103,7 +103,7 @@ cmd/server/main.go                # 组合根：配置 → 日志 → DB → Red
 - 连接池/超时参数（PoolSize/MinIdleConns/MaxRetries/Dial·Read·WriteTimeout）**仅在 >0 时覆盖**，为 0 保留 go-redis 默认值——yaml 不填即用官方默认，无需背默认数字。
 
 **关键设计决策**（选型调研见 [research/redis/01-redis-客户端封装选型调研.md](research/redis/01-redis-客户端封装选型调研.md)）：
-- **返回具体 `*redis.Client`，不套接口、不做单例**：与 `pkg/database` 返回原生 `*gorm.DB` 风格一致。参照的原项目 `content-center-backend` 单节点却返回 `redis.UniversalClient` 接口 + `sync.Once` 全局单例，接口没隐藏底层库（消费方仍要 import go-redis 用 `redis.Nil`）、单例又挡住并行测试与多实例——这是被刻意否掉的两点。
+- **返回具体 `*redis.Client`，不套接口、不做单例**：与 `pkg/database` 返回原生 `*gorm.DB` 风格一致。参照的老项目 B 单节点却返回 `redis.UniversalClient` 接口 + `sync.Once` 全局单例，接口没隐藏底层库（消费方仍要 import go-redis 用 `redis.Nil`）、单例又挡住并行测试与多实例——这是被刻意否掉的两点。
 - **单节点优先，集群是后话**：admin 后台 95% 是单 key 操作。后期若上集群，只需把 `New` 内部 `redis.NewClient` 换成 `redis.NewUniversalClient` 并调整返回类型，改动收敛在这一处封装（业务调用点因命令 API 相同而基本不动）。
 - **命名 `xredis`**：可复用封装包用 `x` 前缀（对齐 `xviper`/`xslog`）。
 

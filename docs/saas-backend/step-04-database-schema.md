@@ -7,7 +7,7 @@
 ## 前置条件
 
 - Step 02 完成，数据库连接正常
-- PostgreSQL 数据库 `admin_dev` 已创建
+- PostgreSQL 数据库 `app_dev` 已创建
 
 ## 文件清单
 
@@ -292,7 +292,7 @@ import (
 )
 
 func main() {
-    dsn := "host=localhost port=5432 user=postgres password=postgres dbname=admin_dev sslmode=disable"
+    dsn := "host=localhost port=5432 user=postgres password=postgres dbname=app_dev sslmode=disable"
     db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
     if err != nil {
         panic(err)
@@ -426,11 +426,11 @@ make migrate-up
 # 期望：所有表创建成功
 
 # 2. 表结构验证（PostgreSQL）
-psql admin_dev -c "\dt"
+psql app_dev -c "\dt"
 # 期望：列出所有 12 张表
 
 # 3. 索引验证
-psql admin_dev -c "\di"
+psql app_dev -c "\di"
 # 期望：包含所有预定义索引
 
 # 4. Gen 代码生成

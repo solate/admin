@@ -14,13 +14,13 @@ Go 文件有 `gofmt` 自动格式化，**不需要关心对齐**。使用三步�
 
 ```go
 // old_string 不需要对齐，只要括号正确
-old_string: "review := &model.VideoReview{\nReviewID: reviewID,\n}"
+old_string: "review := &model.CustomResourceReview{\nReviewID: reviewID,\n}"
 // 即使缩进不对也没关系，go fmt 会修复
 ```
 
 **第二步：`gofmt -w` 修复格式**
 ```bash
-gofmt -w internal/service/video_review_service.go
+gofmt -w internal/service/custom_resource_service.go
 ```
 
 **第三步：补中文注释**

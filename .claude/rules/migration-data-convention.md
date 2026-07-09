@@ -26,8 +26,8 @@
 migrations/
 ├── 000001_ddl_init_schema.up.sql       # 结构 - 建表
 ├── 000002_data_base_config.up.sql      # 数据 - 初始菜单/字典/角色
-├── 000003_ddl_add_video_tables.up.sql  # 结构 - 加表
-├── 000004_data_video_menus.up.sql      # 数据 - 加视频菜单（依赖 000003）
+├── 000003_ddl_add_content_tables.up.sql  # 结构 - 加表
+├── 000004_data_content_menus.up.sql      # 数据 - 加视频菜单（依赖 000003）
 ├── 000005_fix_menu_icon.up.sql         # 修复 - 改错的图标
 ```
 
@@ -67,12 +67,12 @@ INSERT INTO menus (...) VALUES (...);
 
 - `000002_data_base_config.up.sql`：用 `INSERT ON CONFLICT` **一次性幂等定义**全部基础菜单/字典/角色
 - 后续版本：新建 `000NNN_data_xxx.up.sql` 只加 genuinely-new 行，或 `000NNN_fix_xxx.up.sql` 显式改/删
-- **禁止 `_full` 全量重刷**（content-center 的 `_for_v1_1_0` / `_for_v1_1_0_full` 就是反面教材）
+- **禁止 `_full` 全量重刷**（老项目 B 的 `_for_v1_1_0` / `_for_v1_1_0_full` 就是反面教材）
 
 ## 规则 6：每个 up 必须配 down
 
 - **结构 down**：`DROP TABLE` / `DROP COLUMN` / `DROP INDEX`
-- **数据 down**：`DELETE FROM menus WHERE menu_code IN ('video', 'video_list');` 显式列出本次范围；UPDATE 类改回旧值
+- **数据 down**：`DELETE FROM menus WHERE menu_code IN ('content', 'content_list');` 显式列出本次范围；UPDATE 类改回旧值
 
 生产以 fix-forward 为主（错了写新 migration 改回来），down 主要服务本地 `make reset` 全量重建，但仍必须写（golang-migrate 要求成对）。
 

@@ -189,7 +189,7 @@ if err := v.MergeInConfig(); err != nil {
 
 # 示例：临时改 dev 的数据库名（不改 base）
 # database:
-#   dbname: admin_dev_test
+#   dbname: app_dev_test
 ```
 
 空 overlay 合并进去不改变任何值（3.1 的语义：没有字段就没有覆盖），但它的存在满足了 fail-fast 的"overlay 必须在"约定。这一个空文件换来的是"部署时 overlay 遗漏立刻报错"的安全性。
@@ -246,7 +246,7 @@ server:
   read_timeout: 10s
 database:
   host: localhost
-  dbname: admin_dev
+  dbname: app_dev
   password: postgres      # 占位,生产用 APP_DATABASE_PASSWORD 覆盖
 ```
 

@@ -64,6 +64,41 @@ sqlc 做不到上面任何一种；要么给每种过滤组合写一条静态查
 
 > sqlc 用户并不难受——只是痛点排序和我们相反。sqlc 用「写更多 SQL」换「编译期安全 + 零开销 + 透明」，适合 Cloudflare 那种「延迟敏感、SQL 即设计、宁可多写」的画像；本项目诉求是「少操心框架、专注业务、动态查询顺手」，正好相反。不是 sqlc 不好，是它的收益我们不敏感、它的短板我们天天踩。
 
+### 1.2.1 更进一步：连 ORM 都不要，AI 直接写原生 SQL 行不行
+
+sqlc 是「少框架」方向的一个极端，还有更极端的一步——既然本项目代码全程由 AI 写、没人手写 SQL，那干脆去掉 GORM，直接用 Go 原生 `database/sql` + 手写 model/repo，技术栈少一个组件、不是更「简单」？
+
+这个推理藏了个错误前提：**它假设选型是为了「让写代码的人省力」**。AI 全程写代码时，选型标准变了——不是「哪个初写更快」（AI 写哪个都快），而是**「哪个把 AI 的概率性手误挡在编译期、哪个改列时不用 AI 手动同步散落各处的列顺序」**。
+
+**编译期 vs 运行期**：AI 会拼错字段名、用错类型，频率不比人低（它是概率生成，甚至更高）。区别只在错误何时暴露——
+
+```go
+// GORM + gen：拼错字段名 → 编译不过，当场红
+r.q.User.Staus.Eq(1)      // ❌ compile error: q.User has no field Staus
+r.q.User.Status.Eq("1")   // ❌ compile error: Status is int, not string
+
+// 原生 SQL：拼错藏在字符串里 → 编译通过，跑到那行才炸
+db.QueryRowContext(ctx, "SELECT staus FROM users WHERE id=$1", id)  // ✅ 编译通过
+                                                                    // 💥 运行时 pq: column "staus" does not exist
+```
+
+更隐蔽的是 `Scan()` 按**位置**匹配：列顺序和 struct 字段顺序错位，可能**不报错**，只是把 `email` 塞进了 `phone` 字段（静默数据错乱），比直接崩还难查。
+
+**改一列的爆炸半径**：这是原生 SQL 最大的长期税。给 `users` 加个 `phone` 列——
+
+| 方案 | 要改几处 |
+|---|---|
+| GORM + gen | **2 处**：写 migration + `make gen-db`（model/query 自动重新生成） |
+| 原生 SQL | **N+2 处**：migration + 手改 model + 逐一同步 N 条查询的 `SELECT` 列表和 `Scan()` 参数——漏一个就运行时错位 |
+
+`make gen-db` 从活库反射一条命令收敛，AI 不需要记住「哪些地方引用了这张表」；原生 SQL 则要 AI 人肉找全所有引用点。本项目 12 个域、几十上百个 repo 方法，这个差距是天天付的。
+
+> 核心洞察：**AI 写代码不是「随便选哪个都行」，恰恰相反——因为 AI 会犯概率性手误，更需要一层编译期类型系统当安全网。GORM+gen 的类型安全在 AI 时代不是「锦上添花」，是「刚需」。**
+
+**但也别把 ORM 当教条**——正解是 **90/10 混合**：90% 的标准 CRUD 走 gen 的类型安全 API，10% 真正复杂的查询（递归 CTE 部门树、窗口函数报表）用 GORM 的 `Raw().Scan()` 直接落裸 SQL。要 SQL 表达力时随时能落到裸 SQL，不必为这 10% 把 90% 的类型安全全丢掉。
+
+**什么时候原生 SQL 才更优**：项目 < 5 表、纯 CRUD、无动态查询；或 schema 已 100% 冻结；或**实测**（不是「觉得反射慢」，先 profile）GORM 是性能瓶颈。本项目三条都不沾，全部指向保留 GORM。完整五场景对比见 [08-GORM与原生SQL对比](../saas-backend/research/database/08-GORM与原生SQL对比.md)。
+
 ### 1.3 不选 ent（约束 ① 的概念负担）
 
 ent 是 2026 年「最一站式」的方案——schema-as-code + 内建 Atlas 迁移引擎（同源团队 Ariga）+ 类型安全查询 + Edges/Hooks 全家桶。但正是这个「全」带来了约束 ① 的问题：
@@ -72,7 +107,23 @@ ent 是 2026 年「最一站式」的方案——schema-as-code + 内建 Atlas �
 - **生成代码量大**：一张表生成十几个文件（create/update/query builders、edges、predicates），虽然不手改它们，但 IDE 索引慢、Git diff 大。
 - **概念多**：Edges（关联）、Hooks（生命周期）、Mixin（复用）、Privacy（权限）——对本项目是「功能过剩」。
 
-老项目 `backend-rbac` 已用 GORM+gen 跑通全套多租户 RBAC，团队熟悉、AI 语料多。新项目选 ent 等于推翻重来，学习成本 > 收益。
+老项目 A 已用 GORM+gen 跑通全套多租户 RBAC，团队熟悉、AI 语料多。新项目选 ent 等于推翻重来，学习成本 > 收益。
+
+### 1.3.1 补充实证：Ent 除了「重」是不是全面更好
+
+§1.3 是内部推理。但 Ent 有两张牌前面没接住：`tx.Client()` 让事务里无需重建 repo、schema-diff 自动生成迁移——**除了「重」，它是不是其他方面全面更好？** 这里补两个新论点 + 三条外部实证，给出诚实回答。
+
+**论点一：「重」不是可以单独摘掉的缺点，它就是三件事本身。** 想「只要 Ent 的 `tx.Client()` 和 auto-diff，把重去掉」，前提不成立——因为「重」具体就是：① schema 必须单包集中（违反本项目 `domain-architecture.md` 的 12 域子包架构）；② 真相源被迫翻成 schema-first（本项目是 database-first，见 §1.6.1）；③ 图 DSL 学习成本（Edge O2O/O2M/M2M、Mixin、Hook、Privacy）。这三条不是「重之外的缺点」——**它们就是重**。拿不掉。
+
+**论点二：Ent 的迁移优势只在 DDL，而 data migration 才是本项目的大头。** Ent 的 auto-diff 强在「建表/加列」，但本项目迁移工作量一大半是 **data migration**（菜单/字典/权限的幂等 `INSERT ON CONFLICT`，见第 6 章）——这一侧 Ent **零自动化**，同样手写 SQL，甚至更绕。「Ent 迁移更强」的直觉在占比更大的 data 侧不成立。
+
+**三条外部实证**（2026 web 调研，非本项目自说自话）：
+
+1. **公开从 GORM 转 Ent 的团队，逃离的是「裸 GORM」**——`AutoMigrate` + `struct` + 无类型查询 + 无版本化迁移（Nitric 原话「dissatisfied with the lack of typing」）。而本项目起点根本不是裸 GORM：gorm/gen 解决了类型、手写 golang-migrate 解决了版本化迁移。**他们要翻的两座山，本项目已经在山那边了。**
+2. **Ent 官方博客自己承认**：auto-migration 随项目变大不够用，2022 才补上版本化迁移（"as their project grows, they may find that they need more control over the migration process"）。**Ent 绕几年才到的终点，本项目一步到位。**
+3. **2026 最全的几篇对比（Encore、Glukhov、dasroot）没有一篇给出「必选 X」结论**，全是「看场景」；且 Encore 2026 点名 Ent 的短板：**编译慢、单体化、微服务里难拆**。
+
+**什么时候该反选 Ent**：全新项目 + 图密集域（社交关系、组织树深度遍历、好友的好友）+ 接受单包 schema + 团队愿学图 DSL——**四条全中**才划算。本项目一条都不占。完整实证与引用见 [09-Ent与GORM迁移工具链对比](../saas-backend/research/database/09-Ent与GORM迁移工具链对比.md)。
 
 ### 1.4 不选 Atlas（约束 ⑥ 放宽后非必需）
 
@@ -107,7 +158,7 @@ Atlas 的价值在「频繁改 schema + 多人协作 + 需要自动 lint」的�
 | PG 原生特性 | ✅ 支持（经 ORM 抽象层），约束 ⑤ 部分满足 |
 | AI 生成友好 | ✅ 语料最多、老项目已验证，约束 ④ 满足 |
 | 轻量度 | 中（GORM 反射运行时，但比 ent 轻），约束 ① 满足 |
-| 团队/仓库一致性 | ✅ 与 backend-rbac 完全一致 |
+| 团队/仓库一致性 | ✅ 与 老项目 A 完全一致 |
 | 迁移成本 | 低：复刻老项目体验，补约定即可 |
 | 生态成熟度 | ✅ 最成熟稳定 |
 
@@ -125,10 +176,10 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 | 动态 WHERE | ✅ 链式条件 | ✅ `Apply()` mods |
 | PG 原生特性 | ✅ 经 ORM 抽象层 | ✅✅ 按 PG spec 定制，贴原生 |
 | 迁移自动化 | ❌ 手写 SQL | ✅ Atlas 自动 diff |
-| 与 backend-rbac 一致 | ✅ 完全一致 | ❌ 引入第二种范式 |
+| 与 老项目 A 一致 | ✅ 完全一致 | ❌ 引入第二种范式 |
 | 生态成熟度 | ✅ 最成熟 | 活跃但年轻（2024+ 崛起） |
 
-**为什么本项目仍不选它**：Bob 引入与 `backend-rbac` 不同的第二种范式（仓库风格分裂）、生态年轻语料少、database-first 心智 + Bob API + Atlas 三件套都要学。**求稳、团队一致的诉求压过「更贴 PG」的收益**。但这条路线本身没错——若你的项目 PG 高级特性用得重（分区、GIN、生成列），它比 GORM 方案更契合。
+**为什么本项目仍不选它**：Bob 引入与 老项目 A 不同的第二种范式（仓库风格分裂）、生态年轻语料少、database-first 心智 + Bob API + Atlas 三件套都要学。**求稳、团队一致的诉求压过「更贴 PG」的收益**。但这条路线本身没错——若你的项目 PG 高级特性用得重（分区、GIN、生成列），它比 GORM 方案更契合。
 
 ### 1.6.1 为什么不选 schema-first（Go struct 真相源）
 
@@ -157,15 +208,15 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 
 ## 2. 反面镜鉴：老项目的三大病根
 
-选型时，我们探索了两个老项目（`backend-rbac`、`content-center-backend`），发现它们的混乱**不是 GORM 或 golang-migrate 的问题**，而是**缺少明确约定**。把这些病根列出来，作为反面教材——新项目要做的是「定约定堵漏洞」，不是「换工具」。
+选型时，我们探索了两个老项目（老项目 A、老项目 B），发现它们的混乱**不是 GORM 或 golang-migrate 的问题**，而是**缺少明确约定**。把这些病根列出来，作为反面教材——新项目要做的是「定约定堵漏洞」，不是「换工具」。
 
-### 2.1 backend-rbac 的 3/12/57 schema drift
+### 2.1 老项目 A 的 3/12/57 schema drift
 
 | 源 | 位置 | 表数量 | 说明 |
 |---|---|---|---|
 | migrations | `migrations/*.up.sql` | **3 个 CREATE TABLE** | 仅 users / user_roles / role_permissions |
 | dev schema | `scripts/dev_schema.sql` | **12 个表** | tenants / users / roles / menus / permissions / depts / positions / ... |
-| generated models | `internal/dal/model/*.gen.go` | **57 个模型** | 包含 face/device/video/casbin_rule/api_resources 等，反映真实库 |
+| generated models | `internal/dal/model/*.gen.go` | **57 个模型** | 包含 resource/asset/content/casbin_rule/api_resources 等，反映真实库 |
 
 **三套路径互不一致**：`migrate up` 建 3 表、`dev-reset.sh` 加载 dev_schema 建 12 表、gen-db 生成 57 model 反映线上真实库。哪个是真相源？没人说得清。
 
@@ -173,7 +224,7 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 
 **根因**：golang-migrate 只是「SQL 执行器」，不理解 schema 的**状态**；gen-db 又是纯 database-first（读活库反射）。两者之间**没有任何一致性校验**，drift 是这套组合的必然结果——但不是工具的锅，是管理失控。
 
-### 2.2 content-center-backend 的五大痛点（62 个 migration）
+### 2.2 老项目 B 的五大痛点（62 个 migration）
 
 1. **api_resource 三源维护**：Go seeder (`scripts/init_data/seeds/api_resource.go`, 629 行) + migration INSERT（`000046`/`000056`/`000062`）+ 独立 SQL 脚本（44KB `insert_api_resources_data.sql`）——同一份数据三处维护，必然 drift。
 2. **UUID 手工计数**：seeder `main.go` 注释「6 + 29 menu + 19 dept + 37 position + 52 dict + 105 API = 248」，`idgen.GenerateUUIDs(248)` 后手动推进 `idIndex` 切片——数量一变静默错位，典型维护陷阱。
@@ -183,9 +234,9 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 
 ### 2.3 关键洞察
 
-**这些痛全是「流程/约定」问题，不是「工具」问题。** 换 sqlc 一个都解决不了——因为它们发生在迁移和种子数据层，与查询层用什么无关。而且新项目已经架构性消掉一部分痛（Casbin 完全移除，见 `.claude/rules/rbac-multi-tenant.md`），所以 content-center 的「Casbin/api_resource 双源」在新项目根本不存在。
+**这些痛全是「流程/约定」问题，不是「工具」问题。** 换 sqlc 一个都解决不了——因为它们发生在迁移和种子数据层，与查询层用什么无关。而且新项目已经架构性消掉一部分痛（Casbin 完全移除，见 `.claude/rules/rbac-multi-tenant.md`），所以 老项目 B 的「Casbin/api_resource 双源」在新项目根本不存在。
 
-**正解**：不换工具，定一套明确约定，把 content-center 的每个坑逐条堵死。
+**正解**：不换工具，定一套明确约定，把 老项目 B 的每个坑逐条堵死。
 
 ---
 
@@ -195,7 +246,7 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 
 ### 约定 1：单一真相源（禁止 migration / dev_schema / snapshot 三套路径）
 
-**坑**：backend-rbac 有 3 表 migration、12 表 dev_schema、57 model；content-center 有 62 个 migration 但 dev-reset 走快照。
+**坑**：老项目 A 有 3 表 migration、12 表 dev_schema、57 model；老项目 B 有 62 个 migration 但 dev-reset 走快照。
 
 **约定**：**只有一个 canonical schema 定义**。本项目选**数据库优先**（database-first）：`migrations/*.up.sql` 唯一真相源。
 
@@ -205,7 +256,7 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 
 ### 约定 2：Schema 与 Data 分文件、同序列（05 文档落地）
 
-**坑**：content-center 把 DDL 与 INSERT 混在同一个 migration（000044/046/056/062），改结构和改数据搅在一起，回滚和 review 都难。
+**坑**：老项目 B 把 DDL 与 INSERT 混在同一个 migration（000044/046/056/062），改结构和改数据搅在一起，回滚和 review 都难。
 
 **约定**（关键：分**文件**，不分**目录**）：
 - **Schema migration**（`000001_ddl_init_schema.up.sql`）：只写 DDL（`CREATE TABLE` / `ALTER TABLE` / `CREATE INDEX`）。
@@ -214,7 +265,7 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 
 **命名前缀规范**（人和 AI 都靠它识别）：
 - `ddl_` — 结构变更（init / create / alter / drop / add_column 等）
-- `data_` — 配置数据（base_config / video_menus / roles 等）
+- `data_` — 配置数据（base_config / content_menus / roles 等）
 - `fix_` — 错误修复（不论 DDL 还是 data，统一前缀）
 
 **示例**：
@@ -222,7 +273,7 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 000001_ddl_init_schema.up.sql      ← DDL
 000002_data_base_config.up.sql     ← 初始数据
 000003_ddl_add_icon_col.up.sql     ← DDL 加列
-000004_data_video_menus.up.sql     ← 数据（依赖 000003）
+000004_data_content_menus.up.sql     ← 数据（依赖 000003）
 000005_fix_menu_name.up.sql        ← 修复
 ```
 
@@ -235,7 +286,7 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 
 ### 约定 3：Data migration 幂等 + 内联 ID（禁止手工数 UUID、count-then-insert）
 
-**坑**：content-center 手工数 248 个 UUID（"6+29+19+37+52+105"），数错就错位；backend-rbac 的 menu seeder 用 `Count() > 0` 跳过整个 seed（非幂等）。
+**坑**：老项目 B 手工数 248 个 UUID（"6+29+19+37+52+105"），数错就错位；老项目 A 的 menu seeder 用 `Count() > 0` 跳过整个 seed（非幂等）。
 
 **约定**：
 - **`INSERT ... ON CONFLICT (unique_key) DO UPDATE`**：以业务自然键（如 `menu_code`）为冲突目标，重跑收敛到声明状态，幂等。
@@ -249,7 +300,7 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 
 ### 约定 4：api_resource 从路由同步（方案 A，03 已定）
 
-**坑**：content-center 的 api_resource 在 Go seeder、migration INSERT、独立 SQL 脚本三处维护。
+**坑**：老项目 B 的 api_resource 在 Go seeder、migration INSERT、独立 SQL 脚本三处维护。
 
 **约定**：**路由注册是唯一真相源**（03 seed 三层分类的方案 A）。启动时遍历 Gin `Engine.Routes()`，自动 upsert 到 `api_resources` 表。
 
@@ -265,11 +316,11 @@ Bob（`stephenafamo/bob`）是 database-first 的代码生成方案，两个特�
 | ④ 运行时数据 | role_permissions 绑定、租户业务数据 | 运行时人操作 | 数据库 | 管理界面，**不 seed** |
 
 **为什么第 ② 层用 data migration，不用独立 seeder / YAML seed**：
-- **纯 Go seeder 的致命缺陷**：不记录「跑过哪个版本」、多环境不一致（`git checkout v1.1 && make seed` 跑的是 v1.1 代码声明的菜单，但库里可能还留着 v1.2 的记录，upsert 语义不会删多余的）。backend-rbac 更用了 `Count() > 0` 跳过整个 seed——非幂等，加了新菜单也不会补。
+- **纯 Go seeder 的致命缺陷**：不记录「跑过哪个版本」、多环境不一致（`git checkout v1.1 && make seed` 跑的是 v1.1 代码声明的菜单，但库里可能还留着 v1.2 的记录，upsert 语义不会删多余的）。老项目 A 更用了 `Count() > 0` 跳过整个 seed——非幂等，加了新菜单也不会补。
 - **YAML seed + migration 触发**（曾考虑的方案 D）：能版本化，但多一层 `YAML → struct → ORM` 翻译，还要写 `apply_seed.go` 应用器——对本项目是过度设计。
 - **结论**：菜单/字典直接写成 data migration（SQL 本身就声明式、可 diff、随版本序列走），一条规则「改库 = 新 migration」到底，见约定 2/3。
 
-**为什么第 ③ 层特殊、单拎出来走路由同步**：api_resource 的真相源是**路由注册代码本身**，不是配置数据。程序里所有 API 本就要注册进 Gin 路由，那份 path/method 清单已经是最权威、最不会漏的 API 列表。启动时遍历一次 upsert，永远和真实路由一致——彻底消灭「加接口忘补权限」和 content-center 的三源维护。
+**为什么第 ③ 层特殊、单拎出来走路由同步**：api_resource 的真相源是**路由注册代码本身**，不是配置数据。程序里所有 API 本就要注册进 Gin 路由，那份 path/method 清单已经是最权威、最不会漏的 API 列表。启动时遍历一次 upsert，永远和真实路由一致——彻底消灭「加接口忘补权限」和 老项目 B 的三源维护。
 
 **落地代码**（`internal/router/sync_api_resource.go`，本项目暂未实现，留作权限模块 Step 07/08 落地点）：
 
@@ -313,7 +364,7 @@ if err := router.SyncAPIResources(ctx, db, r); err != nil {
 
 ### 约定 5：Makefile 标准化（DB 操作不散落）
 
-**坑**：backend-rbac 的 seeder 不在 Makefile、手动触发、未文档化；content-center 的 `dev-reset.sh` 绕过 migration。
+**坑**：老项目 A 的 seeder 不在 Makefile、手动触发、未文档化；老项目 B 的 `dev-reset.sh` 绕过 migration。
 
 **约定**：**Makefile 暴露全部 DB 操作**，禁止隐藏在 shell 脚本里：
 - `migrate-up` / `migrate-down` / `migrate-reset` / `migrate-create`
@@ -328,7 +379,7 @@ if err := router.SyncAPIResources(ctx, db, r); err != nil {
 
 ### 约定 6：本地环境一致性（reset 从零重建）
 
-**坑**：content-center 的 `dev-reset.sh` 加载 50KB 快照，渐渐与 migration 链 drift。
+**坑**：老项目 B 的 `dev-reset.sh` 加载 50KB 快照，渐渐与 migration 链 drift。
 
 **约定**：**`make reset` 必须走 migration from scratch**，不走快照。这保证本地环境与生产的 migration 历史完全一致。
 
@@ -389,7 +440,7 @@ DB_HOST ?= localhost
 DB_PORT ?= 5432
 DB_USER ?= postgres
 DB_PASSWORD ?= postgres
-DB_NAME ?= admin_dev
+DB_NAME ?= app_dev
 DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
 MIGRATION_DIR := ./migrations
 
@@ -689,6 +740,41 @@ func (*SystemConfig) TableName() string {
 - 首次 clone 项目、`make reset` 之后
 - **不要**手改 `internal/dal/model/*.gen.go`（会被下次 gen-db 覆盖）
 
+### 7.4 要不要换 GORM 官方泛型 CLI
+
+用了 gen，很自然会问一句：GORM 官方在 2024 年起推了一个新的**泛型 CLI**（`gorm.io/cli/gorm`），
+本项目的 `gorm/gen v0.3.28` 是不是该升级过去？
+
+先厘清定位：**新 CLI 不是 gen 的升级版，是官方并行的另一条路线**——两者可共存、可混用，
+官方甚至专门有一页 `cli_vs_gen` 讲区别。CLI 确实带来几条 AI 友好的真实优势：无状态的
+`gorm.G[T](db)` 入口（AI 不用理解 repo 实例的生命周期与重建）、更强的编译期类型
+（官方原话 focus on type safety，if it compiles, it works，正好接上 [08 号文](../saas-backend/research/database/08-GORM与原生SQL对比.md)
+「类型系统是 AI 安全网」的论点）、以及一等公民的强类型关联操作。
+
+**但有一条反直觉的杀手事实**：
+
+> **AI 训练语料里 gen 的写法远多于 CLI，「新工具」≠「AI 写得更对」。语料丰富度是
+> AI 生成质量的第一性原理，这一条排在类型优势之前。**
+
+官方那句「focus on type safety... for the AI coding」要拆成两个轴看：**类型系统轴上成立**
+（编译期能拦更多错），**语料丰富度轴上（当前）不成立**——2026 的 AI 写 CLI 的正确率
+短期内不一定比写 gen 高，因为它见过的 CLI 代码太少，容易生成混合两种 API 的错误代码、
+或猜错 `gorm.G[T]` 的泛型约束。
+
+| 维度 | 泛型 CLI | gorm/gen（本项目） |
+|------|---------|------------------|
+| 编译期类型安全 | ✅ 更强（if it compiles, it works） | ✅ 够用 |
+| 状态管理心智 | ✅ 无状态 `gorm.G[T](db)` | 有状态 `r.q.User`（需理解重建） |
+| **AI 语料丰富度** | ❌ 年轻、语料稀缺（**关键**） | ✅ 语料最多 |
+| DSL 简单度 | ⚠️ 多一套 SQL 模板 DSL | ✅ 链式条件直白 |
+| 类型安全泄漏 | ⚠️ `--typed=false` 给 AI 退回裸字符串的口子 | ✅ 无此模式 |
+| 真相源方向 | model-first（读 Go struct） | ✅ DB-first（与本项目一致） |
+
+**结论**：保持 `gorm/gen v0.3.28`——gen 未废弃、DB-first 已定、语料占优、迁移成本高、
+与老项目一致。CLI 的类型优势是真的，但骗不过「AI 语料现实」：此刻让 AI 写它，不一定更对。
+flip 条件——等 CLI 生态与语料再成熟一两年（2028+？）的**全新项目**再考虑。完整评估见
+[10-gorm-gen与泛型CLI对比](../saas-backend/research/database/10-gorm-gen与泛型CLI对比.md)。
+
 ---
 
 ## 8. 连接封装与 SQL 日志（pkg/database）
@@ -820,7 +906,7 @@ func (l *gormSlogger) Trace(ctx context.Context, begin time.Time, fc func() (str
 
 ### 9.1 结论：重建派
 
-跨 repo 事务在 Go 生态有三种范式（重建派 / 显式派 / ctx 派），社区**没有多数派**。本项目选**重建派**——与 `content-center-backend` 生产验证过的写法一致，团队心智统一、零迁移成本。
+跨 repo 事务在 Go 生态有三种范式（重建派 / 显式派 / ctx 派），社区**没有多数派**。本项目选**重建派**——与 老项目 B 生产验证过的写法一致，团队心智统一、零迁移成本。
 
 - repo 是结构体，构造吃 `*gorm.DB`，内部 `query.Use(db)` 得到 `q`
 - 不定义 interface（不 mock，靠集成测试）
@@ -838,7 +924,7 @@ func (l *gormSlogger) Trace(ctx context.Context, begin time.Time, fc func() (str
 
 - **为什么否 ctx 派**：把连接塞进 ctx（`Conn(ctx)` 运行时取），好处是零重建零传参，但**连接藏在 ctx 里不可见、易误用**——service 层忘传或传错 ctx，操作会静默跑在非事务连接上，回滚时不回滚。本项目曾写过 `pkg/database/transactor.go` 试这条路，因这个隐患删掉了。
 - **为什么否显式派**：每个 repo 方法都挂一个 `q *query.Query` 参数，签名全部要改，啰嗦且传递链长。
-- **为什么选重建派**：它把成本摊在 **service 事务闭包那几行 `new`**（少、集中、可见），而不是摊在每个 repo 方法签名上，也不藏进 ctx。加上与 `content-center-backend` 生产写法一致、团队心智统一，综合最优。
+- **为什么选重建派**：它把成本摊在 **service 事务闭包那几行 `new`**（少、集中、可见），而不是摊在每个 repo 方法签名上，也不藏进 ctx。加上与 老项目 B 生产写法一致、团队心智统一，综合最优。
 
 ### 9.2 repo 构造吃 db，方法签名不带 q
 
@@ -878,10 +964,10 @@ func (s *SystemConfigService) ReplaceConfigs(ctx context.Context, configs []*mod
 跨多 repo 事务（核心）：
 
 ```go
-func (s *CustomFaceService) DeleteCategory(ctx context.Context, categoryID string, personIDs []string) error {
+func (s *CustomResourceService) DeleteCategory(ctx context.Context, categoryID string, personIDs []string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		txPersonRepo := repository.NewCustomFacePersonRepo(tx)
-		txImageRepo := repository.NewCustomFaceImageRepo(tx)
+		txPersonRepo := repository.NewCustomResourcePersonRepo(tx)
+		txImageRepo := repository.NewCustomResourceImageRepo(tx)
 		if len(personIDs) > 0 {
 			if err := txImageRepo.BatchDeleteByPersonIDs(ctx, personIDs); err != nil {
 				return xerr.Wrap(xerr.ErrInternal.Code, "删除照片失败", err)
@@ -921,7 +1007,7 @@ func (r *SystemConfigRepo) WithTx(tx *gorm.DB) *SystemConfigRepo {
 | ② 更符合 DDD「工作单元」语义 | 修辞——WithTx 没实现 Unit of Work，事务边界已经是 `s.db.Transaction` 闭包本身；且与本项目「套 repo 只为收敛 CRUD，不追 DDD 纯度」的哲学冲突 |
 | ③ repo 层划清边界、可换 ORM、可 Mock | 跑题——这是在讲「要不要 repo 层」；本项目主动放弃了 interface/mock（不写 interface、靠集成测试），边界本就是漏的 |
 
-**反向成本**也实打实：破坏与 `content-center-backend` 的一致性（老项目用 `NewXxxRepo(tx)`，而「与老项目一致」正是选重建派的原始理由）、每个 repo 多一个样板方法、字段名若叫 `query` 还会遮蔽 `query` 包（现状用 `q` 正是躲这个）。
+**反向成本**也实打实：破坏与 老项目 B 的一致性（老项目用 `NewXxxRepo(tx)`，而「与老项目一致」正是选重建派的原始理由）、每个 repo 多一个样板方法、字段名若叫 `query` 还会遮蔽 `query` 包（现状用 `q` 正是躲这个）。
 
 **结论**：`WithTx` 不是错，是**风格偏好**。对本项目，它的收益（构造收拢）因约定而用不上，代价（一致性、样板、命名坑）却实打实——**现状的 `NewXxxRepo(tx)` 就是更合适的选择**。完整评估见 [07-repo层与事务范式选型](../saas-backend/research/database/07-repo层与事务范式选型.md) 第五节。
 
@@ -1014,7 +1100,7 @@ expand-contract 把一次改动拆成 3 次部署、3 个 PR，代价不小。**
 没有免费的方案，这套组合的代价都摆在台面上：
 
 - **database-first 要手动 `make gen-db`**：改表后多一步生成 model。Atlas 的 struct-first auto-diff 能省这步，但要多学一套工具、多一层概念。接受这一步，换工具链简单、与老项目一致。
-- **data migration append-only，小文件会变多**：菜单/字典频繁改会攒下一堆 `data_xxx` / `fix_yyy` migration。但本项目这类改动低频，可控；换来的是每个变更可独立回滚、序列清晰可追溯——比 content-center 的 `_full` 全量重刷干净得多。
+- **data migration append-only，小文件会变多**：菜单/字典频繁改会攒下一堆 `data_xxx` / `fix_yyy` migration。但本项目这类改动低频，可控；换来的是每个变更可独立回滚、序列清晰可追溯——比 老项目 B 的 `_full` 全量重刷干净得多。
 - **golang-migrate 的 dirty state**：迁移中途失败会把 `schema_migrations` 标记为 dirty，此后所有迁移被拒，需手动 `migrate force <version>` 修。这是 golang-migrate 的固有代价——好在开发期 `make reset` 一键重建规避了多数场景，生产则靠迁移前充分测试 + 小步提交。
 - **重建派事务闭包啰嗦**：跨 repo 事务开头有一堆 `txXxxRepo := NewXxxRepo(tx)`。已知并接受——换来的是 repo 方法签名干净、连接来源显式可见（不藏 ctx）。
 - **暂不上 Atlas 的代价**：放弃了 `migrate lint`（CI 自动拦截破坏性/锁表 DDL）和自动 diff。当前靠人工 review + 本文的安全 DDL 清单兜底；等 schema 变更频繁、团队变大，再引入 Atlas 也不迟——两者迁移文件格式兼容，迁移平滑。
@@ -1029,6 +1115,9 @@ expand-contract 把一次改动拆成 3 次部署、3 个 PR，代价不小。**
 - [05-数据库演进与迁移规范](../saas-backend/research/database/05-数据库演进与迁移规范.md)（expand-contract、安全 DDL、Fowler 四原则）
 - [06-GORM与golang-migrate最佳实践](../saas-backend/research/database/06-GORM与golang-migrate最佳实践.md)（六条约定、老项目病根实证）
 - [07-repo层与事务范式选型](../saas-backend/research/database/07-repo层与事务范式选型.md)（重建派论证）
+- [08-GORM与原生SQL对比](../saas-backend/research/database/08-GORM与原生SQL对比.md)（AI 时代为何仍要 ORM、编译期类型安全是刚需、90/10 混合边界）
+- [09-Ent与GORM迁移工具链对比](../saas-backend/research/database/09-Ent与GORM迁移工具链对比.md)（「重」不可分离、data migration 才是大头、三条第三方实证）
+- [10-gorm-gen与泛型CLI对比](../saas-backend/research/database/10-gorm-gen与泛型CLI对比.md)（gen vs 官方泛型 CLI、语料丰富度第一性原理）
 
 ### 项目落地约定（`.claude/rules`）
 
@@ -1046,6 +1135,8 @@ expand-contract 把一次改动拆成 3 次部署、3 个 PR，代价不小。**
 - [Evolutionary Database Design — Martin Fowler](https://www.martinfowler.com/articles/evodb.html)（演化式数据库四原则）
 - [Parallel Change — Martin Fowler](https://martinfowler.com/bliki/ParallelChange.html)（expand-contract 模式命名）
 - [The "dirty secret" of golang-migrate — Atlas 博客](https://atlasgo.io/blog/2025/04/06/golang-migrate-dirty-secret)（dirty state 痛点）
+- [gorm.io/cli — GORM 官方泛型 CLI](https://gorm.io/cli)（`gorm.G[T]` 无状态泛型、字段助手 + SQL 模板；含 `cli_vs_gen` 对照页）
+- [entgo.io — Versioned Migrations](https://entgo.io/docs/versioned-migrations/)（Ent 从 auto 到版本化迁移的演进，2022 补齐）
 
 ---
 
