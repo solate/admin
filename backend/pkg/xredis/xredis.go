@@ -9,7 +9,7 @@ import (
 )
 
 // New 创建单节点 Redis 客户端并探活。
-// 返回 go-redis 原生 *redis.Client（不套接口、不做单例），与 pkg/database 返回 *gorm.DB 风格一致。
+// 返回 go-redis 原生 *redis.Client（不套接口、不做单例），与 pkg/xgorm 返回 *gorm.DB 风格一致。
 // 后期若上集群，只需把 redis.NewClient 换成 redis.NewUniversalClient 并调整返回类型，改动收敛在此一处。
 func New(cfg Config) (*redis.Client, error) {
 	client := redis.NewClient(buildOptions(cfg))

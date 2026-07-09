@@ -11,7 +11,7 @@ import (
 
 	"admin/internal/config"
 	"admin/internal/server"
-	"admin/pkg/database"
+	"admin/pkg/xgorm"
 	"admin/pkg/xredis"
 	"admin/pkg/xslog"
 )
@@ -43,7 +43,7 @@ func run() error {
 	}).With("service", cfg.App.Name, "env", cfg.App.Env)
 
 	// 3. 连接数据库
-	db, err := database.New(database.Config{
+	db, err := xgorm.New(xgorm.Config{
 		Host:            cfg.Database.Host,
 		Port:            cfg.Database.Port,
 		User:            cfg.Database.User,
@@ -57,7 +57,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("connect database: %w", err)
 	}
-	defer database.Close(db)
+	defer xgorm.Close(db)
 
 	// 4. 连接 Redis
 	rdbClient, err := xredis.New(xredis.Config{

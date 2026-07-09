@@ -1,4 +1,4 @@
-package database
+package xgorm
 
 // Config 数据库连接参数（纯连接配置，不含日志字段）。
 // 由 internal/config.DatabaseConfig 逐字段映射而来（见 cmd/server/main.go）。

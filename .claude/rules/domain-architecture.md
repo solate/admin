@@ -49,8 +49,9 @@ import roleconv "admin/internal/service/role"
 
 ## 规则 6：pkg 分层
 
-- `pkg/`：业务包（会随业务变化修改）— audit, cache, config, constants, database, response, xcontext, xerr
-- `pkg/utils/`：通用工具（不因业务变更）— bodyreader, captcha, convert, csv, httpclient, idgen, jwt, logger, pagination, passwordgen, rsapwd, useragent, xcron, xredis
+- `pkg/`：业务包（会随业务变化修改）— audit, cache, config, constants, response, xcontext, xerr
+- `pkg/utils/`：通用工具（不因业务变更）— bodyreader, captcha, convert, csv, httpclient, idgen, jwt, logger, pagination, passwordgen, rsapwd, useragent, xcron
+- `pkg/x*`：可复用第三方库封装（x 前缀、自包含、带单测、可整目录 copy）— xgorm, xredis, xviper, xslog（见 reusable-package.md）
 
 ## 规则 7：Router 解耦
 
