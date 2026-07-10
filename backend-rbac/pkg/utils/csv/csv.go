@@ -1,281 +1,130 @@
+// Package csv 基于标准库 encoding/csv 的轻量封装，聚焦两件标准库不做、
+// 而每个业务都要重复踩坑的事：
+//  1. 导出：写 UTF-8 BOM，保证 Excel 双击打开中文不乱码。
+//  2. 导入：自动识别 UTF-8(BOM) / UTF-16(LE/BE) / GBK 编码并转成 UTF-8。
+//
+// 行数据一律用 []string（标准库原生形态），类型安全的 struct→行映射由泛型 Rows 提供，
+// 不提供 map[string]any 弱类型入口（实践中无人使用且绕过类型检查）。
+//
+// 本包只碰 stdlib + golang.org/x/text，不依赖任何 web 框架，可整目录 copy。
+// gin 相关的下载/上传便利方法见 pkg/xgin。
 package csv
 
 import (
+	"bytes"
 	"encoding/csv"
 	"errors"
 	"io"
 	"mime/multipart"
-	"net/http"
 	"os"
-	"strconv"
-	"time"
+	"unicode/utf8"
 
-	"github.com/gin-gonic/gin"
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
-const (
-	defaultDateTimeFormat = "2006-01-02 15:04:05"
-	contentTypeHeader     = "text/csv"
-	contentDisposition    = "attachment; filename=%s"
+// utf8BOM UTF-8 字节序标记。写在导出内容最前，Excel 见到它才用 UTF-8 解码（否则按 GBK 解，中文乱码）。
+var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
+
+var (
+	utf16LEBOM = []byte{0xFF, 0xFE}
+	utf16BEBOM = []byte{0xFE, 0xFF}
 )
 
-// Exporter CSV导出器
+// ContentTypeCSV CSV 下载响应的 Content-Type。供 web 层（如 pkg/xgin）设置响应头用。
+const ContentTypeCSV = "text/csv; charset=utf-8"
+
+// Exporter CSV 导出器。持有表头与行数据，各输出方法均自动写 UTF-8 BOM。
 type Exporter struct {
-	writer      *csv.Writer
-	headers     []string
-	records     [][]string
-	file        *os.File
-	filePath    string
-	bufferSize  int
+	headers []string
+	records [][]string
 }
 
-// Option 配置选项
-type Option func(*Exporter)
-
-// WithBufferSize 设置缓冲区大小
-func WithBufferSize(size int) Option {
-	return func(e *Exporter) {
-		e.bufferSize = size
+// New 创建导出器。headers 为表头，后续 AddRow 的每行长度应与之一致。
+func New(headers []string) *Exporter {
+	return &Exporter{
+		headers: headers,
+		records: make([][]string, 0),
 	}
 }
 
-// New 创建一个新的CSV导出器
-func New(headers []string, opts ...Option) *Exporter {
-	e := &Exporter{
-		headers:    headers,
-		records:    make([][]string, 0),
-		bufferSize: 1000,
-	}
-	for _, opt := range opts {
-		opt(e)
-	}
-	return e
-}
-
-// AddRow 添加一行数据
+// AddRow 追加一行。
 func (e *Exporter) AddRow(row []string) {
 	e.records = append(e.records, row)
 }
 
-// AddRows 批量添加多行数据
+// AddRows 批量追加多行。
 func (e *Exporter) AddRows(rows [][]string) {
 	e.records = append(e.records, rows...)
 }
 
-// AddRowFromMap 从map添加一行数据，按headers顺序
-func (e *Exporter) AddRowFromMap(data map[string]string) {
-	row := make([]string, len(e.headers))
-	for i, header := range e.headers {
-		row[i] = data[header]
+// Rows 泛型行映射：把 []T 按 mapper 转成 [][]string。
+// 类型安全、无反射、无依赖——替代弱类型的 map[string]any 入口。
+//
+//	exporter.AddRows(csv.Rows(logs, func(l OperationLog) []string {
+//	    return []string{l.LogID, l.UserName, timeFmt(l.CreatedAt)}
+//	}))
+func Rows[T any](items []T, mapper func(T) []string) [][]string {
+	rows := make([][]string, 0, len(items))
+	for _, item := range items {
+		rows = append(rows, mapper(item))
 	}
-	e.AddRow(row)
+	return rows
 }
 
-// AddRowFromMapAny 从map添加一行数据，支持任意类型，按headers顺序
-func (e *Exporter) AddRowFromMapAny(data map[string]any) {
-	row := make([]string, len(e.headers))
-	for i, header := range e.headers {
-		row[i] = formatValue(data[header])
+// write 把 BOM + 表头 + 数据写入 w。所有输出方法的公共实现。
+func (e *Exporter) write(w io.Writer) error {
+	if _, err := w.Write(utf8BOM); err != nil {
+		return err
 	}
-	e.AddRow(row)
+
+	writer := csv.NewWriter(w)
+	if err := writer.Write(e.headers); err != nil {
+		return err
+	}
+	if err := writer.WriteAll(e.records); err != nil { // WriteAll 内部已 Flush
+		return err
+	}
+	return writer.Error()
 }
 
-// formatValue 格式化值为字符串
-func formatValue(v any) string {
-	if v == nil {
-		return ""
+// Bytes 返回完整 CSV 字节（含 BOM）。
+func (e *Exporter) Bytes() ([]byte, error) {
+	var buf bytes.Buffer
+	if err := e.write(&buf); err != nil {
+		return nil, err
 	}
-	switch val := v.(type) {
-	case string:
-		return val
-	case int:
-		return strconv.FormatInt(int64(val), 10)
-	case int8:
-		return strconv.FormatInt(int64(val), 10)
-	case int16:
-		return strconv.FormatInt(int64(val), 10)
-	case int32:
-		return strconv.FormatInt(int64(val), 10)
-	case int64:
-		return strconv.FormatInt(val, 10)
-	case uint:
-		return strconv.FormatUint(uint64(val), 10)
-	case uint8:
-		return strconv.FormatUint(uint64(val), 10)
-	case uint16:
-		return strconv.FormatUint(uint64(val), 10)
-	case uint32:
-		return strconv.FormatUint(uint64(val), 10)
-	case uint64:
-		return strconv.FormatUint(val, 10)
-	case float32:
-		return strconv.FormatFloat(float64(val), 'f', -1, 64)
-	case float64:
-		return strconv.FormatFloat(val, 'f', -1, 64)
-	case bool:
-		return strconv.FormatBool(val)
-	case time.Time:
-		return val.Format(defaultDateTimeFormat)
-	case *time.Time:
-		if val != nil {
-			return val.Format(defaultDateTimeFormat)
-		}
-		return ""
-	default:
-		return ""
-	}
+	return buf.Bytes(), nil
 }
 
-// WriteToFile 写入到文件
-func (e *Exporter) WriteToFile(filepath string) error {
-	file, err := os.Create(filepath)
+// WriteToWriter 写入任意 io.Writer（含 BOM）。
+func (e *Exporter) WriteToWriter(w io.Writer) error {
+	return e.write(w)
+}
+
+// WriteToFile 写入文件（含 BOM）。
+func (e *Exporter) WriteToFile(path string) error {
+	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-
-	e.file = file
-	e.filePath = filepath
-
-	e.writer = csv.NewWriter(file)
-	defer e.writer.Flush()
-
-	// 写入表头
-	if err := e.writer.Write(e.headers); err != nil {
-		return err
-	}
-
-	// 写入数据
-	for _, record := range e.records {
-		if err := e.writer.Write(record); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return e.write(file)
 }
 
-// WriteToWriter 写入到io.Writer
-func (e *Exporter) WriteToWriter(w io.Writer) error {
-	e.writer = csv.NewWriter(w)
-	defer e.writer.Flush()
-
-	// 写入表头
-	if err := e.writer.Write(e.headers); err != nil {
-		return err
-	}
-
-	// 写入数据
-	for _, record := range e.records {
-		if err := e.writer.Write(record); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// Bytes 返回CSV数据的字节数组
-func (e *Exporter) Bytes() ([]byte, error) {
-	e.writer = csv.NewWriter(io.Discard)
-	defer e.writer.Flush()
-
-	// 写入表头
-	if err := e.writer.Write(e.headers); err != nil {
-		return nil, err
-	}
-
-	// 写入数据
-	for _, record := range e.records {
-		if err := e.writer.Write(record); err != nil {
-			return nil, err
-		}
-	}
-
-	// 重新获取数据
-	return e.getBytes()
-}
-
-// getBytes 获取CSV字节数组
-func (e *Exporter) getBytes() ([]byte, error) {
-	var data [][]string
-	data = append(data, e.headers)
-	data = append(data, e.records...)
-
-	var output [][]byte
-	for _, row := range data {
-		var csvRow []byte
-		csvRow = append(csvRow, []byte(row[0])...)
-		for i := 1; i < len(row); i++ {
-			csvRow = append(csvRow, ',')
-			csvRow = append(csvRow, []byte(row[i])...)
-		}
-		csvRow = append(csvRow, '\n')
-		output = append(output, csvRow)
-	}
-
-	result := make([]byte, 0)
-	for _, row := range output {
-		result = append(result, row...)
-	}
-	return result, nil
-}
-
-// GetRecordCount 获取记录数
+// GetRecordCount 返回已添加的数据行数（不含表头）。
 func (e *Exporter) GetRecordCount() int {
 	return len(e.records)
 }
 
-// Clear 清空记录
+// Clear 清空数据行（保留表头）。
 func (e *Exporter) Clear() {
 	e.records = make([][]string, 0)
 }
 
-// Close 关闭导出器并清理资源
-func (e *Exporter) Close() error {
-	if e.file != nil {
-		return e.file.Close()
-	}
-	return nil
-}
-
-// GinResponse 将CSV数据写入gin.Context
-func (e *Exporter) GinResponse(c *gin.Context, filename string) {
-	c.Header("Content-Type", contentTypeHeader)
-	c.Header("Content-Disposition", contentDisposition+filename)
-
-	e.writer = csv.NewWriter(c.Writer)
-	defer e.writer.Flush()
-
-	// 写入表头
-	e.writer.Write(e.headers)
-
-	// 写入数据
-	for _, record := range e.records {
-		e.writer.Write(record)
-	}
-}
-
-// GinResponseStream 流式写入gin.Context，适用于大量数据
-func (e *Exporter) GinResponseStream(c *gin.Context, filename string, recordsChan <-chan []string) {
-	c.Header("Content-Type", contentTypeHeader)
-	c.Header("Content-Disposition", contentDisposition+filename)
-	c.Stream(func(w io.Writer) bool {
-		writer := csv.NewWriter(w)
-		defer writer.Flush()
-
-		// 写入表头
-		writer.Write(e.headers)
-
-		// 写入数据
-		for record := range recordsChan {
-			writer.Write(record)
-		}
-		return false
-	})
-}
-
-// Parser CSV解析器
+// Parser CSV 解析器。构造时已把输入统一转成 UTF-8。
 type Parser struct {
 	reader     *csv.Reader
 	headers    []string
@@ -283,63 +132,59 @@ type Parser struct {
 	hasHeaders bool
 }
 
-// NewParser 创建一个新的CSV解析器
-func NewParser(r io.Reader, hasHeaders bool) *Parser {
-	reader := csv.NewReader(r)
-	reader.FieldsPerRecord = -1 // 允许不同行的字段数量不同
-
-	p := &Parser{
-		reader:     reader,
-		hasHeaders: hasHeaders,
-		row:        0,
+// NewParser 从 io.Reader 创建解析器，自动识别编码并转 UTF-8。
+// hasHeaders=true 时构造中即读掉首行作为表头。
+func NewParser(r io.Reader, hasHeaders bool) (*Parser, error) {
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	data, err := convertToUTF8(raw)
+	if err != nil {
+		return nil, err
 	}
 
+	reader := csv.NewReader(bytes.NewReader(data))
+	reader.FieldsPerRecord = -1 // 允许各行字段数不同
+
+	p := &Parser{reader: reader, hasHeaders: hasHeaders}
 	if hasHeaders {
 		headers, err := reader.Read()
 		if err == nil {
 			p.headers = headers
 		}
 	}
-
-	return p
+	return p, nil
 }
 
-// NewParserFromFile 从文件创建解析器
-func NewParserFromFile(filepath string, hasHeaders bool) (*Parser, error) {
-	file, err := os.Open(filepath)
-	if err != nil {
-		return nil, err
+// convertToUTF8 按 BOM / 内容特征识别编码并转 UTF-8。
+// 支持：UTF-8(含BOM去头) / UTF-16 LE/BE / GBK(中文 Windows Excel 最常见)。
+func convertToUTF8(data []byte) ([]byte, error) {
+	switch {
+	case bytes.HasPrefix(data, utf8BOM):
+		return data[len(utf8BOM):], nil
+	case bytes.HasPrefix(data, utf16LEBOM):
+		return decodeWith(data[2:], unicode.UTF16(unicode.LittleEndian, unicode.UseBOM))
+	case bytes.HasPrefix(data, utf16BEBOM):
+		return decodeWith(data[2:], unicode.UTF16(unicode.BigEndian, unicode.UseBOM))
+	case utf8.Valid(data):
+		return data, nil
+	default:
+		// 非法 UTF-8：按 GBK/GB18030 兜底
+		converted, err := decodeWith(data, simplifiedchinese.GB18030)
+		if err != nil {
+			return nil, errors.New("无法识别文件编码，请使用 UTF-8 或 GBK 编码的 CSV 文件")
+		}
+		return converted, nil
 	}
-
-	return NewParser(file, hasHeaders), nil
 }
 
-// NewParserFromRequest 从HTTP请求创建解析器
-func NewParserFromRequest(request *http.Request, fieldName string, hasHeaders bool) (*Parser, error) {
-	file, _, err := request.FormFile(fieldName)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewParser(file, hasHeaders), nil
+// decodeWith 用指定编码把字节转 UTF-8。
+func decodeWith(data []byte, enc encoding.Encoding) ([]byte, error) {
+	return io.ReadAll(transform.NewReader(bytes.NewReader(data), enc.NewDecoder()))
 }
 
-// NewParserFromGin 从gin.Context创建解析器
-func NewParserFromGin(c *gin.Context, fieldName string, hasHeaders bool) (*Parser, error) {
-	fileHeader, err := c.FormFile(fieldName)
-	if err != nil {
-		return nil, err
-	}
-
-	file, err := fileHeader.Open()
-	if err != nil {
-		return nil, err
-	}
-
-	return NewParser(file, hasHeaders), nil
-}
-
-// Read 读取一行数据
+// Read 读取一行。
 func (p *Parser) Read() ([]string, error) {
 	record, err := p.reader.Read()
 	if err != nil {
@@ -349,78 +194,80 @@ func (p *Parser) Read() ([]string, error) {
 	return record, nil
 }
 
-// ReadAll 读取所有数据
+// ReadAll 读取剩余全部行。
 func (p *Parser) ReadAll() ([][]string, error) {
-	return p.reader.ReadAll()
+	records, err := p.reader.ReadAll()
+	p.row += len(records)
+	return records, err
 }
 
-// ReadMap 读取一行数据并返回map（需要hasHeaders=true）
+// ReadMap 读一行并按表头组成 map（需 hasHeaders）。
 func (p *Parser) ReadMap() (map[string]string, error) {
 	if !p.hasHeaders {
 		return nil, errors.New("parser must have headers to use ReadMap")
 	}
-
 	record, err := p.Read()
 	if err != nil {
 		return nil, err
 	}
-
-	result := make(map[string]string)
-	for i, header := range p.headers {
-		if i < len(record) {
-			result[header] = record[i]
-		} else {
-			result[header] = ""
-		}
-	}
-
-	return result, nil
+	return p.toMap(record), nil
 }
 
-// ReadAllMap 读取所有数据并返回map数组（需要hasHeaders=true）
+// ReadAllMap 读全部行并按表头组成 []map（需 hasHeaders）。
 func (p *Parser) ReadAllMap() ([]map[string]string, error) {
+	if !p.hasHeaders {
+		return nil, errors.New("parser must have headers to use ReadAllMap")
+	}
 	records, err := p.ReadAll()
 	if err != nil {
 		return nil, err
 	}
-
-	if !p.hasHeaders {
-		return nil, errors.New("parser must have headers to use ReadAllMap")
-	}
-
 	result := make([]map[string]string, 0, len(records))
 	for _, record := range records {
-		row := make(map[string]string)
-		for i, header := range p.headers {
-			if i < len(record) {
-				row[header] = record[i]
-			} else {
-				row[header] = ""
-			}
-		}
-		result = append(result, row)
+		result = append(result, p.toMap(record))
 	}
-
 	return result, nil
 }
 
-// GetHeaders 获取表头
+// toMap 按表头把一行组装成 map，缺失列补空串。
+func (p *Parser) toMap(record []string) map[string]string {
+	row := make(map[string]string, len(p.headers))
+	for i, header := range p.headers {
+		if i < len(record) {
+			row[header] = record[i]
+		} else {
+			row[header] = ""
+		}
+	}
+	return row
+}
+
+// GetHeaders 返回表头。
 func (p *Parser) GetHeaders() []string {
 	return p.headers
 }
 
-// GetRow 获取当前行号
+// GetRow 返回已读行号。
 func (p *Parser) GetRow() int {
 	return p.row
 }
 
-// ParseMultipartForm 解析multipart form中的CSV文件
+// NewParserFromFile 从文件路径创建解析器。
+func NewParserFromFile(path string, hasHeaders bool) (*Parser, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return NewParser(file, hasHeaders)
+}
+
+// ParseMultipartForm 从 multipart 文件头创建解析器。
 func ParseMultipartForm(fileHeader *multipart.FileHeader, hasHeaders bool) (*Parser, error) {
 	file, err := fileHeader.Open()
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-
-	return NewParser(file, hasHeaders), nil
+	return NewParser(file, hasHeaders)
 }

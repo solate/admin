@@ -2,292 +2,335 @@ package csv
 
 import (
 	"bytes"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-	"time"
+
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
-func TestNewExporter(t *testing.T) {
-	headers := []string{"ID", "Name", "Email"}
-	exporter := New(headers)
-
-	if exporter == nil {
+func TestNew(t *testing.T) {
+	e := New([]string{"ID", "Name", "Email"})
+	if e == nil {
 		t.Fatal("New() returned nil")
 	}
-
-	if len(exporter.headers) != 3 {
-		t.Errorf("Expected 3 headers, got %d", len(exporter.headers))
+	if len(e.headers) != 3 {
+		t.Errorf("expected 3 headers, got %d", len(e.headers))
+	}
+	if e.GetRecordCount() != 0 {
+		t.Errorf("expected 0 records, got %d", e.GetRecordCount())
 	}
 }
 
 func TestExporter_AddRow(t *testing.T) {
-	headers := []string{"ID", "Name"}
-	exporter := New(headers)
-
-	exporter.AddRow([]string{"1", "John"})
-	exporter.AddRow([]string{"2", "Jane"})
-
-	if exporter.GetRecordCount() != 2 {
-		t.Errorf("Expected 2 records, got %d", exporter.GetRecordCount())
+	e := New([]string{"ID", "Name"})
+	e.AddRow([]string{"1", "John"})
+	e.AddRow([]string{"2", "Jane"})
+	if e.GetRecordCount() != 2 {
+		t.Errorf("expected 2 records, got %d", e.GetRecordCount())
 	}
 }
 
 func TestExporter_AddRows(t *testing.T) {
-	headers := []string{"ID", "Name"}
-	exporter := New(headers)
-
-	rows := [][]string{
-		{"1", "John"},
-		{"2", "Jane"},
-		{"3", "Bob"},
-	}
-	exporter.AddRows(rows)
-
-	if exporter.GetRecordCount() != 3 {
-		t.Errorf("Expected 3 records, got %d", exporter.GetRecordCount())
+	e := New([]string{"ID", "Name"})
+	e.AddRows([][]string{{"1", "John"}, {"2", "Jane"}, {"3", "Bob"}})
+	if e.GetRecordCount() != 3 {
+		t.Errorf("expected 3 records, got %d", e.GetRecordCount())
 	}
 }
 
-func TestExporter_AddRowFromMap(t *testing.T) {
-	headers := []string{"ID", "Name", "Email"}
-	exporter := New(headers)
-
-	data := map[string]string{
-		"ID":    "1",
-		"Name":  "John",
-		"Email": "john@example.com",
+func TestRows(t *testing.T) {
+	type user struct {
+		ID   string
+		Name string
 	}
-	exporter.AddRowFromMap(data)
+	users := []user{{"1", "John"}, {"2", "Jane"}}
+	rows := Rows(users, func(u user) []string {
+		return []string{u.ID, u.Name}
+	})
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(rows))
+	}
+	if rows[0][0] != "1" || rows[0][1] != "John" {
+		t.Errorf("row 0 incorrect: %v", rows[0])
+	}
+	if rows[1][0] != "2" || rows[1][1] != "Jane" {
+		t.Errorf("row 1 incorrect: %v", rows[1])
+	}
 
-	if exporter.GetRecordCount() != 1 {
-		t.Errorf("Expected 1 record, got %d", exporter.GetRecordCount())
+	// 空切片返回非 nil 空结果
+	empty := Rows([]user{}, func(u user) []string { return []string{u.ID} })
+	if empty == nil || len(empty) != 0 {
+		t.Errorf("expected non-nil empty slice, got %v", empty)
 	}
 }
 
-func TestExporter_AddRowFromMapAny(t *testing.T) {
-	headers := []string{"ID", "Name", "Age", "Active", "CreatedAt"}
-	exporter := New(headers)
+func TestExporter_Bytes_HasBOM(t *testing.T) {
+	e := New([]string{"ID", "Name"})
+	e.AddRow([]string{"1", "John"})
 
-	now := time.Now()
-	data := map[string]any{
-		"ID":        1,
-		"Name":      "John",
-		"Age":       30,
-		"Active":    true,
-		"CreatedAt": now,
+	data, err := e.Bytes()
+	if err != nil {
+		t.Fatalf("Bytes() error = %v", err)
 	}
-	exporter.AddRowFromMapAny(data)
+	if !bytes.HasPrefix(data, utf8BOM) {
+		t.Error("output should start with UTF-8 BOM")
+	}
+	// 去掉 BOM 后应是合法 CSV 文本
+	body := string(data[len(utf8BOM):])
+	if !strings.Contains(body, "ID,Name") {
+		t.Errorf("output missing header: %q", body)
+	}
+	if !strings.Contains(body, "1,John") {
+		t.Errorf("output missing row: %q", body)
+	}
+}
 
-	if exporter.GetRecordCount() != 1 {
-		t.Errorf("Expected 1 record, got %d", exporter.GetRecordCount())
+// TestExporter_Bytes_Escaping 验证含逗号/引号/换行的字段被正确转义（旧 getBytes 的核心 bug）。
+func TestExporter_Bytes_Escaping(t *testing.T) {
+	e := New([]string{"A", "B"})
+	e.AddRow([]string{"has,comma", "has\"quote\nnewline"})
+
+	data, err := e.Bytes()
+	if err != nil {
+		t.Fatalf("Bytes() error = %v", err)
+	}
+
+	// 用解析器往返，字段应原样还原
+	p, err := NewParser(bytes.NewReader(data), true)
+	if err != nil {
+		t.Fatalf("NewParser() error = %v", err)
+	}
+	row, err := p.Read()
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+	if row[0] != "has,comma" {
+		t.Errorf("field 0 not preserved: %q", row[0])
+	}
+	if row[1] != "has\"quote\nnewline" {
+		t.Errorf("field 1 not preserved: %q", row[1])
 	}
 }
 
 func TestExporter_WriteToWriter(t *testing.T) {
-	headers := []string{"ID", "Name"}
-	exporter := New(headers)
-
-	exporter.AddRow([]string{"1", "John"})
-	exporter.AddRow([]string{"2", "Jane"})
+	e := New([]string{"ID", "Name"})
+	e.AddRow([]string{"1", "John"})
 
 	var buf bytes.Buffer
-	err := exporter.WriteToWriter(&buf)
-	if err != nil {
+	if err := e.WriteToWriter(&buf); err != nil {
 		t.Fatalf("WriteToWriter() error = %v", err)
 	}
-
-	output := buf.String()
-	if !strings.Contains(output, "ID,Name") {
-		t.Error("Output should contain headers")
+	if !bytes.HasPrefix(buf.Bytes(), utf8BOM) {
+		t.Error("output should start with UTF-8 BOM")
 	}
-	if !strings.Contains(output, "1,John") {
-		t.Error("Output should contain first row")
-	}
-	if !strings.Contains(output, "2,Jane") {
-		t.Error("Output should contain second row")
+	if !strings.Contains(buf.String(), "ID,Name") {
+		t.Error("output should contain header")
 	}
 }
 
 func TestExporter_WriteToFile(t *testing.T) {
-	headers := []string{"ID", "Name"}
-	exporter := New(headers)
+	e := New([]string{"ID", "Name"})
+	e.AddRow([]string{"1", "John"})
 
-	exporter.AddRow([]string{"1", "John"})
-	exporter.AddRow([]string{"2", "Jane"})
-
-	tmpFile := "/tmp/test_export.csv"
-	defer os.Remove(tmpFile)
-
-	err := exporter.WriteToFile(tmpFile)
-	if err != nil {
+	path := filepath.Join(t.TempDir(), "test_export.csv")
+	if err := e.WriteToFile(path); err != nil {
 		t.Fatalf("WriteToFile() error = %v", err)
 	}
 
-	// Verify file exists
-	if _, err := os.Stat(tmpFile); os.IsNotExist(err) {
-		t.Error("File was not created")
-	}
-
-	// Verify file contents
-	content, err := os.ReadFile(tmpFile)
+	content, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("Failed to read file: %v", err)
+		t.Fatalf("failed to read file: %v", err)
 	}
-
-	contentStr := string(content)
-	if !strings.Contains(contentStr, "ID,Name") {
-		t.Error("File should contain headers")
+	if !bytes.HasPrefix(content, utf8BOM) {
+		t.Error("file should start with UTF-8 BOM")
+	}
+	if !strings.Contains(string(content), "ID,Name") {
+		t.Error("file should contain header")
 	}
 }
 
 func TestExporter_Clear(t *testing.T) {
-	headers := []string{"ID", "Name"}
-	exporter := New(headers)
-
-	exporter.AddRow([]string{"1", "John"})
-	exporter.Clear()
-
-	if exporter.GetRecordCount() != 0 {
-		t.Errorf("Expected 0 records after Clear(), got %d", exporter.GetRecordCount())
+	e := New([]string{"ID", "Name"})
+	e.AddRow([]string{"1", "John"})
+	e.Clear()
+	if e.GetRecordCount() != 0 {
+		t.Errorf("expected 0 records after Clear(), got %d", e.GetRecordCount())
 	}
 }
 
-func TestFormatValue(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    any
-		expected string
-	}{
-		{"string", "test", "test"},
-		{"int", 123, "123"},
-		{"int64", int64(456), "456"},
-		{"uint", uint(789), "789"},
-		{"float", 3.14, "3.14"},
-		{"bool true", true, "true"},
-		{"bool false", false, "false"},
-		{"nil", nil, ""},
-		{"time", time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC), "2024-01-01 12:00:00"},
+func TestNewParser_UTF8(t *testing.T) {
+	p, err := NewParser(strings.NewReader("ID,Name\n1,John\n2,Jane"), true)
+	if err != nil {
+		t.Fatalf("NewParser() error = %v", err)
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := formatValue(tt.input)
-			if result != tt.expected {
-				t.Errorf("formatValue(%v) = %v, want %v", tt.input, result, tt.expected)
-			}
-		})
+	if len(p.GetHeaders()) != 2 {
+		t.Errorf("expected 2 headers, got %d", len(p.GetHeaders()))
 	}
 }
 
-func TestNewParser(t *testing.T) {
-	csvData := "ID,Name\n1,John\n2,Jane"
-	reader := strings.NewReader(csvData)
-
-	parser := NewParser(reader, true)
-
-	if parser == nil {
-		t.Fatal("NewParser() returned nil")
+func TestNewParser_UTF8BOM(t *testing.T) {
+	raw := append(append([]byte{}, utf8BOM...), []byte("ID,Name\n1,张三")...)
+	p, err := NewParser(bytes.NewReader(raw), true)
+	if err != nil {
+		t.Fatalf("NewParser() error = %v", err)
 	}
+	// 表头不应残留 BOM
+	if p.GetHeaders()[0] != "ID" {
+		t.Errorf("BOM not stripped from header: %q", p.GetHeaders()[0])
+	}
+	row, err := p.Read()
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+	if row[1] != "张三" {
+		t.Errorf("expected 张三, got %q", row[1])
+	}
+}
 
-	headers := parser.GetHeaders()
-	if len(headers) != 2 {
-		t.Errorf("Expected 2 headers, got %d", len(headers))
+func TestNewParser_GBK(t *testing.T) {
+	// 构造 GBK 编码的输入
+	gbk, err := encodeWith("ID,Name\n1,张三\n2,李四", simplifiedchinese.GBK)
+	if err != nil {
+		t.Fatalf("failed to build GBK input: %v", err)
+	}
+	p, err := NewParser(bytes.NewReader(gbk), true)
+	if err != nil {
+		t.Fatalf("NewParser() error = %v", err)
+	}
+	rows, err := p.ReadAll()
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(rows))
+	}
+	if rows[0][1] != "张三" || rows[1][1] != "李四" {
+		t.Errorf("GBK not decoded: %v", rows)
+	}
+}
+
+func TestNewParser_UTF16LE(t *testing.T) {
+	utf16, err := encodeWith("ID,Name\n1,张三",
+		unicode.UTF16(unicode.LittleEndian, unicode.UseBOM))
+	if err != nil {
+		t.Fatalf("failed to build UTF-16LE input: %v", err)
+	}
+	p, err := NewParser(bytes.NewReader(utf16), true)
+	if err != nil {
+		t.Fatalf("NewParser() error = %v", err)
+	}
+	row, err := p.Read()
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+	if row[1] != "张三" {
+		t.Errorf("UTF-16LE not decoded: %q", row[1])
 	}
 }
 
 func TestParser_Read(t *testing.T) {
-	csvData := "ID,Name\n1,John\n2,Jane"
-	reader := strings.NewReader(csvData)
-
-	parser := NewParser(reader, true)
-
-	// First data row
-	row, err := parser.Read()
+	p, err := NewParser(strings.NewReader("ID,Name\n1,John\n2,Jane"), true)
+	if err != nil {
+		t.Fatalf("NewParser() error = %v", err)
+	}
+	row, err := p.Read()
 	if err != nil {
 		t.Fatalf("Read() error = %v", err)
 	}
 	if row[0] != "1" || row[1] != "John" {
-		t.Errorf("Expected [1 John], got %v", row)
+		t.Errorf("expected [1 John], got %v", row)
 	}
-
-	// Second data row
-	row, err = parser.Read()
-	if err != nil {
-		t.Fatalf("Read() error = %v", err)
-	}
-	if row[0] != "2" || row[1] != "Jane" {
-		t.Errorf("Expected [2 Jane], got %v", row)
+	if p.GetRow() != 1 {
+		t.Errorf("expected row=1, got %d", p.GetRow())
 	}
 }
 
-func TestParser_ReadAll(t *testing.T) {
-	csvData := "ID,Name\n1,John\n2,Jane"
-	reader := strings.NewReader(csvData)
-
-	parser := NewParser(reader, false)
-
-	rows, err := parser.ReadAll()
+func TestParser_ReadAll_NoHeaders(t *testing.T) {
+	p, err := NewParser(strings.NewReader("ID,Name\n1,John\n2,Jane"), false)
+	if err != nil {
+		t.Fatalf("NewParser() error = %v", err)
+	}
+	rows, err := p.ReadAll()
 	if err != nil {
 		t.Fatalf("ReadAll() error = %v", err)
 	}
-
-	if len(rows) != 3 {
-		t.Errorf("Expected 3 rows (including header), got %d", len(rows))
+	if len(rows) != 3 { // 含被当作数据的首行
+		t.Errorf("expected 3 rows, got %d", len(rows))
+	}
+	// ReadAll 应把读到的行数计入 GetRow（与 Read 的逐行计数一致）
+	if p.GetRow() != 3 {
+		t.Errorf("expected GetRow()=3 after ReadAll, got %d", p.GetRow())
 	}
 }
 
 func TestParser_ReadMap(t *testing.T) {
-	csvData := "ID,Name\n1,John\n2,Jane"
-	reader := strings.NewReader(csvData)
-
-	parser := NewParser(reader, true)
-
-	row, err := parser.ReadMap()
+	p, err := NewParser(strings.NewReader("ID,Name\n1,John"), true)
+	if err != nil {
+		t.Fatalf("NewParser() error = %v", err)
+	}
+	row, err := p.ReadMap()
 	if err != nil {
 		t.Fatalf("ReadMap() error = %v", err)
 	}
-
-	if row["ID"] != "1" {
-		t.Errorf("Expected ID=1, got %s", row["ID"])
-	}
-	if row["Name"] != "John" {
-		t.Errorf("Expected Name=John, got %s", row["Name"])
+	if row["ID"] != "1" || row["Name"] != "John" {
+		t.Errorf("map incorrect: %v", row)
 	}
 }
 
 func TestParser_ReadAllMap(t *testing.T) {
-	csvData := "ID,Name\n1,John\n2,Jane"
-	reader := strings.NewReader(csvData)
-
-	parser := NewParser(reader, true)
-
-	rows, err := parser.ReadAllMap()
+	p, err := NewParser(strings.NewReader("ID,Name\n1,John\n2,Jane"), true)
+	if err != nil {
+		t.Fatalf("NewParser() error = %v", err)
+	}
+	rows, err := p.ReadAllMap()
 	if err != nil {
 		t.Fatalf("ReadAllMap() error = %v", err)
 	}
-
 	if len(rows) != 2 {
-		t.Errorf("Expected 2 rows, got %d", len(rows))
+		t.Fatalf("expected 2 rows, got %d", len(rows))
 	}
-
-	if rows[0]["ID"] != "1" || rows[0]["Name"] != "John" {
-		t.Errorf("First row incorrect: %v", rows[0])
-	}
-
-	if rows[1]["ID"] != "2" || rows[1]["Name"] != "Jane" {
-		t.Errorf("Second row incorrect: %v", rows[1])
+	if rows[0]["ID"] != "1" || rows[1]["Name"] != "Jane" {
+		t.Errorf("maps incorrect: %v", rows)
 	}
 }
 
 func TestParser_ReadMap_NoHeaders(t *testing.T) {
-	csvData := "1,John\n2,Jane"
-	reader := strings.NewReader(csvData)
-
-	parser := NewParser(reader, false)
-
-	_, err := parser.ReadMap()
-	if err == nil {
-		t.Error("Expected error when calling ReadMap() without headers")
+	p, err := NewParser(strings.NewReader("1,John"), false)
+	if err != nil {
+		t.Fatalf("NewParser() error = %v", err)
 	}
+	if _, err := p.ReadMap(); err == nil {
+		t.Error("expected error when calling ReadMap() without headers")
+	}
+}
+
+func TestNewParserFromFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "in.csv")
+	if err := os.WriteFile(path, []byte("ID,Name\n1,John"), 0o600); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+	p, err := NewParserFromFile(path, true)
+	if err != nil {
+		t.Fatalf("NewParserFromFile() error = %v", err)
+	}
+	row, err := p.Read()
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+	if row[0] != "1" {
+		t.Errorf("expected 1, got %q", row[0])
+	}
+}
+
+// encodeWith 把 UTF-8 字符串编码成指定编码的字节，供测试构造非 UTF-8 输入。
+func encodeWith(s string, enc interface {
+	NewEncoder() *encoding.Encoder
+}) ([]byte, error) {
+	return io.ReadAll(transform.NewReader(strings.NewReader(s), enc.NewEncoder()))
 }
