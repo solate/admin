@@ -59,11 +59,9 @@
 | 真实标识 | 散文占位 | 代码/路径占位 |
 |---|---|---|
 | `backend-rbac` | 老项目 A | `legacy-rbac` |
-| `content-center` / `content-center-backend` | 老项目 B | `legacy-cms` |
-| `backend-rbac-blueprint`（目录） | — | `rbac-blueprint` |
+
 | `admin_dev`（文档示例库名） | `app_dev` | `app_dev` |
-| `/Users/solate/` | `/Users/developer/` | 同 |
-| `face`/`CustomFace*`/`device`/`video_review` 业务域 | 通用占位 | `CustomResource*` |
+| `device`/`video_review` 业务域 | 通用占位 | `Resource*` |
 | module `admin/` | **不脱敏**（通用名） | 保持原样 |
 
 **最后更新**：2026-07-09（改写为通用方法论 + 本次映射降级为附录示例）

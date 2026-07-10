@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"admin/internal/config"
+	"admin/internal/router"
 )
 
 type Server struct {
@@ -29,17 +31,16 @@ type Options struct {
 }
 
 func New(opts Options) (*Server, error) {
-	// Step 03 起替换为：engine := gin.New(); router.Setup(engine, ...)
-	// gin.SetMode(opts.Config.Server.Mode) // Step 03 接入:把 Server.Mode 喂给 gin
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status":"ok"}`)
-	})
+	// 按配置设置 gin 运行模式（debug/release/test）
+	gin.SetMode(opts.Config.Server.Mode)
+
+	// gin.New() 不带默认中间件，中间件全部由 router.Setup 显式注册
+	engine := gin.New()
+	router.Setup(engine, opts.Config, opts.Log)
 
 	httpSrv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", opts.Config.Server.Port),
-		Handler:      mux,
+		Handler:      engine,
 		ReadTimeout:  time.Duration(opts.Config.Server.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(opts.Config.Server.WriteTimeout) * time.Second,
 		IdleTimeout:  60 * time.Second,
