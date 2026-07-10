@@ -77,6 +77,11 @@ func main() {
 		}),
 	)
 
+	// PG 原生 uuid 列默认不映射为 Go string，显式映射以符合 dto-id-type 规则（所有 ID 用 string）。
+	genCfg.WithDataTypeMap(map[string]func(gorm.ColumnType) string{
+		"uuid": func(gorm.ColumnType) string { return "string" },
+	})
+
 	g := gen.NewGenerator(genCfg)
 	g.UseDB(db)
 

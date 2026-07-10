@@ -28,7 +28,7 @@
 | 5 | 多租户三层隔离 | JWT Claims → xcontext → Repository WHERE |
 | 6 | 错误码集中管理 | xerr 定义错误 → Service 层 Wrap → middleware 统一响应 |
 | 7 | 双排序字段 | 所有列表 `ORDER BY created_at DESC, pk DESC` |
-| 8 | ID 全部 string | `idgen.NextID()` 雪花算法，不用 UUID 也不用自增 |
+| 8 | ID 全部 string | 主键用 PG18 原生 `uuid` + `DEFAULT uuidv7()`（库端生成），`idgen.GenerateUUID()` 备用 |
 | 9 | 优雅退出 | signal + context 传播 + 资源清理 |
 | 10 | 零全局状态 | 没有 init()、没有包级 var，所有状态通过参数传递 |
 
@@ -105,7 +105,7 @@ backend/
 │   ├── response/
 │   │   └── response.go          # OK / Fail / Page 响应封装
 │   ├── idgen/
-│   │   └── idgen.go             # 雪花算法 ID 生成
+│   │   └── idgen.go             # UUIDv7 生成（google/uuid，备用；主键默认走库端 uuidv7()）
 │   └── password/
 │       └── password.go          # bcrypt 加密/验证
 ├── config/                      # YAML 配置文件
@@ -217,6 +217,12 @@ internal/query       ← GORM Gen
 > **Redis 系列文档**：
 > - [01 Redis 客户端封装选型调研](research/redis/01-redis-客户端封装选型调研.md) — 为何 2026 选 go-redis/v9 + 具体 `*redis.Client`（不套接口、不做单例）、UniversalClient/rueidis 对比、集群迁移边界
 
+> **ID 生成系列文档**：
+> - [01 ID生成方案选型-雪花vs-UUID](research/idgen/01-ID生成方案选型-雪花vs-UUID.md) — PG18 已确认、UUIDv7 为推荐方向（库内更省、零机器协调）、backend/ 已于 2026-07 切换；含 JS 2^53 精度约束
+> - [02 UUIDv7落地细节-前端影响与生成方式](research/idgen/02-UUIDv7落地细节-前端影响与生成方式.md) — 前端零改动、DB 效率量化、应用层生成不绑 PG 版本、开发友好度、v7 自动生成vs赋值
+> - [03 UUIDv7存储机制与落地](research/idgen/03-UUIDv7存储机制与落地-PG18字段设计与文本二进制转换.md) — PG18 许可证/升级、字段用原生 `uuid`、「文本↔16字节」由 PG 自动转换、GORM 字段保持 string、PG18 以下降级不退 varchar、为何不处理 error 与封装建议
+> - [博客：从零设计 Go 主键 ID](../blog/从零设计Go主键ID-雪花到UUIDv7的取舍.md) — 雪花到 UUIDv7 的取舍，三段说清为何换、有何坑、怎么落
+
 **里程碑 5**：生产就绪
 
 ---
@@ -250,7 +256,7 @@ internal/query       ← GORM Gen
 | 日志 | slog（标准库）+ pkg/xslog 封装 | 零依赖、结构化、Handler 可换后端、otelslog 直通 OTel | zerolog（多一个依赖，slog 桥接慢 46×） |
 | ORM | GORM + Gen | 类型安全查询、代码生成 | sqlx（手写 SQL 太多） |
 | 路由 | Gin | 性能好、生态成熟、中间件丰富 | Echo（社区稍小） |
-| ID 生成 | 雪花算法（sony/sonyflake） | 有序、紧凑、全局唯一 | UUID（太长、无序） |
+| ID 生成 | UUIDv7（PG18 库端 `DEFAULT uuidv7()`，应用层 google/uuid 备用） | 时间有序、零机器协调、库内 16 字节、前端天生 string | 雪花 sony/sonyflake（需机器 ID 协调、64 位需转 string）、UUIDv4（无序拖累索引） |
 | 密码 | bcrypt | 工业标准、自带盐 | argon2（overkill） |
 | 缓存 | Redis + 内存 map | 热数据内存、持久化 Redis | 纯 Redis（延迟高） |
 | Redis 客户端 | go-redis/v9 + pkg/xredis 封装（返回具体 `*redis.Client`） | 官方维护、最成熟、单节点直用不套接口不做单例 | UniversalClient 接口/单例（单节点用不上，见 [研究](research/redis/01-redis-客户端封装选型调研.md)）、rueidis（新依赖、API 陌生） |
@@ -273,4 +279,4 @@ admin/
 
 ---
 
-*最后更新：2026-06-18*
+*最后更新：2026-07-10*

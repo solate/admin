@@ -3,7 +3,7 @@
 -- 业务域表（tenants/users/roles...）由后续 step-04 定义，不在此处。
 
 CREATE TABLE IF NOT EXISTS system_config (
-    config_id    VARCHAR(20)  PRIMARY KEY,          -- Sonyflake 数字字符串主键
+    config_id    uuid         PRIMARY KEY DEFAULT uuidv7(),  -- UUIDv7 主键，PG18 库端自动生成(原生 uuid 16字节)
     config_key   VARCHAR(128) NOT NULL,             -- 配置键
     config_value TEXT         NOT NULL DEFAULT '',   -- 配置值
     remark       VARCHAR(255) NOT NULL DEFAULT '',   -- 备注
