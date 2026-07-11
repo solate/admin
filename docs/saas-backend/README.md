@@ -223,6 +223,12 @@ internal/query       ← GORM Gen
 > - [03 UUIDv7存储机制与落地](research/idgen/03-UUIDv7存储机制与落地-PG18字段设计与文本二进制转换.md) — PG18 许可证/升级、字段用原生 `uuid`、「文本↔16字节」由 PG 自动转换、GORM 字段保持 string、PG18 以下降级不退 varchar、为何不处理 error 与封装建议
 > - [博客：从零设计 Go 主键 ID](../blog/从零设计Go主键ID-雪花到UUIDv7的取舍.md) — 雪花到 UUIDv7 的取舍，三段说清为何换、有何坑、怎么落
 
+> **应用启动与生命周期系列文档**（组合根 → 依赖装配 → cron 编排 → 分层对象化）：
+> - [01 应用启动与组件生命周期](research/bootstrap/01-应用启动与组件生命周期-main组合根与gin-cron编排.md) — `run()` 组合根 + `signal.NotifyContext` 优雅退出；成熟编排方案 run.Group（Grafana/Prometheus 采用）vs errgroup vs 裸 select，组件 ≥2（HTTP+scheduler）用 run.Group
+> - [02 依赖装配与组件注册](research/bootstrap/02-依赖装配与组件注册-手工注入vs-wire-fx.md) — 手工注入 vs wire vs fx 三方对比、按域装配函数 + deps 聚合结构体消除 40 字段 Handlers / 28 参数 mega-constructor
+> - [03 后台任务执行模型选型](research/bootstrap/03-cron任务注册与复用-jobs装配与Server生命周期集成.md) — 三档成熟方案：纯定时用 gocron v2（内建多副本 locker，替掉手搓 SetNX）、要持久化/重试用 River（PG 栈内）或 asynq（Redis）、backfill cron = 该上持久队列的信号；作为 run.Group actor 编排
+> - [04 分层对象化与共享并发状态](research/bootstrap/04-分层对象化与共享并发状态-struct而非纯方法.md) — 三层为何一律 struct 而非纯方法、「加锁逼出纯方法」是误判、共享并发状态 = 共享注入的单个实例（信号量/锁作 struct 字段）、`PermissionCache` 正例
+
 **里程碑 5**：生产就绪
 
 ---
