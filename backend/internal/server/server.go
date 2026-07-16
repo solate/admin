@@ -38,12 +38,26 @@ func New(opts Options) (*Server, error) {
 	engine := gin.New()
 	router.Setup(engine, opts.Config)
 
+	// 各超时字段从配置读取；0 表示未配置，退回安全默认值
+	readTimeout := opts.Config.Server.ReadTimeout
+	if readTimeout == 0 {
+		readTimeout = 10 * time.Second
+	}
+	writeTimeout := opts.Config.Server.WriteTimeout
+	if writeTimeout == 0 {
+		writeTimeout = 60 * time.Second
+	}
+	idleTimeout := opts.Config.Server.IdleTimeout
+	if idleTimeout == 0 {
+		idleTimeout = 120 * time.Second
+	}
+
 	httpSrv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", opts.Config.Server.Port),
 		Handler:      engine,
-		ReadTimeout:  time.Duration(opts.Config.Server.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(opts.Config.Server.WriteTimeout) * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 	return &Server{
 		httpSrv: httpSrv,

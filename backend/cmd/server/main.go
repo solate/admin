@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -74,7 +73,12 @@ func run() error {
 	})
 
 	// 6. 组装 HTTP server
-	srv, err := server.New(server.Options{Config: cfg})
+	srv, err := server.New(server.Options{
+		Config: cfg,
+		DB:     db,
+		RDB:    rdbClient,
+		Log:    log,
+	})
 	if err != nil {
 		return fmt.Errorf("init server: %w", err)
 	}
@@ -93,7 +97,7 @@ func run() error {
 	// 组件 1 优雅关闭：ctx 取消后带超时排空在途请求
 	g.Go(func() error {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Server.GracefulTimeout)*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.GracefulTimeout)
 		defer cancel()
 		return srv.Stop(shutdownCtx)
 	})

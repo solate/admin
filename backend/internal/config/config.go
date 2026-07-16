@@ -1,7 +1,11 @@
 // Package config 定义项目配置结构与校验规则。加载机制(overlay/环境变量)见 pkg/xviper。
 package config
 
-import "admin/pkg/xviper"
+import (
+	"time"
+
+	"admin/pkg/xviper"
+)
 
 // Config 是应用总配置结构。使用 mapstructure tag(xviper 约定,兼容 viper)。
 type Config struct {
@@ -21,20 +25,19 @@ type AppConfig struct {
 
 // ServerConfig 是 HTTP 服务配置。
 type ServerConfig struct {
-	Port            int        `mapstructure:"port"`             // 监听端口
-	Mode            string     `mapstructure:"mode"`             // debug/release/test → Step 03 喂 gin.SetMode
-	ReadTimeout     int        `mapstructure:"read_timeout"`     // 读超时(秒)
-	WriteTimeout    int        `mapstructure:"write_timeout"`    // 写超时(秒)
-	GracefulTimeout int        `mapstructure:"graceful_timeout"` // 优雅关闭超时(秒)
-	Cors            CorsConfig `mapstructure:"cors"`             // 跨域
+	Port            int           `mapstructure:"port"`             // 监听端口
+	Mode            string        `mapstructure:"mode"`             // debug/release/test → Step 03 喂 gin.SetMode
+	ReadTimeout     time.Duration `mapstructure:"read_timeout"`     // 读超时(带单位，如 10s)
+	WriteTimeout    time.Duration `mapstructure:"write_timeout"`    // 写超时(带单位，如 10s)
+	IdleTimeout     time.Duration `mapstructure:"idle_timeout"`     // keep-alive 空闲超时(带单位)，0 则退化为 ReadTimeout
+	GracefulTimeout time.Duration `mapstructure:"graceful_timeout"` // 优雅关闭超时(带单位，如 30s)
+	Cors            CorsConfig    `mapstructure:"cors"`             // 跨域
 }
 
 // CorsConfig 是跨域配置(Step 03 中间件使用)。
+// methods/headers/credentials 固定在中间件内，此处只配置允许的来源。
 type CorsConfig struct {
-	AllowedOrigins   []string `mapstructure:"allowed_origins"`   // 允许的来源
-	AllowedMethods   []string `mapstructure:"allowed_methods"`   // 允许的方法
-	AllowedHeaders   []string `mapstructure:"allowed_headers"`   // 允许的请求头
-	AllowCredentials bool     `mapstructure:"allow_credentials"` // 是否允许携带凭证
+	AllowedOrigins []string `mapstructure:"allowed_origins"` // 允许的来源（按环境配置，生产填真实域名）
 }
 
 // DatabaseConfig 是 PostgreSQL 连接配置。

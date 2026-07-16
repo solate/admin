@@ -4,17 +4,21 @@ app:
   env: "dev"
 
 
+log:
+  level: debug
+  format: text
+  add_source: true
+
+
 server:
   port: 8080
   mode: debug
-  read_timeout: 10        # 读超时(秒)
-  write_timeout: 10       # 写超时(秒)
-  graceful_timeout: 30    # 优雅关闭超时(秒)
+  read_timeout: 10s       # 读超时
+  write_timeout: 10s      # 写超时
+  idle_timeout: 60s       # keep-alive 空闲超时
+  graceful_timeout: 30s   # 优雅关闭超时（支持 s/m/h）
   cors:
-    allowed_origins: ["http://localhost:5173"]
-    allowed_methods: [GET, POST, PUT, DELETE, OPTIONS]
-    allowed_headers: [Content-Type, Authorization]
-    allow_credentials: true
+    allowed_origins: ["http://localhost:5173"]  # 生产环境改为真实域名
 
 database:
   host: localhost
@@ -45,7 +49,3 @@ jwt:
   refresh_ttl: 10080
   issuer: "admin"
 
-log:
-  level: debug
-  format: text
-  add_source: true

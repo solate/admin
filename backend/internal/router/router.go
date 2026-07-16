@@ -16,7 +16,7 @@ func Setup(r *gin.Engine, cfg *config.Config) {
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Logger())
 	r.Use(middleware.Recovery())
-	r.Use(middleware.CORS(cfg.Server.Cors))
+	r.Use(middleware.CORS(cfg.Server.Cors.AllowedOrigins))
 
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {
