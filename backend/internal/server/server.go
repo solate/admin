@@ -36,7 +36,7 @@ func New(opts Options) (*Server, error) {
 
 	// gin.New() 不带默认中间件，中间件全部由 router.Setup 显式注册
 	engine := gin.New()
-	router.Setup(engine, opts.Config, opts.Log)
+	router.Setup(engine, opts.Config)
 
 	httpSrv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", opts.Config.Server.Port),
@@ -62,9 +62,11 @@ func (s *Server) Start() error {
 	return nil
 }
 
-func (s *Server) Stop(ctx context.Context) {
+func (s *Server) Stop(ctx context.Context) error {
 	// Step 05 起逆序追加：s.cronRunner.Stop()
-	if err := s.httpSrv.Shutdown(ctx); err != nil {
+	err := s.httpSrv.Shutdown(ctx)
+	if err != nil {
 		s.log.Error("server shutdown error", slog.Any("err", err))
 	}
+	return err
 }

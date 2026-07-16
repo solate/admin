@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/gin-gonic/gin"
-
 	"admin/pkg/utils/csv"
+
+	"github.com/gin-gonic/gin"
 )
 
 // maxUploadSize 上传 CSV 的大小上限。编码识别（BOM 嗅探 + utf8.Valid）天然要把整份内容读进内存，

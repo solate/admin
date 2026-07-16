@@ -184,43 +184,25 @@ func (h *Handler) Check(c *gin.Context) {
 
 ### 5. 优雅退出完整版
 
+生命周期骨架（`run()` 组合根 + `signal.NotifyContext` + `srv.Run(ctx)` 的 errgroup 编排）是**既有实现**，完整代码见 [bootstrap doc 01](./research/bootstrap/01-应用启动与组件生命周期-main组合根与gin-cron编排.md) 第一节，此处不复制。本步只关心一件 step-17 特有的事——**审计日志缓冲的刷新时机**：
+
+- db、redis 是 `run()` 的局部变量，用 `defer` 逆序 Close（redis 先、db 后），HTTP 的带超时优雅关闭由 `srv.Run(ctx)` 内部的 errgroup 负责——这两类都无需在这里手写。
+- 审计 recorder 有内存缓冲，进程退出前必须 `Flush()` 落盘，否则丢最后一批审计记录。把它挂成 `defer recorder.Flush()`，且**注册在 db 的 `defer` 之后**（先声明后执行，Flush 先于 db.Close 跑），保证刷缓冲时数据库连接还在：
+
 ```go
-// main.go 最终版
-func main() {
-    // ... 初始化 ...
+func run() error {
+    // ... cfg/log/db/redis 初始化（详见 bootstrap doc 01）...
+    defer xgorm.Close(db)          // 最后关（先声明）
+    recorder := audit.NewRecorder(db)
+    defer recorder.Flush()         // 在 db.Close 之前刷缓冲（后声明先执行）
 
-    // 启动 HTTP Server
-    go func() {
-        if err := srv.Start(); err != nil && err != http.ErrServerClosed {
-            log.Fatal().Err(err).Msg("server start failed")
-        }
-    }()
-
-    // 等待退出信号
-    quit := make(chan os.Signal, 1)
-    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-    sig := <-quit
-    log.Info().Str("signal", sig.String()).Msg("shutdown signal received")
-
-    // 优雅退出（给 30 秒处理残余请求）
-    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-    defer cancel()
-
-    // 1. 停止接受新请求
-    if err := srv.Stop(ctx); err != nil {
-        log.Error().Err(err).Msg("server shutdown error")
+    srv, err := server.New(server.Options{Config: cfg, DB: db, RDB: rdb, Log: log, Audit: recorder})
+    if err != nil {
+        return fmt.Errorf("init server: %w", err)
     }
-
-    // 2. 刷新审计日志缓冲
-    recorder.Flush()
-
-    // 3. 关闭数据库连接
-    database.Close(db)
-
-    // 4. 关闭 Redis
-    rdbClient.Close()
-
-    log.Info().Msg("server exited cleanly")
+    ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+    defer stop()
+    return srv.Run(ctx)            // errgroup 编排 HTTP 优雅关闭，见 bootstrap doc 01
 }
 ```
 

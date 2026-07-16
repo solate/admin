@@ -255,45 +255,41 @@ import (
     "time"
 
     "github.com/gin-gonic/gin"
+
+    "admin/internal/config"
+    "admin/internal/router"
 )
 
-type Server struct {
-    httpServer *http.Server
-    log        *slog.Logger
-}
+// New 用 Options 聚合依赖（Config/DB/RDB/Log）而非位置参数——加字段不破坏调用点，
+// 取舍见 bootstrap doc 02。engine 在 New 内部构建：router.Setup 注册中间件与路由。
+func New(opts Options) (*Server, error) {
+    gin.SetMode(opts.Config.Server.Mode)
+    engine := gin.New()
+    router.Setup(engine, opts.Config, opts.Log)
 
-type Config struct {
-    Port         int
-    Mode         string
-    ReadTimeout  time.Duration
-    WriteTimeout time.Duration
-}
-
-func New(cfg Config, engine *gin.Engine, log *slog.Logger) *Server {
-    if cfg.Mode == "release" {
-        gin.SetMode(gin.ReleaseMode)
+    httpSrv := &http.Server{
+        Addr:         fmt.Sprintf(":%d", opts.Config.Server.Port),
+        Handler:      engine,
+        ReadTimeout:  time.Duration(opts.Config.Server.ReadTimeout) * time.Second,
+        WriteTimeout: time.Duration(opts.Config.Server.WriteTimeout) * time.Second,
+        IdleTimeout:  60 * time.Second,
     }
     return &Server{
-        httpServer: &http.Server{
-            Addr:         fmt.Sprintf(":%d", cfg.Port),
-            Handler:      engine,
-            ReadTimeout:  cfg.ReadTimeout,
-            WriteTimeout: cfg.WriteTimeout,
-        },
-        log: log,
-    }
+        httpSrv:         httpSrv,
+        db:              opts.DB,
+        rdb:             opts.RDB,
+        log:             opts.Log,
+        gracefulTimeout: time.Duration(opts.Config.Server.GracefulTimeout) * time.Second,
+    }, nil
 }
 
-func (s *Server) Start() error {
-    s.log.Info("http server starting", slog.String("addr", s.httpServer.Addr))
-    return s.httpServer.ListenAndServe()
-}
-
-func (s *Server) Stop(ctx context.Context) error {
-    s.log.Info("http server shutting down")
-    return s.httpServer.Shutdown(ctx)
-}
+// Run 用 errgroup 编排长驻组件（HTTP + 其带超时优雅关闭；Step 05 起加 scheduler）。
+// 完整实现（两个 g.Go、ErrServerClosed 过滤成 nil、g.Wait 收敛）与 bootstrap doc 01
+// 第一节逐字一致，此处不复制——doc 01 是生命周期编排的唯一权威版本。
+func (s *Server) Run(ctx context.Context) error { /* errgroup 编排，见 bootstrap doc 01 */ }
 ```
+
+> `Options`/`Server` 字段与 `Run(ctx)` 完整代码见 [bootstrap doc 01](./research/bootstrap/01-应用启动与组件生命周期-main组合根与gin-cron编排.md) 第一节。`main.go` 只认 `Run(ctx)` 一个动词，`Start()/Stop()` 双方法已被 errgroup 编排取代。
 
 ### 5. Router Setup
 
@@ -420,56 +416,30 @@ type StatusRequest struct {
 
 ### 8. main.go 最终更新
 
+Step 03 的变化只在 `server.New()` 内部（engine 组装移进去）——`main` 的 `run()` 组合根骨架 Step 01 就定死了，本步一行不改：`signal.NotifyContext` 得到可传播 ctx，`srv.Run(ctx)` 阻塞到收到信号或组件出错，内部 errgroup 统一优雅关闭。
+
 ```go
-func main() {
-    // ... Step 02 的配置/日志/数据库/Redis 初始化 ...
+func run() error {
+    // ... 第一层：Step 02 的 config/log/db/redis 初始化 + defer 逆序 Close ...
 
-    // 创建 Gin Engine
-    engine := gin.New() // 用 New() 不用 Default()，中间件自己控制
-
-    // 构造 Handlers
-    handlers := &router.Handlers{
-        Health: health.NewHandler(),
+    // 第二层：组装 Server（engine + 中间件 + 路由都在 New 内部，见上方第 4 节）
+    srv, err := server.New(server.Options{Config: cfg, DB: db, RDB: rdb, Log: log})
+    if err != nil {
+        return fmt.Errorf("init server: %w", err)
     }
 
-    // 注册路由
-    router.Setup(engine, handlers, log)
+    ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+    defer stop()
 
-    // 创建 Server
-    srv := server.New(server.Config{
-        Port:         cfg.Server.Port,
-        Mode:         cfg.Server.Mode,
-        ReadTimeout:  cfg.Server.ReadTimeout,
-        WriteTimeout: cfg.Server.WriteTimeout,
-    }, engine, log)
-
-    // 启动
-    // srvErr 缓冲 1，避免 Start 失败时 goroutine 因无人接收而泄漏。
-    // 启动失败不直接 os.Exit（那会跳过下方 defer），而是把 error 送回主流程统一处理。
-    srvErr := make(chan error, 1)
-    go func() {
-        if err := srv.Start(); err != nil && err != http.ErrServerClosed {
-            srvErr <- err
-        }
-    }()
-
-    // 优雅退出：要么收到信号，要么 server 启动/运行出错
-    quit := make(chan os.Signal, 1)
-    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-    select {
-    case err := <-srvErr:
-        log.Error("server start failed", slog.Any("err", err))
-        os.Exit(1)
-    case <-quit:
+    if err := srv.Run(ctx); err != nil {   // errgroup 编排：两个 g.Go + g.Wait 收敛
+        return fmt.Errorf("run server: %w", err)
     }
-
-    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
-    if err := srv.Stop(ctx); err != nil {
-        log.Error("server shutdown error", slog.Any("err", err))
-    }
+    log.Info("server exited")
+    return nil
 }
 ```
+
+> `run()` / `Run(ctx)` 的完整代码、errgroup 的两个 `g.Go`（`ListenAndServe` + `ErrServerClosed` 过滤、`<-ctx.Done()` 后带超时 `Shutdown`）、以及「为什么单组件也用 errgroup」的取舍，全部在 [bootstrap doc 01](./research/bootstrap/01-应用启动与组件生命周期-main组合根与gin-cron编排.md) 第一、二节——那里是生命周期编排的唯一权威版本，本步不复制。
 
 ## 依赖引入
 
@@ -505,24 +475,6 @@ curl -s -D - -X OPTIONS http://localhost:8080/api/v1/health | grep Access-Contro
 
 # 7. Panic 恢复（临时测试）
 # 添加一个 panic 路由测试，确认返回 500 且不暴露堆栈
-```
-
-## AI 协作提示
-
-```
-请按 step-03-http-framework.md 实现 HTTP 框架层。
-
-要点：
-1. pkg/xerr/ — 错误码常量 + BizError struct
-2. pkg/response/ — OK/Fail/Page 统一响应，HTTP 状态码统一 200
-3. internal/server/ — 封装 http.Server 的启动和优雅关闭
-4. internal/middleware/ — RequestID/Logger/Recovery/CORS 四个中间件
-5. internal/router/ — Setup() 注册路由 + Handlers 聚合
-6. internal/handler/health/ — 健康检查
-7. internal/dto/ — PageRequest/IDRequest/IDsRequest 通用 DTO
-8. 更新 main.go：创建 Engine → 构造 Handlers → Setup → 启动 Server
-9. gin.New() 不用 gin.Default()（中间件自己控制）
-10. 日志一行写完
 ```
 
 ---

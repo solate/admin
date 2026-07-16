@@ -200,34 +200,19 @@ internal/query       ← GORM Gen
 | 16 | [Swagger 文档](step-16-swagger.md) | swaggo 生成 API 文档 | 在线文档 |
 | 17 | [部署与运维](step-17-deployment.md) | Dockerfile / docker-compose / 健康检查 | 容器化部署 |
 
-> 配置路径约定、flag 去留、docker-compose 与 k3s ConfigMap 挂载的深入设计见 [research/config-loading/05-配置部署路径与ConfigMap挂载设计](research/config-loading/05-配置部署路径与ConfigMap挂载设计.md)
+> **配置系列**：[05 配置部署路径与 ConfigMap 挂载](research/config-loading/05-配置部署路径与ConfigMap挂载设计.md)
 >
-> **数据库系列文档**（选型 → 迁移 → 演进 → 落地）：
-> - [02 数据库访问层选型调研](research/database/02-数据库访问层选型调研.md) — GORM+gen 方向、7 约束、sqlc 动态查询硬伤
-> - [03 迁移工具与数据初始化方案](research/database/03-迁移工具与数据初始化方案.md) — golang-migrate vs Atlas、seed 三层分类
-> - [04 schema优先与数据库优先](research/database/04-schema优先与数据库优先.md) — 两种真相源方向对比
-> - [05 数据库演进与迁移规范](research/database/05-数据库演进与迁移规范.md) — expand-contract、schema/data 分离、安全 DDL
-> - [06 GORM与golang-migrate最佳实践](research/database/06-GORM与golang-migrate最佳实践.md) — 避坑约定、单一 migrations/ 目录、data migration 落地（可执行铁律见 [`.claude/rules/migration-data-convention.md`](../../.claude/rules/migration-data-convention.md)）
+> **数据库系列**：[02 访问层选型](research/database/02-数据库访问层选型调研.md) · [03 迁移工具选型](research/database/03-迁移工具与数据初始化方案.md) · [04 schema 优先 vs 数据库优先](research/database/04-schema优先与数据库优先.md) · [05 演进规范](research/database/05-数据库演进与迁移规范.md) · [06 GORM+migrate 最佳实践](research/database/06-GORM与golang-migrate最佳实践.md)（铁律见 [migration-data-convention.md](../../.claude/rules/migration-data-convention.md)）
 >
-> **日志系列文档与博客**：
-> - [01 日志库选型调研](research/logging/01-日志库选型调研.md) — 为何 2026 选 slog（选型 ADR）
-> - [06 OpenTelemetry 集成路径](research/logging/06-OpenTelemetry集成路径.md) — 演进指南：从单体日志到微服务全链路追踪
-> - [博客：从零设计 Go 结构化日志](../blog/从零设计Go结构化日志-slog封装与Gin集成.md) — 完整封装设计、契约、踩坑清单（唯一权威实现文档）
+> **日志系列**：[01 日志库选型](research/logging/01-日志库选型调研.md) · [06 OTel 集成路径](research/logging/06-OpenTelemetry集成路径.md) · [博客：结构化日志封装](../blog/从零设计Go结构化日志-slog封装与Gin集成.md)
 >
-> **Redis 系列文档**：
-> - [01 Redis 客户端封装选型调研](research/redis/01-redis-客户端封装选型调研.md) — 为何 2026 选 go-redis/v9 + 具体 `*redis.Client`（不套接口、不做单例）、UniversalClient/rueidis 对比、集群迁移边界
-
-> **ID 生成系列文档**：
-> - [01 ID生成方案选型-雪花vs-UUID](research/idgen/01-ID生成方案选型-雪花vs-UUID.md) — PG18 已确认、UUIDv7 为推荐方向（库内更省、零机器协调）、backend/ 已于 2026-07 切换；含 JS 2^53 精度约束
-> - [02 UUIDv7落地细节-前端影响与生成方式](research/idgen/02-UUIDv7落地细节-前端影响与生成方式.md) — 前端零改动、DB 效率量化、应用层生成不绑 PG 版本、开发友好度、v7 自动生成vs赋值
-> - [03 UUIDv7存储机制与落地](research/idgen/03-UUIDv7存储机制与落地-PG18字段设计与文本二进制转换.md) — PG18 许可证/升级、字段用原生 `uuid`、「文本↔16字节」由 PG 自动转换、GORM 字段保持 string、PG18 以下降级不退 varchar、为何不处理 error 与封装建议
-> - [博客：从零设计 Go 主键 ID](../blog/从零设计Go主键ID-雪花到UUIDv7的取舍.md) — 雪花到 UUIDv7 的取舍，三段说清为何换、有何坑、怎么落
-
-> **应用启动与生命周期系列文档**（组合根 → 依赖装配 → cron 编排 → 分层对象化）：
-> - [01 应用启动与组件生命周期](research/bootstrap/01-应用启动与组件生命周期-main组合根与gin-cron编排.md) — `run()` 组合根 + `signal.NotifyContext` 优雅退出；成熟编排方案 run.Group（Grafana/Prometheus 采用）vs errgroup vs 裸 select，组件 ≥2（HTTP+scheduler）用 run.Group
-> - [02 依赖装配与组件注册](research/bootstrap/02-依赖装配与组件注册-手工注入vs-wire-fx.md) — 手工注入 vs wire vs fx 三方对比、按域装配函数 + deps 聚合结构体消除 40 字段 Handlers / 28 参数 mega-constructor
-> - [03 后台任务执行模型选型](research/bootstrap/03-cron任务注册与复用-jobs装配与Server生命周期集成.md) — 三档成熟方案：纯定时用 gocron v2（内建多副本 locker，替掉手搓 SetNX）、要持久化/重试用 River（PG 栈内）或 asynq（Redis）、backfill cron = 该上持久队列的信号；作为 run.Group actor 编排
-> - [04 分层对象化与共享并发状态](research/bootstrap/04-分层对象化与共享并发状态-struct而非纯方法.md) — 三层为何一律 struct 而非纯方法、「加锁逼出纯方法」是误判、共享并发状态 = 共享注入的单个实例（信号量/锁作 struct 字段）、`PermissionCache` 正例
+> **Redis 系列**：[01 客户端封装选型](research/redis/01-redis-客户端封装选型调研.md)
+>
+> **ID 生成系列**：[01 雪花 vs UUID](research/idgen/01-ID生成方案选型-雪花vs-UUID.md) · [02 UUIDv7 落地细节](research/idgen/02-UUIDv7落地细节-前端影响与生成方式.md) · [03 UUIDv7 存储机制](research/idgen/03-UUIDv7存储机制与落地-PG18字段设计与文本二进制转换.md) · [博客：从零设计 Go 主键 ID](../blog/从零设计Go主键ID-雪花到UUIDv7的取舍.md)
+>
+> **应用启动与生命周期**：[01 main 组合根 + errgroup 编排](research/bootstrap/01-应用启动与组件生命周期-main组合根与gin-cron编排.md) · [02 手工注入与 struct 分层](research/bootstrap/02-依赖装配与分层对象化-手工注入与struct封装.md) · [04 配置装配与库入参边界](research/bootstrap/04-配置装配与库入参边界-项目配置与同构转换.md)
+>
+> **任务调度知识体系**：[01 全景与知识地图](research/cron/01-任务调度全景-两根正交轴与知识地图.md) · [02 单机执行四档](research/cron/02-单机执行模型-从ticker到持久队列的四档.md) · [03 cron 库选型](research/cron/03-cron库选型-robfig与gocron对比.md) · [04 时间轮](research/cron/04-时间轮-单机海量定时器的数据结构.md) · [05 单机→多节点](research/cron/05-从单机到多节点-重复跑与拆调度器.md) · [06 分布式共识](research/cron/06-分布式共识-选主仲裁与不重复的本质.md) · [07 一致性哈希](research/cron/07-一致性哈希与分片调度.md) · [08 分布式调度引擎](research/cron/08-分布式调度引擎-XXL-Job与Elastic-Job与Temporal.md)
 
 **里程碑 5**：生产就绪
 
@@ -266,7 +251,9 @@ internal/query       ← GORM Gen
 | 密码 | bcrypt | 工业标准、自带盐 | argon2（overkill） |
 | 缓存 | Redis + 内存 map | 热数据内存、持久化 Redis | 纯 Redis（延迟高） |
 | Redis 客户端 | go-redis/v9 + pkg/xredis 封装（返回具体 `*redis.Client`） | 官方维护、最成熟、单节点直用不套接口不做单例 | UniversalClient 接口/单例（单节点用不上，见 [研究](research/redis/01-redis-客户端封装选型调研.md)）、rueidis（新依赖、API 陌生） |
-| DI | 手动构造函数注入 | 显式、可追踪、无魔法 | Wire/dig（学习成本） |
+| DI | 手动构造函数注入（平铺起步，长大再抽按域 module） | 显式、可追踪、无魔法、greenfield 行业共识首选 | Wire/dig（学习成本）、fx（运行期反射容器） |
+| 组件编排 | 单组件裸 select；≥2 组件 `errgroup.WithContext` | 一个依赖（x/sync）、一个心智模型，任一组件失败拉全体优雅退出 | run.Group（actor 众多、需精确 interrupt 排序才值得） |
+| 后台任务 | 分档：`time.Ticker` → gocron v2 → River | 按「可丢 vs 必达 / 单副本 vs 多副本」升级，不预付依赖 | robfig/cron + 手搓 SetNX 锁/去重/backfill（重造残缺持久队列） |
 
 ---
 

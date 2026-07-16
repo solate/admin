@@ -2,8 +2,6 @@
 package router
 
 import (
-	"log/slog"
-
 	"github.com/gin-gonic/gin"
 
 	"admin/internal/config"
@@ -13,11 +11,11 @@ import (
 
 // Setup 配置 gin engine：注册中间件、健康检查路由。
 // 中间件顺序：requestid（最先，下游全依赖）→ logger → recovery → cors。
-func Setup(r *gin.Engine, cfg *config.Config, log *slog.Logger) {
+func Setup(r *gin.Engine, cfg *config.Config) {
 	// 中间件（顺序关键：requestid 最先，其余可读取 request_id）
 	r.Use(middleware.RequestID())
-	r.Use(middleware.Logger(log))
-	r.Use(middleware.Recovery(log))
+	r.Use(middleware.Logger())
+	r.Use(middleware.Recovery())
 	r.Use(middleware.CORS(cfg.Server.Cors))
 
 	// 健康检查

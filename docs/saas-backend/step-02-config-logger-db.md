@@ -118,7 +118,7 @@ cmd/server/main.go                # 组合根：配置 → 日志 → DB → Red
 延续 Step 01 的核心保证——**main.go 是最终结构，永不改动**。基础设施在 Step 02 就绪后直接通过 `Options` 传入 server，于是：
 
 - Step 03 只需把 `New()` 内部的 `mux` 换成 `gin.New()` + `router.Setup()`，server 签名和 main.go 都不动。
-- Step 05 cron 同理，只在 `Start()`/`Stop()` 内部追加，main.go 无感知。
+- Step 05 cron 同理，只在 `Run(ctx)` 里多注册一个 `g.Go`，main.go 无感知。
 
 若把 server 的接入推迟到 Step 03，main.go 就要在 Step 03 再改一次（从「不启动 server」变成「启动 server」），破坏稳定性保证。
 
@@ -191,23 +191,6 @@ DB_PASSWORD=wrong go run ./cmd/server 2>&1 | grep "connect database"
 # 6. 日志格式（debug + text 模式）
 go run ./cmd/server 2>&1 | head -3
 # 期望：TextHandler 的 key=value 输出，含 source=dir/file:line
-```
-
-## AI 协作提示
-
-```
-请按 step-02-config-logger-db.md 实现基础设施层。
-
-要点：
-1. pkg/xviper 泛型 Load[T]：读 base + config.{APP_ENV}.yaml overlay 合并 + APP_* 环境变量覆盖；WithPath/WithValidate 选项；绝不用 viper.AutomaticEnv
-2. internal/config：类型化 Config(mapstructure tag) + InitConfig(调 xviper.Load[Config]) + validate.go 手写白名单校验
-3. 自包含单测(t.TempDir/t.Setenv)：xviper 加载器行为 + internal/config 校验/env 覆盖
-4. pkg/xslog：Config{Level,Format,AddSource,Output,ContextExtractors,ReplaceAttr}，New() 返回 *slog.Logger；parseLevel 用 slog.Level.UnmarshalText(大小写不敏感)；shortenSource 裁 dir/file:line；自定义 contextHandler 从 ctx 注入 request_id/tenant_id；不提供 Fatal(启动失败走 run() error + os.Exit)；日志用标准库 slog，无第三方依赖
-5. pkg/database：New() 返回 *gorm.DB，含 slog 适配的 GORM logger(gormSlogger 实现 gormlogger.Interface，用 *Context 变体携带 request_id)
-6. pkg/xredis：New() 返回具体 *redis.Client（不套接口、不做单例），启动 Ping 探活；连接池/超时参数仅在 >0 时覆盖，否则用 go-redis 默认
-7. cmd/server/main.go 用 run() error 模式：config.InitConfig()，做 config.Config → 各 pkg.Config 映射；关闭超时用 cfg.Server.GracefulTimeout；任何一步失败 return error，由 main 统一打日志 + os.Exit(1)
-8. 不要用全局变量，所有依赖通过参数传递
-9. server 通过 Options 接收 db/rdb/log(*slog.Logger)，main.go 启动 server
 ```
 
 ---

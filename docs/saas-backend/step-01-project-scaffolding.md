@@ -56,7 +56,7 @@ backend/
 主流 Gin boilerplate（vsouza、Massad 等）的标准结构：`internal/server/` 既封装 Gin engine，也管理 HTTP server lifecycle（Start/Stop），同时持有 db/redis/logger 等基础设施依赖。
 
 ```
-main.go → server.New(cfg) → server.Start() / server.Stop()
+main.go(run()) → server.New(Options) → server.Run(ctx)
 ```
 
 `internal/server/` 就是 App，没有额外的编排层。
@@ -76,7 +76,7 @@ internal/server/ ← HTTP 组件 / gRPC 组件
 
 | 包 | 职责 |
 |---|---|
-| `internal/server/` | 创建 Gin engine；注册中间件；调用 router.Setup()；包装 `*http.Server`；Start/Stop lifecycle；持有 db/redis/logger（Step 02 起） |
+| `internal/server/` | 创建 Gin engine；注册中间件；调用 router.Setup()；包装 `*http.Server`；`Run(ctx)` 内 errgroup 编排 + 优雅关闭；持有 db/redis/logger（Step 02 起） |
 | `internal/router/` | `Setup(r *gin.Engine, ...)` 注册全部路由，无 lifecycle |
 
 ## 实现
@@ -98,50 +98,49 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
+	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"admin/internal/config"
 	"admin/internal/server"
 )
 
 func main() {
+	// main 只负责退出码，逻辑与资源清理都在 run 里（defer 保证执行）
+	if err := run(); err != nil {
+		slog.Error("server exited with error", slog.Any("err", err))
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	cfg, err := config.InitConfig()
 	if err != nil {
-		log.Fatalf("load config: %v", err)
+		return fmt.Errorf("load config: %w", err)
 	}
+
+	// Step 02 起：这里顺序创建 db/redis 等基础设施，defer 逆序 Close
 
 	srv, err := server.New(cfg)
 	if err != nil {
-		log.Fatalf("init server: %v", err)
+		return fmt.Errorf("init server: %w", err)
 	}
 
+	// signal.NotifyContext 把 SIGINT/SIGTERM 变成可传播的 ctx
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	go func() {
-		if err := srv.Start(); err != nil {
-			log.Fatalf("start server: %v", err)
-		}
-	}()
-
-	<-ctx.Done()
-	stop()
-	log.Println("shutdown signal received")
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	srv.Stop(shutdownCtx)
-	log.Println("server exited")
+	// Run 阻塞直到收到信号或任一组件出错，内部 errgroup 统一优雅关闭
+	if err := srv.Run(ctx); err != nil {
+		return fmt.Errorf("run server: %w", err)
+	}
+	slog.Info("server exited")
+	return nil
 }
 ```
-
-**设计要点**：
-- `signal.NotifyContext`（Go 1.16+）：比手写 channel 更简洁
-- 30 秒优雅退出超时（生产级标准，Step 01 就定好，后续不再改）
-- main.go 是**最终结构**——后续步骤只填充 `server.New()` 内部，main.go 不再变动
 
 ### 3. internal/server/server.go（Step 01 骨架）
 
@@ -151,17 +150,18 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
+	// Run(ctx) 完整实现见 bootstrap doc 01，会用到 errors / golang.org/x/sync/errgroup
 	"admin/internal/config"
 )
 
 type Server struct {
-	httpSrv *http.Server
-	// Step 02 起追加：db *gorm.DB, rdb *redis.Client, logger zerolog.Logger
-	// Step 05 起追加：cronRunner *cron.Runner
+	httpSrv         *http.Server
+	gracefulTimeout time.Duration
+	// Step 02 起追加：db *gorm.DB, rdb *redis.Client, log *slog.Logger
+	// Step 05 起追加：scheduler *scheduler.Scheduler
 }
 
 func New(cfg *config.Config) (*Server, error) {
@@ -180,30 +180,14 @@ func New(cfg *config.Config) (*Server, error) {
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
-	return &Server{httpSrv: httpSrv}, nil
+	return &Server{httpSrv: httpSrv, gracefulTimeout: 30 * time.Second}, nil
 }
 
-func (s *Server) Start() error {
-	// Step 05 起追加：go s.cronRunner.Start(ctx)
-	log.Printf("server starting on %s", s.httpSrv.Addr)
-	if err := s.httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return err
-	}
-	return nil
-}
-
-func (s *Server) Stop(ctx context.Context) {
-	// Step 05 起逆序追加：s.cronRunner.Stop()
-	if err := s.httpSrv.Shutdown(ctx); err != nil {
-		log.Printf("server shutdown error: %v", err)
-	}
-}
+// Run 用 errgroup 编排长驻组件（组件 1 HTTP + 其带超时优雅关闭；Step 05 起加 scheduler）。
+// 完整实现（两个 g.Go、ErrServerClosed 过滤成 nil、g.Wait 收敛）与 bootstrap doc 01
+// 第一节的 Run(ctx) 逐字一致，此处不复制——doc 01 是生命周期编排的唯一权威版本。
+func (s *Server) Run(ctx context.Context) error { /* errgroup 编排，见 bootstrap doc 01 */ }
 ```
-
-**设计要点**：
-- Step 01 先用标准库 `http.NewServeMux()`，Step 03 替换为 `gin.New()`，接口不变
-- 注释标注了各 Step 会追加的字段和逻辑，避免未来忘记位置
-- cron 加入后（Step 05），在 `Start()`/`Stop()` 内追加，main.go 无感知
 
 ### 4. internal/config/config.go（Step 01 极简版）
 
